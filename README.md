@@ -7,3 +7,5 @@
 - PRD: `.omx/plans/prd-newsletter-platform-mvp.md`
 - 테스트 명세: `.omx/plans/test-spec-newsletter-platform-mvp.md`
 - 로컬 실행 가이드: `docs/runbook/local-dev.md`
+
+- Windows/폐쇄망 실행 가이드: `docs/runbook/windows-offline.md`

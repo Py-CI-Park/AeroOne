@@ -32,3 +32,7 @@ Newsletter/output/
 frontend/tsconfig.tsbuildinfo
 
 backend/backend/data/
+
+dist/
+
+offline_installers/
