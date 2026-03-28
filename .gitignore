@@ -40,3 +40,7 @@ offline_installers/
 frontend/.env.local
 
 backend/.env
+
+backend/.env.bak
+
+frontend/.env.local.bak
