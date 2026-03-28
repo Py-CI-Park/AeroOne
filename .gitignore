@@ -36,3 +36,7 @@ backend/backend/data/
 dist/
 
 offline_installers/
+
+frontend/.env.local
+
+backend/.env

@@ -9,17 +9,23 @@ if /I "%~1"=="--help" goto :help
 
 set "BACKEND_DIR=%ROOT%\backend"
 set "FRONTEND_DIR=%ROOT%\frontend"
-set "BACKEND_CMD=cd /d \"%BACKEND_DIR%\" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --host 0.0.0.0 --port 18437"
-set "FRONTEND_CMD=cd /d \"%FRONTEND_DIR%\" && npm run dev"
 
 if defined DRY_RUN (
-  echo [DRY-RUN] backend window will start in %BACKEND_DIR%
-  echo [DRY-RUN] frontend window will start in %FRONTEND_DIR%
+  echo [DRY-RUN] backend window command:
+  echo cmd /k "cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host 0.0.0.0 --port 18437"
+  echo [DRY-RUN] frontend window command:
+  echo cmd /k "cd /d ""%FRONTEND_DIR%"" ^&^& npm run dev"
   exit /b 0
 )
 
-start "AeroOne Backend" cmd /k "%BACKEND_CMD%"
-start "AeroOne Frontend" cmd /k "%FRONTEND_CMD%"
+start "AeroOne Backend" cmd /k "cd /d ""%BACKEND_DIR%"" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --host 0.0.0.0 --port 18437"
+start "AeroOne Frontend" cmd /k "cd /d ""%FRONTEND_DIR%"" && npm run dev"
+
+if errorlevel 1 (
+  echo [FAILED] start.bat could not launch backend/frontend windows.
+  pause
+  exit /b 1
+)
 
 echo [OK] Backend:  http://localhost:18437
 echo [OK] Frontend: http://localhost:29501
