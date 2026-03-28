@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from functools import lru_cache
+from pathlib import Path
 from typing import Generator
 
 from sqlalchemy import create_engine
@@ -10,8 +11,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 
 
+def _normalize_database_url(database_url: str) -> str:
+    prefix = 'sqlite:///'
+    if database_url.startswith(prefix) and not database_url.startswith('sqlite:////'):
+        raw = database_url[len(prefix):]
+        path = Path(raw)
+        if not path.is_absolute():
+            return f"sqlite:///{(get_settings().project_root / path).resolve()}"
+    return database_url
+
+
 class Database:
     def __init__(self, database_url: str) -> None:
+        database_url = _normalize_database_url(database_url)
         connect_args = {'check_same_thread': False} if database_url.startswith('sqlite') else {}
         self.engine = create_engine(database_url, connect_args=connect_args, future=True)
         self.session_factory = sessionmaker(bind=self.engine, autoflush=False, autocommit=False, expire_on_commit=False)
@@ -32,8 +44,9 @@ class Database:
 @lru_cache(maxsize=1)
 def get_engine():
     settings = get_settings()
-    connect_args = {'check_same_thread': False} if settings.database_url.startswith('sqlite') else {}
-    return create_engine(settings.database_url, future=True, connect_args=connect_args)
+    normalized_url = _normalize_database_url(settings.database_url)
+    connect_args = {'check_same_thread': False} if normalized_url.startswith('sqlite') else {}
+    return create_engine(normalized_url, future=True, connect_args=connect_args)
 
 
 @lru_cache(maxsize=1)

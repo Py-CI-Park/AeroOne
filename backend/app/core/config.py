@@ -29,12 +29,20 @@ class Settings(BaseSettings):
     cors_origins: str = 'http://localhost:3000'
 
     @property
+    def project_root(self) -> Path:
+        return Path(__file__).resolve().parents[3]
+
+    def _resolve_path(self, raw: str) -> Path:
+        path = Path(raw)
+        return path if path.is_absolute() else (self.project_root / path).resolve()
+
+    @property
     def import_root(self) -> Path:
-        return Path(self.newsletter_import_root_container).resolve()
+        return self._resolve_path(self.newsletter_import_root_container)
 
     @property
     def managed_storage_root(self) -> Path:
-        return Path(self.storage_root).resolve()
+        return self._resolve_path(self.storage_root)
 
     @property
     def storage_root_path(self) -> Path:
@@ -61,7 +69,7 @@ class Settings(BaseSettings):
         prefix = 'sqlite:///'
         if self.database_url.startswith(prefix):
             raw = self.database_url[len(prefix):]
-            return Path(raw).resolve()
+            return self._resolve_path(raw)
         return None
 
     def ensure_directories(self) -> None:
