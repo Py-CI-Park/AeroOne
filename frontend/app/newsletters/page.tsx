@@ -1,19 +1,11 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-
 import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterList } from '@/components/newsletter/newsletter-list';
 import { fetchNewsletters } from '@/lib/api';
-import type { NewsletterItem } from '@/lib/types';
 
-export default function NewslettersPage() {
-  const [items, setItems] = useState<NewsletterItem[]>([]);
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    void fetchNewsletters().then(setItems).catch(() => setItems([]));
-  }, []);
-
+export default async function NewslettersPage() {
+  const items = await fetchNewsletters().catch(() => []);
   return (
     <AppShell title="뉴스레터 목록">
       <NewsletterList items={items} />

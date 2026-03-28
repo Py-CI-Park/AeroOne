@@ -8,3 +8,7 @@ declare module 'next/navigation' {
   export function redirect(path: string): never;
   export function useRouter(): { push(path: string): void };
 }
+
+declare module 'next/headers' {
+  export function cookies(): { getAll(): { name: string; value: string }[] };
+}

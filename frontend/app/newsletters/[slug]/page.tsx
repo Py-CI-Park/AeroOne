@@ -1,51 +1,29 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-
 import { AppShell } from '@/components/layout/app-shell';
-import { HtmlViewer } from '@/components/newsletter/html-viewer';
-import { MarkdownViewer } from '@/components/newsletter/markdown-viewer';
-import { PdfViewer } from '@/components/newsletter/pdf-viewer';
-import { getBrowserApiBase, getHtmlContent, getNewsletterDetail } from '@/lib/api';
-import type { NewsletterDetail } from '@/lib/types';
+import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
+import { fetchNewsletterDetail, getServerApiBase } from '@/lib/api';
+import type { AssetType } from '@/lib/types';
 
-export default function NewsletterDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const [detail, setDetail] = useState<NewsletterDetail | null>(null);
-  const [contentHtml, setContentHtml] = useState('');
-  const [activeType, setActiveType] = useState<'html' | 'pdf' | 'markdown'>('html');
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    params.then(async ({ slug }) => {
-      const data = await getNewsletterDetail(slug);
-      setDetail(data);
-      setActiveType(data.default_asset_type);
-    });
-  }, [params]);
+export default async function NewsletterDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const detail = await fetchNewsletterDetail(slug);
 
-  useEffect(() => {
-    if (!detail) return;
-    const asset = detail.available_assets.find((item) => item.asset_type === activeType);
-    if (!asset || asset.asset_type === 'pdf') return;
-    getHtmlContent(asset.content_url).then((response) => setContentHtml(response.html));
-  }, [detail, activeType]);
+  let initialContentHtml = '';
+  if (detail.default_asset_type !== 'pdf') {
+    const asset = detail.available_assets.find((item) => item.asset_type === detail.default_asset_type);
+    if (asset) {
+      const response = await fetch(`${getServerApiBase()}${asset.content_url}`, { cache: 'no-store' });
+      if (response.ok) {
+        const payload = (await response.json()) as { asset_type: AssetType; content_html: string };
+        initialContentHtml = payload.content_html;
+      }
+    }
+  }
 
   return (
-    <AppShell title={detail?.title ?? '뉴스레터 상세'}>
-      {!detail ? <p>로딩 중...</p> : null}
-      {detail ? (
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {detail.available_assets.map((asset) => (
-              <button key={asset.asset_type} type="button" className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm" onClick={() => setActiveType(asset.asset_type)}>
-                {asset.asset_type.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          {activeType === 'pdf' ? <PdfViewer src={`${getBrowserApiBase()}${detail.available_assets.find((asset) => asset.asset_type === 'pdf')?.content_url ?? ''}`} /> : null}
-          {activeType === 'html' ? <HtmlViewer title={detail.title} html={contentHtml} /> : null}
-          {activeType === 'markdown' ? <MarkdownViewer html={contentHtml} /> : null}
-        </div>
-      ) : null}
+    <AppShell title={detail.title}>
+      <NewsletterDetailClient newsletter={detail} initialContentHtml={initialContentHtml} />
     </AppShell>
   );
 }

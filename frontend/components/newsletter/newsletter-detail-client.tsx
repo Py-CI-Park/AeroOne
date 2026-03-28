@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-
 import { useEffect, useMemo, useState } from 'react';
 import { getBrowserApiBase } from '@/lib/api';
 import type { AssetType, NewsletterDetail } from '@/lib/types';
@@ -14,9 +13,15 @@ type HtmlResponse = {
   content_html: string;
 };
 
-export function NewsletterDetailClient({ newsletter }: { newsletter: NewsletterDetail }) {
+export function NewsletterDetailClient({
+  newsletter,
+  initialContentHtml = '',
+}: {
+  newsletter: NewsletterDetail;
+  initialContentHtml?: string;
+}) {
   const [selectedAsset, setSelectedAsset] = useState<AssetType>(newsletter.default_asset_type);
-  const [contentHtml, setContentHtml] = useState('');
+  const [contentHtml, setContentHtml] = useState(initialContentHtml);
   const currentAsset = useMemo(
     () => newsletter.available_assets.find((asset) => asset.asset_type === selectedAsset),
     [newsletter.available_assets, selectedAsset],
@@ -26,10 +31,13 @@ export function NewsletterDetailClient({ newsletter }: { newsletter: NewsletterD
     if (!currentAsset || selectedAsset === 'pdf') {
       return;
     }
+    if (selectedAsset === newsletter.default_asset_type && initialContentHtml) {
+      return;
+    }
     void fetch(`${getBrowserApiBase()}${currentAsset.content_url}`)
       .then((response) => response.json() as Promise<HtmlResponse>)
       .then((payload) => setContentHtml(payload.content_html));
-  }, [currentAsset, selectedAsset]);
+  }, [currentAsset, initialContentHtml, newsletter.default_asset_type, selectedAsset]);
 
   return (
     <section className="space-y-6">
