@@ -1,5 +1,6 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
+chcp 65001 >nul
 
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
@@ -12,17 +13,22 @@ set "FRONTEND_ENV=%FRONTEND_DIR%\.env.local"
 set "BACKEND_VENV=%BACKEND_DIR%\.venv"
 set "DRY_RUN="
 set "NO_PAUSE="
-set "CURRENT_STEP=초기화"
+set "CURRENT_STEP=INITIALIZE"
 
 if /I "%~1"=="--help" goto :help
 if /I "%~1"=="--dry-run" set "DRY_RUN=1"
 if /I "%~1"=="--no-pause" set "NO_PAUSE=1"
 if /I "%~2"=="--no-pause" set "NO_PAUSE=1"
 
-call :banner
+echo ========================================
+echo AeroOne Windows Setup
+echo Repo Root     : %ROOT%
+echo Backend Port  : 18437
+echo Frontend Port : 29501
+echo ========================================
 
-set "CURRENT_STEP=필수 디렉터리 확인"
-echo [1/7] %CURRENT_STEP%
+set "CURRENT_STEP=CHECK_DIRECTORIES"
+echo [1/7][CHECK] 필수 디렉터리 확인
 if not exist "%BACKEND_DIR%" (
   echo [ERROR] backend directory not found: %BACKEND_DIR%
   goto :fail
@@ -31,75 +37,12 @@ if not exist "%FRONTEND_DIR%" (
   echo [ERROR] frontend directory not found: %FRONTEND_DIR%
   goto :fail
 )
-echo [OK] 디렉터리 확인 완료
+echo [OK] backend / frontend 디렉터리 확인 완료
 
 if defined DRY_RUN goto :dryrun
 
-set "CURRENT_STEP=backend env 작성"
-echo [2/7] %CURRENT_STEP%
-call :write_backend_env || goto :fail
-echo [OK] backend .env 작성 완료
-
-set "CURRENT_STEP=frontend env 작성"
-echo [3/7] %CURRENT_STEP%
-call :write_frontend_env || goto :fail
-echo [OK] frontend .env.local 작성 완료
-
-set "CURRENT_STEP=Python 가상환경 준비"
-echo [4/7] %CURRENT_STEP%
-if not exist "%BACKEND_VENV%\Scripts\python.exe" (
-  py -3.12 -m venv "%BACKEND_VENV%" || py -3 -m venv "%BACKEND_VENV%" || python -m venv "%BACKEND_VENV%"
-  if errorlevel 1 goto :fail
-  echo [OK] backend .venv 생성 완료
-) else (
-  echo [INFO] 기존 backend .venv 재사용
-)
-if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
-
-set "CURRENT_STEP=백엔드 설치 및 DB 준비"
-echo [5/7] %CURRENT_STEP%
-call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
-pushd "%BACKEND_DIR%"
-pip install -r requirements-dev.txt || goto :fail_from_backend
-set "PYTHONPATH=."
-python scripts\ensure_db_state.py data\aeroone.db
-set "MIGRATION_MODE=%ERRORLEVEL%"
-if "%MIGRATION_MODE%"=="3" (
-  echo [INFO] 기존 DB를 감지했습니다. Alembic head stamp를 수행합니다.
-  alembic stamp head || goto :fail_from_backend
-) else (
-  echo [INFO] Alembic upgrade head 실행
-  alembic upgrade head || goto :fail_from_backend
-)
-python scripts\seed.py || goto :fail_from_backend
-popd
-echo [OK] backend 설치 및 DB 준비 완료
-
-set "CURRENT_STEP=프론트엔드 의존성 설치"
-echo [6/7] %CURRENT_STEP%
-pushd "%FRONTEND_DIR%"
-call npm install || goto :fail_from_frontend
-popd
-echo [OK] frontend 의존성 설치 완료
-
-set "CURRENT_STEP=최종 안내"
-echo [7/7] %CURRENT_STEP%
-goto :success
-
-:dryrun
-echo [DRY-RUN] backend env 경로: %BACKEND_ENV%
-echo [DRY-RUN] frontend env 경로: %FRONTEND_ENV%
-echo [DRY-RUN] backend venv 경로: %BACKEND_VENV%
-echo [DRY-RUN] 다음 순서로 실행됩니다:
-echo           1. env 파일 작성
-echo           2. venv 생성 또는 재사용
-echo           3. pip install
-echo           4. alembic upgrade 또는 stamp
-echo           5. seed 실행
-echo           6. npm install
-goto :success
-
-:write_backend_env
+set "CURRENT_STEP=WRITE_BACKEND_ENV"
+echo [2/7][CONFIG] backend .env 작성
 if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >"%BACKEND_ENV%" echo APP_ENV=development
 >>"%BACKEND_ENV%" echo APP_NAME=AeroOne Newsletter Platform
@@ -120,13 +63,69 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo CORS_ORIGINS=http://localhost:29501
 >>"%BACKEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
 >>"%BACKEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
-exit /b 0
+echo [OK] backend .env 작성 완료
 
-:write_frontend_env
+set "CURRENT_STEP=WRITE_FRONTEND_ENV"
+echo [3/7][CONFIG] frontend .env.local 작성
 if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
 >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
 >>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
-exit /b 0
+echo [OK] frontend .env.local 작성 완료
+
+set "CURRENT_STEP=PREPARE_VENV"
+echo [4/7][PYTHON] 가상환경 준비
+if not exist "%BACKEND_VENV%\Scripts\python.exe" (
+  py -3.12 -m venv "%BACKEND_VENV%" || py -3 -m venv "%BACKEND_VENV%" || python -m venv "%BACKEND_VENV%"
+  if errorlevel 1 goto :fail
+  echo [OK] backend .venv 생성 완료
+) else (
+  echo [INFO] 기존 backend .venv 재사용
+)
+if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
+
+set "CURRENT_STEP=BACKEND_SETUP"
+echo [5/7][BACKEND] 의존성 설치 / DB 준비 / seed
+call "%BACKEND_VENV%\Scripts\activate.bat"
+if errorlevel 1 goto :fail
+pushd "%BACKEND_DIR%"
+pip install -r requirements-dev.txt || goto :fail_from_backend
+set "PYTHONPATH=."
+python scripts\ensure_db_state.py data\aeroone.db
+set "MIGRATION_MODE=%ERRORLEVEL%"
+if "%MIGRATION_MODE%"=="3" (
+  echo [INFO] 기존 DB 감지: Alembic metadata 복구 ^(stamp head^)
+  alembic stamp head || goto :fail_from_backend
+) else (
+  echo [INFO] Alembic upgrade head 실행
+  alembic upgrade head || goto :fail_from_backend
+)
+python scripts\seed.py || goto :fail_from_backend
+popd
+echo [OK] backend 설치 및 DB 준비 완료
+
+set "CURRENT_STEP=FRONTEND_SETUP"
+echo [6/7][FRONTEND] npm install
+pushd "%FRONTEND_DIR%"
+call npm install || goto :fail_from_frontend
+popd
+echo [OK] frontend 의존성 설치 완료
+
+set "CURRENT_STEP=NEXT_STEPS"
+echo [7/7][DONE] 최종 안내
+goto :success
+
+:dryrun
+echo [DRY-RUN] backend env 경로 : %BACKEND_ENV%
+echo [DRY-RUN] frontend env 경로: %FRONTEND_ENV%
+echo [DRY-RUN] backend venv 경로: %BACKEND_VENV%
+echo [DRY-RUN] 실행 순서
+echo           1. env 파일 작성
+echo           2. venv 생성 또는 재사용
+echo           3. pip install
+echo           4. alembic upgrade 또는 stamp
+echo           5. seed 실행
+echo           6. npm install
+goto :success
 
 :fail_from_backend
 popd
@@ -155,7 +154,7 @@ echo ========================================
 echo [OK] setup.bat 완료
 echo 다음 단계:
 echo   1. start.bat 실행
-echo   2. 브라우저에서 http://localhost:29501/newsletters 접속
+echo   2. 브라우저 접속: http://localhost:29501/newsletters
 echo   3. 관리자 로그인: http://localhost:29501/login
 echo   4. 백엔드 상태 확인: http://localhost:18437/api/v1/health
 echo ========================================
@@ -170,16 +169,10 @@ echo - backend .env 작성
 echo - frontend .env.local 작성
 echo - backend .venv 생성 또는 재사용
 echo - pip install
- echo - alembic upgrade 또는 stamp
- echo - seed 실행
- echo - frontend npm install
-exit /b 0
-
-:banner
-echo ========================================
-echo AeroOne Windows Setup
-echo Root: %ROOT%
-echo Backend Port : 18437
-echo Frontend Port: 29501
-echo ========================================
+echo - alembic upgrade 또는 stamp
+echo - seed 실행
+echo - frontend npm install
+echo.
+echo --dry-run  : 실제 설치 없이 단계만 출력
+echo --no-pause : 완료 후 창을 멈추지 않음
 exit /b 0
