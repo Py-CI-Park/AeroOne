@@ -1,0 +1,28 @@
+# Local env / tooling
+.env
+.venv/
+.python_packages/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Node / Next
+frontend/node_modules/
+frontend/.next/
+
+# Runtime data
+backend/data/
+storage/thumbnails/
+storage/attachments/
+
+# OMX runtime state
+.omx/logs/
+.omx/state/
+.omx/metrics.json
+.omx/notepad.md
+.omx/setup-scope.json
+.omx/tmux-hook.json
+.omx/hud-config.json

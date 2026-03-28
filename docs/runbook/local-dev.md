@@ -1,0 +1,35 @@
+# AeroOne 로컬 실행 가이드
+
+## 1. 환경 변수 준비
+```bash
+cp .env.example .env
+```
+
+## 2. 백엔드 로컬 실행
+```bash
+cd backend
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements-dev.txt
+alembic upgrade head
+python scripts/seed.py
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## 3. 프론트엔드 로컬 실행
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## 4. Docker Compose 실행
+```bash
+docker compose up --build
+```
+
+## 5. 기본 확인
+- Public 목록: `http://localhost:3000/newsletters`
+- Login: `http://localhost:3000/login`
+- Backend health: `http://localhost:8000/api/v1/health`
+- 기본 관리자 계정: `.env` 의 `ADMIN_USERNAME` / `ADMIN_PASSWORD`
