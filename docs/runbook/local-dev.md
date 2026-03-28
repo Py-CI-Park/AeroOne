@@ -13,7 +13,7 @@ python3 -m venv .venv
 pip install -r requirements-dev.txt
 alembic upgrade head
 PYTHONPATH=. python scripts/seed.py
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 18437
 ```
 
 ## 3. 프론트엔드 로컬 실행
@@ -29,7 +29,7 @@ docker compose up --build
 ```
 
 ## 5. 기본 확인
-- Public 목록: `http://localhost:3000/newsletters`
-- Login: `http://localhost:3000/login`
-- Backend health: `http://localhost:8000/api/v1/health`
+- Public 목록: `http://localhost:29501/newsletters`
+- Login: `http://localhost:29501/login`
+- Backend health: `http://localhost:18437/api/v1/health`
 - 기본 관리자 계정: `.env` 의 `ADMIN_USERNAME` / `ADMIN_PASSWORD`

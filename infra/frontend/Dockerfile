@@ -8,4 +8,4 @@ RUN npm install
 
 COPY frontend ./
 
-CMD ["sh", "-c", "npm run dev -- --hostname 0.0.0.0 --port ${FRONTEND_PORT:-3000}"]
+CMD ["sh", "-c", "npm run dev -- --hostname 0.0.0.0 --port ${FRONTEND_PORT:-29501}"]

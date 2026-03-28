@@ -32,8 +32,8 @@ if defined DRY_RUN (
   echo [DRY-RUN] create frontend\.env.local if missing
 ) else (
   if not exist "%FRONTEND_ENV%" (
-    >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-    >>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:8000
+    >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
+    >>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
   )
 )
 

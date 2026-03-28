@@ -9,8 +9,8 @@ if /I "%~1"=="--help" goto :help
 
 set "BACKEND_DIR=%ROOT%\backend"
 set "FRONTEND_DIR=%ROOT%\frontend"
-set "BACKEND_CMD=cd /d \"%BACKEND_DIR%\" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --host 0.0.0.0 --port 8000"
-set "FRONTEND_CMD=cd /d \"%FRONTEND_DIR%\" && npx next start -H 0.0.0.0 -p 3000"
+set "BACKEND_CMD=cd /d \"%BACKEND_DIR%\" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --host 0.0.0.0 --port 18437"
+set "FRONTEND_CMD=cd /d \"%FRONTEND_DIR%\" && npx next start -H 0.0.0.0 -p 29501"
 
 if defined DRY_RUN (
   echo [DRY-RUN] offline backend window will start in %BACKEND_DIR%
@@ -21,8 +21,8 @@ if defined DRY_RUN (
 start "AeroOne Backend Offline" cmd /k "%BACKEND_CMD%"
 start "AeroOne Frontend Offline" cmd /k "%FRONTEND_CMD%"
 
-echo [OK] Offline backend:  http://localhost:8000
-echo [OK] Offline frontend: http://localhost:3000
+echo [OK] Offline backend:  http://localhost:18437
+echo [OK] Offline frontend: http://localhost:29501
 exit /b 0
 
 :help

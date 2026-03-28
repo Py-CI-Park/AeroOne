@@ -14,7 +14,7 @@ it('requests newsletters list from backend api', async () => {
   vi.stubGlobal('fetch', fetchMock);
   await getPublicNewsletters();
   expect(fetchMock).toHaveBeenCalledWith(
-    'http://localhost:8000/api/v1/newsletters',
+    'http://localhost:18437/api/v1/newsletters',
     expect.objectContaining({ cache: 'no-store' }),
   );
 });

@@ -9,7 +9,7 @@ if /I "%~1"=="--help" goto :help
 
 set "BACKEND_DIR=%ROOT%\backend"
 set "FRONTEND_DIR=%ROOT%\frontend"
-set "BACKEND_CMD=cd /d \"%BACKEND_DIR%\" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+set "BACKEND_CMD=cd /d \"%BACKEND_DIR%\" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --host 0.0.0.0 --port 18437"
 set "FRONTEND_CMD=cd /d \"%FRONTEND_DIR%\" && npm run dev"
 
 if defined DRY_RUN (
@@ -21,8 +21,8 @@ if defined DRY_RUN (
 start "AeroOne Backend" cmd /k "%BACKEND_CMD%"
 start "AeroOne Frontend" cmd /k "%FRONTEND_CMD%"
 
-echo [OK] Backend:  http://localhost:8000
-echo [OK] Frontend: http://localhost:3000
+echo [OK] Backend:  http://localhost:18437
+echo [OK] Frontend: http://localhost:29501
 exit /b 0
 
 :help

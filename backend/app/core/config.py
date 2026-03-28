@@ -12,8 +12,8 @@ class Settings(BaseSettings):
 
     app_name: str = 'AeroOne Newsletter Platform'
     app_env: Literal['development', 'test', 'production'] = 'development'
-    backend_port: int = 8000
-    frontend_port: int = 3000
+    backend_port: int = 18437
+    frontend_port: int = 29501
     database_url: str = 'sqlite:///./backend/data/aeroone.db'
     jwt_secret_key: str = 'change-me'
     access_token_ttl_minutes: int = 30
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     attachments_dir_name: str = 'attachments'
     markdown_dir_name: str = 'markdown'
     csrf_cookie_name: str = 'csrf_token'
-    cors_origins: str = 'http://localhost:3000'
+    cors_origins: str = 'http://localhost:29501'
 
     @property
     def project_root(self) -> Path:
