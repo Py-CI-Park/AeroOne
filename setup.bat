@@ -88,18 +88,18 @@ echo [5/7][BACKEND] 의존성 설치 / DB 준비 / seed
 call "%BACKEND_VENV%\Scripts\activate.bat"
 if errorlevel 1 goto :fail
 pushd "%BACKEND_DIR%"
-pip install -r requirements-dev.txt || goto :fail_from_backend
+call pip install -r requirements-dev.txt || goto :fail_from_backend
 set "PYTHONPATH=."
-python scripts\ensure_db_state.py data\aeroone.db
+call python scripts\ensure_db_state.py data\aeroone.db
 set "MIGRATION_MODE=%ERRORLEVEL%"
 if "%MIGRATION_MODE%"=="3" (
   echo [INFO] 기존 DB 감지: Alembic metadata 복구 ^(stamp head^)
-  alembic stamp head || goto :fail_from_backend
+  call alembic stamp head || goto :fail_from_backend
 ) else (
   echo [INFO] Alembic upgrade head 실행
-  alembic upgrade head || goto :fail_from_backend
+  call alembic upgrade head || goto :fail_from_backend
 )
-python scripts\seed.py || goto :fail_from_backend
+call python scripts\seed.py || goto :fail_from_backend
 popd
 echo [OK] backend 설치 및 DB 준비 완료
 

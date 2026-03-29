@@ -10,6 +10,16 @@ if /I "%~1"=="--help" goto :help
 set "BACKEND_DIR=%ROOT%\backend"
 set "FRONTEND_DIR=%ROOT%\frontend"
 
+if not exist "%BACKEND_DIR%" (
+  echo [ERROR] backend directory not found: %BACKEND_DIR%
+  exit /b 1
+)
+
+if not exist "%FRONTEND_DIR%" (
+  echo [ERROR] frontend directory not found: %FRONTEND_DIR%
+  exit /b 1
+)
+
 if defined DRY_RUN (
   echo [DRY-RUN] offline backend window command:
   echo cmd /k "cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host 0.0.0.0 --port 18437"

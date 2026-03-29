@@ -66,17 +66,17 @@ if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
 
 call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
 pushd "%BACKEND_DIR%"
-pip install --no-index --find-links "%WHEEL_DIR%" -r requirements-dev.txt || goto :fail_from_backend
+call pip install --no-index --find-links "%WHEEL_DIR%" -r requirements-dev.txt || goto :fail_from_backend
 set "PYTHONPATH=."
-python scripts\ensure_db_state.py data\aeroone.db
+call python scripts\ensure_db_state.py data\aeroone.db
 set "MIGRATION_MODE=%ERRORLEVEL%"
 if "%MIGRATION_MODE%"=="3" (
   echo [INFO] Existing database detected without Alembic metadata. Stamping head.
-  alembic stamp head || goto :fail_from_backend
+  call alembic stamp head || goto :fail_from_backend
 ) else (
-  alembic upgrade head || goto :fail_from_backend
+  call alembic upgrade head || goto :fail_from_backend
 )
-python scripts\seed.py || goto :fail_from_backend
+call python scripts\seed.py || goto :fail_from_backend
 popd
 
 pushd "%FRONTEND_DIR%"
