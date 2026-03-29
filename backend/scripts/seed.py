@@ -11,6 +11,13 @@ from app.modules.auth.repositories import UserRepository
 from app.modules.newsletter.models.category import Category
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter, NewsletterAsset, SourceType
 from app.modules.newsletter.models.tag import Tag
+from app.modules.newsletter.services.newsletter_import_service import ImportResult, NewsletterImportService
+
+
+def _sync_external_newsletters(settings: Settings, session) -> ImportResult | None:
+    if not settings.import_root.exists():
+        return None
+    return NewsletterImportService(session, settings.import_root).sync()
 
 
 def main() -> None:
@@ -18,6 +25,7 @@ def main() -> None:
     settings.ensure_directories()
     database = Database(settings.database_url)
     Base.metadata.create_all(bind=database.engine)
+    sync_result: ImportResult | None = None
 
     sample_markdown_path = settings.markdown_root / 'sample-welcome.md'
     if not sample_markdown_path.exists():
@@ -65,7 +73,16 @@ def main() -> None:
             )
             session.add(newsletter)
 
-    print('seed complete')
+        sync_result = _sync_external_newsletters(settings, session)
+
+    if sync_result is None:
+        print('seed complete (external sync skipped: import root not found)')
+    else:
+        print(
+            'seed complete '
+            f'(external sync: created={sync_result.created}, updated={sync_result.updated}, '
+            f'deactivated={sync_result.deactivated}, skipped={sync_result.skipped}, issues={sync_result.issues})'
+        )
 
 
 if __name__ == '__main__':
