@@ -8,6 +8,23 @@ def test_admin_update_newsletter_metadata(csrf_client, client) -> None:
     assert detail.json()['title'] == '수정된 제목'
 
 
+def test_admin_can_fetch_imported_newsletter_detail(csrf_client) -> None:
+    csrf_client.post('/api/v1/admin/newsletters/sync')
+
+    response = csrf_client.get('/api/v1/admin/newsletters/2')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['source_type'] == 'html'
+    assert payload['source_file_path'] == 'newsletter_20260206.html'
+    assert payload['is_active'] is True
+    assert {asset['asset_type'] for asset in payload['available_assets']} == {'html', 'pdf'}
+    assert {asset['file_path'] for asset in payload['available_assets']} == {
+        'newsletter_20260206.html',
+        'Aerospace Daily News_20260206.pdf',
+    }
+
+
 def test_admin_create_markdown_newsletter(csrf_client) -> None:
     response = csrf_client.post(
         '/api/v1/admin/newsletters',

@@ -3,17 +3,17 @@
 import React from 'react';
 
 import { useEffect, useState } from 'react';
-import { fetchAdminNewsletters } from '@/lib/api';
+import { fetchAdminNewsletterDetail } from '@/lib/api';
 import { NewsletterForm } from '@/components/admin/newsletter-form';
-import type { NewsletterDetail, NewsletterItem } from '@/lib/types';
+import type { NewsletterDetail } from '@/lib/types';
 
 export function AdminNewsletterEditClient({ newsletterId }: { newsletterId: number }) {
-  const [item, setItem] = useState<NewsletterItem | null>(null);
+  const [item, setItem] = useState<NewsletterDetail | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    void fetchAdminNewsletters()
-      .then((items) => setItem(items.find((entry) => entry.id === newsletterId) ?? null))
+    void fetchAdminNewsletterDetail(newsletterId)
+      .then(setItem)
       .catch((err: Error) => setError(err.message));
   }, [newsletterId]);
 
@@ -25,5 +25,5 @@ export function AdminNewsletterEditClient({ newsletterId }: { newsletterId: numb
     return <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">데이터를 불러오는 중입니다.</div>;
   }
 
-  return <NewsletterForm mode="edit" initialData={item as NewsletterDetail} />;
+  return <NewsletterForm mode="edit" initialData={item} />;
 }

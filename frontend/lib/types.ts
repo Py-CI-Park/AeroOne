@@ -19,6 +19,7 @@ export interface NewsletterAsset {
   content_url: string;
   download_url: string;
   is_primary: boolean;
+  file_path?: string | null;
 }
 
 export interface NewsletterItem {
@@ -41,6 +42,10 @@ export interface NewsletterDetail extends NewsletterItem {
   summary?: string | null;
   markdown_file_path?: string | null;
   default_asset_type: AssetType;
+  is_active?: boolean;
+  source_file_path?: string | null;
+  source_identifier?: string;
+  markdown_body?: string | null;
 }
 
 export interface AuthResponse {

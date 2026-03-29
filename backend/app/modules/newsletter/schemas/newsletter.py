@@ -31,6 +31,7 @@ class NewsletterAssetResponse(BaseModel):
     content_url: str
     download_url: str
     is_primary: bool
+    file_path: str | None = None
 
 
 class NewsletterListItem(BaseModel):
@@ -50,6 +51,14 @@ class NewsletterDetailResponse(NewsletterListItem):
     summary: str | None = None
     markdown_file_path: str | None = None
     default_asset_type: AssetType
+
+
+class AdminNewsletterDetailResponse(NewsletterDetailResponse):
+    is_active: bool
+    thumbnail_path: str | None = None
+    source_file_path: str | None = None
+    source_identifier: str
+    markdown_body: str | None = None
 
 
 class NewsletterCreateRequest(BaseModel):

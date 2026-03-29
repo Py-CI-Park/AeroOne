@@ -82,6 +82,10 @@ export async function fetchAdminNewsletters() {
   return browserFetch<NewsletterItem[]>('/api/v1/admin/newsletters', { method: 'GET' });
 }
 
+export async function fetchAdminNewsletterDetail(id: number) {
+  return browserFetch<NewsletterDetail>(`/api/v1/admin/newsletters/${id}`, { method: 'GET' });
+}
+
 export async function createNewsletter(payload: Record<string, unknown>, csrfToken: string) {
   return browserFetch<NewsletterDetail>('/api/v1/admin/newsletters', {
     method: 'POST',
@@ -94,6 +98,14 @@ export async function updateNewsletter(id: number, payload: Record<string, unkno
   return browserFetch<NewsletterDetail>(`/api/v1/admin/newsletters/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function uploadThumbnail(id: number, formData: FormData, csrfToken: string) {
+  return browserFetch<{ thumbnail_path: string }>(`/api/v1/admin/newsletters/${id}/thumbnail`, {
+    method: 'POST',
+    body: formData,
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }

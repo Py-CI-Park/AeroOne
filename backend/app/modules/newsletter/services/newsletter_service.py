@@ -9,6 +9,7 @@ from app.modules.newsletter.repositories.category_repository import CategoryRepo
 from app.modules.newsletter.repositories.newsletter_repository import NewsletterRepository
 from app.modules.newsletter.repositories.tag_repository import TagRepository
 from app.modules.newsletter.schemas.newsletter import (
+    AdminNewsletterDetailResponse,
     CategoryResponse,
     NewsletterAssetResponse,
     NewsletterCreateRequest,
@@ -54,6 +55,10 @@ class NewsletterService:
         if not newsletter or not newsletter.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Newsletter not found')
         return self.serialize_detail(newsletter)
+
+    def get_admin_detail(self, newsletter_id: int) -> AdminNewsletterDetailResponse:
+        newsletter = self.get_detail_by_id(newsletter_id, allow_inactive=True)
+        return self.serialize_admin_detail(newsletter)
 
     def get_detail_by_id(self, newsletter_id: int, *, allow_inactive: bool = False) -> Newsletter:
         newsletter = self.newsletter_repository.get_by_id(newsletter_id)
@@ -188,7 +193,23 @@ class NewsletterService:
             default_asset_type=default_asset,
         )
 
-    def _asset_responses(self, newsletter: Newsletter) -> list[NewsletterAssetResponse]:
+    def serialize_admin_detail(self, newsletter: Newsletter) -> AdminNewsletterDetailResponse:
+        detail = self.serialize_detail(newsletter)
+        markdown_body = None
+        if newsletter.source_type == SourceType.MARKDOWN and newsletter.markdown_file_path:
+            markdown_body = self.storage_service.read_managed_text(newsletter.markdown_file_path)
+        detail_payload = detail.model_dump()
+        detail_payload['available_assets'] = self._asset_responses(newsletter, include_file_paths=True)
+        return AdminNewsletterDetailResponse(
+            **detail_payload,
+            is_active=newsletter.is_active,
+            thumbnail_path=newsletter.thumbnail_path,
+            source_file_path=newsletter.source_file_path,
+            source_identifier=newsletter.source_identifier,
+            markdown_body=markdown_body,
+        )
+
+    def _asset_responses(self, newsletter: Newsletter, *, include_file_paths: bool = False) -> list[NewsletterAssetResponse]:
         responses: list[NewsletterAssetResponse] = []
         for asset in sorted(newsletter.assets, key=lambda item: item.asset_type.value):
             responses.append(
@@ -197,6 +218,7 @@ class NewsletterService:
                     content_url=f'/api/v1/newsletters/{newsletter.id}/content/{asset.asset_type.value}',
                     download_url=f'/api/v1/newsletters/{newsletter.id}/download/{asset.asset_type.value}',
                     is_primary=asset.is_primary,
+                    file_path=asset.file_path if include_file_paths else None,
                 )
             )
         return responses

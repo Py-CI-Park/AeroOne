@@ -8,7 +8,7 @@ from app.modules.auth.dependencies import get_current_admin, get_db, get_setting
 from app.modules.newsletter.repositories.category_repository import CategoryRepository
 from app.modules.newsletter.repositories.tag_repository import TagRepository
 from app.modules.newsletter.schemas.admin import ThumbnailUploadResponse
-from app.modules.newsletter.schemas.newsletter import CategoryResponse, NewsletterCreateRequest, NewsletterDetailResponse, NewsletterListItem, NewsletterUpdateRequest, TagResponse, TaxonomyCreateRequest
+from app.modules.newsletter.schemas.newsletter import AdminNewsletterDetailResponse, CategoryResponse, NewsletterCreateRequest, NewsletterDetailResponse, NewsletterListItem, NewsletterUpdateRequest, TagResponse, TaxonomyCreateRequest
 from app.modules.newsletter.services.newsletter_service import NewsletterService
 from app.modules.newsletter.services.utils import slugify
 from app.modules.shared.storage.service import StorageService
@@ -27,6 +27,11 @@ def get_newsletter_service(db: Session = Depends(get_db), settings: Settings = D
 @router.get('/newsletters', response_model=list[NewsletterListItem], dependencies=[Depends(get_current_admin)])
 def list_admin_newsletters(service: NewsletterService = Depends(get_newsletter_service)) -> list[NewsletterListItem]:
     return service.list_admin()
+
+
+@router.get('/newsletters/{newsletter_id}', response_model=AdminNewsletterDetailResponse, dependencies=[Depends(get_current_admin)])
+def get_admin_newsletter(newsletter_id: int, service: NewsletterService = Depends(get_newsletter_service)) -> AdminNewsletterDetailResponse:
+    return service.get_admin_detail(newsletter_id)
 
 
 @router.post('/newsletters', response_model=NewsletterDetailResponse, dependencies=[Depends(require_csrf)])
