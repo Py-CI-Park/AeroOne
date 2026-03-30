@@ -3,7 +3,6 @@ import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
 import { NewsletterFilterBar } from '@/components/newsletter/newsletter-filter-bar';
 import { NewsletterList } from '@/components/newsletter/newsletter-list';
-import { NewsletterRecentList } from '@/components/newsletter/newsletter-recent-list';
 import { fetchLatestNewsletter, fetchNewsletterCalendar, fetchNewsletterDetail, fetchNewsletters, getServerApiBase } from '@/lib/api';
 import type { AssetType, NewsletterCalendarEntry, NewsletterDetail, NewsletterItem, SourceType } from '@/lib/types';
 
@@ -103,7 +102,6 @@ export default async function NewslettersPage({
             <NewsletterDetailClient newsletter={detail} initialContentHtml={initialContentHtml} />
 
             <div className="space-y-6">
-              <NewsletterRecentList items={allItems} selectedSlug={detail.slug} />
               <NewsletterFilterBar
                 current={{
                   q: params.q ?? '',
