@@ -38,10 +38,6 @@ vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
   NewsletterDetailClient: ({ newsletter }: { newsletter: NewsletterDetail }) => <div data-testid="newsletter-detail-client">{newsletter.title}</div>,
 }));
 
-vi.mock('@/components/newsletter/newsletter-filter-bar', () => ({
-  NewsletterFilterBar: () => <div data-testid="newsletter-filter-bar">filters</div>,
-}));
-
 vi.mock('@/components/newsletter/newsletter-list', () => ({
   NewsletterList: ({ items }: { items: NewsletterItem[] }) => <div data-testid="newsletter-list">{items.length}</div>,
 }));
