@@ -1,6 +1,7 @@
 import type {
   AuthResponse,
   Category,
+  NewsletterCalendarEntry,
   NewsletterDetail,
   NewsletterItem,
   SyncResponse,
@@ -52,6 +53,22 @@ export async function fetchNewsletterDetail(slug: string) {
     throw new Error('Failed to load newsletter detail');
   }
   return (await response.json()) as NewsletterDetail;
+}
+
+export async function fetchLatestNewsletter() {
+  const response = await fetch(`${getServerApiBase()}/api/v1/newsletters/latest`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('Failed to load latest newsletter');
+  }
+  return (await response.json()) as NewsletterDetail;
+}
+
+export async function fetchNewsletterCalendar() {
+  const response = await fetch(`${getServerApiBase()}/api/v1/newsletters/calendar`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('Failed to load newsletter calendar');
+  }
+  return (await response.json()) as NewsletterCalendarEntry[];
 }
 
 export async function getPublicNewsletters(): Promise<{ items: NewsletterItem[] }> {

@@ -11,6 +11,7 @@ from app.modules.newsletter.repositories.tag_repository import TagRepository
 from app.modules.newsletter.schemas.newsletter import (
     AdminNewsletterDetailResponse,
     CategoryResponse,
+    NewsletterCalendarEntry,
     NewsletterAssetResponse,
     NewsletterCreateRequest,
     NewsletterDetailResponse,
@@ -55,6 +56,27 @@ class NewsletterService:
         if not newsletter or not newsletter.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Newsletter not found')
         return self.serialize_detail(newsletter)
+
+    def get_latest_detail(self) -> NewsletterDetailResponse:
+        timeline = self._timeline_candidates()
+        if not timeline:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Newsletter not found')
+        return self.serialize_detail(timeline[0])
+
+    def list_calendar_entries(self) -> list[NewsletterCalendarEntry]:
+        entries: list[NewsletterCalendarEntry] = []
+        for newsletter in self._timeline_candidates():
+            if newsletter.published_at is None:
+                continue
+            entries.append(
+                NewsletterCalendarEntry(
+                    date=newsletter.published_at.date(),
+                    slug=newsletter.slug,
+                    title=newsletter.title,
+                    source_type=newsletter.source_type,
+                )
+            )
+        return entries
 
     def get_admin_detail(self, newsletter_id: int) -> AdminNewsletterDetailResponse:
         newsletter = self.get_detail_by_id(newsletter_id, allow_inactive=True)
@@ -225,3 +247,15 @@ class NewsletterService:
 
     def _thumbnail_url(self, thumbnail_path: str | None) -> str | None:
         return f'/storage/{thumbnail_path}' if thumbnail_path else None
+
+    def _timeline_candidates(self) -> list[Newsletter]:
+        imported = [
+            newsletter
+            for newsletter in self.newsletter_repository.list_imported_with_external_assets()
+            if newsletter.is_active and newsletter.published_at is not None
+        ]
+        if imported:
+            return sorted(imported, key=lambda item: item.published_at or item.created_at, reverse=True)
+
+        fallback = [newsletter for newsletter in self.newsletter_repository.list_public() if newsletter.published_at is not None]
+        return sorted(fallback, key=lambda item: item.published_at or item.created_at, reverse=True)

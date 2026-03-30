@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -59,6 +59,13 @@ class AdminNewsletterDetailResponse(NewsletterDetailResponse):
     source_file_path: str | None = None
     source_identifier: str
     markdown_body: str | None = None
+
+
+class NewsletterCalendarEntry(BaseModel):
+    date: date
+    slug: str
+    title: str
+    source_type: SourceType
 
 
 class NewsletterCreateRequest(BaseModel):

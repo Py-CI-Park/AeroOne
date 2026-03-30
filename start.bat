@@ -22,14 +22,14 @@ if not exist "%FRONTEND_DIR%" (
 
 if defined DRY_RUN (
   echo [DRY-RUN] backend window command:
-  echo cmd /k "cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host 0.0.0.0 --port 18437"
+  echo cmd /k "title AeroOne Backend ^&^& chcp 65001 ^>nul ^&^& color 0A ^&^& echo ================================================== ^&^& echo [BACKEND][BOOT ] AeroOne API Server ^&^& echo URL  : http://localhost:18437 ^&^& echo ROOT : %BACKEND_DIR% ^&^& echo CMD  : uvicorn app.main:app --host 0.0.0.0 --port 18437 ^&^& echo ================================================== ^&^& echo. ^&^& cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host 0.0.0.0 --port 18437"
   echo [DRY-RUN] frontend window command:
-  echo cmd /k "cd /d ""%FRONTEND_DIR%"" ^&^& npm run dev"
+  echo cmd /k "title AeroOne Frontend ^&^& chcp 65001 ^>nul ^&^& color 0B ^&^& echo ================================================== ^&^& echo [FRONTEND][BOOT] AeroOne Web UI ^&^& echo URL  : http://localhost:29501 ^&^& echo ROOT : %FRONTEND_DIR% ^&^& echo CMD  : npm run dev ^&^& echo ================================================== ^&^& echo. ^&^& cd /d ""%FRONTEND_DIR%"" ^&^& npm run dev"
   exit /b 0
 )
 
-start "AeroOne Backend" cmd /k "cd /d ""%BACKEND_DIR%"" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && uvicorn app.main:app --host 0.0.0.0 --port 18437"
-start "AeroOne Frontend" cmd /k "cd /d ""%FRONTEND_DIR%"" && npm run dev"
+start "AeroOne Backend" cmd /k "title AeroOne Backend && chcp 65001 >nul && color 0A && echo ================================================== && echo [BACKEND][BOOT ] AeroOne API Server && echo URL  : http://localhost:18437 && echo ROOT : %BACKEND_DIR% && echo CMD  : uvicorn app.main:app --host 0.0.0.0 --port 18437 && echo ================================================== && echo [BACKEND][INFO ] Python virtualenv activating... && echo. && cd /d ""%BACKEND_DIR%"" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && echo [BACKEND][READY] Launching uvicorn... && uvicorn app.main:app --host 0.0.0.0 --port 18437"
+start "AeroOne Frontend" cmd /k "title AeroOne Frontend && chcp 65001 >nul && color 0B && echo ================================================== && echo [FRONTEND][BOOT] AeroOne Web UI && echo URL  : http://localhost:29501 && echo ROOT : %FRONTEND_DIR% && echo CMD  : npm run dev && echo ================================================== && echo [FRONTEND][INFO] Starting Next.js development server... && echo. && cd /d ""%FRONTEND_DIR%"" && npm run dev"
 
 if errorlevel 1 (
   echo [FAILED] start.bat could not launch backend/frontend windows.
@@ -37,8 +37,11 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [OK] Backend:  http://localhost:18437
-echo [OK] Frontend: http://localhost:29501
+echo ==================================================
+echo [READY] Backend : http://localhost:18437
+echo [READY] Frontend: http://localhost:29501
+echo [INFO ] Separate colorized windows opened for backend/frontend.
+echo ==================================================
 exit /b 0
 
 :help

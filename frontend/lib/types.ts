@@ -48,6 +48,13 @@ export interface NewsletterDetail extends NewsletterItem {
   markdown_body?: string | null;
 }
 
+export interface NewsletterCalendarEntry {
+  date: string;
+  slug: string;
+  title: string;
+  source_type: SourceType;
+}
+
 export interface AuthResponse {
   user: {
     id: number;

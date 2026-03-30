@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.modules.auth.dependencies import get_db, get_settings
 from app.modules.newsletter.models.newsletter import AssetType, SourceType
-from app.modules.newsletter.schemas.newsletter import NewsletterDetailResponse, NewsletterListItem
+from app.modules.newsletter.schemas.newsletter import NewsletterCalendarEntry, NewsletterDetailResponse, NewsletterListItem
 from app.modules.newsletter.services.html_render_service import HTML_CSP, HtmlRenderService
 from app.modules.newsletter.services.markdown_render_service import MarkdownRenderService
 from app.modules.newsletter.services.newsletter_service import NewsletterService
@@ -28,6 +28,16 @@ def get_newsletter_service(db: Session = Depends(get_db), settings: Settings = D
 @router.get('', response_model=list[NewsletterListItem])
 def list_newsletters(q: str | None = None, category: str | None = None, tag: str | None = None, source_type: SourceType | None = None, service: NewsletterService = Depends(get_newsletter_service)) -> list[NewsletterListItem]:
     return service.list_public(q=q, category=category, tag=tag, source_type=source_type)
+
+
+@router.get('/latest', response_model=NewsletterDetailResponse)
+def get_latest_newsletter(service: NewsletterService = Depends(get_newsletter_service)) -> NewsletterDetailResponse:
+    return service.get_latest_detail()
+
+
+@router.get('/calendar', response_model=list[NewsletterCalendarEntry])
+def get_newsletter_calendar(service: NewsletterService = Depends(get_newsletter_service)) -> list[NewsletterCalendarEntry]:
+    return service.list_calendar_entries()
 
 
 @router.get('/{slug}', response_model=NewsletterDetailResponse)
