@@ -136,3 +136,4 @@ def test_start_dry_run_prints_launch_commands() -> None:
     lines = _non_empty_lines(result.stdout)
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("npm run dev" in line for line in lines)
+    assert any("http://localhost:29501/" in line for line in lines)

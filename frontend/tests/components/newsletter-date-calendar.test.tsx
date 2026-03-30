@@ -1,9 +1,9 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 
-it('renders active newsletter dates and highlights selected entry', () => {
+it('shows calendar only after opening toggle', () => {
   render(
     <NewsletterDateCalendar
       selectedSlug="newsletter-20260326"
@@ -14,6 +14,8 @@ it('renders active newsletter dates and highlights selected entry', () => {
     />,
   );
 
+  expect(screen.queryByRole('link', { name: /26/i })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '달력 열기' }));
   expect(screen.getByRole('link', { name: /26/i })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /25/i })).toBeInTheDocument();
   expect(screen.getByText('2026년 3월')).toBeInTheDocument();
