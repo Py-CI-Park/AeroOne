@@ -88,14 +88,6 @@ export default async function NewslettersPage({
 
   return (
     <AppShell title="뉴스레터 서비스">
-      <div className="mb-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 p-6 text-white shadow-lg">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Latest First</p>
-        <h2 className="mt-2 text-3xl font-semibold">가장 최신 뉴스레터를 바로 확인하세요</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200">
-          상단 달력에서 발행 날짜를 선택해 과거 뉴스레터로 빠르게 이동할 수 있습니다. 오른쪽 패널에서는 최근 발행 및 검색/필터를 통해 원하는 문서를 좁혀볼 수 있습니다.
-        </p>
-      </div>
-
       {errorMessage ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           뉴스레터 목록을 불러오지 못했습니다. 백엔드 실행 상태와 포트(18437)를 확인해주세요.
