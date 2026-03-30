@@ -2,7 +2,15 @@ import React from 'react';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 
-export function AppShell({ title, children }: { title: string; children: ReactNode }) {
+export function AppShell({
+  title,
+  children,
+  contentClassName = 'max-w-6xl',
+}: {
+  title: string;
+  children: ReactNode;
+  contentClassName?: string;
+}) {
   return (
     <div className="min-h-screen bg-slate-100" suppressHydrationWarning>
       <header className="border-b border-slate-200 bg-white">
@@ -19,7 +27,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className={`mx-auto px-6 py-8 ${contentClassName}`}>
         <h1 className="mb-6 text-2xl font-semibold text-slate-900">{title}</h1>
         {children}
       </main>

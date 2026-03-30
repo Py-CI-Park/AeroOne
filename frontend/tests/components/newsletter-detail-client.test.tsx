@@ -37,7 +37,8 @@ test('renders asset switch buttons and file download link', () => {
 
   expect(screen.getByRole('button', { name: 'HTML' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'PDF' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '파일 다운로드' })).toBeInTheDocument();
+  expect(screen.queryByText('테스트 상세')).not.toBeInTheDocument();
+  expect(screen.queryByText('설명')).not.toBeInTheDocument();
 });
 
 test('updates rendered html when newsletter slug changes', () => {
@@ -90,7 +91,7 @@ test('updates rendered html when newsletter slug changes', () => {
   expect(screen.getByTitle('둘째 뉴스레터')).toHaveAttribute('srcdoc', '<h1>second</h1>');
 });
 
-test('shows pdf in embedded viewer when pdf tab is selected', () => {
+test('shows pdf download-focused panel when pdf tab is selected', () => {
   render(
     <NewsletterDetailClient
       newsletter={{
@@ -114,5 +115,5 @@ test('shows pdf in embedded viewer when pdf tab is selected', () => {
   );
 
   fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
-  expect(screen.getByTitle('PDF viewer')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'PDF 다운로드' })).toBeInTheDocument();
 });
