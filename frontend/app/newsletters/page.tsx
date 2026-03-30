@@ -1,3 +1,4 @@
+import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
@@ -98,8 +99,8 @@ export default async function NewslettersPage({
         <div className="space-y-6">
           <NewsletterDateCalendar entries={calendarEntries} selectedSlug={detail.slug} />
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <NewsletterDetailClient newsletter={detail} initialContentHtml={initialContentHtml} />
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <NewsletterDetailClient key={detail.slug} newsletter={detail} initialContentHtml={initialContentHtml} />
 
             <div className="space-y-6">
               <NewsletterFilterBar

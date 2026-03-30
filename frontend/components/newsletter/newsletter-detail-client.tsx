@@ -28,6 +28,11 @@ export function NewsletterDetailClient({
   );
 
   useEffect(() => {
+    setSelectedAsset(newsletter.default_asset_type);
+    setContentHtml(initialContentHtml);
+  }, [newsletter.slug, newsletter.default_asset_type, initialContentHtml]);
+
+  useEffect(() => {
     if (!currentAsset || selectedAsset === 'pdf') {
       return;
     }
@@ -59,17 +64,20 @@ export function NewsletterDetailClient({
               {asset.asset_type.toUpperCase()}
             </button>
           ))}
-          {currentAsset ? (
-            <a href={`${getBrowserApiBase()}${currentAsset.download_url}`} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white">
-              다운로드
-            </a>
-          ) : null}
         </div>
       </header>
 
       {selectedAsset === 'pdf' && currentAsset ? <PdfViewer src={`${getBrowserApiBase()}${currentAsset.content_url}`} /> : null}
       {selectedAsset === 'html' ? <HtmlViewer title={newsletter.title} html={contentHtml} /> : null}
       {selectedAsset === 'markdown' ? <MarkdownViewer html={contentHtml} /> : null}
+
+      {currentAsset ? (
+        <div className="flex justify-end">
+          <a href={`${getBrowserApiBase()}${currentAsset.download_url}`} className="text-sm font-medium text-slate-500 underline underline-offset-4">
+            파일 다운로드
+          </a>
+        </div>
+      ) : null}
     </section>
   );
 }
