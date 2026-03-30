@@ -31,6 +31,19 @@ const EXTENSION_HYDRATION_GUARD = `
 })();
 `;
 
+export const metadata = {
+  title: {
+    default: 'AeroOne',
+    template: '%s | AeroOne',
+  },
+  description: 'AeroOne 사내 뉴스레터 / 문서 플랫폼',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko" suppressHydrationWarning>
