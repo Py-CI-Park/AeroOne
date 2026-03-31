@@ -36,6 +36,7 @@ backend/backend/data/
 dist/
 
 offline_installers/
+.worktrees/
 
 frontend/.env.local
 
