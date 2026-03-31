@@ -76,6 +76,19 @@ def _make_stub_commands(tmp_path: Path) -> tuple[Path, Path]:
     return bin_dir, log_file
 
 
+def _make_powershell_stub(tmp_path: Path) -> tuple[Path, Path]:
+    bin_dir = tmp_path / "powershell-bin"
+    bin_dir.mkdir()
+    log_file = tmp_path / "powershell.log"
+    (bin_dir / "powershell.bat").write_text(
+        "@echo off\r\n"
+        "echo powershell %*>>\"%STUB_LOG%\"\r\n"
+        "exit /b 0\r\n",
+        encoding="utf-8",
+    )
+    return bin_dir, log_file
+
+
 def test_setup_dry_run_lists_steps_on_separate_lines() -> None:
     result = _run_cmd(REPO_ROOT, "setup.bat", "--dry-run", "--no-pause")
 
@@ -137,3 +150,55 @@ def test_start_dry_run_prints_launch_commands() -> None:
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_dev.cmd" in line for line in lines)
     assert any("http://localhost:29501" in line for line in lines)
+
+
+def test_start_dry_run_prints_readiness_wrapper_command() -> None:
+    result = _run_cmd(REPO_ROOT, "start.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("uvicorn app.main:app" in line for line in lines)
+    assert any("start_frontend_dev.cmd" in line for line in lines)
+    assert any(
+        "open_browser.cmd" in line and "18437" in line and "29501" in line and "20" in line and "60" in line
+        for line in lines
+    )
+
+
+def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("uvicorn app.main:app" in line for line in lines)
+    assert any("start_frontend_offline.cmd" in line for line in lines)
+    assert any(
+        "open_browser.cmd" in line and "18437" in line and "29501" in line and "20" in line and "60" in line
+        for line in lines
+    )
+
+
+def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
+    bin_dir, log_file = _make_powershell_stub(tmp_path)
+    env = os.environ.copy()
+    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+    env["STUB_LOG"] = str(log_file)
+
+    result = _run_cmd(
+        REPO_ROOT,
+        "scripts\\open_browser.cmd",
+        "http://localhost:29501/",
+        "18437",
+        "29501",
+        "20",
+        "60",
+        env=env,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    invocation = log_file.read_text(encoding="utf-8")
+    assert "wait_for_services.ps1" in invocation
+    assert "-BackendPort 18437" in invocation
+    assert "-FrontendPort 29501" in invocation
+    assert "-BackendTimeoutSeconds 20" in invocation
+    assert "-FrontendTimeoutSeconds 60" in invocation
