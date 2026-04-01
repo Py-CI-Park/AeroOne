@@ -41,9 +41,9 @@ if defined DRY_RUN (
   exit /b 0
 )
 
-call :ensure_port_free %BACKEND_PORT% offline backend
+call :ensure_port_free %BACKEND_PORT% "offline backend"
 if errorlevel 1 exit /b 1
-call :ensure_port_free %FRONTEND_PORT% offline frontend
+call :ensure_port_free %FRONTEND_PORT% "offline frontend"
 if errorlevel 1 exit /b 1
 
 start "AeroOne Backend Offline" cmd /k "title AeroOne Backend Offline && chcp 65001 >nul && color 0A && echo ================================================== && echo [BACKEND][BOOT ] AeroOne API Server && echo URL  : %BACKEND_URL% && echo MODE : OFFLINE && echo ROOT : %BACKEND_DIR% && echo CMD  : uvicorn app.main:app --host 0.0.0.0 --port %BACKEND_PORT% && echo ================================================== && echo [BACKEND][INFO ] Python virtualenv activating... && echo. && cd /d ""%BACKEND_DIR%"" && call .venv\Scripts\activate.bat && set PYTHONPATH=. && echo [BACKEND][READY] Launching uvicorn... && uvicorn app.main:app --host 0.0.0.0 --port %BACKEND_PORT%"
@@ -66,9 +66,16 @@ exit /b 0
 
 :ensure_port_free
 powershell -NoLogo -NoProfile -Command "$busy = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() | Where-Object { $_.Port -eq %~1 }; if ($busy) { exit 1 } else { exit 0 }"
-if errorlevel 1 (
+set "PORT_PROBE_EXIT=!errorlevel!"
+if "!PORT_PROBE_EXIT!"=="1" (
   echo [ERROR] %~2 port %~1 is already in use.
   echo [INFO ] Release the port and rerun start_offline.bat.
+  pause
+  exit /b 1
+)
+if not "!PORT_PROBE_EXIT!"=="0" (
+  echo [ERROR] Preflight port probe failed for %~2 port %~1.
+  echo [INFO ] Verify that PowerShell is available and rerun start_offline.bat.
   pause
   exit /b 1
 )
