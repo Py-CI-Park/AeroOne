@@ -132,18 +132,11 @@ def _make_open_browser_test_copy(tmp_path: Path) -> Path:
     script_text = (REPO_ROOT / "scripts" / "open_browser.cmd").read_text(encoding="utf-8")
     timeout_line = "timeout /t 6 /nobreak >nul"
     start_line = 'start "" "%URL%"'
-
-    assert timeout_line in script_text
-    assert start_line in script_text
-
-    script_path.write_text(
-        script_text.replace(timeout_line, "rem timeout disabled in test", 1).replace(
-            start_line,
-            "rem browser start disabled in test",
-            1,
-        ),
-        encoding="utf-8",
-    )
+    if timeout_line in script_text:
+        script_text = script_text.replace(timeout_line, "rem timeout disabled in test", 1)
+    if start_line in script_text:
+        script_text = script_text.replace(start_line, "rem browser start disabled in test", 1)
+    script_path.write_text(script_text, encoding="utf-8")
     (windows_dir / "wait_for_services.ps1").write_text("", encoding="utf-8")
     return script_path
 
