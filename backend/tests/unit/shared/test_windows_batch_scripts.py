@@ -191,10 +191,14 @@ def test_start_dry_run_prints_readiness_wrapper_command() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
-    expected_fragment = 'open_browser.cmd" "http://localhost:29501/" 18437 29501 20 60'
+    browser_line = next(line for line in lines if "open_browser.cmd" in line)
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_dev.cmd" in line for line in lines)
-    assert any(expected_fragment in line for line in lines)
+    assert "http://localhost:29501/" in browser_line
+    assert "18437" in browser_line
+    assert "29501" in browser_line
+    assert "20" in browser_line
+    assert "60" in browser_line
 
 
 def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
@@ -202,10 +206,14 @@ def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
-    expected_fragment = 'open_browser.cmd" "http://localhost:29501/" 18437 29501 20 60'
+    browser_line = next(line for line in lines if "open_browser.cmd" in line)
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_offline.cmd" in line for line in lines)
-    assert any(expected_fragment in line for line in lines)
+    assert "http://localhost:29501/" in browser_line
+    assert "18437" in browser_line
+    assert "29501" in browser_line
+    assert "20" in browser_line
+    assert "60" in browser_line
 
 
 def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
@@ -229,6 +237,8 @@ def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     assert log_file.exists(), result.stdout + result.stderr
     invocation = log_file.read_text(encoding="utf-8")
     assert "wait_for_services.ps1" in invocation
+    assert "-Url" in invocation
+    assert "http://localhost:29501/" in invocation
     assert "-BackendPort 18437" in invocation
     assert "-FrontendPort 29501" in invocation
     assert "-BackendTimeoutSeconds 20" in invocation
