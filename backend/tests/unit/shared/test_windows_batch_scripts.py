@@ -76,17 +76,27 @@ def _make_stub_commands(tmp_path: Path) -> tuple[Path, Path]:
     return bin_dir, log_file
 
 
-def _make_powershell_stub(tmp_path: Path) -> tuple[Path, Path]:
-    bin_dir = tmp_path / "powershell-bin"
-    bin_dir.mkdir()
+def _install_wait_helper_stub(tmp_path: Path) -> tuple[Path, Path, str | None]:
+    helper_dir = REPO_ROOT / "scripts" / "windows"
+    helper_dir.mkdir(parents=True, exist_ok=True)
+    helper_path = helper_dir / "wait_for_services.ps1"
     log_file = tmp_path / "powershell.log"
-    (bin_dir / "powershell.bat").write_text(
-        "@echo off\r\n"
-        "echo powershell %*>>\"%STUB_LOG%\"\r\n"
-        "exit /b 0\r\n",
+    original_text = helper_path.read_text(encoding="utf-8") if helper_path.exists() else None
+    helper_path.write_text(
+        "param(\n"
+        "    [string]$Url,\n"
+        "    [int]$BackendPort,\n"
+        "    [int]$FrontendPort,\n"
+        "    [int]$BackendTimeoutSeconds,\n"
+        "    [int]$FrontendTimeoutSeconds\n"
+        ")\n"
+        "\"Path=$PSCommandPath Url=$Url BackendPort=$BackendPort FrontendPort=$FrontendPort "
+        "BackendTimeoutSeconds=$BackendTimeoutSeconds FrontendTimeoutSeconds=$FrontendTimeoutSeconds\" | "
+        "Out-File -FilePath $env:STUB_LOG -Encoding utf8\n"
+        "exit 0\n",
         encoding="utf-8",
     )
-    return bin_dir, log_file
+    return helper_path, log_file, original_text
 
 
 def test_setup_dry_run_lists_steps_on_separate_lines() -> None:
@@ -157,12 +167,10 @@ def test_start_dry_run_prints_readiness_wrapper_command() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
+    expected_fragment = 'open_browser.cmd" "http://localhost:29501/" 18437 29501 20 60'
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_dev.cmd" in line for line in lines)
-    assert any(
-        "open_browser.cmd" in line and "18437" in line and "29501" in line and "20" in line and "60" in line
-        for line in lines
-    )
+    assert any(expected_fragment in line for line in lines)
 
 
 def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
@@ -170,35 +178,40 @@ def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
+    expected_fragment = 'open_browser.cmd" "http://localhost:29501/" 18437 29501 20 60'
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_offline.cmd" in line for line in lines)
-    assert any(
-        "open_browser.cmd" in line and "18437" in line and "29501" in line and "20" in line and "60" in line
-        for line in lines
-    )
+    assert any(expected_fragment in line for line in lines)
 
 
 def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
-    bin_dir, log_file = _make_powershell_stub(tmp_path)
+    helper_path, log_file, original_text = _install_wait_helper_stub(tmp_path)
     env = os.environ.copy()
-    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
     env["STUB_LOG"] = str(log_file)
 
-    result = _run_cmd(
-        REPO_ROOT,
-        "scripts\\open_browser.cmd",
-        "http://localhost:29501/",
-        "18437",
-        "29501",
-        "20",
-        "60",
-        env=env,
-    )
+    try:
+        result = _run_cmd(
+            REPO_ROOT,
+            "scripts\\open_browser.cmd",
+            "http://localhost:29501/",
+            "18437",
+            "29501",
+            "20",
+            "60",
+            env=env,
+        )
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    invocation = log_file.read_text(encoding="utf-8")
-    assert "wait_for_services.ps1" in invocation
-    assert "-BackendPort 18437" in invocation
-    assert "-FrontendPort 29501" in invocation
-    assert "-BackendTimeoutSeconds 20" in invocation
-    assert "-FrontendTimeoutSeconds 60" in invocation
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert log_file.exists(), result.stdout + result.stderr
+        invocation = log_file.read_text(encoding="utf-8")
+        assert f"Path={helper_path}" in invocation
+        assert "Url=http://localhost:29501/" in invocation
+        assert "BackendPort=18437" in invocation
+        assert "FrontendPort=29501" in invocation
+        assert "BackendTimeoutSeconds=20" in invocation
+        assert "FrontendTimeoutSeconds=60" in invocation
+    finally:
+        if original_text is None:
+            helper_path.unlink(missing_ok=True)
+        else:
+            helper_path.write_text(original_text, encoding="utf-8")
