@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -123,6 +124,30 @@ def _make_powershell_stub(tmp_path: Path) -> tuple[Path, Path]:
     return bin_dir, log_file
 
 
+def _make_open_browser_test_copy(tmp_path: Path) -> Path:
+    scripts_dir = tmp_path / "scripts"
+    windows_dir = scripts_dir / "windows"
+    windows_dir.mkdir(parents=True)
+    script_path = scripts_dir / "open_browser.cmd"
+    script_text = (REPO_ROOT / "scripts" / "open_browser.cmd").read_text(encoding="utf-8")
+    timeout_line = "timeout /t 6 /nobreak >nul"
+    start_line = 'start "" "%URL%"'
+
+    assert timeout_line in script_text
+    assert start_line in script_text
+
+    script_path.write_text(
+        script_text.replace(timeout_line, "rem timeout disabled in test", 1).replace(
+            start_line,
+            "rem browser start disabled in test",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    (windows_dir / "wait_for_services.ps1").write_text("", encoding="utf-8")
+    return script_path
+
+
 def test_setup_dry_run_lists_steps_on_separate_lines() -> None:
     result = _run_cmd(REPO_ROOT, "setup.bat", "--dry-run", "--no-pause")
 
@@ -191,14 +216,12 @@ def test_start_dry_run_prints_readiness_wrapper_command() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
-    browser_line = next(line for line in lines if "open_browser.cmd" in line)
+    browser_line = next((line for line in lines if "open_browser.cmd" in line), None)
+    pattern = re.compile(r'open_browser\.cmd.*http://localhost:29501/.*\b18437\b.*\b29501\b.*\b20\b.*\b60\b')
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_dev.cmd" in line for line in lines)
-    assert "http://localhost:29501/" in browser_line
-    assert "18437" in browser_line
-    assert "29501" in browser_line
-    assert "20" in browser_line
-    assert "60" in browser_line
+    assert browser_line is not None
+    assert pattern.search(browser_line), browser_line
 
 
 def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
@@ -206,25 +229,24 @@ def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
-    browser_line = next(line for line in lines if "open_browser.cmd" in line)
+    browser_line = next((line for line in lines if "open_browser.cmd" in line), None)
+    pattern = re.compile(r'open_browser\.cmd.*http://localhost:29501/.*\b18437\b.*\b29501\b.*\b20\b.*\b60\b')
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_offline.cmd" in line for line in lines)
-    assert "http://localhost:29501/" in browser_line
-    assert "18437" in browser_line
-    assert "29501" in browser_line
-    assert "20" in browser_line
-    assert "60" in browser_line
+    assert browser_line is not None
+    assert pattern.search(browser_line), browser_line
 
 
 def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     bin_dir, log_file = _make_powershell_stub(tmp_path)
+    script_path = _make_open_browser_test_copy(tmp_path)
     env = os.environ.copy()
     env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
     env["STUB_LOG"] = str(log_file)
 
     result = _run_cmd(
-        REPO_ROOT,
-        "scripts\\open_browser.cmd",
+        tmp_path,
+        str(script_path.relative_to(tmp_path)).replace("/", "\\"),
         "http://localhost:29501/",
         "18437",
         "29501",
