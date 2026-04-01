@@ -141,6 +141,42 @@ def _make_open_browser_test_copy(tmp_path: Path) -> Path:
     return script_path
 
 
+def test_wait_for_services_times_out_when_backend_never_opens() -> None:
+    helper_path = REPO_ROOT / "scripts" / "windows" / "wait_for_services.ps1"
+
+    result = subprocess.run(
+        [
+            "powershell",
+            "-NoLogo",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(helper_path),
+            "-Url",
+            "http://localhost:29501/",
+            "-BackendPort",
+            "65534",
+            "-FrontendPort",
+            "65535",
+            "-BackendTimeoutSeconds",
+            "1",
+            "-FrontendTimeoutSeconds",
+            "1",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    combined_output = result.stdout + result.stderr
+    assert "backend port 65534 did not become ready within 1 seconds." in combined_output.lower()
+
+
 def test_setup_dry_run_lists_steps_on_separate_lines() -> None:
     result = _run_cmd(REPO_ROOT, "setup.bat", "--dry-run", "--no-pause")
 
