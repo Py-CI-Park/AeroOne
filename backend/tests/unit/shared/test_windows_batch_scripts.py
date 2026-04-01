@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -76,6 +77,106 @@ def _make_stub_commands(tmp_path: Path) -> tuple[Path, Path]:
     return bin_dir, log_file
 
 
+def _make_powershell_stub(tmp_path: Path) -> tuple[Path, Path]:
+    bin_dir = tmp_path / "powershell-bin"
+    bin_dir.mkdir()
+    log_file = tmp_path / "powershell.log"
+    (bin_dir / "powershell.bat").write_text(
+        "@echo off\r\n"
+        "echo powershell %*>>\"%STUB_LOG%\"\r\n"
+        "exit /b 0\r\n",
+        encoding="utf-8",
+    )
+    stub_source = (
+        "using System;\n"
+        "using System.IO;\n"
+        "class Program {\n"
+        "    static int Main(string[] args) {\n"
+        "        var logPath = Environment.GetEnvironmentVariable(\"STUB_LOG\");\n"
+        "        if (!string.IsNullOrEmpty(logPath)) {\n"
+        "            File.AppendAllText(logPath, \"powershell \" + string.Join(\" \", args) + Environment.NewLine);\n"
+        "        }\n"
+        "        return 0;\n"
+        "    }\n"
+        "}\n"
+    )
+    compile_result = subprocess.run(
+        [
+            "powershell",
+            "-NoLogo",
+            "-NoProfile",
+            "-Command",
+            "Add-Type -TypeDefinition @'\n"
+            + stub_source
+            + "'@ -OutputAssembly '"
+            + str(bin_dir / "powershell.exe")
+            + "' -OutputType ConsoleApplication",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if compile_result.returncode != 0:
+        raise AssertionError(compile_result.stdout + compile_result.stderr)
+    return bin_dir, log_file
+
+
+def _make_open_browser_test_copy(tmp_path: Path) -> Path:
+    scripts_dir = tmp_path / "scripts"
+    windows_dir = scripts_dir / "windows"
+    windows_dir.mkdir(parents=True)
+    script_path = scripts_dir / "open_browser.cmd"
+    script_text = (REPO_ROOT / "scripts" / "open_browser.cmd").read_text(encoding="utf-8")
+    timeout_line = "timeout /t 6 /nobreak >nul"
+    start_line = 'start "" "%URL%"'
+    if timeout_line in script_text:
+        script_text = script_text.replace(timeout_line, "rem timeout disabled in test", 1)
+    if start_line in script_text:
+        script_text = script_text.replace(start_line, "rem browser start disabled in test", 1)
+    script_path.write_text(script_text, encoding="utf-8")
+    (windows_dir / "wait_for_services.ps1").write_text("", encoding="utf-8")
+    return script_path
+
+
+def test_wait_for_services_times_out_when_backend_never_opens() -> None:
+    helper_path = REPO_ROOT / "scripts" / "windows" / "wait_for_services.ps1"
+
+    result = subprocess.run(
+        [
+            "powershell",
+            "-NoLogo",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(helper_path),
+            "-Url",
+            "http://localhost:29501/",
+            "-BackendPort",
+            "65534",
+            "-FrontendPort",
+            "65535",
+            "-BackendTimeoutSeconds",
+            "1",
+            "-FrontendTimeoutSeconds",
+            "1",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    combined_output = result.stdout + result.stderr
+    assert "backend port 65534 did not become ready within 1 seconds." in combined_output.lower()
+
+
 def test_setup_dry_run_lists_steps_on_separate_lines() -> None:
     result = _run_cmd(REPO_ROOT, "setup.bat", "--dry-run", "--no-pause")
 
@@ -137,3 +238,59 @@ def test_start_dry_run_prints_launch_commands() -> None:
     assert any("uvicorn app.main:app" in line for line in lines)
     assert any("start_frontend_dev.cmd" in line for line in lines)
     assert any("http://localhost:29501" in line for line in lines)
+
+
+def test_start_dry_run_prints_readiness_wrapper_command() -> None:
+    result = _run_cmd(REPO_ROOT, "start.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    browser_line = next((line for line in lines if "open_browser.cmd" in line), None)
+    pattern = re.compile(r'open_browser\.cmd.*http://localhost:29501/.*\b18437\b.*\b29501\b.*\b20\b.*\b60\b')
+    assert any("uvicorn app.main:app" in line for line in lines)
+    assert any("start_frontend_dev.cmd" in line for line in lines)
+    assert browser_line is not None
+    assert pattern.search(browser_line), browser_line
+
+
+def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    browser_line = next((line for line in lines if "open_browser.cmd" in line), None)
+    pattern = re.compile(r'open_browser\.cmd.*http://localhost:29501/.*\b18437\b.*\b29501\b.*\b20\b.*\b60\b')
+    assert any("uvicorn app.main:app" in line for line in lines)
+    assert any("start_frontend_offline.cmd" in line for line in lines)
+    assert browser_line is not None
+    assert pattern.search(browser_line), browser_line
+
+
+def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
+    bin_dir, log_file = _make_powershell_stub(tmp_path)
+    script_path = _make_open_browser_test_copy(tmp_path)
+    env = os.environ.copy()
+    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+    env["STUB_LOG"] = str(log_file)
+
+    result = _run_cmd(
+        tmp_path,
+        str(script_path.relative_to(tmp_path)).replace("/", "\\"),
+        "http://localhost:29501/",
+        "18437",
+        "29501",
+        "20",
+        "60",
+        env=env,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert log_file.exists(), result.stdout + result.stderr
+    invocation = log_file.read_text(encoding="utf-8")
+    assert "wait_for_services.ps1" in invocation
+    assert "-Url" in invocation
+    assert "http://localhost:29501/" in invocation
+    assert "-BackendPort 18437" in invocation
+    assert "-FrontendPort 29501" in invocation
+    assert "-BackendTimeoutSeconds 20" in invocation
+    assert "-FrontendTimeoutSeconds 60" in invocation
