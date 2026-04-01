@@ -9,6 +9,11 @@
 | `setup_offline.bat` | 폐쇄망 Windows PC에서 오프라인 설치 |
 | `start_offline.bat` | 폐쇄망 Windows PC에서 운영 실행 |
 
+## 실행 시 동작
+- `start.bat` 와 `start_offline.bat` 는 백엔드/프론트 CMD 창을 먼저 연 뒤, 두 포트(`18437`, `29501`)가 준비되었을 때만 브라우저를 엽니다.
+- 두 포트 중 하나라도 이미 사용 중이면 브라우저를 열지 않고 즉시 오류를 출력한 뒤 멈춥니다.
+- 브라우저가 열리지 않으면 launcher 창 메시지와 백엔드/프론트 CMD 로그를 함께 확인합니다.
+
 ## 권장 순서
 1. 인터넷 가능한 Windows PC에서 `setup.bat`
 2. 필요 시 `start.bat`로 온라인 환경 검증
