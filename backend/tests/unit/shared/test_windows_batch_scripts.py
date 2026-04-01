@@ -76,27 +76,51 @@ def _make_stub_commands(tmp_path: Path) -> tuple[Path, Path]:
     return bin_dir, log_file
 
 
-def _install_wait_helper_stub(tmp_path: Path) -> tuple[Path, Path, str | None]:
-    helper_dir = REPO_ROOT / "scripts" / "windows"
-    helper_dir.mkdir(parents=True, exist_ok=True)
-    helper_path = helper_dir / "wait_for_services.ps1"
+def _make_powershell_stub(tmp_path: Path) -> tuple[Path, Path]:
+    bin_dir = tmp_path / "powershell-bin"
+    bin_dir.mkdir()
     log_file = tmp_path / "powershell.log"
-    original_text = helper_path.read_text(encoding="utf-8") if helper_path.exists() else None
-    helper_path.write_text(
-        "param(\n"
-        "    [string]$Url,\n"
-        "    [int]$BackendPort,\n"
-        "    [int]$FrontendPort,\n"
-        "    [int]$BackendTimeoutSeconds,\n"
-        "    [int]$FrontendTimeoutSeconds\n"
-        ")\n"
-        "\"Path=$PSCommandPath Url=$Url BackendPort=$BackendPort FrontendPort=$FrontendPort "
-        "BackendTimeoutSeconds=$BackendTimeoutSeconds FrontendTimeoutSeconds=$FrontendTimeoutSeconds\" | "
-        "Out-File -FilePath $env:STUB_LOG -Encoding utf8\n"
-        "exit 0\n",
+    (bin_dir / "powershell.bat").write_text(
+        "@echo off\r\n"
+        "echo powershell %*>>\"%STUB_LOG%\"\r\n"
+        "exit /b 0\r\n",
         encoding="utf-8",
     )
-    return helper_path, log_file, original_text
+    stub_source = (
+        "using System;\n"
+        "using System.IO;\n"
+        "class Program {\n"
+        "    static int Main(string[] args) {\n"
+        "        var logPath = Environment.GetEnvironmentVariable(\"STUB_LOG\");\n"
+        "        if (!string.IsNullOrEmpty(logPath)) {\n"
+        "            File.AppendAllText(logPath, \"powershell \" + string.Join(\" \", args) + Environment.NewLine);\n"
+        "        }\n"
+        "        return 0;\n"
+        "    }\n"
+        "}\n"
+    )
+    compile_result = subprocess.run(
+        [
+            "powershell",
+            "-NoLogo",
+            "-NoProfile",
+            "-Command",
+            "Add-Type -TypeDefinition @'\n"
+            + stub_source
+            + "'@ -OutputAssembly '"
+            + str(bin_dir / "powershell.exe")
+            + "' -OutputType ConsoleApplication",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if compile_result.returncode != 0:
+        raise AssertionError(compile_result.stdout + compile_result.stderr)
+    return bin_dir, log_file
 
 
 def test_setup_dry_run_lists_steps_on_separate_lines() -> None:
@@ -185,33 +209,27 @@ def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
 
 
 def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
-    helper_path, log_file, original_text = _install_wait_helper_stub(tmp_path)
+    bin_dir, log_file = _make_powershell_stub(tmp_path)
     env = os.environ.copy()
+    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
     env["STUB_LOG"] = str(log_file)
 
-    try:
-        result = _run_cmd(
-            REPO_ROOT,
-            "scripts\\open_browser.cmd",
-            "http://localhost:29501/",
-            "18437",
-            "29501",
-            "20",
-            "60",
-            env=env,
-        )
+    result = _run_cmd(
+        REPO_ROOT,
+        "scripts\\open_browser.cmd",
+        "http://localhost:29501/",
+        "18437",
+        "29501",
+        "20",
+        "60",
+        env=env,
+    )
 
-        assert result.returncode == 0, result.stdout + result.stderr
-        assert log_file.exists(), result.stdout + result.stderr
-        invocation = log_file.read_text(encoding="utf-8")
-        assert f"Path={helper_path}" in invocation
-        assert "Url=http://localhost:29501/" in invocation
-        assert "BackendPort=18437" in invocation
-        assert "FrontendPort=29501" in invocation
-        assert "BackendTimeoutSeconds=20" in invocation
-        assert "FrontendTimeoutSeconds=60" in invocation
-    finally:
-        if original_text is None:
-            helper_path.unlink(missing_ok=True)
-        else:
-            helper_path.write_text(original_text, encoding="utf-8")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert log_file.exists(), result.stdout + result.stderr
+    invocation = log_file.read_text(encoding="utf-8")
+    assert "wait_for_services.ps1" in invocation
+    assert "-BackendPort 18437" in invocation
+    assert "-FrontendPort 29501" in invocation
+    assert "-BackendTimeoutSeconds 20" in invocation
+    assert "-FrontendTimeoutSeconds 60" in invocation
