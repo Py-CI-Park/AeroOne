@@ -7,6 +7,7 @@ import type {
   SyncResponse,
   Tag,
 } from '@/lib/types';
+import { buildNewsletterProxyPath, loggedServerFetchJson } from '@/lib/newsletter-observability';
 
 const SERVER_BASE = process.env.SERVER_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:18437';
 const BROWSER_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:18437';
@@ -17,6 +18,10 @@ export function getServerApiBase() {
 
 export function getBrowserApiBase() {
   return BROWSER_BASE.replace(/\/$/, '');
+}
+
+export function getNewsletterProxyPath(path: string) {
+  return buildNewsletterProxyPath(path);
 }
 
 async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
