@@ -103,3 +103,60 @@ test('loggedServerFetchJson forces no-store even when init specifies a different
     }),
   );
 });
+
+test('loggedServerFetchJson logs and rethrows when fetch rejects', async () => {
+  const fetchError = new Error('connect ECONNREFUSED');
+  const fetchMock = vi.fn().mockRejectedValue(fetchError);
+  const logger = vi.fn();
+
+  await expect(
+    loggedServerFetchJson({
+      label: 'newsletters.list',
+      baseUrl: 'http://localhost:18437',
+      path: '/api/v1/newsletters',
+      fetchImpl: fetchMock,
+      log: logger,
+    }),
+  ).rejects.toThrow(fetchError);
+
+  expect(logger).toHaveBeenNthCalledWith(
+    1,
+    '[FRONTEND][FETCH] newsletters.list -> /api/v1/newsletters',
+  );
+  expect(logger).toHaveBeenNthCalledWith(
+    2,
+    '[FRONTEND][FETCH] newsletters.list !! /api/v1/newsletters connect ECONNREFUSED',
+  );
+});
+
+test('loggedServerFetchJson logs and rethrows when json parsing fails', async () => {
+  const parseError = new Error('Unexpected token < in JSON');
+  const logger = vi.fn();
+
+  await expect(
+    loggedServerFetchJson({
+      label: 'newsletters.list',
+      baseUrl: 'http://localhost:18437',
+      path: '/api/v1/newsletters',
+      fetchImpl: vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockRejectedValue(parseError),
+      }),
+      log: logger,
+    }),
+  ).rejects.toThrow(parseError);
+
+  expect(logger).toHaveBeenNthCalledWith(
+    1,
+    '[FRONTEND][FETCH] newsletters.list -> /api/v1/newsletters',
+  );
+  expect(logger).toHaveBeenNthCalledWith(
+    2,
+    '[FRONTEND][FETCH] newsletters.list <- 200 /api/v1/newsletters',
+  );
+  expect(logger).toHaveBeenNthCalledWith(
+    3,
+    '[FRONTEND][FETCH] newsletters.list !! /api/v1/newsletters Unexpected token < in JSON',
+  );
+});

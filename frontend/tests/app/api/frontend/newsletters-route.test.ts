@@ -27,6 +27,11 @@ test('GET proxies newsletter asset responses with mirrored metadata', async () =
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'content-disposition': 'inline; filename=\"newsletter.html\"',
+        'cache-control': 'public, max-age=60',
+        etag: 'W/\"newsletter-38\"',
+        'last-modified': 'Fri, 04 Apr 2026 12:00:00 GMT',
+        'content-range': 'bytes 0-12/13',
+        'x-upstream-internal': 'do-not-forward',
       },
     }),
   );
@@ -59,6 +64,11 @@ test('GET proxies newsletter asset responses with mirrored metadata', async () =
   expect(response.headers.get('content-disposition')).toBe(
     'inline; filename=\"newsletter.html\"',
   );
+  expect(response.headers.get('cache-control')).toBe('public, max-age=60');
+  expect(response.headers.get('etag')).toBe('W/\"newsletter-38\"');
+  expect(response.headers.get('last-modified')).toBe('Fri, 04 Apr 2026 12:00:00 GMT');
+  expect(response.headers.get('content-range')).toBe('bytes 0-12/13');
+  expect(response.headers.get('x-upstream-internal')).toBeNull();
   await expect(response.text()).resolves.toBe('rendered html');
 });
 

@@ -36,15 +36,21 @@ export async function loggedServerFetchJson<T>({
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
   log(`[FRONTEND][FETCH] ${label} -> ${normalizedPath}`);
-  const response = await fetchImpl(`${normalizedBaseUrl}${normalizedPath}`, {
-    ...init,
-    cache: 'no-store',
-  });
-  log(`[FRONTEND][FETCH] ${label} <- ${response.status} ${normalizedPath}`);
+  try {
+    const response = await fetchImpl(`${normalizedBaseUrl}${normalizedPath}`, {
+      ...init,
+      cache: 'no-store',
+    });
+    log(`[FRONTEND][FETCH] ${label} <- ${response.status} ${normalizedPath}`);
 
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status} ${normalizedPath}`);
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status} ${normalizedPath}`);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(`[FRONTEND][FETCH] ${label} !! ${normalizedPath} ${message}`);
+    throw error;
   }
-
-  return (await response.json()) as T;
 }

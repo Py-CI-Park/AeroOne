@@ -5,6 +5,17 @@ import { buildNewsletterUpstreamPath } from '@/lib/newsletter-observability';
 
 export const dynamic = 'force-dynamic';
 
+const FORWARDED_UPSTREAM_RESPONSE_HEADERS = [
+  'content-type',
+  'content-disposition',
+  'cache-control',
+  'content-language',
+  'etag',
+  'last-modified',
+  'accept-ranges',
+  'content-range',
+] as const;
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ segments: string[] }> },
@@ -35,14 +46,11 @@ export async function GET(
       status: upstreamResponse.status,
     });
 
-    const contentType = upstreamResponse.headers.get('content-type');
-    if (contentType) {
-      response.headers.set('content-type', contentType);
-    }
-
-    const contentDisposition = upstreamResponse.headers.get('content-disposition');
-    if (contentDisposition) {
-      response.headers.set('content-disposition', contentDisposition);
+    for (const headerName of FORWARDED_UPSTREAM_RESPONSE_HEADERS) {
+      const headerValue = upstreamResponse.headers.get(headerName);
+      if (headerValue) {
+        response.headers.set(headerName, headerValue);
+      }
     }
 
     return response;

@@ -38,9 +38,22 @@ export function NewsletterDetailClient({
     if (selectedAsset === newsletter.default_asset_type && initialContentHtml) {
       return;
     }
-    void fetch(getNewsletterProxyPath(currentAsset.content_url))
-      .then((response) => response.json() as Promise<HtmlResponse>)
-      .then((payload) => setContentHtml(payload.content_html));
+    const assetPath = getNewsletterProxyPath(currentAsset.content_url);
+
+    void (async () => {
+      try {
+        const response = await fetch(assetPath);
+
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as HtmlResponse;
+        setContentHtml(payload.content_html);
+      } catch (error) {
+        console.error(`[FRONTEND][FETCH] Failed to load newsletter asset ${assetPath}`, error);
+      }
+    })();
   }, [currentAsset, initialContentHtml, newsletter.default_asset_type, selectedAsset]);
 
   return (
