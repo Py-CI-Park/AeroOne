@@ -46,8 +46,12 @@ export default async function NewslettersPage({
       const activeDetail = detail;
       const asset = activeDetail.available_assets.find((item) => item.asset_type === activeDetail.default_asset_type);
       if (asset) {
-        const payload = await fetchNewsletterAssetContent(asset.content_url);
-        initialContentHtml = payload.content_html;
+        try {
+          const payload = await fetchNewsletterAssetContent(asset.content_url);
+          initialContentHtml = payload.content_html;
+        } catch {
+          initialContentHtml = '';
+        }
       }
     }
   } catch (error) {

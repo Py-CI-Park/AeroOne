@@ -1,3 +1,4 @@
+import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
 import { fetchNewsletterAssetContent, fetchNewsletterDetail } from '@/lib/api';
@@ -12,8 +13,12 @@ export default async function NewsletterDetailPage({ params }: { params: Promise
   if (detail.default_asset_type !== 'pdf') {
     const asset = detail.available_assets.find((item) => item.asset_type === detail.default_asset_type);
     if (asset) {
-      const payload = await fetchNewsletterAssetContent(asset.content_url);
-      initialContentHtml = payload.content_html;
+      try {
+        const payload = await fetchNewsletterAssetContent(asset.content_url);
+        initialContentHtml = payload.content_html;
+      } catch {
+        initialContentHtml = '';
+      }
     }
   }
 

@@ -2,9 +2,6 @@ import { vi } from 'vitest';
 
 import {
   fetchLatestNewsletter,
-  fetchNewsletterCalendar,
-  fetchNewsletterDetail,
-  fetchNewsletters,
   getNewsletterProxyPath,
   getPublicNewsletters,
 } from '@/lib/api';
