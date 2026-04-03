@@ -32,6 +32,15 @@ test('builds backend upstream path from catch-all route segments', () => {
   );
 });
 
+test('buildNewsletterUpstreamPath preserves nested newsletter asset paths', () => {
+  expect(buildNewsletterUpstreamPath(['38', 'content', 'html'])).toBe(
+    '/api/v1/newsletters/38/content/html',
+  );
+  expect(buildNewsletterUpstreamPath(['38', 'download', 'pdf'])).toBe(
+    '/api/v1/newsletters/38/download/pdf',
+  );
+});
+
 test('loggedServerFetchJson logs request and response around backend fetch', async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
