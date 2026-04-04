@@ -46,7 +46,6 @@ export function NewsletterDateCalendar({
   );
 
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
-  const [isOpen, setIsOpen] = useState(false);
   const [year, month] = (monthKeys[monthIndex] ?? monthKeys[0] ?? `${new Date().getFullYear()}-${new Date().getMonth()}`)
     .split('-')
     .map(Number);
@@ -79,14 +78,6 @@ export function NewsletterDateCalendar({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setIsOpen((current) => !current)}
-            className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-          >
-            <span aria-hidden="true">📅</span>
-            {isOpen ? '달력 닫기' : '달력 열기'}
-          </button>
-          <button
-            type="button"
             onClick={() => setMonthIndex((current) => Math.min(current + 1, monthKeys.length - 1))}
             disabled={monthIndex >= monthKeys.length - 1}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
@@ -104,47 +95,45 @@ export function NewsletterDateCalendar({
         </div>
       </div>
 
-      {isOpen ? (
-        <div className="mt-4">
-          <div className="mb-2 grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-400">
-            {['일', '월', '화', '수', '목', '금', '토'].map((label) => (
-              <div key={label}>{label}</div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-2">
-            {cells.map((cell, index) => {
-              if (!cell.day) {
-                return <div key={`empty-${index}`} className="h-14 rounded-lg bg-slate-50" />;
-              }
-              if (!cell.entry) {
-                return (
-                  <div key={`inactive-${cell.day}`} className="flex h-14 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-300">
-                    {cell.day}
-                  </div>
-                );
-              }
-
-              const isSelected = cell.entry.slug === selectedSlug;
-              return (
-                <Link
-                  key={cell.entry.slug}
-                  href={`/newsletters?slug=${cell.entry.slug}`}
-                  className={`flex h-14 flex-col items-center justify-center rounded-lg border text-sm transition ${
-                    isSelected
-                      ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                      : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100'
-                  }`}
-                  title={cell.entry.title}
-                >
-                  <span className="font-semibold">{cell.day}</span>
-                  <span className={`text-[10px] uppercase ${isSelected ? 'text-slate-200' : 'text-blue-500'}`}>{cell.entry.source_type}</span>
-                </Link>
-              );
-            })}
-          </div>
+      <div className="mt-4">
+        <div className="mb-2 grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-400">
+          {['일', '월', '화', '수', '목', '금', '토'].map((label) => (
+            <div key={label}>{label}</div>
+          ))}
         </div>
-      ) : null}
+
+        <div className="grid grid-cols-7 gap-2">
+          {cells.map((cell, index) => {
+            if (!cell.day) {
+              return <div key={`empty-${index}`} className="h-14 rounded-lg bg-slate-50" />;
+            }
+            if (!cell.entry) {
+              return (
+                <div key={`inactive-${cell.day}`} className="flex h-14 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-300">
+                  {cell.day}
+                </div>
+              );
+            }
+
+            const isSelected = cell.entry.slug === selectedSlug;
+            return (
+              <Link
+                key={cell.entry.slug}
+                href={`/newsletters?slug=${cell.entry.slug}`}
+                className={`flex h-14 flex-col items-center justify-center rounded-lg border text-sm transition ${
+                  isSelected
+                    ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                    : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100'
+                }`}
+                title={cell.entry.title}
+              >
+                <span className="font-semibold">{cell.day}</span>
+                <span className={`text-[10px] uppercase ${isSelected ? 'text-slate-200' : 'text-blue-500'}`}>{cell.entry.source_type}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
     </section>
   );
 }
