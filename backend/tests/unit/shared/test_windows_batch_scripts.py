@@ -42,6 +42,18 @@ def _write_stub_command(path: Path) -> None:
     )
 
 
+def _write_frontend_dev_delegate_stub(path: Path) -> str:
+    marker = "[STUB][FRONTEND-DEV] start_frontend_dev.cmd invoked"
+    path.write_text(
+        "@echo off\r\n"
+        f"echo {marker}\r\n"
+        "echo start_frontend_dev.cmd delegated>>\"%STUB_LOG%\"\r\n"
+        "exit /b 0\r\n",
+        encoding="utf-8",
+    )
+    return marker
+
+
 def _make_stub_repo(tmp_path: Path) -> Path:
     repo_root = tmp_path / "repo"
     backend_dir = repo_root / "backend"
@@ -160,11 +172,14 @@ def _make_wait_for_services_test_copy(tmp_path: Path) -> Path:
     helper_path = helper_dir / "wait_for_services.ps1"
 
     script_text = (REPO_ROOT / "scripts" / "windows" / "wait_for_services.ps1").read_text(encoding="utf-8")
-    script_text = script_text.replace(
-        "Start-Process $Url | Out-Null",
+    script_text, replacement_count = re.subn(
+        r"(?m)^\s*Start-Process\s+\$Url(?:\s*\|\s*Out-Null)?\s*$",
         'Write-Host "[READY] Browser launch skipped in test"',
-        1,
+        script_text,
+        count=1,
     )
+    if replacement_count != 1:
+        raise AssertionError("Failed to neutralize browser launch in wait_for_services.ps1 test copy")
     helper_path.write_text(script_text, encoding="utf-8")
     return helper_path
 
@@ -286,15 +301,25 @@ def test_start_dry_run_uses_frontend_wrapper_and_extended_timeout() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
-    browser_line = next((line for line in lines if "open_browser.cmd" in line), None)
+    frontend_index = lines.index("[DRY-RUN] frontend window command:")
+    frontend_line = lines[frontend_index + 1]
+    browser_index = lines.index("[DRY-RUN] browser readiness command:")
+    browser_line = lines[browser_index + 1]
+    browser_pattern = re.compile(
+        r'^call ".*[\\/]scripts[\\/]open_browser\.cmd" "http://localhost:29501/" 18437 29501 20 180$'
+    )
+    old_nested_launch_pattern = re.compile(
+        r'^cmd /k .*call \\".*start_frontend_dev\.cmd\\"$'
+    )
 
-    assert any("start_frontend_window.cmd" in line for line in lines)
-    assert browser_line is not None
-    assert " 180" in f" {browser_line}", browser_line
+    assert frontend_line == "cmd /k start_frontend_window.cmd"
+    assert browser_pattern.fullmatch(browser_line), browser_line
+    assert not any(old_nested_launch_pattern.search(line) for line in lines), result.stdout
 
 
 def test_start_frontend_window_delegates_to_dev_script(tmp_path: Path) -> None:
     repo_root, _, scripts_dir = _make_frontend_launcher_repo(tmp_path)
+    dev_stub_marker = _write_frontend_dev_delegate_stub(scripts_dir / "start_frontend_dev.cmd")
     shutil.copy2(REPO_ROOT / "scripts" / "start_frontend_window.cmd", scripts_dir / "start_frontend_window.cmd")
     bin_dir, log_file = _make_stub_commands(tmp_path)
     env = os.environ.copy()
@@ -305,10 +330,10 @@ def test_start_frontend_window_delegates_to_dev_script(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "[FRONTEND][BOOT] AeroOne Web UI" in result.stdout
-    assert any(
-        line.startswith("npm.cmd run dev")
-        for line in log_file.read_text(encoding="utf-8").splitlines()
-    )
+    assert dev_stub_marker in result.stdout
+    log_lines = log_file.read_text(encoding="utf-8").splitlines()
+    assert "start_frontend_dev.cmd delegated" in log_lines
+    assert not any(line.startswith("npm.cmd run dev") for line in log_lines)
 
 
 def test_start_frontend_dev_preserves_caches_without_clean(tmp_path: Path) -> None:
