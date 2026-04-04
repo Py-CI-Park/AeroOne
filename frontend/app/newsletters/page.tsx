@@ -3,8 +3,14 @@ import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
 import { NewsletterList } from '@/components/newsletter/newsletter-list';
-import { fetchLatestNewsletter, fetchNewsletterCalendar, fetchNewsletterDetail, fetchNewsletters, getServerApiBase } from '@/lib/api';
-import type { AssetType, NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
+import {
+  fetchLatestNewsletter,
+  fetchNewsletterAssetContent,
+  fetchNewsletterCalendar,
+  fetchNewsletterDetail,
+  fetchNewsletters,
+} from '@/lib/api';
+import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,10 +46,11 @@ export default async function NewslettersPage({
       const activeDetail = detail;
       const asset = activeDetail.available_assets.find((item) => item.asset_type === activeDetail.default_asset_type);
       if (asset) {
-        const response = await fetch(`${getServerApiBase()}${asset.content_url}`, { cache: 'no-store' });
-        if (response.ok) {
-          const payload = (await response.json()) as { asset_type: AssetType; content_html: string };
+        try {
+          const payload = await fetchNewsletterAssetContent(asset.content_url);
           initialContentHtml = payload.content_html;
+        } catch {
+          initialContentHtml = '';
         }
       }
     }

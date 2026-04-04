@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { getBrowserApiBase } from '@/lib/api';
+import { getNewsletterProxyPath } from '@/lib/api';
 import type { AssetType, NewsletterDetail } from '@/lib/types';
 import { HtmlViewer } from '@/components/newsletter/html-viewer';
 import { MarkdownViewer } from '@/components/newsletter/markdown-viewer';
@@ -38,9 +38,22 @@ export function NewsletterDetailClient({
     if (selectedAsset === newsletter.default_asset_type && initialContentHtml) {
       return;
     }
-    void fetch(`${getBrowserApiBase()}${currentAsset.content_url}`)
-      .then((response) => response.json() as Promise<HtmlResponse>)
-      .then((payload) => setContentHtml(payload.content_html));
+    const assetPath = getNewsletterProxyPath(currentAsset.content_url);
+
+    void (async () => {
+      try {
+        const response = await fetch(assetPath);
+
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as HtmlResponse;
+        setContentHtml(payload.content_html);
+      } catch (error) {
+        console.error(`[FRONTEND][FETCH] Failed to load newsletter asset ${assetPath}`, error);
+      }
+    })();
   }, [currentAsset, initialContentHtml, newsletter.default_asset_type, selectedAsset]);
 
   return (
@@ -69,7 +82,7 @@ export function NewsletterDetailClient({
               내부 브라우저의 이중 스크롤을 줄이기 위해 PDF는 다운로드 후 외부 PDF 뷰어에서 확인하는 흐름으로 단순화했습니다.
             </p>
             <a
-              href={`${getBrowserApiBase()}${currentAsset.download_url}`}
+              href={getNewsletterProxyPath(currentAsset.download_url)}
               className="mt-6 inline-flex rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white"
             >
               PDF 다운로드

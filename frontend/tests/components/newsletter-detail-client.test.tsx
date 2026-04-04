@@ -1,10 +1,12 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
 
 beforeEach(() => {
   vi.spyOn(global, 'fetch').mockResolvedValue({
+    ok: true,
+    status: 200,
     json: async () => ({ asset_type: 'html', content_html: '<h1>hello</h1>' }),
   } as Response);
 });
@@ -18,9 +20,9 @@ test('renders asset switch buttons and file download link', () => {
     <NewsletterDetailClient
       newsletter={{
         id: 1,
-        title: '테스트 상세',
+        title: 'Test Detail',
         slug: 'test-detail',
-        description: '설명',
+        description: 'desc',
         source_type: 'html',
         thumbnail_url: null,
         category: null,
@@ -29,16 +31,17 @@ test('renders asset switch buttons and file download link', () => {
           { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
           { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: false },
         ],
-        summary: '요약',
+        summary: 'summary',
         default_asset_type: 'html',
       }}
+      initialContentHtml="<h1>hello</h1>"
     />,
   );
 
   expect(screen.getByRole('button', { name: 'HTML' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'PDF' })).toBeInTheDocument();
-  expect(screen.queryByText('테스트 상세')).not.toBeInTheDocument();
-  expect(screen.queryByText('설명')).not.toBeInTheDocument();
+  expect(screen.queryByText('Test Detail')).not.toBeInTheDocument();
+  expect(screen.queryByText('desc')).not.toBeInTheDocument();
 });
 
 test('updates rendered html when newsletter slug changes', () => {
@@ -46,9 +49,9 @@ test('updates rendered html when newsletter slug changes', () => {
     <NewsletterDetailClient
       newsletter={{
         id: 1,
-        title: '첫 뉴스레터',
+        title: 'First Newsletter',
         slug: 'newsletter-20260329',
-        description: '설명',
+        description: 'desc',
         source_type: 'html',
         thumbnail_url: null,
         category: null,
@@ -57,22 +60,22 @@ test('updates rendered html when newsletter slug changes', () => {
           { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
           { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: false },
         ],
-        summary: '요약',
+        summary: 'summary',
         default_asset_type: 'html',
       }}
       initialContentHtml="<h1>first</h1>"
     />,
   );
 
-  expect(screen.getByTitle('첫 뉴스레터')).toHaveAttribute('srcdoc', '<h1>first</h1>');
+  expect(screen.getByTitle('First Newsletter')).toHaveAttribute('srcdoc', '<h1>first</h1>');
 
   rerender(
     <NewsletterDetailClient
       newsletter={{
         id: 2,
-        title: '둘째 뉴스레터',
+        title: 'Second Newsletter',
         slug: 'newsletter-20260330',
-        description: '설명',
+        description: 'desc',
         source_type: 'html',
         thumbnail_url: null,
         category: null,
@@ -81,14 +84,14 @@ test('updates rendered html when newsletter slug changes', () => {
           { asset_type: 'html', content_url: '/api/v1/newsletters/2/content/html', download_url: '/api/v1/newsletters/2/download/html', is_primary: true },
           { asset_type: 'pdf', content_url: '/api/v1/newsletters/2/content/pdf', download_url: '/api/v1/newsletters/2/download/pdf', is_primary: false },
         ],
-        summary: '요약',
+        summary: 'summary',
         default_asset_type: 'html',
       }}
       initialContentHtml="<h1>second</h1>"
     />,
   );
 
-  expect(screen.getByTitle('둘째 뉴스레터')).toHaveAttribute('srcdoc', '<h1>second</h1>');
+  expect(screen.getByTitle('Second Newsletter')).toHaveAttribute('srcdoc', '<h1>second</h1>');
 });
 
 test('shows pdf download-focused panel when pdf tab is selected', () => {
@@ -96,9 +99,9 @@ test('shows pdf download-focused panel when pdf tab is selected', () => {
     <NewsletterDetailClient
       newsletter={{
         id: 1,
-        title: 'PDF 뉴스레터',
+        title: 'PDF Newsletter',
         slug: 'pdf-newsletter',
-        description: '설명',
+        description: 'desc',
         source_type: 'html',
         thumbnail_url: null,
         category: null,
@@ -107,7 +110,7 @@ test('shows pdf download-focused panel when pdf tab is selected', () => {
           { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
           { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: false },
         ],
-        summary: '요약',
+        summary: 'summary',
         default_asset_type: 'html',
       }}
       initialContentHtml="<h1>hello</h1>"
@@ -115,5 +118,103 @@ test('shows pdf download-focused panel when pdf tab is selected', () => {
   );
 
   fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
-  expect(screen.getByRole('link', { name: 'PDF 다운로드' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /PDF/ })).toBeInTheDocument();
+});
+
+test('requests html assets through the frontend newsletter proxy', async () => {
+  render(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 1,
+        title: 'Proxy Test',
+        slug: 'proxy-test',
+        description: 'desc',
+        source_type: 'html',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
+          { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: false },
+        ],
+        summary: 'summary',
+        default_asset_type: 'pdf',
+      }}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+
+  expect(global.fetch).toHaveBeenCalledWith('/api/frontend/newsletters/1/content/html');
+  await waitFor(() => {
+    expect(screen.getByTitle('Proxy Test')).toHaveAttribute('srcdoc', '<h1>hello</h1>');
+  });
+});
+
+test('uses the frontend newsletter proxy for pdf downloads', () => {
+  render(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 1,
+        title: 'Proxy PDF',
+        slug: 'proxy-pdf',
+        description: 'desc',
+        source_type: 'html',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
+          { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: false },
+        ],
+        summary: 'summary',
+        default_asset_type: 'html',
+      }}
+      initialContentHtml="<h1>hello</h1>"
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+
+  expect(screen.getByRole('link', { name: /PDF/ })).toHaveAttribute(
+    'href',
+    '/api/frontend/newsletters/1/download/pdf',
+  );
+});
+
+test('keeps the previous content visible when asset switching fetch fails', async () => {
+  vi.mocked(global.fetch).mockRejectedValueOnce(new Error('upstream unavailable'));
+  const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  render(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 1,
+        title: 'Failure Fallback',
+        slug: 'failure-fallback',
+        description: 'desc',
+        source_type: 'html',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
+          { asset_type: 'markdown', content_url: '/api/v1/newsletters/1/content/markdown', download_url: '/api/v1/newsletters/1/download/markdown', is_primary: false },
+        ],
+        summary: 'summary',
+        default_asset_type: 'html',
+      }}
+      initialContentHtml="<h1>stable html</h1>"
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'MARKDOWN' }));
+
+  await waitFor(() => {
+    expect(errorLog).toHaveBeenCalledWith(
+      '[FRONTEND][FETCH] Failed to load newsletter asset /api/frontend/newsletters/1/content/markdown',
+      expect.any(Error),
+    );
+  });
+  expect(screen.getByText('stable html')).toBeInTheDocument();
 });

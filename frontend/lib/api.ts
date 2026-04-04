@@ -1,4 +1,5 @@
 import type {
+  AssetType,
   AuthResponse,
   Category,
   NewsletterCalendarEntry,
@@ -7,6 +8,7 @@ import type {
   SyncResponse,
   Tag,
 } from '@/lib/types';
+import { buildNewsletterProxyPath, loggedServerFetchJson } from '@/lib/newsletter-observability';
 
 const SERVER_BASE = process.env.SERVER_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:18437';
 const BROWSER_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:18437';
@@ -17,6 +19,10 @@ export function getServerApiBase() {
 
 export function getBrowserApiBase() {
   return BROWSER_BASE.replace(/\/$/, '');
+}
+
+export function getNewsletterProxyPath(path: string) {
+  return buildNewsletterProxyPath(path);
 }
 
 async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -40,35 +46,43 @@ async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function fetchNewsletters(params?: Record<string, string>) {
   const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-  const response = await fetch(`${getServerApiBase()}/api/v1/newsletters${query}`, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error('Failed to load newsletters');
-  }
-  return (await response.json()) as NewsletterItem[];
+  return loggedServerFetchJson<NewsletterItem[]>({
+    label: 'newsletters.list',
+    baseUrl: getServerApiBase(),
+    path: `/api/v1/newsletters${query}`,
+  });
 }
 
 export async function fetchNewsletterDetail(slug: string) {
-  const response = await fetch(`${getServerApiBase()}/api/v1/newsletters/${slug}`, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error('Failed to load newsletter detail');
-  }
-  return (await response.json()) as NewsletterDetail;
+  return loggedServerFetchJson<NewsletterDetail>({
+    label: 'newsletters.detail',
+    baseUrl: getServerApiBase(),
+    path: `/api/v1/newsletters/${slug}`,
+  });
 }
 
 export async function fetchLatestNewsletter() {
-  const response = await fetch(`${getServerApiBase()}/api/v1/newsletters/latest`, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error('Failed to load latest newsletter');
-  }
-  return (await response.json()) as NewsletterDetail;
+  return loggedServerFetchJson<NewsletterDetail>({
+    label: 'newsletters.latest',
+    baseUrl: getServerApiBase(),
+    path: '/api/v1/newsletters/latest',
+  });
 }
 
 export async function fetchNewsletterCalendar() {
-  const response = await fetch(`${getServerApiBase()}/api/v1/newsletters/calendar`, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error('Failed to load newsletter calendar');
-  }
-  return (await response.json()) as NewsletterCalendarEntry[];
+  return loggedServerFetchJson<NewsletterCalendarEntry[]>({
+    label: 'newsletters.calendar',
+    baseUrl: getServerApiBase(),
+    path: '/api/v1/newsletters/calendar',
+  });
+}
+
+export async function fetchNewsletterAssetContent(path: string) {
+  return loggedServerFetchJson<{ asset_type: AssetType; content_html: string }>({
+    label: 'newsletters.asset',
+    baseUrl: getServerApiBase(),
+    path,
+  });
 }
 
 export async function getPublicNewsletters(): Promise<{ items: NewsletterItem[] }> {

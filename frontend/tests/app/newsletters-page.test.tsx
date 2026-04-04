@@ -6,16 +6,16 @@ import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '
 
 const {
   fetchLatestNewsletterMock,
+  fetchNewsletterAssetContentMock,
   fetchNewsletterCalendarMock,
   fetchNewsletterDetailMock,
   fetchNewslettersMock,
-  getServerApiBaseMock,
 } = vi.hoisted(() => ({
   fetchLatestNewsletterMock: vi.fn(),
+  fetchNewsletterAssetContentMock: vi.fn(),
   fetchNewsletterCalendarMock: vi.fn(),
   fetchNewsletterDetailMock: vi.fn(),
   fetchNewslettersMock: vi.fn(),
-  getServerApiBaseMock: vi.fn(() => 'http://localhost:18437'),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -23,10 +23,10 @@ vi.mock('@/lib/api', async () => {
   return {
     ...actual,
     fetchLatestNewsletter: fetchLatestNewsletterMock,
+    fetchNewsletterAssetContent: fetchNewsletterAssetContentMock,
     fetchNewsletterCalendar: fetchNewsletterCalendarMock,
     fetchNewsletterDetail: fetchNewsletterDetailMock,
     fetchNewsletters: fetchNewslettersMock,
-    getServerApiBase: getServerApiBaseMock,
   };
 });
 
@@ -35,7 +35,12 @@ vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
 }));
 
 vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
-  NewsletterDetailClient: ({ newsletter }: { newsletter: NewsletterDetail }) => <div data-testid="newsletter-detail-client">{newsletter.title}</div>,
+  NewsletterDetailClient: ({ newsletter, initialContentHtml }: { newsletter: NewsletterDetail; initialContentHtml?: string }) => (
+    <div>
+      <div data-testid="newsletter-detail-client">{newsletter.title}</div>
+      <div data-testid="newsletter-detail-html">{initialContentHtml ?? ''}</div>
+    </div>
+  ),
 }));
 
 vi.mock('@/components/newsletter/newsletter-list', () => ({
@@ -44,9 +49,9 @@ vi.mock('@/components/newsletter/newsletter-list', () => ({
 
 const detail: NewsletterDetail = {
   id: 1,
-  title: '2026-03-30 뉴스레터',
+  title: 'Newsletter 2026-03-30',
   slug: 'newsletter-20260330',
-  description: '설명',
+  description: 'Summary',
   source_type: 'html',
   tags: [],
   available_assets: [
@@ -58,7 +63,7 @@ const detail: NewsletterDetail = {
     },
   ],
   default_asset_type: 'html',
-  summary: '요약',
+  summary: 'Summary',
   category: null,
   thumbnail_url: null,
 };
@@ -87,31 +92,38 @@ const calendarEntries: NewsletterCalendarEntry[] = [
 
 beforeEach(() => {
   fetchLatestNewsletterMock.mockResolvedValue(detail);
+  fetchNewsletterAssetContentMock.mockResolvedValue({ asset_type: 'html', content_html: '<h1>hello</h1>' });
   fetchNewsletterCalendarMock.mockResolvedValue(calendarEntries);
   fetchNewsletterDetailMock.mockResolvedValue(detail);
-  fetchNewslettersMock.mockImplementation((filters?: Record<string, string>) => Promise.resolve(filters ? items : items));
-  vi.spyOn(global, 'fetch').mockResolvedValue({
-    ok: true,
-    json: async () => ({ asset_type: 'html', content_html: '<h1>hello</h1>' }),
-  } as Response);
+  fetchNewslettersMock.mockResolvedValue(items);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
   fetchLatestNewsletterMock.mockReset();
+  fetchNewsletterAssetContentMock.mockReset();
   fetchNewsletterCalendarMock.mockReset();
   fetchNewsletterDetailMock.mockReset();
   fetchNewslettersMock.mockReset();
-  getServerApiBaseMock.mockClear();
 });
 
 test('renders newsletters page without hero copy and quick move section', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.getByRole('heading', { name: '뉴스레터 서비스' })).toBeInTheDocument();
   expect(screen.getByTestId('newsletter-date-calendar')).toHaveTextContent(detail.slug);
   expect(screen.getByTestId('newsletter-detail-client')).toHaveTextContent(detail.title);
+  expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('<h1>hello</h1>');
   expect(screen.queryByText('Latest First')).not.toBeInTheDocument();
-  expect(screen.queryByText('가장 최신 뉴스레터를 바로 확인하세요')).not.toBeInTheDocument();
-  expect(screen.queryByText('뉴스레터 빠른 이동')).not.toBeInTheDocument();
+  expect(screen.queryByText('quick move')).not.toBeInTheDocument();
+});
+
+test('renders newsletters page when asset html fetch fails', async () => {
+  fetchNewsletterAssetContentMock.mockRejectedValueOnce(new Error('asset unavailable'));
+
+  render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.getByTestId('newsletter-date-calendar')).toHaveTextContent(detail.slug);
+  expect(screen.getByTestId('newsletter-detail-client')).toHaveTextContent(detail.title);
+  expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('');
+  expect(screen.queryByText('asset unavailable')).not.toBeInTheDocument();
 });
