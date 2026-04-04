@@ -13,6 +13,11 @@ The approved conclusion is yes, but only at the level of layout structure. `Aero
 2. format selection (`HTML`, `Markdown`, `PDF`)
 3. large preview area below
 
+Within that structure, two interaction decisions are also approved:
+
+- the calendar panel should be visible by default rather than collapsible
+- PDF should try inline preview first and fall back to a download-oriented panel only when inline preview cannot be shown
+
 This should be implemented only for the public `/newsletters` screen. The `Newsletter_AI` report index, run history, artifact browser, and file-management behavior should not be copied.
 
 ## Goals
@@ -29,7 +34,7 @@ This should be implemented only for the public `/newsletters` screen. The `Newsl
 - Adding run history, report sessions, or output-file browser features.
 - Adding admin/report-generation concerns to the public newsletter page.
 - Replacing current newsletter APIs with `Newsletter_AI` APIs.
-- Implementing PDF inline preview in this same step unless separately approved.
+- Rebuilding PDF handling beyond an inline-preview-first with download-fallback approach.
 
 ## Current State
 
@@ -81,11 +86,13 @@ This work is intentionally scoped to:
 
 No other pages should be reworked as part of this change.
 
-### 2. Keep the existing calendar as the top control surface
+### 2. Keep the existing calendar as the top control surface and show it by default
 
 `NewsletterDateCalendar` already fulfills the role of the top-level date selector and should remain the first major control region on the page.
 
 It does not need to become identical to `Newsletter_AI`'s calendar implementation. It only needs to continue serving as the “choose a newsletter date” control layer.
+
+For this design, the calendar should be expanded by default so the page immediately reads as a browsing workspace rather than a collapsed detail view.
 
 ### 3. Make asset-type selection read as an explicit middle panel
 
@@ -100,11 +107,11 @@ This is the main transferable concept from `Newsletter_AI`:
 
 The preview area should be visually emphasized as the main content destination of the page.
 
-Current behavior should remain:
+Current behavior should become:
 
 - `html` → rendered in `HtmlViewer`
 - `markdown` → rendered in `MarkdownViewer`
-- `pdf` → download-oriented fallback panel
+- `pdf` → inline preview first, download-oriented fallback second
 
 The page should read like:
 
@@ -136,15 +143,18 @@ Those are specific to the reporting workflow in `Newsletter_AI` and do not belon
 
 ## PDF Handling Decision
 
-For this design, PDF should remain download-oriented.
+For this design, PDF should be preview-first with download fallback.
+
+Approved behavior:
+
+- when a PDF asset is selected, the page should try to preview it inline in the lower preview area
+- if inline PDF preview is unavailable or fails, the page should fall back to the current download-oriented panel
 
 Rationale:
 
-- `Newsletter_AI` uses a richer report-artifact preview context where PDF preview is a core report browsing feature.
-- `AeroOne` currently treats PDF as a downloadable representation.
-- Expanding into inline PDF preview would enlarge scope and introduce a second design problem.
-
-If PDF inline preview is desired later, it should be treated as a separate follow-up step after the layout restructuring lands.
+- the requested comparison explicitly includes `HTML`, `PDF`, and `Markdown` in one preview-oriented structure
+- `Newsletter_AI` treats PDF as part of the preview workflow, not as a completely separate experience
+- keeping a download fallback preserves the safer current AeroOne behavior when inline PDF preview is unreliable
 
 ## Files Expected To Change
 
@@ -157,6 +167,7 @@ Possible supporting additions if clearer boundaries are needed:
 
 - a new newsletter asset selector component
 - a new newsletter preview panel component
+- a dedicated PDF preview subcomponent or hook if inline preview handling becomes too tangled inside `NewsletterDetailClient`
 
 Possible test updates:
 
@@ -175,6 +186,8 @@ Possible test updates:
 
 - update existing page/component tests for the new structure
 - ensure HTML / Markdown / PDF selection behavior still works
+- ensure the calendar is visible by default
+- ensure PDF inline preview and fallback behavior are both covered
 - run the full frontend test suite
 - run frontend typecheck
 
@@ -183,6 +196,9 @@ Possible test updates:
 - open `/newsletters`
 - select dates from the calendar
 - switch between `HTML`, `Markdown`, and `PDF`
+- confirm the calendar is visible without first pressing an open button
+- confirm PDF tries to preview inline
+- confirm the fallback download UI appears if inline PDF preview cannot be shown
 - confirm the page visually reads as:
   - calendar
   - format selector
