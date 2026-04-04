@@ -108,6 +108,7 @@ test('loggedServerFetchJson logs and rethrows when fetch rejects', async () => {
   const fetchError = new Error('connect ECONNREFUSED');
   const fetchMock = vi.fn().mockRejectedValue(fetchError);
   const logger = vi.fn();
+  const errorLogger = vi.fn();
 
   await expect(
     loggedServerFetchJson({
@@ -116,6 +117,7 @@ test('loggedServerFetchJson logs and rethrows when fetch rejects', async () => {
       path: '/api/v1/newsletters',
       fetchImpl: fetchMock,
       log: logger,
+      errorLog: errorLogger,
     }),
   ).rejects.toThrow(fetchError);
 
@@ -123,15 +125,17 @@ test('loggedServerFetchJson logs and rethrows when fetch rejects', async () => {
     1,
     '[FRONTEND][FETCH] newsletters.list -> /api/v1/newsletters',
   );
-  expect(logger).toHaveBeenNthCalledWith(
-    2,
+  expect(errorLogger).toHaveBeenNthCalledWith(
+    1,
     '[FRONTEND][FETCH] newsletters.list !! /api/v1/newsletters connect ECONNREFUSED',
   );
+  expect(logger).toHaveBeenCalledTimes(1);
 });
 
 test('loggedServerFetchJson logs and rethrows when json parsing fails', async () => {
   const parseError = new Error('Unexpected token < in JSON');
   const logger = vi.fn();
+  const errorLogger = vi.fn();
 
   await expect(
     loggedServerFetchJson({
@@ -144,6 +148,7 @@ test('loggedServerFetchJson logs and rethrows when json parsing fails', async ()
         json: vi.fn().mockRejectedValue(parseError),
       }),
       log: logger,
+      errorLog: errorLogger,
     }),
   ).rejects.toThrow(parseError);
 
@@ -155,8 +160,9 @@ test('loggedServerFetchJson logs and rethrows when json parsing fails', async ()
     2,
     '[FRONTEND][FETCH] newsletters.list <- 200 /api/v1/newsletters',
   );
-  expect(logger).toHaveBeenNthCalledWith(
-    3,
+  expect(errorLogger).toHaveBeenNthCalledWith(
+    1,
     '[FRONTEND][FETCH] newsletters.list !! /api/v1/newsletters Unexpected token < in JSON',
   );
+  expect(logger).toHaveBeenCalledTimes(2);
 });

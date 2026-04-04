@@ -16,6 +16,14 @@ const FORWARDED_UPSTREAM_RESPONSE_HEADERS = [
   'content-range',
 ] as const;
 
+const FORWARDED_UPSTREAM_REQUEST_HEADERS = [
+  'accept',
+  'range',
+  'if-range',
+  'if-none-match',
+  'if-modified-since',
+] as const;
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ segments: string[] }> },
@@ -29,20 +37,25 @@ export async function GET(
   );
 
   try {
+    const upstreamRequestHeaders: Record<string, string> = {};
+    for (const headerName of FORWARDED_UPSTREAM_REQUEST_HEADERS) {
+      const headerValue = request.headers.get(headerName);
+      if (headerValue) {
+        upstreamRequestHeaders[headerName] = headerValue;
+      }
+    }
+
     const upstreamResponse = await fetch(upstreamUrl, {
       method: 'GET',
       cache: 'no-store',
-      headers: {
-        accept: request.headers.get('accept') ?? '*/*',
-      },
+      headers: upstreamRequestHeaders,
     });
 
     console.info(
       `[FRONTEND][API  ] ${upstreamResponse.status} ${upstreamPath}`,
     );
 
-    const body = await upstreamResponse.arrayBuffer();
-    const response = new NextResponse(body, {
+    const response = new NextResponse(upstreamResponse.body, {
       status: upstreamResponse.status,
     });
 

@@ -5,6 +5,7 @@ type LoggedFetchOptions = {
   init?: RequestInit;
   fetchImpl?: typeof fetch;
   log?: (message: string) => void;
+  errorLog?: (message: string) => void;
 };
 
 const NEWSLETTER_BACKEND_PREFIX = '/api/v1/newsletters';
@@ -31,6 +32,7 @@ export async function loggedServerFetchJson<T>({
   init,
   fetchImpl = fetch,
   log = console.info,
+  errorLog = console.error,
 }: LoggedFetchOptions): Promise<T> {
   const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -50,7 +52,7 @@ export async function loggedServerFetchJson<T>({
     return (await response.json()) as T;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    log(`[FRONTEND][FETCH] ${label} !! ${normalizedPath} ${message}`);
+    errorLog(`[FRONTEND][FETCH] ${label} !! ${normalizedPath} ${message}`);
     throw error;
   }
 }
