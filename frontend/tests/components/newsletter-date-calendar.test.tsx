@@ -1,9 +1,9 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 
-it('shows calendar only after opening toggle', () => {
+it('shows the calendar grid by default without a dedicated open toggle', () => {
   render(
     <NewsletterDateCalendar
       selectedSlug="newsletter-20260326"
@@ -14,9 +14,11 @@ it('shows calendar only after opening toggle', () => {
     />,
   );
 
-  expect(screen.queryByRole('link', { name: /26/i })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '달력 열기' }));
-  expect(screen.getByRole('link', { name: /26/i })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /25/i })).toBeInTheDocument();
-  expect(screen.getByText('2026년 3월')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /26/ })).toHaveAttribute(
+    'href',
+    '/newsletters?slug=newsletter-20260326',
+  );
+  expect(screen.getByRole('link', { name: /25/ })).toBeInTheDocument();
+  expect(screen.getAllByRole('button')).toHaveLength(2);
+  expect(screen.queryByRole('button', { name: /달력 열기|달력 닫기/ })).not.toBeInTheDocument();
 });
