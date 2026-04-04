@@ -253,6 +253,10 @@ test('shows a download fallback when pdf preview fails', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
 
   await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith('/api/frontend/newsletters/1/content/pdf');
+  });
+
+  await waitFor(() => {
     expect(screen.getByTestId('newsletter-pdf-fallback')).toBeInTheDocument();
   });
 
