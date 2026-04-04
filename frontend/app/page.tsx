@@ -7,10 +7,10 @@ export default function HomePage() {
       <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <ServiceCard
           title="뉴스레터 서비스"
-          description="가장 최신 뉴스레터를 바로 보고, 발행 날짜별로 이전 뉴스레터를 탐색합니다."
+          description="가장 최신 뉴스레터를 바로 열고, 발행 날짜별로 이전 뉴스레터를 탐색합니다."
           href="/newsletters"
-          badge="우선 제공"
-          icon="🗞"
+          badge="활성 서비스"
+          icon="📰"
         />
       </section>
     </AppShell>
