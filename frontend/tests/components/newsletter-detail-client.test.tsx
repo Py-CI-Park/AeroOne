@@ -182,6 +182,38 @@ test('keeps the previous content visible when non-pdf asset loading fails', asyn
   expect(screen.getByText('stable html')).toBeInTheDocument();
 });
 
+test('attempts pdf preview on mount when pdf is the default asset', async () => {
+  render(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 1,
+        title: 'Default PDF Preview',
+        slug: 'default-pdf-preview',
+        description: 'desc',
+        source_type: 'pdf',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: false },
+          { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: true },
+        ],
+        summary: 'summary',
+        default_asset_type: 'pdf',
+      }}
+    />,
+  );
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith('/api/frontend/newsletters/1/content/pdf');
+  });
+  await waitFor(() => {
+    expect(
+      screen.queryByTitle('PDF viewer') ?? screen.queryByTestId('newsletter-pdf-fallback'),
+    ).toBeInTheDocument();
+  });
+});
+
 test('shows inline pdf preview when pdf tab is selected', async () => {
   render(
     <NewsletterDetailClient
