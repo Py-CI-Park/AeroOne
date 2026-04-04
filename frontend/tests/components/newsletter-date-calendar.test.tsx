@@ -19,6 +19,10 @@ it('shows the calendar grid by default without a dedicated open toggle', () => {
     '/newsletters?slug=newsletter-20260326',
   );
   expect(screen.getByRole('link', { name: /25/ })).toBeInTheDocument();
+  expect(screen.getByText('2026년 3월')).toBeInTheDocument();
+  ['일', '월', '화', '수', '목', '금', '토'].forEach((weekday) => {
+    expect(screen.getByText(weekday)).toBeInTheDocument();
+  });
   expect(screen.getAllByRole('button')).toHaveLength(2);
   expect(screen.queryByRole('button', { name: /달력 열기|달력 닫기/ })).not.toBeInTheDocument();
 });

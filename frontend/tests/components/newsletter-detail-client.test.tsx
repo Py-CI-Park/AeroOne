@@ -61,6 +61,127 @@ test('renders an explicit asset selector panel and preview panel', () => {
   expect(screen.getByTestId('newsletter-preview-panel')).toBeInTheDocument();
 });
 
+test('updates rendered html when newsletter slug changes', async () => {
+  const { rerender } = render(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 1,
+        title: 'First Newsletter',
+        slug: 'newsletter-20260329',
+        description: 'desc',
+        source_type: 'html',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
+          { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: false },
+        ],
+        summary: 'summary',
+        default_asset_type: 'html',
+      }}
+      initialContentHtml="<h1>first</h1>"
+    />,
+  );
+
+  expect(screen.getByTitle('First Newsletter')).toHaveAttribute('srcdoc', '<h1>first</h1>');
+
+  rerender(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 2,
+        title: 'Second Newsletter',
+        slug: 'newsletter-20260330',
+        description: 'desc',
+        source_type: 'html',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/2/content/html', download_url: '/api/v1/newsletters/2/download/html', is_primary: true },
+          { asset_type: 'pdf', content_url: '/api/v1/newsletters/2/content/pdf', download_url: '/api/v1/newsletters/2/download/pdf', is_primary: false },
+        ],
+        summary: 'summary',
+        default_asset_type: 'html',
+      }}
+      initialContentHtml="<h1>second</h1>"
+    />,
+  );
+
+  await waitFor(() => {
+    expect(screen.getByTitle('Second Newsletter')).toHaveAttribute('srcdoc', '<h1>second</h1>');
+  });
+});
+
+test('requests html assets through the frontend newsletter proxy', async () => {
+  render(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 1,
+        title: 'Proxy Test',
+        slug: 'proxy-test',
+        description: 'desc',
+        source_type: 'html',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
+          { asset_type: 'pdf', content_url: '/api/v1/newsletters/1/content/pdf', download_url: '/api/v1/newsletters/1/download/pdf', is_primary: false },
+        ],
+        summary: 'summary',
+        default_asset_type: 'pdf',
+      }}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'HTML' }));
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith('/api/frontend/newsletters/1/content/html');
+  });
+  await waitFor(() => {
+    expect(screen.getByTitle('Proxy Test')).toHaveAttribute('srcdoc', '<h1>hello</h1>');
+  });
+});
+
+test('keeps the previous content visible when non-pdf asset loading fails', async () => {
+  vi.mocked(global.fetch).mockRejectedValueOnce(new Error('upstream unavailable'));
+  const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  render(
+    <NewsletterDetailClient
+      newsletter={{
+        id: 1,
+        title: 'Failure Fallback',
+        slug: 'failure-fallback',
+        description: 'desc',
+        source_type: 'html',
+        thumbnail_url: null,
+        category: null,
+        tags: [],
+        available_assets: [
+          { asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/api/v1/newsletters/1/download/html', is_primary: true },
+          { asset_type: 'markdown', content_url: '/api/v1/newsletters/1/content/markdown', download_url: '/api/v1/newsletters/1/download/markdown', is_primary: false },
+        ],
+        summary: 'summary',
+        default_asset_type: 'html',
+      }}
+      initialContentHtml="<h1>stable html</h1>"
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'MARKDOWN' }));
+
+  await waitFor(() => {
+    expect(errorLog).toHaveBeenCalledWith(
+      '[FRONTEND][FETCH] Failed to load newsletter asset /api/frontend/newsletters/1/content/markdown',
+      expect.any(Error),
+    );
+  });
+  expect(screen.getByText('stable html')).toBeInTheDocument();
+});
+
 test('shows inline pdf preview when pdf tab is selected', async () => {
   render(
     <NewsletterDetailClient
@@ -86,6 +207,9 @@ test('shows inline pdf preview when pdf tab is selected', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
 
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith('/api/frontend/newsletters/1/content/pdf');
+  });
   await waitFor(() => {
     expect(screen.getByTitle('PDF viewer')).toHaveAttribute('src', 'blob:newsletter-pdf-preview');
   });
