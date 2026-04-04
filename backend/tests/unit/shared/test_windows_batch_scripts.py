@@ -279,7 +279,7 @@ def test_start_dry_run_prints_launch_commands() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
     assert any("uvicorn app.main:app" in line for line in lines)
-    assert any("start_frontend_dev.cmd" in line for line in lines)
+    assert any("start_frontend_window.cmd" in line for line in lines)
     assert any("http://localhost:29501" in line for line in lines)
 
 
@@ -289,9 +289,9 @@ def test_start_dry_run_prints_readiness_wrapper_command() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
     browser_line = next((line for line in lines if "open_browser.cmd" in line), None)
-    pattern = re.compile(r'open_browser\.cmd.*http://localhost:29501/.*\b18437\b.*\b29501\b.*\b20\b.*\b60\b')
+    pattern = re.compile(r'open_browser\.cmd.*http://localhost:29501/.*\b18437\b.*\b29501\b.*\b20\b.*\b180\b')
     assert any("uvicorn app.main:app" in line for line in lines)
-    assert any("start_frontend_dev.cmd" in line for line in lines)
+    assert any("start_frontend_window.cmd" in line for line in lines)
     assert browser_line is not None
     assert pattern.search(browser_line), browser_line
 
