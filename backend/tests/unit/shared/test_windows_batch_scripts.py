@@ -430,6 +430,7 @@ def test_wait_for_services_accepts_ipv6_loopback_listeners(tmp_path: Path) -> No
     combined = (result.stdout + result.stderr).lower()
     assert f"backend port {backend_port}" in combined
     assert f"frontend port {frontend_port}" in combined
+    assert "::1" in combined
 
 
 def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:

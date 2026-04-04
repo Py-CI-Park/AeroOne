@@ -10,7 +10,7 @@ param(
 
     [int]$BackendTimeoutSeconds = 20,
     [int]$FrontendTimeoutSeconds = 60,
-    [string]$TargetHost = "127.0.0.1"
+    [string[]]$TargetHosts = @("127.0.0.1", "::1", "localhost")
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,35 +22,53 @@ function Test-TcpPort {
         [int]$ConnectTimeoutMs = 1000
     )
 
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $async = $client.BeginConnect($TargetHost, $Port, $null, $null)
-        if (-not $async.AsyncWaitHandle.WaitOne($ConnectTimeoutMs, $false)) {
-            return $false
+    $addressFamilies =
+        if ($TargetHost -eq "::1") {
+            @([System.Net.Sockets.AddressFamily]::InterNetworkV6)
+        } elseif ($TargetHost -eq "localhost") {
+            @(
+                [System.Net.Sockets.AddressFamily]::InterNetwork,
+                [System.Net.Sockets.AddressFamily]::InterNetworkV6
+            )
+        } else {
+            @([System.Net.Sockets.AddressFamily]::InterNetwork)
         }
 
-        $client.EndConnect($async)
-        return $true
-    } catch {
-        return $false
-    } finally {
-        $client.Close()
+    foreach ($addressFamily in $addressFamilies) {
+        $client = New-Object System.Net.Sockets.TcpClient($addressFamily)
+        try {
+            $async = $client.BeginConnect($TargetHost, $Port, $null, $null)
+            if (-not $async.AsyncWaitHandle.WaitOne($ConnectTimeoutMs, $false)) {
+                continue
+            }
+
+            $client.EndConnect($async)
+            return $true
+        } catch {
+            continue
+        } finally {
+            $client.Close()
+        }
     }
+
+    return $false
 }
 
 function Wait-PortReady {
     param(
         [string]$Label,
-        [string]$TargetHost,
+        [string[]]$TargetHosts,
         [int]$Port,
         [int]$TimeoutSeconds
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
-        if (Test-TcpPort -TargetHost $TargetHost -Port $Port) {
-            Write-Host "[READY] $Label port $Port is accepting TCP connections."
-            return $true
+        foreach ($targetHost in $TargetHosts) {
+            if (Test-TcpPort -TargetHost $targetHost -Port $Port) {
+                Write-Host "[READY] $Label port $Port is accepting TCP connections on $targetHost."
+                return $true
+            }
         }
 
         Start-Sleep -Seconds 1
@@ -60,11 +78,11 @@ function Wait-PortReady {
     return $false
 }
 
-if (-not (Wait-PortReady -Label "Backend" -TargetHost $TargetHost -Port $BackendPort -TimeoutSeconds $BackendTimeoutSeconds)) {
+if (-not (Wait-PortReady -Label "Backend" -TargetHosts $TargetHosts -Port $BackendPort -TimeoutSeconds $BackendTimeoutSeconds)) {
     exit 1
 }
 
-if (-not (Wait-PortReady -Label "Frontend" -TargetHost $TargetHost -Port $FrontendPort -TimeoutSeconds $FrontendTimeoutSeconds)) {
+if (-not (Wait-PortReady -Label "Frontend" -TargetHosts $TargetHosts -Port $FrontendPort -TimeoutSeconds $FrontendTimeoutSeconds)) {
     exit 1
 }
 
