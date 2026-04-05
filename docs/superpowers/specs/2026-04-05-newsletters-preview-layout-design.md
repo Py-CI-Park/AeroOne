@@ -100,6 +100,12 @@ This is a hard requirement for the revised design:
 - the route-level JSX should visibly express the panel order
 - the page should no longer read as “calendar component plus one generic detail component”
 
+The intended page-level order is:
+
+1. calendar panel
+2. format selector panel
+3. large preview panel
+
 ### 2. Keep the calendar as the top panel and make it always visible
 
 `NewsletterDateCalendar` remains the top-level date selector.
@@ -151,6 +157,27 @@ Approved direction:
 
 The important rule is that the route-level layout must become explicit.
 
+### 6. Make selection state and preview state explicit in the page flow
+
+The revised layout should make the state flow readable, not just functional.
+
+Recommended state responsibilities:
+
+- route/server layer
+  - selected newsletter by date/slug
+  - initial newsletter detail payload
+  - initial HTML payload when available
+- page-level client layout layer
+  - selected asset type
+  - PDF preview state (`idle`, `loading`, `success`, `error`)
+  - preview/fallback rendering state
+
+This means the route should not merely hand everything to a single generic detail container. The page shell should visibly coordinate:
+
+- which newsletter is selected
+- which format is selected
+- which preview surface is currently active
+
 ### 6. Do not import `Newsletter_AI` report complexity
 
 The following remain out of scope:
@@ -162,6 +189,33 @@ The following remain out of scope:
 - generation/operations concepts
 
 This is a public newsletter consumption screen, not a report artifact management UI.
+
+## Data Flow
+
+### Date selection
+
+- the calendar selects the current newsletter by date/slug
+- the route resolves the selected newsletter detail on the server
+
+### Format selection
+
+- the middle selector panel changes the active asset type
+- the lower preview panel reacts to that selection
+
+### Preview rendering
+
+- `HTML`
+  - use initial server-provided HTML when available
+  - fetch through the current AeroOne path when switching assets if needed
+- `Markdown`
+  - fetch and render in the lower preview surface
+- `PDF`
+  - fetch PDF through the frontend proxy path
+  - create a blob URL
+  - render inline with `PdfViewer`
+  - fall back to the download-oriented panel if preview cannot be shown
+
+The important point is that all three modes should now feel like one shared preview workflow rather than separate special cases.
 
 ## Design Constraints
 
@@ -189,6 +243,8 @@ Primary files:
 - `frontend/app/newsletters/page.tsx`
 - `frontend/components/newsletter/newsletter-detail-client.tsx`
 
+The route-level page file is expected to change materially this time. A small child-component-only adjustment is not sufficient for this design.
+
 Likely supporting additions:
 
 - `frontend/components/newsletter/newsletter-asset-selector.tsx`
@@ -209,6 +265,12 @@ Likely tests to update:
 - any new layout-focused test file if the selector/panel split becomes clearer with separate coverage
 
 `frontend/tests/app/newsletters-page.test.tsx` should no longer be satisfied by only mocking child components and checking that they exist. It should become a route-level structure guard that verifies the page shell actually exposes the intended panel hierarchy.
+
+That route-level test should, at minimum, prove that the page shell now reads as:
+
+- calendar panel first
+- selector panel second
+- preview panel third
 
 ## Verification Plan
 
