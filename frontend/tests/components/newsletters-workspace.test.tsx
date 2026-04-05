@@ -74,7 +74,7 @@ const secondNewsletter: NewsletterDetail = {
 
 test('resets the selected asset to the new newsletter default when the newsletter changes', () => {
   const { rerender } = render(
-    <NewslettersWorkspace newsletter={firstNewsletter} initialContentHtml="<h1>first</h1>" />,
+    <NewslettersWorkspace key={firstNewsletter.slug} newsletter={firstNewsletter} initialContentHtml="<h1>first</h1>" />,
   );
 
   const formatPanel = screen.getByTestId('newsletters-format-panel');
@@ -84,7 +84,11 @@ test('resets the selected asset to the new newsletter default when the newslette
   expect(screen.getByTestId('newsletter-detail-client')).toHaveAttribute('data-selected-asset', 'markdown');
 
   rerender(
-    <NewslettersWorkspace newsletter={secondNewsletter} initialContentHtml="<h1>second</h1>" />,
+    <NewslettersWorkspace
+      key={secondNewsletter.slug}
+      newsletter={secondNewsletter}
+      initialContentHtml="<h1>second</h1>"
+    />,
   );
 
   const rerenderedFormatPanel = screen.getByTestId('newsletters-format-panel');

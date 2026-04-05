@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { NewsletterAssetSelector } from '@/components/newsletter/newsletter-asset-selector';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
@@ -20,10 +20,6 @@ export function NewslettersWorkspace({
   );
   const [selectedAsset, setSelectedAsset] = useState(newsletter.default_asset_type);
 
-  useEffect(() => {
-    setSelectedAsset(newsletter.default_asset_type);
-  }, [newsletter.default_asset_type, newsletter.slug]);
-
   return (
     <div data-testid="newsletters-workspace" className="space-y-6">
       <NewsletterAssetSelector
@@ -34,7 +30,6 @@ export function NewslettersWorkspace({
 
       <NewsletterPreviewPanel title={newsletter.title} selectedAsset={selectedAsset}>
         <NewsletterDetailClient
-          key={`${newsletter.slug}:${selectedAsset}`}
           newsletter={newsletter}
           selectedAsset={selectedAsset}
           initialContentHtml={initialContentHtml}

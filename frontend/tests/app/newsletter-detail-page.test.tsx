@@ -21,10 +21,10 @@ vi.mock('@/lib/api', async () => {
   };
 });
 
-vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
-  NewsletterDetailClient: ({ newsletter, initialContentHtml }: { newsletter: NewsletterDetail; initialContentHtml?: string }) => (
+vi.mock('@/components/newsletter/newsletters-workspace', () => ({
+  NewslettersWorkspace: ({ newsletter, initialContentHtml }: { newsletter: NewsletterDetail; initialContentHtml?: string }) => (
     <div>
-      <div data-testid="newsletter-detail-client">{newsletter.title}</div>
+      <div data-testid="newsletters-workspace">{newsletter.title}</div>
       <div data-testid="newsletter-detail-html">{initialContentHtml ?? ''}</div>
     </div>
   ),
@@ -68,7 +68,7 @@ test('renders newsletter detail page when asset html fetch fails', async () => {
   render(await NewsletterDetailPage({ params: Promise.resolve({ slug: detail.slug }) }));
 
   expect(screen.getByRole('heading', { name: detail.title })).toBeInTheDocument();
-  expect(screen.getByTestId('newsletter-detail-client')).toHaveTextContent(detail.title);
+  expect(screen.getByTestId('newsletters-workspace')).toHaveTextContent(detail.title);
   expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('');
   expect(screen.queryByText('asset unavailable')).not.toBeInTheDocument();
 });

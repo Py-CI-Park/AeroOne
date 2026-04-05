@@ -78,7 +78,11 @@ export default async function NewslettersPage({
             <NewsletterDateCalendar entries={calendarEntries} selectedSlug={activeDetail.slug} />
           </section>
 
-          <NewslettersWorkspace newsletter={activeDetail} initialContentHtml={initialContentHtml} />
+          <NewslettersWorkspace
+            key={activeDetail.slug}
+            newsletter={activeDetail}
+            initialContentHtml={initialContentHtml}
+          />
         </div>
       ) : (
         <NewsletterList items={fallbackItems} />

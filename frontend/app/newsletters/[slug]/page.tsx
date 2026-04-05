@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
+import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import { fetchNewsletterAssetContent, fetchNewsletterDetail } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export default async function NewsletterDetailPage({ params }: { params: Promise
 
   return (
     <AppShell title={detail.title}>
-      <NewsletterDetailClient newsletter={detail} initialContentHtml={initialContentHtml} />
+      <NewslettersWorkspace key={detail.slug} newsletter={detail} initialContentHtml={initialContentHtml} />
     </AppShell>
   );
 }
