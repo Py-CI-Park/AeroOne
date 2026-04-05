@@ -74,11 +74,11 @@ The relevant reference is:
 
 - `D:\Chanil_Park\Project\Programming\Newsletter_AI\frontend\src\app\(dashboard)\reports\page.tsx`
 
-The important part to copy is not the report-history model. The transferable part is the route’s visual hierarchy:
+The important part to copy is not the report-history model. The transferable part is the route's visual hierarchy:
 
 - a top selection panel
 - a second selection layer for output format
-- a large lower preview area that visibly acts as the page’s main surface
+- a large lower preview area that visibly acts as the page's main surface
 
 That hierarchy is what users recognize, and that is what AeroOne currently lacks.
 
@@ -93,6 +93,12 @@ That hierarchy is what users recognize, and that is what AeroOne currently lacks
 - large preview panel
 
 The route itself should make this structure obvious. It should not rely on a generic detail component to imply the page hierarchy indirectly.
+
+This is a hard requirement for the revised design:
+
+- the page shell must own the three-panel hierarchy directly
+- the route-level JSX should visibly express the panel order
+- the page should no longer read as “calendar component plus one generic detail component”
 
 ### 2. Keep the calendar as the top panel and make it always visible
 
@@ -140,8 +146,8 @@ Approved direction:
 
 - either shrink it into a smaller presentational component
 - or split its responsibilities into clearer units such as:
-  - asset selector panel
-  - preview panel
+  - `NewsletterAssetSelector`
+  - `NewsletterPreviewPanel`
 
 The important rule is that the route-level layout must become explicit.
 
@@ -202,6 +208,8 @@ Likely tests to update:
 - `frontend/tests/components/newsletter-date-calendar.test.tsx`
 - any new layout-focused test file if the selector/panel split becomes clearer with separate coverage
 
+`frontend/tests/app/newsletters-page.test.tsx` should no longer be satisfied by only mocking child components and checking that they exist. It should become a route-level structure guard that verifies the page shell actually exposes the intended panel hierarchy.
+
 ## Verification Plan
 
 ### Static verification
@@ -233,6 +241,6 @@ Likely tests to update:
 
 ## Rationale
 
-The user’s feedback is correct because the previous implementation solved the sub-behaviors without solving the visible route structure.
+The user's feedback is correct because the previous implementation solved the sub-behaviors without solving the visible route structure.
 
-This revised design fixes that by moving the information hierarchy into the page shell itself. That preserves AeroOne’s simpler domain model while finally giving `/newsletters` the same structural clarity users recognize from `Newsletter_AI`.
+This revised design fixes that by moving the information hierarchy into the page shell itself. That preserves AeroOne's simpler domain model while finally giving `/newsletters` the same structural clarity users recognize from `Newsletter_AI`.
