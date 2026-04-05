@@ -1,8 +1,9 @@
 import React from 'react';
+
 import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
-import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
 import { NewsletterList } from '@/components/newsletter/newsletter-list';
+import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import {
   fetchLatestNewsletter,
   fetchNewsletterAssetContent,
@@ -44,7 +45,9 @@ export default async function NewslettersPage({
 
     if (detail && detail.default_asset_type !== 'pdf') {
       const activeDetail = detail;
-      const asset = activeDetail.available_assets.find((item) => item.asset_type === activeDetail.default_asset_type);
+      const asset = activeDetail.available_assets.find(
+        (item) => item.asset_type === activeDetail.default_asset_type,
+      );
       if (asset) {
         try {
           const payload = await fetchNewsletterAssetContent(asset.content_url);
@@ -58,6 +61,8 @@ export default async function NewslettersPage({
     errorMessage = error instanceof Error ? error.message : '뉴스레터 목록을 불러오지 못했습니다.';
   }
 
+  const activeDetail = detail;
+
   return (
     <AppShell title="뉴스레터 서비스" contentClassName="max-w-[1600px]">
       {errorMessage ? (
@@ -67,10 +72,13 @@ export default async function NewslettersPage({
         </div>
       ) : null}
 
-      {detail ? (
+      {activeDetail ? (
         <div className="space-y-6">
-          <NewsletterDateCalendar entries={calendarEntries} selectedSlug={detail.slug} />
-          <NewsletterDetailClient key={detail.slug} newsletter={detail} initialContentHtml={initialContentHtml} />
+          <section data-testid="newsletters-calendar-panel">
+            <NewsletterDateCalendar entries={calendarEntries} selectedSlug={activeDetail.slug} />
+          </section>
+
+          <NewslettersWorkspace newsletter={activeDetail} initialContentHtml={initialContentHtml} />
         </div>
       ) : (
         <NewsletterList items={fallbackItems} />
