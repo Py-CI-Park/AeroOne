@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 
-// @ts-expect-error -- Task 2 creates this component; Task 1 keeps the runtime import red on purpose.
 import { NewsletterPreviewPanel } from '@/components/newsletter/newsletter-preview-panel';
 
 test('renders a dominant preview panel with stable wrapper identity, title, and asset badge', () => {
