@@ -10,26 +10,12 @@ const {
   fetchNewsletterCalendarMock,
   fetchNewsletterDetailMock,
   fetchNewslettersMock,
-  newslettersWorkspaceMock,
 } = vi.hoisted(() => ({
   fetchLatestNewsletterMock: vi.fn(),
   fetchNewsletterAssetContentMock: vi.fn(),
   fetchNewsletterCalendarMock: vi.fn(),
   fetchNewsletterDetailMock: vi.fn(),
   fetchNewslettersMock: vi.fn(),
-  newslettersWorkspaceMock: vi.fn((props: {
-    children?: React.ReactNode;
-    calendar?: React.ReactNode;
-    assetSelector?: React.ReactNode;
-    preview?: React.ReactNode;
-  }) => (
-    <section data-testid="newsletters-workspace">
-      {props.calendar ? <div data-testid="newsletters-calendar-panel">{props.calendar}</div> : null}
-      {props.assetSelector ? <div data-testid="newsletters-format-panel">{props.assetSelector}</div> : null}
-      {props.preview ? <div data-testid="newsletters-preview-panel">{props.preview}</div> : null}
-      {props.children}
-    </section>
-  )),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -43,10 +29,6 @@ vi.mock('@/lib/api', async () => {
     fetchNewsletters: fetchNewslettersMock,
   };
 });
-
-vi.mock('@/components/newsletter/newsletters-workspace', () => ({
-  NewslettersWorkspace: newslettersWorkspaceMock,
-}));
 
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
   NewsletterDateCalendar: ({ selectedSlug }: { selectedSlug: string }) => (
@@ -123,16 +105,14 @@ afterEach(() => {
   fetchNewsletterCalendarMock.mockReset();
   fetchNewsletterDetailMock.mockReset();
   fetchNewslettersMock.mockReset();
-  newslettersWorkspaceMock.mockReset();
 });
 
-test('route owns the newsletters workspace shell around calendar and preview boundaries', async () => {
+test('route renders calendar, format, and preview panels in order around the page boundaries', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
-  const workspace = screen.getByTestId('newsletters-workspace');
-  const calendarPanel = within(workspace).getByTestId('newsletters-calendar-panel');
-  const formatPanel = within(workspace).getByTestId('newsletters-format-panel');
-  const previewPanel = within(workspace).getByTestId('newsletters-preview-panel');
+  const calendarPanel = screen.getByTestId('newsletters-calendar-panel');
+  const formatPanel = screen.getByTestId('newsletters-format-panel');
+  const previewPanel = screen.getByTestId('newsletters-preview-panel');
 
   expect(calendarPanel.compareDocumentPosition(formatPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(formatPanel.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

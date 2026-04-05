@@ -10,7 +10,7 @@ test('renders a dominant preview panel with stable wrapper identity, title, and 
     </NewsletterPreviewPanel>,
   );
 
-  const panel = screen.getByTestId('newsletter-preview-panel');
+  const panel = screen.getByTestId('newsletters-preview-panel');
 
   expect(within(panel).getByText('Preview')).toBeInTheDocument();
   expect(within(panel).getByRole('heading', { name: 'Preview Title' })).toBeInTheDocument();
