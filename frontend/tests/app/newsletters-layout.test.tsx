@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
@@ -32,18 +32,13 @@ vi.mock('@/lib/api', async () => {
 
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
   NewsletterDateCalendar: ({ selectedSlug }: { selectedSlug: string }) => (
-    <div data-testid="newsletter-date-calendar-boundary">{selectedSlug}</div>
+    <section data-testid="newsletters-calendar-panel" data-selected-slug={selectedSlug} />
   ),
 }));
 
-vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
-  NewsletterDetailClient: ({ newsletter, initialContentHtml }: { newsletter: NewsletterDetail; initialContentHtml?: string }) => (
-    <div>
-      <div data-testid="newsletter-detail-client-boundary">{newsletter.title}</div>
-      <div data-testid="newsletter-detail-html-boundary">{initialContentHtml ?? ''}</div>
-    </div>
-  ),
-}));
+vi.mock('@/components/newsletter/newsletters-workspace', () => ({
+  NewslettersWorkspace: () => <section data-testid="newsletters-workspace" />,
+}), { virtual: true });
 
 const detail: NewsletterDetail = {
   id: 1,
@@ -107,16 +102,12 @@ afterEach(() => {
   fetchNewslettersMock.mockReset();
 });
 
-test('route renders calendar, format, and preview panels in order around the page boundaries', async () => {
+test('route composes a route-owned workspace boundary after the calendar panel', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
   const calendarPanel = screen.getByTestId('newsletters-calendar-panel');
-  const formatPanel = screen.getByTestId('newsletters-format-panel');
-  const previewPanel = screen.getByTestId('newsletters-preview-panel');
+  const workspace = screen.getByTestId('newsletters-workspace');
 
-  expect(calendarPanel.compareDocumentPosition(formatPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(formatPanel.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(within(calendarPanel).getByTestId('newsletter-date-calendar-boundary')).toHaveTextContent(detail.slug);
-  expect(within(previewPanel).getByTestId('newsletter-detail-client-boundary')).toHaveTextContent(detail.title);
-  expect(within(previewPanel).getByTestId('newsletter-detail-html-boundary')).toHaveTextContent('<h1>hello</h1>');
+  expect(calendarPanel).toHaveAttribute('data-selected-slug', detail.slug);
+  expect(calendarPanel.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
