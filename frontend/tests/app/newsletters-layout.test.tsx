@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
@@ -10,12 +10,26 @@ const {
   fetchNewsletterCalendarMock,
   fetchNewsletterDetailMock,
   fetchNewslettersMock,
+  newslettersWorkspaceMock,
 } = vi.hoisted(() => ({
   fetchLatestNewsletterMock: vi.fn(),
   fetchNewsletterAssetContentMock: vi.fn(),
   fetchNewsletterCalendarMock: vi.fn(),
   fetchNewsletterDetailMock: vi.fn(),
   fetchNewslettersMock: vi.fn(),
+  newslettersWorkspaceMock: vi.fn((props: {
+    children?: React.ReactNode;
+    calendar?: React.ReactNode;
+    assetSelector?: React.ReactNode;
+    preview?: React.ReactNode;
+  }) => (
+    <section data-testid="newsletters-workspace">
+      {props.calendar ? <div data-testid="newsletters-calendar-panel">{props.calendar}</div> : null}
+      {props.assetSelector ? <div data-testid="newsletters-format-panel">{props.assetSelector}</div> : null}
+      {props.preview ? <div data-testid="newsletters-preview-panel">{props.preview}</div> : null}
+      {props.children}
+    </section>
+  )),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -29,6 +43,25 @@ vi.mock('@/lib/api', async () => {
     fetchNewsletters: fetchNewslettersMock,
   };
 });
+
+vi.mock('@/components/newsletter/newsletters-workspace', () => ({
+  NewslettersWorkspace: newslettersWorkspaceMock,
+}));
+
+vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
+  NewsletterDateCalendar: ({ selectedSlug }: { selectedSlug: string }) => (
+    <div data-testid="newsletter-date-calendar-boundary">{selectedSlug}</div>
+  ),
+}));
+
+vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
+  NewsletterDetailClient: ({ newsletter, initialContentHtml }: { newsletter: NewsletterDetail; initialContentHtml?: string }) => (
+    <div>
+      <div data-testid="newsletter-detail-client-boundary">{newsletter.title}</div>
+      <div data-testid="newsletter-detail-html-boundary">{initialContentHtml ?? ''}</div>
+    </div>
+  ),
+}));
 
 const detail: NewsletterDetail = {
   id: 1,
@@ -90,15 +123,20 @@ afterEach(() => {
   fetchNewsletterCalendarMock.mockReset();
   fetchNewsletterDetailMock.mockReset();
   fetchNewslettersMock.mockReset();
+  newslettersWorkspaceMock.mockReset();
 });
 
-test('renders calendar, format, and preview panels in order', async () => {
+test('route owns the newsletters workspace shell around calendar and preview boundaries', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
-  const calendarPanel = screen.getByTestId('newsletters-calendar-panel');
-  const formatPanel = screen.getByTestId('newsletters-format-panel');
-  const previewPanel = screen.getByTestId('newsletters-preview-panel');
+  const workspace = screen.getByTestId('newsletters-workspace');
+  const calendarPanel = within(workspace).getByTestId('newsletters-calendar-panel');
+  const formatPanel = within(workspace).getByTestId('newsletters-format-panel');
+  const previewPanel = within(workspace).getByTestId('newsletters-preview-panel');
 
   expect(calendarPanel.compareDocumentPosition(formatPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(formatPanel.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(calendarPanel).getByTestId('newsletter-date-calendar-boundary')).toHaveTextContent(detail.slug);
+  expect(within(previewPanel).getByTestId('newsletter-detail-client-boundary')).toHaveTextContent(detail.title);
+  expect(within(previewPanel).getByTestId('newsletter-detail-html-boundary')).toHaveTextContent('<h1>hello</h1>');
 });
