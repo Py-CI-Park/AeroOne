@@ -32,13 +32,15 @@ vi.mock('@/lib/api', async () => {
 
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
   NewsletterDateCalendar: ({ selectedSlug }: { selectedSlug: string }) => (
-    <section data-testid="newsletters-calendar-panel" data-selected-slug={selectedSlug} />
+    <div data-testid="newsletter-date-calendar" data-selected-slug={selectedSlug} />
   ),
 }));
 
-vi.mock('@/components/newsletter/newsletters-workspace', () => ({
-  NewslettersWorkspace: () => <section data-testid="newsletters-workspace" />,
-}), { virtual: true });
+vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
+  NewsletterDetailClient: ({ newsletter }: { newsletter: NewsletterDetail }) => (
+    <div data-testid="newsletter-detail-client">{newsletter.title}</div>
+  ),
+}));
 
 const detail: NewsletterDetail = {
   id: 1,
@@ -102,12 +104,18 @@ afterEach(() => {
   fetchNewslettersMock.mockReset();
 });
 
-test('route composes a route-owned workspace boundary after the calendar panel', async () => {
+test('route exposes calendar, format, and preview shell panels in order', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
   const calendarPanel = screen.getByTestId('newsletters-calendar-panel');
-  const workspace = screen.getByTestId('newsletters-workspace');
+  const formatPanel = screen.getByTestId('newsletters-format-panel');
+  const previewPanel = screen.getByTestId('newsletters-preview-panel');
+  const calendar = screen.getByTestId('newsletter-date-calendar');
+  const detailClient = screen.getByTestId('newsletter-detail-client');
 
-  expect(calendarPanel).toHaveAttribute('data-selected-slug', detail.slug);
-  expect(calendarPanel.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(calendar).toHaveAttribute('data-selected-slug', detail.slug);
+  expect(calendarPanel).toContainElement(calendar);
+  expect(previewPanel).toContainElement(detailClient);
+  expect(calendarPanel.compareDocumentPosition(formatPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(formatPanel.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
