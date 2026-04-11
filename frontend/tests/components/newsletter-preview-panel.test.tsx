@@ -12,6 +12,8 @@ test('renders a dominant preview panel with stable wrapper identity, title, and 
 
   const panel = screen.getByTestId('newsletters-preview-panel');
 
+  expect(panel).toHaveClass('bg-white');
+  expect(panel.className).not.toContain('bg-slate-900');
   expect(within(panel).getByText('Preview')).toBeInTheDocument();
   expect(within(panel).getByRole('heading', { name: 'Preview Title' })).toBeInTheDocument();
   expect(within(panel).getByText('HTML')).toBeInTheDocument();

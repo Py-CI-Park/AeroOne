@@ -20,6 +20,8 @@ test('renders report-style format cards with explicit asset choices and selected
   const markdownButton = within(panel).getByRole('button', { name: /MARKDOWN/ });
   const pdfButton = within(panel).getByRole('button', { name: /PDF/ });
 
+  expect(panel).toHaveClass('bg-white');
+  expect(panel.className).not.toContain('bg-slate-900');
   expect(within(panel).getByText('Report format')).toBeInTheDocument();
   expect(within(panel).getByRole('heading', { name: 'HTML / Markdown / PDF 선택' })).toBeInTheDocument();
   expect(within(panel).getByText('HT')).toBeInTheDocument();

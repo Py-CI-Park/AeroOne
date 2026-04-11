@@ -14,9 +14,12 @@ it('shows the calendar grid by default and can collapse or expand the top calend
     />,
   );
 
+  const panel = screen.getByTestId('newsletter-date-calendar-panel');
   const toggle = screen.getByRole('button', { name: '달력 접기' });
   const calendarGrid = screen.getByTestId('newsletter-calendar-grid');
 
+  expect(panel).toHaveClass('bg-white');
+  expect(panel.className).not.toContain('bg-slate-900');
   expect(screen.getByRole('link', { name: /26/ })).toHaveAttribute(
     'href',
     '/newsletters?slug=newsletter-20260326',
