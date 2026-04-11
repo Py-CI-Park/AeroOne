@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 
 import { NewsletterAssetSelector } from '@/components/newsletter/newsletter-asset-selector';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
@@ -8,9 +8,11 @@ import { NewsletterPreviewPanel } from '@/components/newsletter/newsletter-previ
 import type { NewsletterDetail } from '@/lib/types';
 
 export function NewslettersWorkspace({
+  calendarPanel,
   newsletter,
   initialContentHtml = '',
 }: {
+  calendarPanel?: ReactNode;
   newsletter: NewsletterDetail;
   initialContentHtml?: string;
 }) {
@@ -21,12 +23,18 @@ export function NewslettersWorkspace({
   const [selectedAsset, setSelectedAsset] = useState(newsletter.default_asset_type);
 
   return (
-    <div data-testid="newsletters-workspace" className="space-y-6">
-      <NewsletterAssetSelector
-        availableAssetTypes={availableAssetTypes}
-        selectedAsset={selectedAsset}
-        onChange={setSelectedAsset}
-      />
+    <div data-testid="newsletters-workspace" className="space-y-3">
+      <div
+        data-testid="newsletters-control-grid"
+        className={`grid gap-3 ${calendarPanel ? 'lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]' : ''}`}
+      >
+        {calendarPanel}
+        <NewsletterAssetSelector
+          availableAssetTypes={availableAssetTypes}
+          selectedAsset={selectedAsset}
+          onChange={setSelectedAsset}
+        />
+      </div>
 
       <NewsletterPreviewPanel title={newsletter.title} selectedAsset={selectedAsset}>
         <NewsletterDetailClient

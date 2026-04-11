@@ -73,13 +73,14 @@ export default async function NewslettersPage({
       ) : null}
 
       {activeDetail ? (
-        <div className="space-y-6">
-          <section data-testid="newsletters-calendar-panel">
-            <NewsletterDateCalendar entries={calendarEntries} selectedSlug={activeDetail.slug} />
-          </section>
-
+        <div>
           <NewslettersWorkspace
             key={activeDetail.slug}
+            calendarPanel={(
+              <section data-testid="newsletters-calendar-panel">
+                <NewsletterDateCalendar entries={calendarEntries} selectedSlug={activeDetail.slug} />
+              </section>
+            )}
             newsletter={activeDetail}
             initialContentHtml={initialContentHtml}
           />

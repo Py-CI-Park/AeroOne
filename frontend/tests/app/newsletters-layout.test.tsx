@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
@@ -104,9 +104,10 @@ afterEach(() => {
   fetchNewslettersMock.mockReset();
 });
 
-test('route exposes calendar, format, and preview shell panels in order', async () => {
+test('route exposes a report-style top control grid and a lower preview panel', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
+  const controlGrid = screen.getByTestId('newsletters-control-grid');
   const calendarPanel = screen.getByTestId('newsletters-calendar-panel');
   const formatPanel = screen.getByTestId('newsletters-format-panel');
   const previewPanel = screen.getByTestId('newsletters-preview-panel');
@@ -115,7 +116,9 @@ test('route exposes calendar, format, and preview shell panels in order', async 
 
   expect(calendar).toHaveAttribute('data-selected-slug', detail.slug);
   expect(calendarPanel).toContainElement(calendar);
+  expect(controlGrid).toContainElement(calendarPanel);
+  expect(controlGrid).toContainElement(formatPanel);
   expect(previewPanel).toContainElement(detailClient);
-  expect(calendarPanel.compareDocumentPosition(formatPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(formatPanel.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(formatPanel).getByRole('heading', { name: 'HTML / Markdown / PDF 선택' })).toBeInTheDocument();
+  expect(controlGrid.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

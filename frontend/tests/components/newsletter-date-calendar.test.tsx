@@ -1,9 +1,9 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 
-it('shows the calendar grid by default without a dedicated open toggle', () => {
+it('shows the calendar grid by default and can collapse or expand the top calendar panel', () => {
   render(
     <NewsletterDateCalendar
       selectedSlug="newsletter-20260326"
@@ -14,6 +14,9 @@ it('shows the calendar grid by default without a dedicated open toggle', () => {
     />,
   );
 
+  const toggle = screen.getByRole('button', { name: '달력 접기' });
+  const calendarGrid = screen.getByTestId('newsletter-calendar-grid');
+
   expect(screen.getByRole('link', { name: /26/ })).toHaveAttribute(
     'href',
     '/newsletters?slug=newsletter-20260326',
@@ -23,6 +26,15 @@ it('shows the calendar grid by default without a dedicated open toggle', () => {
   ['일', '월', '화', '수', '목', '금', '토'].forEach((weekday) => {
     expect(screen.getByText(weekday)).toBeInTheDocument();
   });
-  expect(screen.getAllByRole('button')).toHaveLength(2);
-  expect(screen.queryByRole('button', { name: /달력 열기|달력 닫기/ })).not.toBeInTheDocument();
+  expect(calendarGrid).toBeVisible();
+
+  fireEvent.click(toggle);
+
+  expect(screen.getByRole('button', { name: '달력 펼치기' })).toHaveAttribute('aria-expanded', 'false');
+  expect(calendarGrid).not.toBeVisible();
+
+  fireEvent.click(screen.getByRole('button', { name: '달력 펼치기' }));
+
+  expect(screen.getByRole('button', { name: '달력 접기' })).toHaveAttribute('aria-expanded', 'true');
+  expect(calendarGrid).toBeVisible();
 });

@@ -78,9 +78,9 @@ test('resets the selected asset to the new newsletter default when the newslette
   );
 
   const formatPanel = screen.getByTestId('newsletters-format-panel');
-  fireEvent.click(within(formatPanel).getByRole('button', { name: 'MARKDOWN' }));
+  fireEvent.click(within(formatPanel).getByRole('button', { name: /MARKDOWN/ }));
 
-  expect(within(formatPanel).getByRole('button', { name: 'MARKDOWN' })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(formatPanel).getByRole('button', { name: /MARKDOWN/ })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByTestId('newsletter-detail-client')).toHaveAttribute('data-selected-asset', 'markdown');
 
   rerender(
@@ -92,8 +92,8 @@ test('resets the selected asset to the new newsletter default when the newslette
   );
 
   const rerenderedFormatPanel = screen.getByTestId('newsletters-format-panel');
-  expect(within(rerenderedFormatPanel).getByRole('button', { name: 'HTML' })).toHaveAttribute('aria-pressed', 'true');
-  expect(within(rerenderedFormatPanel).getByRole('button', { name: 'MARKDOWN' })).toHaveAttribute('aria-pressed', 'false');
+  expect(within(rerenderedFormatPanel).getByRole('button', { name: /HTML/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(rerenderedFormatPanel).getByRole('button', { name: /MARKDOWN/ })).toHaveAttribute('aria-pressed', 'false');
   expect(screen.getByTestId('newsletter-detail-client')).toHaveAttribute('data-slug', 'second-newsletter');
   expect(screen.getByTestId('newsletter-detail-client')).toHaveAttribute('data-selected-asset', 'html');
 });
