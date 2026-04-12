@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 
 it('shows the calendar grid by default and can collapse or expand the top calendar panel', () => {
-  render(
+  const { container } = render(
     <NewsletterDateCalendar
       selectedSlug="newsletter-20260326"
       entries={[
@@ -14,12 +14,12 @@ it('shows the calendar grid by default and can collapse or expand the top calend
     />,
   );
 
-  const panel = screen.getByTestId('newsletter-date-calendar-panel');
+  const panel = container.querySelector('section');
   const toggle = screen.getByRole('button', { name: '달력 접기' });
   const calendarGrid = screen.getByTestId('newsletter-calendar-grid');
 
   expect(panel).toHaveClass('bg-white');
-  expect(panel.className).not.toContain('bg-slate-900');
+  expect(panel?.className).not.toContain('bg-slate-900');
   expect(screen.getByRole('link', { name: /26/ })).toHaveAttribute(
     'href',
     '/newsletters?slug=newsletter-20260326',
