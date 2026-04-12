@@ -11,6 +11,7 @@ import {
   fetchNewsletterDetail,
   fetchNewsletters,
 } from '@/lib/api';
+import { resolveNewsletterTheme } from '@/lib/theme';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -62,9 +63,10 @@ export default async function NewslettersPage({
   }
 
   const activeDetail = detail;
+  const newsletterTheme = resolveNewsletterTheme();
 
   return (
-    <AppShell title="뉴스레터 서비스" contentClassName="max-w-[1600px]">
+    <AppShell title="뉴스레터 서비스" contentClassName="max-w-[1600px]" theme={newsletterTheme}>
       {errorMessage ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           뉴스레터 목록을 불러오지 못했습니다. 백엔드 실행 상태와 포트(18437)를 확인해주세요.
@@ -78,11 +80,12 @@ export default async function NewslettersPage({
             key={activeDetail.slug}
             calendarPanel={(
               <section data-testid="newsletters-calendar-panel">
-                <NewsletterDateCalendar entries={calendarEntries} selectedSlug={activeDetail.slug} />
+                <NewsletterDateCalendar entries={calendarEntries} selectedSlug={activeDetail.slug} theme={newsletterTheme} />
               </section>
             )}
             newsletter={activeDetail}
             initialContentHtml={initialContentHtml}
+            theme={newsletterTheme}
           />
         </div>
       ) : (

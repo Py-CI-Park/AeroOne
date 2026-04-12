@@ -19,3 +19,16 @@ test('renders a dominant preview panel with stable wrapper identity, title, and 
   expect(within(panel).getByText('HTML')).toBeInTheDocument();
   expect(within(panel).getByTestId('preview-body')).toBeInTheDocument();
 });
+
+test('renders the preview panel with dark theme classes', () => {
+  render(
+    <NewsletterPreviewPanel title="Dark Preview" selectedAsset="pdf" theme="dark">
+      <div data-testid="preview-body">body</div>
+    </NewsletterPreviewPanel>,
+  );
+
+  const panel = screen.getByTestId('newsletters-preview-panel');
+
+  expect(panel).toHaveClass('bg-slate-900/95');
+  expect(within(panel).getByRole('heading', { name: 'Dark Preview' })).toHaveClass('text-slate-100');
+});

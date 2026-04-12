@@ -2,6 +2,7 @@ import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import { fetchNewsletterAssetContent, fetchNewsletterDetail } from '@/lib/api';
+import { resolveNewsletterTheme } from '@/lib/theme';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,9 +23,16 @@ export default async function NewsletterDetailPage({ params }: { params: Promise
     }
   }
 
+  const newsletterTheme = resolveNewsletterTheme();
+
   return (
-    <AppShell title={detail.title}>
-      <NewslettersWorkspace key={detail.slug} newsletter={detail} initialContentHtml={initialContentHtml} />
+    <AppShell title={detail.title} theme={newsletterTheme}>
+      <NewslettersWorkspace
+        key={detail.slug}
+        newsletter={detail}
+        initialContentHtml={initialContentHtml}
+        theme={newsletterTheme}
+      />
     </AppShell>
   );
 }

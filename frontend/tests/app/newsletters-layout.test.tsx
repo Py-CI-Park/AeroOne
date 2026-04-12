@@ -96,6 +96,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   fetchLatestNewsletterMock.mockReset();
   fetchNewsletterAssetContentMock.mockReset();
@@ -121,4 +122,14 @@ test('route exposes a report-style top control grid and a lower preview panel', 
   expect(previewPanel).toContainElement(detailClient);
   expect(within(formatPanel).getByRole('heading', { name: 'HTML / Markdown / PDF 선택' })).toBeInTheDocument();
   expect(controlGrid.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test('route renders dark theme when NEWSLETTERS_THEME is dark', async () => {
+  vi.stubEnv('NEWSLETTERS_THEME', 'dark');
+
+  render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-950');
+  expect(screen.getByTestId('newsletters-format-panel')).toHaveClass('bg-slate-900/95');
+  expect(screen.getByTestId('newsletters-preview-panel')).toHaveClass('bg-slate-900/95');
 });

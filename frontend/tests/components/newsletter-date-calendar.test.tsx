@@ -3,14 +3,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 
-it('shows the calendar grid by default and can collapse or expand the top calendar panel', () => {
+const entries = [
+  { date: '2026-03-26', slug: 'newsletter-20260326', title: '2026-03-26 뉴스레터', source_type: 'html' },
+  { date: '2026-03-25', slug: 'newsletter-20260325', title: '2026-03-25 뉴스레터', source_type: 'html' },
+] as const;
+
+it('keeps the calendar light while preserving collapse and expand behavior', () => {
   const { container } = render(
     <NewsletterDateCalendar
       selectedSlug="newsletter-20260326"
-      entries={[
-        { date: '2026-03-26', slug: 'newsletter-20260326', title: '2026-03-26 뉴스레터', source_type: 'html' },
-        { date: '2026-03-25', slug: 'newsletter-20260325', title: '2026-03-25 뉴스레터', source_type: 'html' },
-      ]}
+      entries={[...entries]}
     />,
   );
 
@@ -40,4 +42,20 @@ it('shows the calendar grid by default and can collapse or expand the top calend
 
   expect(screen.getByRole('button', { name: '달력 접기' })).toHaveAttribute('aria-expanded', 'true');
   expect(calendarGrid).toBeVisible();
+});
+
+it('can render the calendar panel with dark theme classes', () => {
+  const { container } = render(
+    <NewsletterDateCalendar
+      theme="dark"
+      selectedSlug="newsletter-20260326"
+      entries={[entries[0]]}
+    />,
+  );
+
+  const panel = container.querySelector('section');
+
+  expect(panel).toHaveClass('bg-slate-900/95');
+  expect(screen.getByRole('button', { name: '달력 접기' })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByTestId('newsletter-calendar-grid')).toBeVisible();
 });

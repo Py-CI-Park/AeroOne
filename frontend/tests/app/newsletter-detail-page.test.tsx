@@ -22,9 +22,17 @@ vi.mock('@/lib/api', async () => {
 });
 
 vi.mock('@/components/newsletter/newsletters-workspace', () => ({
-  NewslettersWorkspace: ({ newsletter, initialContentHtml }: { newsletter: NewsletterDetail; initialContentHtml?: string }) => (
+  NewslettersWorkspace: ({
+    newsletter,
+    initialContentHtml,
+    theme,
+  }: {
+    newsletter: NewsletterDetail;
+    initialContentHtml?: string;
+    theme?: string;
+  }) => (
     <div>
-      <div data-testid="newsletters-workspace">{newsletter.title}</div>
+      <div data-testid="newsletters-workspace" data-theme={theme}>{newsletter.title}</div>
       <div data-testid="newsletter-detail-html">{initialContentHtml ?? ''}</div>
     </div>
   ),

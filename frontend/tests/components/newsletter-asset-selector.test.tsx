@@ -34,3 +34,19 @@ test('renders report-style format cards with explicit asset choices and selected
 
   expect(onChange).toHaveBeenCalledWith('pdf' satisfies AssetType);
 });
+
+test('renders report-style format cards with dark theme classes', () => {
+  render(
+    <NewsletterAssetSelector
+      theme="dark"
+      availableAssetTypes={['html', 'markdown', 'pdf']}
+      selectedAsset="pdf"
+      onChange={vi.fn()}
+    />,
+  );
+
+  const panel = screen.getByTestId('newsletters-format-panel');
+
+  expect(panel).toHaveClass('bg-slate-900/95');
+  expect(within(panel).getByRole('button', { name: /PDF/ })).toHaveAttribute('aria-pressed', 'true');
+});
