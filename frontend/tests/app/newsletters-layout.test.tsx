@@ -105,7 +105,7 @@ afterEach(() => {
   fetchNewslettersMock.mockReset();
 });
 
-test('route exposes a report-style top control grid and nav theme selector', async () => {
+test('route exposes a report-style top control grid and single nav theme toggle', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
   const controlGrid = screen.getByTestId('newsletters-control-grid');
@@ -114,17 +114,16 @@ test('route exposes a report-style top control grid and nav theme selector', asy
   const previewPanel = screen.getByTestId('newsletters-preview-panel');
   const calendar = screen.getByTestId('newsletter-date-calendar');
   const detailClient = screen.getByTestId('newsletter-detail-client');
+  const darkToggle = screen.getByRole('link', { name: '다크 테마로 전환' });
 
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
   expect(screen.queryByText('화면 테마 선택')).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '라이트 테마' })).toHaveAttribute(
-    'href',
-    `/newsletters?slug=${detail.slug}&theme=light`,
-  );
-  expect(screen.getByRole('link', { name: '다크 테마' })).toHaveAttribute(
+  expect(darkToggle).toHaveTextContent('☾');
+  expect(darkToggle).toHaveAttribute(
     'href',
     `/newsletters?slug=${detail.slug}&theme=dark`,
   );
+  expect(screen.queryByRole('link', { name: '라이트 테마로 전환' })).not.toBeInTheDocument();
   expect(calendar).toHaveAttribute('data-selected-slug', detail.slug);
   expect(calendarPanel).toContainElement(calendar);
   expect(controlGrid).toContainElement(calendarPanel);
@@ -151,5 +150,8 @@ test('query theme overrides NEWSLETTERS_THEME environment default', async () => 
 
   expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-100');
   expect(screen.getByTestId('newsletters-format-panel')).toHaveClass('bg-white');
-  expect(screen.getByRole('link', { name: '라이트 테마' })).toHaveAttribute('aria-current', 'true');
+  expect(screen.getByRole('link', { name: '다크 테마로 전환' })).toHaveAttribute(
+    'href',
+    `/newsletters?slug=${detail.slug}&theme=dark`,
+  );
 });

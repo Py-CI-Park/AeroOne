@@ -3,32 +3,24 @@ import { render, screen } from '@testing-library/react';
 
 import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 
-test('renders compact sun and moon links without slug', () => {
+test('renders one moon icon that switches light theme to dark', () => {
   render(<NewsletterThemeSelector theme="light" />);
 
   const selector = screen.getByTestId('newsletter-theme-selector');
-  const light = screen.getByRole('link', { name: '라이트 테마' });
-  const dark = screen.getByRole('link', { name: '다크 테마' });
+  const toggle = screen.getByRole('link', { name: '다크 테마로 전환' });
 
   expect(selector).toBeInTheDocument();
-  expect(selector).not.toHaveTextContent('화면 테마 선택');
-  expect(selector).not.toHaveTextContent('Light');
-  expect(selector).not.toHaveTextContent('Dark');
-  expect(light).toHaveTextContent('☀');
-  expect(dark).toHaveTextContent('☾');
-  expect(light).toHaveAttribute('href', '/newsletters?theme=light');
-  expect(dark).toHaveAttribute('href', '/newsletters?theme=dark');
-  expect(light).toHaveAttribute('aria-current', 'true');
-  expect(dark).not.toHaveAttribute('aria-current');
+  expect(toggle).toHaveTextContent('☾');
+  expect(toggle).toHaveAttribute('href', '/newsletters?theme=dark');
+  expect(screen.queryByRole('link', { name: '라이트 테마로 전환' })).not.toBeInTheDocument();
 });
 
-test('preserves slug in compact theme links', () => {
+test('renders one sun icon that switches dark theme to light and preserves slug', () => {
   render(<NewsletterThemeSelector theme="dark" slug="newsletter-20260330" />);
 
-  const light = screen.getByRole('link', { name: '라이트 테마' });
-  const dark = screen.getByRole('link', { name: '다크 테마' });
+  const toggle = screen.getByRole('link', { name: '라이트 테마로 전환' });
 
-  expect(light).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=light');
-  expect(dark).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=dark');
-  expect(dark).toHaveAttribute('aria-current', 'true');
+  expect(toggle).toHaveTextContent('☀');
+  expect(toggle).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=light');
+  expect(screen.queryByRole('link', { name: '다크 테마로 전환' })).not.toBeInTheDocument();
 });

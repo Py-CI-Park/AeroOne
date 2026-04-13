@@ -44,11 +44,10 @@ test('renders compact theme selector after login when opted in', () => {
 
   const login = screen.getByRole('link', { name: '로그인' });
   const selector = screen.getByTestId('newsletter-theme-selector');
-  const light = screen.getByRole('link', { name: '라이트 테마' });
-  const dark = screen.getByRole('link', { name: '다크 테마' });
+  const toggle = screen.getByRole('link', { name: '라이트 테마로 전환' });
 
   expect(login.compareDocumentPosition(selector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(light).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=light');
-  expect(dark).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=dark');
-  expect(dark).toHaveAttribute('aria-current', 'true');
+  expect(toggle).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=light');
+  expect(toggle).toHaveTextContent('☀');
+  expect(screen.queryByRole('link', { name: '다크 테마로 전환' })).not.toBeInTheDocument();
 });

@@ -22,26 +22,19 @@ export function NewsletterThemeSelector({
   slug?: string;
   className?: string;
 }) {
+  const nextTheme: NewsletterTheme = theme === 'dark' ? 'light' : 'dark';
+  const label = nextTheme === 'dark' ? '다크 테마로 전환' : '라이트 테마로 전환';
+  const icon = nextTheme === 'dark' ? '☾' : '☀';
+
   return (
-    <span data-testid="newsletter-theme-selector" className={`inline-flex items-center gap-1 ${className}`}>
-      {(['light', 'dark'] as const).map((item) => {
-        const active = item === theme;
-        return (
-          <Link
-            key={item}
-            href={buildThemeHref(item, slug)}
-            aria-label={item === 'light' ? '라이트 테마' : '다크 테마'}
-            aria-current={active ? 'true' : undefined}
-            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs leading-none transition ${
-              active
-                ? 'border-slate-900 bg-slate-900 text-white'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700'
-            }`}
-          >
-            {item === 'light' ? '☀' : '☾'}
-          </Link>
-        );
-      })}
+    <span data-testid="newsletter-theme-selector" className={`inline-flex items-center ${className}`}>
+      <Link
+        href={buildThemeHref(nextTheme, slug)}
+        aria-label={label}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs leading-none text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+      >
+        {icon}
+      </Link>
     </span>
   );
 }
