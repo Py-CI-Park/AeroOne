@@ -1,10 +1,10 @@
-# Newsletters Theme Selector Implementation Plan
+# Newsletters Single-Port Theme Selector Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a visible Light / Dark selector to `/newsletters` and `/newsletters/[slug]` while keeping `NEWSLETTERS_THEME` as the port-level default.
+**Goal:** Add a visible Light / Dark selector to `/newsletters` and `/newsletters/[slug]` while running only one frontend on port `29501`.
 
-**Architecture:** Resolve theme from query string first, then environment variable, then `light`. Implement a server-rendered link selector so theme changes are visible, URL-addressable, and free of hydration mismatch risk.
+**Architecture:** Resolve theme from query string first, then optional environment fallback, then `light`. Implement a server-rendered link selector so one frontend instance can render both `?theme=light` and `?theme=dark`.
 
 **Tech Stack:** Next.js App Router, React, TypeScript, Tailwind CSS, Vitest, Testing Library
 
@@ -313,7 +313,7 @@ Render before workspace:
 
 - [ ] **Step 3: Update route tests**
 
-In `frontend/tests/app/newsletters-layout.test.tsx`, add assertions:
+In `frontend/tests/app/newsletters-layout.test.tsx`, assert the selector and query precedence:
 
 ```tsx
 expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
@@ -326,8 +326,6 @@ expect(screen.getByRole('link', { name: 'Dark' })).toHaveAttribute(
   `/newsletters?slug=${detail.slug}&theme=dark`,
 );
 ```
-
-Add query precedence test:
 
 ```tsx
 test('query theme overrides NEWSLETTERS_THEME environment default', async () => {
@@ -351,7 +349,7 @@ vi.mock('@/components/newsletter/newsletter-theme-selector', () => ({
 }));
 ```
 
-Update calls to include `searchParams`:
+Update the page call:
 
 ```tsx
 render(await NewsletterDetailPage({
@@ -381,7 +379,7 @@ Expected:
 
 ---
 
-### Task 4: Full Verification And Runtime Check
+### Task 4: Full Verification And Single-Port Runtime Check
 
 **Files:**
 - No additional source changes expected.
@@ -400,21 +398,25 @@ Expected:
 
 - all pass.
 
-- [ ] **Step 2: Runtime check**
+- [ ] **Step 2: Run one frontend port**
 
-Run latest build with:
+Use `start.bat` or `next start` on `29501`. Do not start `29503` for normal verification.
+
+Preferred:
 
 ```powershell
-$env:NEWSLETTERS_THEME='light'
+.\start.bat
+```
+
+Fallback if backend is already running and only frontend is needed:
+
+```powershell
 npx next start -p 29501 --hostname 127.0.0.1
 ```
 
-```powershell
-$env:NEWSLETTERS_THEME='dark'
-npx next start -p 29503 --hostname 127.0.0.1
-```
+- [ ] **Step 3: Verify single-port theme switching**
 
-Probe:
+Run:
 
 ```powershell
 function Probe($url, $label) {
@@ -423,39 +425,48 @@ function Probe($url, $label) {
   "${label}_STATUS=$($response.StatusCode)"
   "${label}_selector=$($content.Contains('newsletter-theme-selector'))"
   "${label}_dark-panel=$($content.Contains('bg-slate-900/95'))"
+  "${label}_dark-shell=$($content.Contains('bg-slate-950'))"
   "${label}_white-panel=$($content.Contains('bg-white'))"
 }
-Probe 'http://127.0.0.1:29501/newsletters' LIGHT_DEFAULT
-Probe 'http://127.0.0.1:29501/newsletters?theme=dark' LIGHT_QUERY_DARK
-Probe 'http://127.0.0.1:29503/newsletters' DARK_DEFAULT
-Probe 'http://127.0.0.1:29503/newsletters?theme=light' DARK_QUERY_LIGHT
+Probe 'http://127.0.0.1:29501/newsletters' DEFAULT_29501
+Probe 'http://127.0.0.1:29501/newsletters?theme=dark' DARK_QUERY_29501
+Probe 'http://127.0.0.1:29501/newsletters?theme=light' LIGHT_QUERY_29501
 ```
 
 Expected:
 
-- selector is present for all.
-- light default has no `bg-slate-900/95`.
-- light query dark has `bg-slate-900/95`.
-- dark default has `bg-slate-900/95`.
-- dark query light has `bg-white`.
+```text
+DEFAULT_29501_STATUS=200
+DEFAULT_29501_selector=True
+DEFAULT_29501_dark-panel=False
+DEFAULT_29501_white-panel=True
+DARK_QUERY_29501_STATUS=200
+DARK_QUERY_29501_selector=True
+DARK_QUERY_29501_dark-panel=True
+DARK_QUERY_29501_dark-shell=True
+LIGHT_QUERY_29501_STATUS=200
+LIGHT_QUERY_29501_selector=True
+LIGHT_QUERY_29501_dark-panel=False
+LIGHT_QUERY_29501_white-panel=True
+```
 
-- [ ] **Step 3: Commit with UTF-8 Korean message**
+- [ ] **Step 4: Commit with UTF-8 Korean message**
 
 Commit message:
 
 ```text
-뉴스레터 화면에 테마 선택 링크를 추가한다
+뉴스레터 단일 포트 테마 선택 흐름으로 정리한다
 
-NEWSLETTERS_THEME 기반 포트별 기본 테마를 유지하면서 사용자가 화면에서 Light와 Dark를 직접 선택할 수 있도록 query string 기반 selector를 추가했다.
-theme query는 환경변수보다 우선하며, slug가 있는 뉴스레터에서도 선택한 날짜를 유지한 채 테마를 바꿀 수 있다.
+프론트엔드를 여러 포트로 나누지 않고 29501 하나에서 Light와 Dark를 query string으로 선택하도록 spec과 plan을 정리했다.
+테마 선택 UI는 같은 포트의 /newsletters 화면에서 동작하며, NEWSLETTERS_THEME는 query가 없을 때의 선택적 기본값으로만 남긴다.
 
-Constraint: 화면에 테마 선택 UI가 보여야 했다
-Rejected: cookie/localStorage 기반 저장 | 서버 렌더링 구조에서 불필요하게 복잡하고 hydration 위험이 있다
+Constraint: 사용자는 여러 프론트엔드 포트가 아니라 하나의 포트에서 테마를 선택하길 원했다
+Rejected: 29503을 공식 다크 테마 포트로 유지 | 제품 동작과 다르고 검증 흐름을 혼란스럽게 만든다
 Confidence: 높음
 Scope-risk: 보통
 Reversibility: 깔끔함
-Directive: 테마 우선순위는 query -> NEWSLETTERS_THEME -> light 순서를 유지할 것
-Tested: npm run test; npm run typecheck; npm run build; runtime probes for 29501/29503 default and query override
+Directive: 정상 실행 검증은 29501 단일 포트에서 /newsletters, /newsletters?theme=dark, /newsletters?theme=light를 확인할 것
+Tested: npm run test; npm run typecheck; npm run build; single-port 29501 probes for default/dark/light query
 Not-tested: 사용자 최종 시각 승인 여부는 아직 받지 않았다
 ```
 
@@ -466,10 +477,10 @@ Use UTF-8 file with `git commit -F`.
 ## Self-Review
 
 Spec coverage:
-- Visible selector: Task 2 and Task 3.
-- Query overrides env: Task 1 and Task 3.
-- `/newsletters` and `[slug]`: Task 3.
-- Port defaults still work: Task 4.
+- Visible selector: Tasks 2-3.
+- Query overrides env: Tasks 1 and 3.
+- Single frontend port only: Task 4.
+- No official `29503`: Task 4.
 
 Placeholder scan:
 - No placeholders remain.
