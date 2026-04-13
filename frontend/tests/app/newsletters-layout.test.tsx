@@ -115,6 +115,15 @@ test('route exposes a report-style top control grid and a lower preview panel', 
   const calendar = screen.getByTestId('newsletter-date-calendar');
   const detailClient = screen.getByTestId('newsletter-detail-client');
 
+  expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Light' })).toHaveAttribute(
+    'href',
+    `/newsletters?slug=${detail.slug}&theme=light`,
+  );
+  expect(screen.getByRole('link', { name: 'Dark' })).toHaveAttribute(
+    'href',
+    `/newsletters?slug=${detail.slug}&theme=dark`,
+  );
   expect(calendar).toHaveAttribute('data-selected-slug', detail.slug);
   expect(calendarPanel).toContainElement(calendar);
   expect(controlGrid).toContainElement(calendarPanel);
@@ -132,4 +141,14 @@ test('route renders dark theme when NEWSLETTERS_THEME is dark', async () => {
   expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-950');
   expect(screen.getByTestId('newsletters-format-panel')).toHaveClass('bg-slate-900/95');
   expect(screen.getByTestId('newsletters-preview-panel')).toHaveClass('bg-slate-900/95');
+});
+
+test('query theme overrides NEWSLETTERS_THEME environment default', async () => {
+  vi.stubEnv('NEWSLETTERS_THEME', 'dark');
+
+  render(await NewslettersPage({ searchParams: Promise.resolve({ theme: 'light' }) }));
+
+  expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-100');
+  expect(screen.getByTestId('newsletters-format-panel')).toHaveClass('bg-white');
+  expect(screen.getByRole('link', { name: 'Light' })).toHaveAttribute('aria-current', 'true');
 });

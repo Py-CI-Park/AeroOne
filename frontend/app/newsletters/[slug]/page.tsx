@@ -1,13 +1,21 @@
 import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
+import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import { fetchNewsletterAssetContent, fetchNewsletterDetail } from '@/lib/api';
-import { resolveNewsletterTheme } from '@/lib/theme';
+import { resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
 
 export const dynamic = 'force-dynamic';
 
-export default async function NewsletterDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function NewsletterDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ theme?: string }>;
+}) {
   const { slug } = await params;
+  const query = await searchParams;
   const detail = await fetchNewsletterDetail(slug);
 
   let initialContentHtml = '';
@@ -23,10 +31,11 @@ export default async function NewsletterDetailPage({ params }: { params: Promise
     }
   }
 
-  const newsletterTheme = resolveNewsletterTheme();
+  const newsletterTheme = resolveNewsletterThemeFromSearchParam(query.theme);
 
   return (
     <AppShell title={detail.title} theme={newsletterTheme}>
+      <NewsletterThemeSelector theme={newsletterTheme} slug={detail.slug} />
       <NewslettersWorkspace
         key={detail.slug}
         newsletter={detail}

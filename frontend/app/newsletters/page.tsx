@@ -3,6 +3,7 @@ import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterList } from '@/components/newsletter/newsletter-list';
+import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import {
   fetchLatestNewsletter,
@@ -11,13 +12,14 @@ import {
   fetchNewsletterDetail,
   fetchNewsletters,
 } from '@/lib/api';
-import { resolveNewsletterTheme } from '@/lib/theme';
+import { resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 type SearchParams = {
   slug?: string;
+  theme?: string;
 };
 
 export default async function NewslettersPage({
@@ -63,7 +65,7 @@ export default async function NewslettersPage({
   }
 
   const activeDetail = detail;
-  const newsletterTheme = resolveNewsletterTheme();
+  const newsletterTheme = resolveNewsletterThemeFromSearchParam(params.theme);
 
   return (
     <AppShell title="뉴스레터 서비스" contentClassName="max-w-[1600px]" theme={newsletterTheme}>
@@ -73,6 +75,8 @@ export default async function NewslettersPage({
           <div className="mt-1 text-xs text-red-600">{errorMessage}</div>
         </div>
       ) : null}
+
+      <NewsletterThemeSelector theme={newsletterTheme} slug={activeDetail?.slug} />
 
       {activeDetail ? (
         <div>
