@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 
 import { AppShell } from '@/components/layout/app-shell';
 
-test('renders the default shell with light theme classes', () => {
+test('renders the default shell with light theme classes and no theme selector', () => {
   render(
     <AppShell title="Light Shell">
       <p>content</p>
@@ -17,6 +17,7 @@ test('renders the default shell with light theme classes', () => {
   expect(header).toHaveClass('bg-white');
   expect(screen.getByRole('heading', { name: 'Light Shell' })).toHaveClass('text-slate-900');
   expect(screen.getByText('사내 뉴스레터 / 문서 플랫폼')).toBeInTheDocument();
+  expect(screen.queryByTestId('newsletter-theme-selector')).not.toBeInTheDocument();
 });
 
 test('renders a dark shell when theme is dark', () => {
@@ -32,4 +33,22 @@ test('renders a dark shell when theme is dark', () => {
   expect(shell).toHaveClass('bg-slate-950');
   expect(header).toHaveClass('bg-slate-950');
   expect(screen.getByRole('heading', { name: 'Dark Shell' })).toHaveClass('text-slate-100');
+});
+
+test('renders compact theme selector after login when opted in', () => {
+  render(
+    <AppShell title="Theme Shell" theme="dark" showThemeSelector themeSlug="newsletter-20260330">
+      <p>content</p>
+    </AppShell>,
+  );
+
+  const login = screen.getByRole('link', { name: '로그인' });
+  const selector = screen.getByTestId('newsletter-theme-selector');
+  const light = screen.getByRole('link', { name: '라이트 테마' });
+  const dark = screen.getByRole('link', { name: '다크 테마' });
+
+  expect(login.compareDocumentPosition(selector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(light).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=light');
+  expect(dark).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=dark');
+  expect(dark).toHaveAttribute('aria-current', 'true');
 });

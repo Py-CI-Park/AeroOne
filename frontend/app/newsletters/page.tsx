@@ -3,7 +3,6 @@ import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterList } from '@/components/newsletter/newsletter-list';
-import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import {
   fetchLatestNewsletter,
@@ -68,15 +67,19 @@ export default async function NewslettersPage({
   const newsletterTheme = resolveNewsletterThemeFromSearchParam(params.theme);
 
   return (
-    <AppShell title="뉴스레터 서비스" contentClassName="max-w-[1600px]" theme={newsletterTheme}>
+    <AppShell
+      title="뉴스레터 서비스"
+      contentClassName="max-w-[1600px]"
+      theme={newsletterTheme}
+      showThemeSelector
+      themeSlug={activeDetail?.slug}
+    >
       {errorMessage ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           뉴스레터 목록을 불러오지 못했습니다. 백엔드 실행 상태와 포트(18437)를 확인해주세요.
           <div className="mt-1 text-xs text-red-600">{errorMessage}</div>
         </div>
       ) : null}
-
-      <NewsletterThemeSelector theme={newsletterTheme} slug={activeDetail?.slug} />
 
       {activeDetail ? (
         <div>

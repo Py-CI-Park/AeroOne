@@ -21,6 +21,32 @@ vi.mock('@/lib/api', async () => {
   };
 });
 
+vi.mock('@/components/layout/app-shell', () => ({
+  AppShell: ({
+    title,
+    children,
+    theme,
+    showThemeSelector,
+    themeSlug,
+  }: {
+    title: string;
+    children: React.ReactNode;
+    theme?: string;
+    showThemeSelector?: boolean;
+    themeSlug?: string;
+  }) => (
+    <div
+      data-testid="app-shell"
+      data-theme={theme}
+      data-show-theme-selector={String(Boolean(showThemeSelector))}
+      data-theme-slug={themeSlug}
+    >
+      <h1>{title}</h1>
+      {children}
+    </div>
+  ),
+}));
+
 vi.mock('@/components/newsletter/newsletters-workspace', () => ({
   NewslettersWorkspace: ({
     newsletter,
@@ -35,12 +61,6 @@ vi.mock('@/components/newsletter/newsletters-workspace', () => ({
       <div data-testid="newsletters-workspace" data-theme={theme}>{newsletter.title}</div>
       <div data-testid="newsletter-detail-html">{initialContentHtml ?? ''}</div>
     </div>
-  ),
-}));
-
-vi.mock('@/components/newsletter/newsletter-theme-selector', () => ({
-  NewsletterThemeSelector: ({ theme, slug }: { theme: string; slug?: string }) => (
-    <div data-testid="newsletter-theme-selector" data-theme={theme} data-slug={slug} />
   ),
 }));
 
@@ -86,8 +106,9 @@ test('renders newsletter detail page when asset html fetch fails', async () => {
   }));
 
   expect(screen.getByRole('heading', { name: detail.title })).toBeInTheDocument();
-  expect(screen.getByTestId('newsletter-theme-selector')).toHaveAttribute('data-theme', 'dark');
-  expect(screen.getByTestId('newsletter-theme-selector')).toHaveAttribute('data-slug', detail.slug);
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme', 'dark');
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-show-theme-selector', 'true');
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme-slug', detail.slug);
   expect(screen.getByTestId('newsletters-workspace')).toHaveTextContent(detail.title);
   expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('');
   expect(screen.queryByText('asset unavailable')).not.toBeInTheDocument();

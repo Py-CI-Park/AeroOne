@@ -105,7 +105,7 @@ afterEach(() => {
   fetchNewslettersMock.mockReset();
 });
 
-test('route exposes a report-style top control grid and a lower preview panel', async () => {
+test('route exposes a report-style top control grid and nav theme selector', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
   const controlGrid = screen.getByTestId('newsletters-control-grid');
@@ -116,11 +116,12 @@ test('route exposes a report-style top control grid and a lower preview panel', 
   const detailClient = screen.getByTestId('newsletter-detail-client');
 
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Light' })).toHaveAttribute(
+  expect(screen.queryByText('화면 테마 선택')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '라이트 테마' })).toHaveAttribute(
     'href',
     `/newsletters?slug=${detail.slug}&theme=light`,
   );
-  expect(screen.getByRole('link', { name: 'Dark' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: '다크 테마' })).toHaveAttribute(
     'href',
     `/newsletters?slug=${detail.slug}&theme=dark`,
   );
@@ -150,5 +151,5 @@ test('query theme overrides NEWSLETTERS_THEME environment default', async () => 
 
   expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-100');
   expect(screen.getByTestId('newsletters-format-panel')).toHaveClass('bg-white');
-  expect(screen.getByRole('link', { name: 'Light' })).toHaveAttribute('aria-current', 'true');
+  expect(screen.getByRole('link', { name: '라이트 테마' })).toHaveAttribute('aria-current', 'true');
 });

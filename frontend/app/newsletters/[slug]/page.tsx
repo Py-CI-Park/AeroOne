@@ -1,6 +1,5 @@
 import React from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import { fetchNewsletterAssetContent, fetchNewsletterDetail } from '@/lib/api';
 import { resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
@@ -34,8 +33,7 @@ export default async function NewsletterDetailPage({
   const newsletterTheme = resolveNewsletterThemeFromSearchParam(query.theme);
 
   return (
-    <AppShell title={detail.title} theme={newsletterTheme}>
-      <NewsletterThemeSelector theme={newsletterTheme} slug={detail.slug} />
+    <AppShell title={detail.title} theme={newsletterTheme} showThemeSelector themeSlug={detail.slug}>
       <NewslettersWorkspace
         key={detail.slug}
         newsletter={detail}

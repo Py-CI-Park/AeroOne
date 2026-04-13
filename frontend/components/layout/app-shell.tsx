@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 
+import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import type { NewsletterTheme } from '@/lib/theme';
 
 export function AppShell({
@@ -9,11 +10,15 @@ export function AppShell({
   children,
   contentClassName = 'max-w-6xl',
   theme = 'light',
+  showThemeSelector = false,
+  themeSlug,
 }: {
   title: string;
   children: ReactNode;
   contentClassName?: string;
   theme?: NewsletterTheme;
+  showThemeSelector?: boolean;
+  themeSlug?: string;
 }) {
   const dark = theme === 'dark';
 
@@ -41,6 +46,7 @@ export function AppShell({
             <Link href="/newsletters">뉴스레터</Link>
             <Link href="/admin/newsletters">관리자</Link>
             <Link href="/login">로그인</Link>
+            {showThemeSelector ? <NewsletterThemeSelector theme={theme} slug={themeSlug} /> : null}
           </nav>
         </div>
       </header>
