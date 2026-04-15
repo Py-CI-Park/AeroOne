@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 
+import type { NewsletterTheme } from '@/lib/theme';
 import type { NewsletterCalendarEntry } from '@/lib/types';
 
 type CalendarEntry = NewsletterCalendarEntry & {
@@ -16,10 +17,13 @@ function monthLabel(date: Date) {
 export function NewsletterDateCalendar({
   entries,
   selectedSlug,
+  theme = 'light',
 }: {
   entries: NewsletterCalendarEntry[];
   selectedSlug?: string;
+  theme?: NewsletterTheme;
 }) {
+  const dark = theme === 'dark';
   const parsedEntries = useMemo<CalendarEntry[]>(
     () =>
       entries.map((entry) => ({
@@ -46,6 +50,7 @@ export function NewsletterDateCalendar({
   );
 
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
+  const [open, setOpen] = useState(true);
   const [year, month] = (monthKeys[monthIndex] ?? monthKeys[0] ?? `${new Date().getFullYear()}-${new Date().getMonth()}`)
     .split('-')
     .map(Number);
@@ -68,19 +73,29 @@ export function NewsletterDateCalendar({
     cells.push({ day, entry: entryMap.get(day) });
   }
 
+  const navButtonClass = dark
+    ? 'rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 transition hover:border-slate-600 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-40'
+    : 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40';
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className={`rounded-xl border p-3 shadow-sm ${
+      dark ? 'border-slate-800 bg-slate-900/95 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
+    }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">발행 캘린더</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-900">{monthLabel(currentMonthDate)}</h2>
+          <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>Calendar</p>
+          <h2 className={`mt-1 text-lg font-semibold ${dark ? 'text-slate-100' : 'text-slate-900'}`}>{monthLabel(currentMonthDate)}</h2>
+          <p className={`mt-1 text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+            발행일을 선택하면 해당 뉴스레터 미리보기로 이동합니다.
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setMonthIndex((current) => Math.min(current + 1, monthKeys.length - 1))}
             disabled={monthIndex >= monthKeys.length - 1}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className={navButtonClass}
           >
             이전 달
           </button>
@@ -88,15 +103,26 @@ export function NewsletterDateCalendar({
             type="button"
             onClick={() => setMonthIndex((current) => Math.max(current - 1, 0))}
             disabled={monthIndex <= 0}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className={navButtonClass}
           >
             다음 달
+          </button>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="newsletter-calendar-grid"
+            onClick={() => setOpen((current) => !current)}
+            className={dark
+              ? 'rounded-lg border border-blue-500/40 bg-blue-950/40 px-3 py-2 text-sm text-blue-100 transition hover:border-blue-400/60 hover:bg-blue-950'
+              : 'rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 transition hover:border-blue-300 hover:bg-blue-100'}
+          >
+            {open ? '달력 접기' : '달력 펼치기'}
           </button>
         </div>
       </div>
 
-      <div className="mt-4">
-        <div className="mb-2 grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-400">
+      <div id="newsletter-calendar-grid" data-testid="newsletter-calendar-grid" hidden={!open} className="mt-4">
+        <div className={`mb-2 grid grid-cols-7 gap-2 text-center text-xs font-medium ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
           {['일', '월', '화', '수', '목', '금', '토'].map((label) => (
             <div key={label}>{label}</div>
           ))}
@@ -105,30 +131,47 @@ export function NewsletterDateCalendar({
         <div className="grid grid-cols-7 gap-2">
           {cells.map((cell, index) => {
             if (!cell.day) {
-              return <div key={`empty-${index}`} className="h-14 rounded-lg bg-slate-50" />;
+              return <div key={`empty-${index}`} className={`h-14 rounded-xl ${dark ? 'bg-slate-950/30' : 'bg-slate-50'}`} />;
             }
             if (!cell.entry) {
               return (
-                <div key={`inactive-${cell.day}`} className="flex h-14 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-300">
+                <div
+                  key={`inactive-${cell.day}`}
+                  className={dark
+                    ? 'flex h-14 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-950/60 text-sm text-slate-600'
+                    : 'flex h-14 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-sm text-slate-300'}
+                >
                   {cell.day}
                 </div>
               );
             }
 
             const isSelected = cell.entry.slug === selectedSlug;
+            const selectedClass = dark
+              ? 'border-blue-500/50 bg-blue-950/40 text-slate-50 shadow-[0_0_0_1px_rgba(59,130,246,0.25)]'
+              : 'border-slate-900 bg-slate-900 text-white shadow-sm';
+            const availableClass = dark
+              ? 'border-emerald-500/30 bg-slate-950 text-slate-100 hover:border-emerald-400/50 hover:bg-slate-900'
+              : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100';
+
             return (
               <Link
                 key={cell.entry.slug}
                 href={`/newsletters?slug=${cell.entry.slug}`}
-                className={`flex h-14 flex-col items-center justify-center rounded-lg border text-sm transition ${
-                  isSelected
-                    ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                    : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100'
+                className={`flex h-14 flex-col items-center justify-center rounded-xl border text-sm transition ${
+                  isSelected ? selectedClass : availableClass
                 }`}
                 title={cell.entry.title}
               >
                 <span className="font-semibold">{cell.day}</span>
-                <span className={`text-[10px] uppercase ${isSelected ? 'text-slate-200' : 'text-blue-500'}`}>{cell.entry.source_type}</span>
+                <span className={`text-[10px] uppercase ${
+                  dark
+                    ? isSelected ? 'text-blue-100' : 'text-emerald-300'
+                    : isSelected ? 'text-slate-200' : 'text-blue-500'
+                }`}
+                >
+                  {cell.entry.source_type}
+                </span>
               </Link>
             );
           })}

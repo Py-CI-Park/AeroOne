@@ -21,10 +21,44 @@ vi.mock('@/lib/api', async () => {
   };
 });
 
-vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
-  NewsletterDetailClient: ({ newsletter, initialContentHtml }: { newsletter: NewsletterDetail; initialContentHtml?: string }) => (
+vi.mock('@/components/layout/app-shell', () => ({
+  AppShell: ({
+    title,
+    children,
+    theme,
+    showThemeSelector,
+    themeSlug,
+  }: {
+    title: string;
+    children: React.ReactNode;
+    theme?: string;
+    showThemeSelector?: boolean;
+    themeSlug?: string;
+  }) => (
+    <div
+      data-testid="app-shell"
+      data-theme={theme}
+      data-show-theme-selector={String(Boolean(showThemeSelector))}
+      data-theme-slug={themeSlug}
+    >
+      <h1>{title}</h1>
+      {children}
+    </div>
+  ),
+}));
+
+vi.mock('@/components/newsletter/newsletters-workspace', () => ({
+  NewslettersWorkspace: ({
+    newsletter,
+    initialContentHtml,
+    theme,
+  }: {
+    newsletter: NewsletterDetail;
+    initialContentHtml?: string;
+    theme?: string;
+  }) => (
     <div>
-      <div data-testid="newsletter-detail-client">{newsletter.title}</div>
+      <div data-testid="newsletters-workspace" data-theme={theme}>{newsletter.title}</div>
       <div data-testid="newsletter-detail-html">{initialContentHtml ?? ''}</div>
     </div>
   ),
@@ -57,6 +91,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   fetchNewsletterAssetContentMock.mockReset();
   fetchNewsletterDetailMock.mockReset();
@@ -65,10 +100,16 @@ afterEach(() => {
 test('renders newsletter detail page when asset html fetch fails', async () => {
   fetchNewsletterAssetContentMock.mockRejectedValueOnce(new Error('asset unavailable'));
 
-  render(await NewsletterDetailPage({ params: Promise.resolve({ slug: detail.slug }) }));
+  render(await NewsletterDetailPage({
+    params: Promise.resolve({ slug: detail.slug }),
+    searchParams: Promise.resolve({ theme: 'dark' }),
+  }));
 
   expect(screen.getByRole('heading', { name: detail.title })).toBeInTheDocument();
-  expect(screen.getByTestId('newsletter-detail-client')).toHaveTextContent(detail.title);
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme', 'dark');
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-show-theme-selector', 'true');
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme-slug', detail.slug);
+  expect(screen.getByTestId('newsletters-workspace')).toHaveTextContent(detail.title);
   expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('');
   expect(screen.queryByText('asset unavailable')).not.toBeInTheDocument();
 });
