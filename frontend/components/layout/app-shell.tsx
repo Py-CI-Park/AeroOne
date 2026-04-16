@@ -11,14 +11,14 @@ export function AppShell({
   contentClassName = 'max-w-6xl',
   theme = 'light',
   showThemeSelector = false,
-  themeSlug,
+  themePath,
 }: {
   title: string;
   children: ReactNode;
   contentClassName?: string;
   theme?: NewsletterTheme;
   showThemeSelector?: boolean;
-  themeSlug?: string;
+  themePath?: string;
 }) {
   const dark = theme === 'dark';
 
@@ -46,7 +46,7 @@ export function AppShell({
             <Link href="/newsletters">뉴스레터</Link>
             <Link href="/admin/newsletters">관리자</Link>
             <Link href="/login">로그인</Link>
-            {showThemeSelector ? <NewsletterThemeSelector theme={theme} slug={themeSlug} /> : null}
+            {showThemeSelector ? <NewsletterThemeSelector theme={theme} currentPath={themePath} /> : null}
           </nav>
         </div>
       </header>

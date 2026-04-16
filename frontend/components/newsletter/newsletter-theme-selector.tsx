@@ -3,23 +3,21 @@ import Link from 'next/link';
 
 import type { NewsletterTheme } from '@/lib/theme';
 
-function buildThemeHref(theme: NewsletterTheme, slug?: string) {
+function buildThemeHref(theme: NewsletterTheme, currentPath = '/newsletters') {
   const params = new URLSearchParams();
-  if (slug) {
-    params.set('slug', slug);
-  }
   params.set('theme', theme);
+  params.set('next', currentPath);
 
-  return `/newsletters?${params.toString()}`;
+  return `/theme?${params.toString()}`;
 }
 
 export function NewsletterThemeSelector({
   theme,
-  slug,
+  currentPath,
   className = '',
 }: {
   theme: NewsletterTheme;
-  slug?: string;
+  currentPath?: string;
   className?: string;
 }) {
   const nextTheme: NewsletterTheme = theme === 'dark' ? 'light' : 'dark';
@@ -29,7 +27,7 @@ export function NewsletterThemeSelector({
   return (
     <span data-testid="newsletter-theme-selector" className={`inline-flex items-center ${className}`}>
       <Link
-        href={buildThemeHref(nextTheme, slug)}
+        href={buildThemeHref(nextTheme, currentPath)}
         aria-label={label}
         className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs leading-none text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
       >

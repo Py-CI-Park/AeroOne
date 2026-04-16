@@ -1,4 +1,5 @@
 import React from 'react';
+import { cookies } from 'next/headers';
 
 import { AppShell } from '@/components/layout/app-shell';
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
@@ -11,7 +12,7 @@ import {
   fetchNewsletterDetail,
   fetchNewsletters,
 } from '@/lib/api';
-import { resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
+import { NEWSLETTER_THEME_COOKIE, resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -63,8 +64,11 @@ export default async function NewslettersPage({
     errorMessage = error instanceof Error ? error.message : '뉴스레터 목록을 불러오지 못했습니다.';
   }
 
+  const cookieStore = await cookies();
+  const cookieTheme = cookieStore.getAll().find((cookie) => cookie.name === NEWSLETTER_THEME_COOKIE)?.value;
   const activeDetail = detail;
-  const newsletterTheme = resolveNewsletterThemeFromSearchParam(params.theme);
+  const newsletterTheme = resolveNewsletterThemeFromSearchParam(params.theme, process.env.NEWSLETTERS_THEME, cookieTheme);
+  const themePath = activeDetail?.slug ? `/newsletters?slug=${activeDetail.slug}` : '/newsletters';
 
   return (
     <AppShell
@@ -72,7 +76,7 @@ export default async function NewslettersPage({
       contentClassName="max-w-[1600px]"
       theme={newsletterTheme}
       showThemeSelector
-      themeSlug={activeDetail?.slug}
+      themePath={themePath}
     >
       {errorMessage ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">

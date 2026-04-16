@@ -30,6 +30,12 @@ vi.mock('@/lib/api', async () => {
   };
 });
 
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => ({
+    getAll: () => [],
+  })),
+}));
+
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
   NewsletterDateCalendar: ({ selectedSlug }: { selectedSlug: string }) => <div data-testid="newsletter-date-calendar">{selectedSlug}</div>,
 }));

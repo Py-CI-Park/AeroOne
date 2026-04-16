@@ -14,3 +14,8 @@ test('uses query theme before environment theme', () => {
   expect(resolveNewsletterThemeFromSearchParam('invalid', 'dark')).toBe('dark');
   expect(resolveNewsletterThemeFromSearchParam('invalid', undefined)).toBe('light');
 });
+
+test('uses cookie theme before environment theme when query is absent', () => {
+  expect(resolveNewsletterThemeFromSearchParam(undefined, 'light', 'dark')).toBe('dark');
+  expect(resolveNewsletterThemeFromSearchParam(undefined, 'dark', 'light')).toBe('light');
+});

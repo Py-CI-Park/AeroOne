@@ -1,8 +1,10 @@
 import React from 'react';
+import { cookies } from 'next/headers';
+
 import { AppShell } from '@/components/layout/app-shell';
 import { NewslettersWorkspace } from '@/components/newsletter/newsletters-workspace';
 import { fetchNewsletterAssetContent, fetchNewsletterDetail } from '@/lib/api';
-import { resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
+import { NEWSLETTER_THEME_COOKIE, resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +32,13 @@ export default async function NewsletterDetailPage({
     }
   }
 
-  const newsletterTheme = resolveNewsletterThemeFromSearchParam(query.theme);
+  const cookieStore = await cookies();
+  const cookieTheme = cookieStore.getAll().find((cookie) => cookie.name === NEWSLETTER_THEME_COOKIE)?.value;
+  const newsletterTheme = resolveNewsletterThemeFromSearchParam(query.theme, process.env.NEWSLETTERS_THEME, cookieTheme);
+  const themePath = `/newsletters?slug=${detail.slug}`;
 
   return (
-    <AppShell title={detail.title} theme={newsletterTheme} showThemeSelector themeSlug={detail.slug}>
+    <AppShell title={detail.title} theme={newsletterTheme} showThemeSelector themePath={themePath}>
       <NewslettersWorkspace
         key={detail.slug}
         newsletter={detail}

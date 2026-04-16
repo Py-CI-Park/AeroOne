@@ -37,7 +37,7 @@ test('renders a dark shell when theme is dark', () => {
 
 test('renders compact theme selector after login when opted in', () => {
   render(
-    <AppShell title="Theme Shell" theme="dark" showThemeSelector themeSlug="newsletter-20260330">
+    <AppShell title="Theme Shell" theme="dark" showThemeSelector themePath="/newsletters?slug=newsletter-20260330">
       <p>content</p>
     </AppShell>,
   );
@@ -47,7 +47,7 @@ test('renders compact theme selector after login when opted in', () => {
   const toggle = screen.getByRole('link', { name: '라이트 테마로 전환' });
 
   expect(login.compareDocumentPosition(selector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(toggle).toHaveAttribute('href', '/newsletters?slug=newsletter-20260330&theme=light');
+  expect(toggle).toHaveAttribute('href', '/theme?theme=light&next=%2Fnewsletters%3Fslug%3Dnewsletter-20260330');
   expect(toggle).toHaveTextContent('☀');
   expect(screen.queryByRole('link', { name: '다크 테마로 전환' })).not.toBeInTheDocument();
 });

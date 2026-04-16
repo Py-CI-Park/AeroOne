@@ -5,11 +5,19 @@ import NewsletterDetailPage from '@/app/newsletters/[slug]/page';
 import type { NewsletterDetail } from '@/lib/types';
 
 const {
+  cookieThemeMock,
   fetchNewsletterAssetContentMock,
   fetchNewsletterDetailMock,
 } = vi.hoisted(() => ({
+  cookieThemeMock: vi.fn<() => string | undefined>(),
   fetchNewsletterAssetContentMock: vi.fn(),
   fetchNewsletterDetailMock: vi.fn(),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => ({
+    getAll: () => (cookieThemeMock() ? [{ name: 'aeroone_theme', value: cookieThemeMock() }] : []),
+  })),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -27,19 +35,19 @@ vi.mock('@/components/layout/app-shell', () => ({
     children,
     theme,
     showThemeSelector,
-    themeSlug,
+    themePath,
   }: {
     title: string;
     children: React.ReactNode;
     theme?: string;
     showThemeSelector?: boolean;
-    themeSlug?: string;
+    themePath?: string;
   }) => (
     <div
       data-testid="app-shell"
       data-theme={theme}
       data-show-theme-selector={String(Boolean(showThemeSelector))}
-      data-theme-slug={themeSlug}
+      data-theme-path={themePath}
     >
       <h1>{title}</h1>
       {children}
@@ -86,6 +94,7 @@ const detail: NewsletterDetail = {
 };
 
 beforeEach(() => {
+  cookieThemeMock.mockReturnValue(undefined);
   fetchNewsletterAssetContentMock.mockResolvedValue({ asset_type: 'html', content_html: '<h1>hello</h1>' });
   fetchNewsletterDetailMock.mockResolvedValue(detail);
 });
@@ -93,6 +102,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+  cookieThemeMock.mockReset();
   fetchNewsletterAssetContentMock.mockReset();
   fetchNewsletterDetailMock.mockReset();
 });
@@ -108,8 +118,20 @@ test('renders newsletter detail page when asset html fetch fails', async () => {
   expect(screen.getByRole('heading', { name: detail.title })).toBeInTheDocument();
   expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme', 'dark');
   expect(screen.getByTestId('app-shell')).toHaveAttribute('data-show-theme-selector', 'true');
-  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme-slug', detail.slug);
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme-path', `/newsletters?slug=${detail.slug}`);
   expect(screen.getByTestId('newsletters-workspace')).toHaveTextContent(detail.title);
   expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('');
   expect(screen.queryByText('asset unavailable')).not.toBeInTheDocument();
+});
+
+test('uses cookie theme on newsletter detail page when query is absent', async () => {
+  cookieThemeMock.mockReturnValue('dark');
+
+  render(await NewsletterDetailPage({
+    params: Promise.resolve({ slug: detail.slug }),
+    searchParams: Promise.resolve({}),
+  }));
+
+  expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme', 'dark');
+  expect(screen.getByTestId('newsletters-workspace')).toHaveAttribute('data-theme', 'dark');
 });

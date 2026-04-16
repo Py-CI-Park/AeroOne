@@ -5,17 +5,25 @@ import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
 
 const {
+  cookieThemeMock,
   fetchLatestNewsletterMock,
   fetchNewsletterAssetContentMock,
   fetchNewsletterCalendarMock,
   fetchNewsletterDetailMock,
   fetchNewslettersMock,
 } = vi.hoisted(() => ({
+  cookieThemeMock: vi.fn<() => string | undefined>(),
   fetchLatestNewsletterMock: vi.fn(),
   fetchNewsletterAssetContentMock: vi.fn(),
   fetchNewsletterCalendarMock: vi.fn(),
   fetchNewsletterDetailMock: vi.fn(),
   fetchNewslettersMock: vi.fn(),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => ({
+    getAll: () => (cookieThemeMock() ? [{ name: 'aeroone_theme', value: cookieThemeMock() }] : []),
+  })),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -31,8 +39,8 @@ vi.mock('@/lib/api', async () => {
 });
 
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
-  NewsletterDateCalendar: ({ selectedSlug }: { selectedSlug: string }) => (
-    <div data-testid="newsletter-date-calendar" data-selected-slug={selectedSlug} />
+  NewsletterDateCalendar: ({ selectedSlug, theme }: { selectedSlug: string; theme: string }) => (
+    <div data-testid="newsletter-date-calendar" data-selected-slug={selectedSlug} data-theme={theme} />
   ),
 }));
 
@@ -88,6 +96,7 @@ const calendarEntries: NewsletterCalendarEntry[] = [{
 }];
 
 beforeEach(() => {
+  cookieThemeMock.mockReturnValue(undefined);
   fetchLatestNewsletterMock.mockResolvedValue(detail);
   fetchNewsletterAssetContentMock.mockResolvedValue({ asset_type: 'html', content_html: '<h1>hello</h1>' });
   fetchNewsletterCalendarMock.mockResolvedValue(calendarEntries);
@@ -98,6 +107,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+  cookieThemeMock.mockReset();
   fetchLatestNewsletterMock.mockReset();
   fetchNewsletterAssetContentMock.mockReset();
   fetchNewsletterCalendarMock.mockReset();
@@ -121,10 +131,11 @@ test('route exposes a report-style top control grid and single nav theme toggle'
   expect(darkToggle).toHaveTextContent('☾');
   expect(darkToggle).toHaveAttribute(
     'href',
-    `/newsletters?slug=${detail.slug}&theme=dark`,
+    '/theme?theme=dark&next=%2Fnewsletters%3Fslug%3Dnewsletter-20260330',
   );
   expect(screen.queryByRole('link', { name: '라이트 테마로 전환' })).not.toBeInTheDocument();
   expect(calendar).toHaveAttribute('data-selected-slug', detail.slug);
+  expect(calendar).toHaveAttribute('data-theme', 'light');
   expect(calendarPanel).toContainElement(calendar);
   expect(controlGrid).toContainElement(calendarPanel);
   expect(controlGrid).toContainElement(formatPanel);
@@ -133,17 +144,21 @@ test('route exposes a report-style top control grid and single nav theme toggle'
   expect(controlGrid.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
-test('route renders dark theme when NEWSLETTERS_THEME is dark', async () => {
-  vi.stubEnv('NEWSLETTERS_THEME', 'dark');
+test('route uses cookie theme when query is absent', async () => {
+  cookieThemeMock.mockReturnValue('dark');
 
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
   expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-950');
-  expect(screen.getByTestId('newsletters-format-panel')).toHaveClass('bg-slate-900/95');
-  expect(screen.getByTestId('newsletters-preview-panel')).toHaveClass('bg-slate-900/95');
+  expect(screen.getByTestId('newsletter-date-calendar')).toHaveAttribute('data-theme', 'dark');
+  expect(screen.getByRole('link', { name: '라이트 테마로 전환' })).toHaveAttribute(
+    'href',
+    '/theme?theme=light&next=%2Fnewsletters%3Fslug%3Dnewsletter-20260330',
+  );
 });
 
-test('query theme overrides NEWSLETTERS_THEME environment default', async () => {
+test('query theme overrides cookie and NEWSLETTERS_THEME defaults', async () => {
+  cookieThemeMock.mockReturnValue('dark');
   vi.stubEnv('NEWSLETTERS_THEME', 'dark');
 
   render(await NewslettersPage({ searchParams: Promise.resolve({ theme: 'light' }) }));
@@ -152,6 +167,6 @@ test('query theme overrides NEWSLETTERS_THEME environment default', async () => 
   expect(screen.getByTestId('newsletters-format-panel')).toHaveClass('bg-white');
   expect(screen.getByRole('link', { name: '다크 테마로 전환' })).toHaveAttribute(
     'href',
-    `/newsletters?slug=${detail.slug}&theme=dark`,
+    '/theme?theme=dark&next=%2Fnewsletters%3Fslug%3Dnewsletter-20260330',
   );
 });

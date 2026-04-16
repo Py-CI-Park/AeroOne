@@ -157,7 +157,7 @@ export function NewsletterDateCalendar({
             return (
               <Link
                 key={cell.entry.slug}
-                href={`/newsletters?slug=${cell.entry.slug}`}
+                href={`/newsletters?slug=${cell.entry.slug}&theme=${theme}`}
                 className={`flex h-14 flex-col items-center justify-center rounded-xl border text-sm transition ${
                   isSelected ? selectedClass : availableClass
                 }`}
