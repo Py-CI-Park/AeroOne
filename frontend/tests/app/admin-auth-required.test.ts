@@ -1,3 +1,5 @@
+import React from 'react';
+
 import AdminImportsPage from '@/app/admin/imports/page';
 import AdminNewsletterEditPage from '@/app/admin/newsletters/[id]/edit/page';
 import AdminNewsletterCreatePage from '@/app/admin/newsletters/new/page';
