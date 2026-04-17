@@ -22,6 +22,41 @@ type SearchParams = {
   theme?: string;
 };
 
+function buildIssueDateDisplay(detail: NewsletterDetail | null, entries: NewsletterCalendarEntry[]) {
+  if (!detail) {
+    return undefined;
+  }
+  if (detail.published_at) {
+    return detail.published_at.slice(0, 10);
+  }
+
+  return entries.find((entry) => entry.slug === detail.slug)?.date;
+}
+
+function buildDateNavigation(
+  detail: NewsletterDetail | null,
+  entries: NewsletterCalendarEntry[],
+  theme: string,
+) {
+  if (!detail) {
+    return undefined;
+  }
+
+  const sortedEntries = [...entries].sort((left, right) => right.date.localeCompare(left.date));
+  const index = sortedEntries.findIndex((entry) => entry.slug === detail.slug);
+  if (index < 0) {
+    return undefined;
+  }
+
+  const newer = sortedEntries[index - 1];
+  const older = sortedEntries[index + 1];
+
+  return {
+    previous: older ? { label: '이전 날짜', href: `/newsletters?slug=${older.slug}&theme=${theme}` } : undefined,
+    next: newer ? { label: '다음 날짜', href: `/newsletters?slug=${newer.slug}&theme=${theme}` } : undefined,
+  };
+}
+
 export default async function NewslettersPage({
   searchParams,
 }: {
@@ -61,7 +96,7 @@ export default async function NewslettersPage({
       }
     }
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : '뉴스레터 목록을 불러오지 못했습니다.';
+    errorMessage = error instanceof Error ? error.message : 'Newsletter 목록을 불러오지 못했습니다.';
   }
 
   const cookieStore = await cookies();
@@ -69,10 +104,12 @@ export default async function NewslettersPage({
   const activeDetail = detail;
   const newsletterTheme = resolveNewsletterThemeFromSearchParam(params.theme, process.env.NEWSLETTERS_THEME, cookieTheme);
   const themePath = activeDetail?.slug ? `/newsletters?slug=${activeDetail.slug}` : '/newsletters';
+  const displayDate = buildIssueDateDisplay(activeDetail, calendarEntries);
+  const dateNavigation = buildDateNavigation(activeDetail, calendarEntries, newsletterTheme);
 
   return (
     <AppShell
-      title="뉴스레터 서비스"
+      title="Newsletter"
       contentClassName="max-w-[1600px]"
       theme={newsletterTheme}
       showThemeSelector
@@ -80,7 +117,7 @@ export default async function NewslettersPage({
     >
       {errorMessage ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          뉴스레터 목록을 불러오지 못했습니다. 백엔드 실행 상태와 포트(18437)를 확인해주세요.
+          Newsletter 목록을 불러오지 못했습니다. 백엔드 실행 상태와 포트(18437)를 확인해주세요.
           <div className="mt-1 text-xs text-red-600">{errorMessage}</div>
         </div>
       ) : null}
@@ -96,6 +133,8 @@ export default async function NewslettersPage({
             )}
             newsletter={activeDetail}
             initialContentHtml={initialContentHtml}
+            displayDate={displayDate}
+            dateNavigation={dateNavigation}
             theme={newsletterTheme}
           />
         </div>

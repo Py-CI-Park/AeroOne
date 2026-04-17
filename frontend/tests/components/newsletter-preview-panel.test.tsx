@@ -32,3 +32,35 @@ test('renders the preview panel with dark theme classes', () => {
   expect(panel).toHaveClass('bg-slate-900/95');
   expect(within(panel).getByRole('heading', { name: 'Dark Preview' })).toHaveClass('text-slate-100');
 });
+
+test('renders selected issue date and previous next navigation', () => {
+  render(
+    <NewsletterPreviewPanel
+      title="Aerospace Daily News"
+      selectedAsset="html"
+      displayDate="2026-03-26"
+      dateNavigation={{
+        previous: { label: '이전 날짜', href: '/newsletters?slug=old&theme=dark' },
+        next: { label: '다음 날짜', href: '/newsletters?slug=new&theme=dark' },
+      }}
+      theme="dark"
+    >
+      <div data-testid="preview-body">body</div>
+    </NewsletterPreviewPanel>,
+  );
+
+  expect(screen.getByText('2026-03-26')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '이전 날짜' })).toHaveAttribute('href', '/newsletters?slug=old&theme=dark');
+  expect(screen.getByRole('link', { name: '다음 날짜' })).toHaveAttribute('href', '/newsletters?slug=new&theme=dark');
+});
+
+test('renders disabled previous next labels when adjacent issues are missing', () => {
+  render(
+    <NewsletterPreviewPanel title="Only Issue" selectedAsset="html" displayDate="2026-03-26">
+      <div data-testid="preview-body">body</div>
+    </NewsletterPreviewPanel>,
+  );
+
+  expect(screen.getByText('이전 날짜')).toHaveAttribute('aria-disabled', 'true');
+  expect(screen.getByText('다음 날짜')).toHaveAttribute('aria-disabled', 'true');
+});
