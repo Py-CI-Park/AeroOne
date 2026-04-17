@@ -17,6 +17,8 @@ test('renders the default shell with light theme classes and a theme selector', 
   expect(header).toHaveClass('bg-white');
   expect(screen.getByRole('heading', { name: 'Light Shell' })).toHaveClass('text-slate-900');
   expect(screen.getByText('사내 뉴스레터 / 문서 플랫폼')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Newsletter' })).toHaveAttribute('href', '/newsletters');
+  expect(screen.queryByRole('link', { name: '뉴스레터' })).not.toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
 });
 
