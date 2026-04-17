@@ -36,7 +36,7 @@ test('removes the home hero copy while keeping the newsletter service link and t
   expect(newsletterLink).toHaveAttribute('href', '/newsletters');
   expect(newsletterLink).toHaveTextContent('가장 최신 뉴스레터를 바로 열고, 발행 날짜별로 이전 뉴스레터를 탐색합니다.');
   expect(newsletterLink).toHaveTextContent('활성 서비스');
-  expect(newsletterLink).toHaveTextContent('뉴스');
+  expect(screen.queryByTestId('service-card-icon')).not.toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
 });
 

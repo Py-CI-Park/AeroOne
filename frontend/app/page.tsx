@@ -22,7 +22,6 @@ export default async function HomePage({
           description="가장 최신 뉴스레터를 바로 열고, 발행 날짜별로 이전 뉴스레터를 탐색합니다."
           href="/newsletters"
           badge="활성 서비스"
-          icon="뉴스"
         />
       </section>
     </AppShell>

@@ -12,7 +12,7 @@ export function ServiceCard({
   description: string;
   href: string;
   badge: string;
-  icon: string;
+  icon?: string;
 }) {
   return (
     <Link
@@ -21,10 +21,12 @@ export function ServiceCard({
     >
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50 opacity-80" />
       <div className="relative">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 text-3xl text-white shadow-md">
-            {icon}
-          </div>
+        <div className={`mb-6 flex items-center ${icon ? 'justify-between' : 'justify-end'}`}>
+          {icon ? (
+            <div data-testid="service-card-icon" className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 text-3xl text-white shadow-md">
+              {icon}
+            </div>
+          ) : null}
           <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{badge}</span>
         </div>
         <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
