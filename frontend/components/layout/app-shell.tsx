@@ -10,8 +10,8 @@ export function AppShell({
   children,
   contentClassName = 'max-w-6xl',
   theme = 'light',
-  showThemeSelector = false,
-  themePath,
+  showThemeSelector = true,
+  themePath = '/',
 }: {
   title: string;
   children: ReactNode;

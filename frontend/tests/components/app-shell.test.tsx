@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 
 import { AppShell } from '@/components/layout/app-shell';
 
-test('renders the default shell with light theme classes and no theme selector', () => {
+test('renders the default shell with light theme classes and a theme selector', () => {
   render(
     <AppShell title="Light Shell">
       <p>content</p>
@@ -17,6 +17,16 @@ test('renders the default shell with light theme classes and no theme selector',
   expect(header).toHaveClass('bg-white');
   expect(screen.getByRole('heading', { name: 'Light Shell' })).toHaveClass('text-slate-900');
   expect(screen.getByText('사내 뉴스레터 / 문서 플랫폼')).toBeInTheDocument();
+  expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
+});
+
+test('can opt out of the theme selector', () => {
+  render(
+    <AppShell title="Plain Shell" showThemeSelector={false}>
+      <p>content</p>
+    </AppShell>,
+  );
+
   expect(screen.queryByTestId('newsletter-theme-selector')).not.toBeInTheDocument();
 });
 
@@ -35,9 +45,9 @@ test('renders a dark shell when theme is dark', () => {
   expect(screen.getByRole('heading', { name: 'Dark Shell' })).toHaveClass('text-slate-100');
 });
 
-test('renders compact theme selector after login when opted in', () => {
+test('renders compact theme selector after login when opted in with path', () => {
   render(
-    <AppShell title="Theme Shell" theme="dark" showThemeSelector themePath="/newsletters?slug=newsletter-20260330">
+    <AppShell title="Theme Shell" theme="dark" themePath="/newsletters?slug=newsletter-20260330">
       <p>content</p>
     </AppShell>,
   );
