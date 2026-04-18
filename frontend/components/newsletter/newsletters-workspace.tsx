@@ -4,7 +4,7 @@ import React, { ReactNode, useMemo, useState } from 'react';
 
 import { NewsletterAssetSelector } from '@/components/newsletter/newsletter-asset-selector';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
-import { NewsletterPreviewPanel } from '@/components/newsletter/newsletter-preview-panel';
+import { NewsletterPreviewPanel, type NewsletterDateNavigation } from '@/components/newsletter/newsletter-preview-panel';
 import type { NewsletterTheme } from '@/lib/theme';
 import type { NewsletterDetail } from '@/lib/types';
 
@@ -12,11 +12,15 @@ export function NewslettersWorkspace({
   calendarPanel,
   newsletter,
   initialContentHtml = '',
+  displayDate,
+  dateNavigation,
   theme = 'light',
 }: {
   calendarPanel?: ReactNode;
   newsletter: NewsletterDetail;
   initialContentHtml?: string;
+  displayDate?: string;
+  dateNavigation?: NewsletterDateNavigation;
   theme?: NewsletterTheme;
 }) {
   const availableAssetTypes = useMemo(
@@ -40,7 +44,13 @@ export function NewslettersWorkspace({
         />
       </div>
 
-      <NewsletterPreviewPanel title={newsletter.title} selectedAsset={selectedAsset} theme={theme}>
+      <NewsletterPreviewPanel
+        title={newsletter.title}
+        selectedAsset={selectedAsset}
+        theme={theme}
+        displayDate={displayDate}
+        dateNavigation={dateNavigation}
+      >
         <NewsletterDetailClient
           newsletter={newsletter}
           selectedAsset={selectedAsset}

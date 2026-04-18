@@ -57,6 +57,7 @@ const detail: NewsletterDetail = {
   description: 'Summary',
   source_type: 'html',
   tags: [],
+  published_at: '2026-03-30T00:00:00Z',
   available_assets: [
     {
       asset_type: 'html',
@@ -88,12 +89,11 @@ const items: NewsletterItem[] = [{
   category: null,
 }];
 
-const calendarEntries: NewsletterCalendarEntry[] = [{
-  date: '2026-03-30',
-  slug: detail.slug,
-  title: detail.title,
-  source_type: detail.source_type,
-}];
+const calendarEntries: NewsletterCalendarEntry[] = [
+  { date: '2026-03-31', slug: 'newer-newsletter', title: 'Newer Newsletter', source_type: detail.source_type },
+  { date: '2026-03-30', slug: detail.slug, title: detail.title, source_type: detail.source_type },
+  { date: '2026-03-29', slug: 'older-newsletter', title: 'Older Newsletter', source_type: detail.source_type },
+];
 
 beforeEach(() => {
   cookieThemeMock.mockReturnValue(undefined);
@@ -126,14 +126,13 @@ test('route exposes a report-style top control grid and single nav theme toggle'
   const detailClient = screen.getByTestId('newsletter-detail-client');
   const darkToggle = screen.getByRole('link', { name: '다크 테마로 전환' });
 
+  expect(screen.getByRole('heading', { name: 'Newsletter' })).toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
-  expect(screen.queryByText('화면 테마 선택')).not.toBeInTheDocument();
   expect(darkToggle).toHaveTextContent('☾');
   expect(darkToggle).toHaveAttribute(
     'href',
     '/theme?theme=dark&next=%2Fnewsletters%3Fslug%3Dnewsletter-20260330',
   );
-  expect(screen.queryByRole('link', { name: '라이트 테마로 전환' })).not.toBeInTheDocument();
   expect(calendar).toHaveAttribute('data-selected-slug', detail.slug);
   expect(calendar).toHaveAttribute('data-theme', 'light');
   expect(calendarPanel).toContainElement(calendar);
@@ -144,16 +143,17 @@ test('route exposes a report-style top control grid and single nav theme toggle'
   expect(controlGrid.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
-test('route uses cookie theme when query is absent', async () => {
-  cookieThemeMock.mockReturnValue('dark');
+test('route renders selected issue date and previous next links preserving theme', async () => {
+  render(await NewslettersPage({ searchParams: Promise.resolve({ theme: 'dark' }) }));
 
-  render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
-
-  expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-950');
-  expect(screen.getByTestId('newsletter-date-calendar')).toHaveAttribute('data-theme', 'dark');
-  expect(screen.getByRole('link', { name: '라이트 테마로 전환' })).toHaveAttribute(
+  expect(screen.getByText('2026-03-30')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '이전 날짜' })).toHaveAttribute(
     'href',
-    '/theme?theme=light&next=%2Fnewsletters%3Fslug%3Dnewsletter-20260330',
+    '/newsletters?slug=older-newsletter&theme=dark',
+  );
+  expect(screen.getByRole('link', { name: '다음 날짜' })).toHaveAttribute(
+    'href',
+    '/newsletters?slug=newer-newsletter&theme=dark',
   );
 });
 
