@@ -119,7 +119,7 @@ test('updates rendered html when the newsletter slug changes', async () => {
   });
 });
 
-test('keeps the previous content visible when non-pdf asset loading fails', async () => {
+test('shows an explicit error instead of stale content when non-pdf asset loading fails', async () => {
   vi.mocked(global.fetch).mockRejectedValueOnce(new Error('upstream unavailable'));
   const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -145,7 +145,9 @@ test('keeps the previous content visible when non-pdf asset loading fails', asyn
       expect.any(Error),
     );
   });
-  expect(screen.getByText('stable html')).toBeInTheDocument();
+  expect(screen.queryByText('stable html')).not.toBeInTheDocument();
+  expect(screen.getByText('Markdown preview is unavailable.')).toBeInTheDocument();
+  expect(screen.getByText('The selected report format could not be loaded. Try another format or refresh the page.')).toBeInTheDocument();
 });
 
 test('attempts pdf preview on mount when pdf is selected', async () => {

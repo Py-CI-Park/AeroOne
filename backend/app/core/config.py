@@ -78,6 +78,22 @@ class Settings(BaseSettings):
         if self.sqlite_path is not None:
             self.sqlite_path.parent.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def secure_cookies(self) -> bool:
+        return self.app_env == 'production'
+
+    def validate_runtime_security(self) -> None:
+        if self.app_env != 'production':
+            return
+
+        errors: list[str] = []
+        if self.jwt_secret_key in {'', 'change-me'} or len(self.jwt_secret_key) < 32:
+            errors.append('JWT_SECRET_KEY must be set to a non-default value with at least 32 characters')
+        if self.admin_password in {'', 'change-me'} or len(self.admin_password) < 12:
+            errors.append('ADMIN_PASSWORD must be set to a non-default value with at least 12 characters')
+        if errors:
+            raise ValueError('; '.join(errors))
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

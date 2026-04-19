@@ -38,6 +38,8 @@ class FileDiscoveryService:
 
     def scan(self) -> dict[str, DiscoveredIssue]:
         issues: dict[str, DiscoveredIssue] = {}
+        if not self.import_root.exists():
+            return issues
         for path in sorted(self.import_root.iterdir()):
             if not path.is_file() or path.name.endswith('_debug.html'):
                 continue
