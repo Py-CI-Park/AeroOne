@@ -21,10 +21,14 @@ test('renders report-style format cards with explicit asset choices and selected
   const pdfButton = within(panel).getByRole('button', { name: /PDF/ });
 
   expect(panel).toHaveClass('bg-white');
+  expect(panel).toHaveClass('h-full');
   expect(panel.className).not.toContain('bg-slate-900');
   expect(within(panel).getByText('Report format')).toBeInTheDocument();
-  expect(within(panel).getByRole('heading', { name: 'HTML / Markdown / PDF 선택' })).toBeInTheDocument();
-  expect(within(panel).getByText('HT')).toBeInTheDocument();
+  expect(within(panel).queryByRole('heading')).not.toBeInTheDocument();
+  expect(within(panel).queryByText(/HTML \/ Markdown \/ PDF/)).not.toBeInTheDocument();
+  expect(within(panel).queryByText(/미리보기 영역/)).not.toBeInTheDocument();
+  expect(within(panel).queryByText('HT')).not.toBeInTheDocument();
+  expect(within(panel).getAllByText('HTML')).toHaveLength(2);
   expect(within(panel).getByText('MD')).toBeInTheDocument();
   expect(htmlButton).toHaveAttribute('aria-pressed', 'false');
   expect(markdownButton).toHaveAttribute('aria-pressed', 'true');

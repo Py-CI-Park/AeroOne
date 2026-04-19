@@ -33,7 +33,7 @@ export function NewslettersWorkspace({
     <div data-testid="newsletters-workspace" className="space-y-3">
       <div
         data-testid="newsletters-control-grid"
-        className={`grid gap-3 ${calendarPanel ? 'lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]' : ''}`}
+        className={`grid items-stretch gap-3 ${calendarPanel ? 'lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]' : ''}`}
       >
         {calendarPanel}
         <NewsletterAssetSelector

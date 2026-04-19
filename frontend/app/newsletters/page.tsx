@@ -127,7 +127,7 @@ export default async function NewslettersPage({
           <NewslettersWorkspace
             key={activeDetail.slug}
             calendarPanel={(
-              <section data-testid="newsletters-calendar-panel">
+              <section data-testid="newsletters-calendar-panel" className="h-full">
                 <NewsletterDateCalendar entries={calendarEntries} selectedSlug={activeDetail.slug} theme={newsletterTheme} />
               </section>
             )}

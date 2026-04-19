@@ -4,7 +4,7 @@ import type { NewsletterTheme } from '@/lib/theme';
 import type { AssetType } from '@/lib/types';
 
 const assetLabels: Record<AssetType, { label: string; shortLabel: string }> = {
-  html: { label: 'HTML', shortLabel: 'HT' },
+  html: { label: 'HTML', shortLabel: 'HTML' },
   markdown: { label: 'MARKDOWN', shortLabel: 'MD' },
   pdf: { label: 'PDF', shortLabel: 'PDF' },
 };
@@ -25,14 +25,12 @@ export function NewsletterAssetSelector({
   return (
     <section
       data-testid="newsletters-format-panel"
-      className={`rounded-xl border p-3 shadow-sm ${
+      className={`flex h-full flex-col justify-between rounded-xl border p-3 shadow-sm ${
         dark ? 'border-slate-800 bg-slate-900/95 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
       }`}
     >
       <div className="mb-3">
         <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>Report format</p>
-        <h2 className={`mt-1 text-lg font-semibold ${dark ? 'text-slate-100' : 'text-slate-900'}`}>HTML / Markdown / PDF 선택</h2>
-        <p className={`mt-1 text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>미리보기 영역에 표시할 보고서 형식을 선택합니다.</p>
       </div>
       <div className="grid grid-cols-3 gap-2">
         {availableAssetTypes.map((assetType) => {

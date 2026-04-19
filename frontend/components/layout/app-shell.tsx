@@ -43,7 +43,6 @@ export function AppShell({
           </div>
           <nav className={`flex gap-4 text-sm ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
             <Link href="/">대시보드</Link>
-            <Link href="/newsletters">Newsletter</Link>
             {showThemeSelector ? <NewsletterThemeSelector theme={theme} currentPath={themePath} /> : null}
           </nav>
         </div>

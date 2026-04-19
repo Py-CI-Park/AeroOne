@@ -138,8 +138,13 @@ test('route exposes a report-style top control grid and single nav theme toggle'
   expect(calendarPanel).toContainElement(calendar);
   expect(controlGrid).toContainElement(calendarPanel);
   expect(controlGrid).toContainElement(formatPanel);
+  expect(calendarPanel).toHaveClass('h-full');
+  expect(controlGrid).toHaveClass('items-stretch');
+  expect(formatPanel).toHaveClass('h-full');
   expect(previewPanel).toContainElement(detailClient);
-  expect(within(formatPanel).getByRole('heading', { name: 'HTML / Markdown / PDF 선택' })).toBeInTheDocument();
+  expect(within(formatPanel).queryByRole('heading')).not.toBeInTheDocument();
+  expect(within(formatPanel).queryByText(/HTML \/ Markdown \/ PDF/)).not.toBeInTheDocument();
+  expect(within(formatPanel).queryByText(/미리보기 영역/)).not.toBeInTheDocument();
   expect(controlGrid.compareDocumentPosition(previewPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 

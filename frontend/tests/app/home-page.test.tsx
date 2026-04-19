@@ -34,10 +34,11 @@ test('removes the home hero copy while keeping the Newsletter link and theme sel
   const newsletterLink = within(screen.getByRole('main')).getByRole('link', { name: /Newsletter/i });
 
   expect(newsletterLink).toHaveAttribute('href', '/newsletters');
-  expect(newsletterLink).toHaveTextContent('Open the latest issue and browse previous issues by date.');
+  expect(newsletterLink).not.toHaveTextContent('Open the latest issue and browse previous issues by date.');
   expect(newsletterLink).toHaveTextContent('활성 서비스');
   expect(newsletterLink).not.toHaveTextContent('뉴스레터 서비스');
   expect(newsletterLink).not.toHaveTextContent('뉴스레터');
+  expect(within(newsletterLink).queryByTestId('service-card-description')).not.toBeInTheDocument();
   expect(screen.queryByTestId('service-card-icon')).not.toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
 });
