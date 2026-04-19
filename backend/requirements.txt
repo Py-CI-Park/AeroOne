@@ -7,5 +7,6 @@ pydantic==2.12.5
 pydantic-settings==2.6.1
 PyJWT==2.10.1
 passlib[bcrypt]==1.7.4
+bcrypt<5
 beautifulsoup4==4.12.3
 Markdown==3.7
