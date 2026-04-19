@@ -138,6 +138,7 @@ test('route exposes a report-style top control grid and single nav theme toggle'
   expect(calendarPanel).toContainElement(calendar);
   expect(controlGrid).toContainElement(calendarPanel);
   expect(controlGrid).toContainElement(formatPanel);
+  expect(calendarPanel).toHaveClass('h-full');
   expect(controlGrid).toHaveClass('items-stretch');
   expect(formatPanel).toHaveClass('h-full');
   expect(previewPanel).toContainElement(detailClient);

@@ -27,7 +27,8 @@ test('renders report-style format cards with explicit asset choices and selected
   expect(within(panel).queryByRole('heading')).not.toBeInTheDocument();
   expect(within(panel).queryByText(/HTML \/ Markdown \/ PDF/)).not.toBeInTheDocument();
   expect(within(panel).queryByText(/미리보기 영역/)).not.toBeInTheDocument();
-  expect(within(panel).getByText('HT')).toBeInTheDocument();
+  expect(within(panel).queryByText('HT')).not.toBeInTheDocument();
+  expect(within(panel).getAllByText('HTML')).toHaveLength(2);
   expect(within(panel).getByText('MD')).toBeInTheDocument();
   expect(htmlButton).toHaveAttribute('aria-pressed', 'false');
   expect(markdownButton).toHaveAttribute('aria-pressed', 'true');

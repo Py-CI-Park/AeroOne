@@ -78,7 +78,7 @@ export function NewsletterDateCalendar({
     : 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40';
 
   return (
-    <section className={`rounded-xl border p-3 shadow-sm ${
+    <section className={`h-full rounded-xl border p-3 shadow-sm ${
       dark ? 'border-slate-800 bg-slate-900/95 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
     }`}
     >
@@ -91,22 +91,26 @@ export function NewsletterDateCalendar({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setMonthIndex((current) => Math.min(current + 1, monthKeys.length - 1))}
-            disabled={monthIndex >= monthKeys.length - 1}
-            className={navButtonClass}
-          >
-            이전 달
-          </button>
-          <button
-            type="button"
-            onClick={() => setMonthIndex((current) => Math.max(current - 1, 0))}
-            disabled={monthIndex <= 0}
-            className={navButtonClass}
-          >
-            다음 달
-          </button>
+          {open ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setMonthIndex((current) => Math.min(current + 1, monthKeys.length - 1))}
+                disabled={monthIndex >= monthKeys.length - 1}
+                className={navButtonClass}
+              >
+                이전 달
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthIndex((current) => Math.max(current - 1, 0))}
+                disabled={monthIndex <= 0}
+                className={navButtonClass}
+              >
+                다음 달
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             aria-expanded={open}

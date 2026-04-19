@@ -4,7 +4,7 @@ import type { NewsletterTheme } from '@/lib/theme';
 import type { AssetType } from '@/lib/types';
 
 const assetLabels: Record<AssetType, { label: string; shortLabel: string }> = {
-  html: { label: 'HTML', shortLabel: 'HT' },
+  html: { label: 'HTML', shortLabel: 'HTML' },
   markdown: { label: 'MARKDOWN', shortLabel: 'MD' },
   pdf: { label: 'PDF', shortLabel: 'PDF' },
 };
