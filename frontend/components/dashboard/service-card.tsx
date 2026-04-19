@@ -9,7 +9,7 @@ export function ServiceCard({
   icon,
 }: {
   title: string;
-  description: string;
+  description?: string;
   href: string;
   badge: string;
   icon?: string;
@@ -30,7 +30,11 @@ export function ServiceCard({
           <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{badge}</span>
         </div>
         <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+        {description ? (
+          <p data-testid="service-card-description" className="mt-3 text-sm leading-6 text-slate-600">
+            {description}
+          </p>
+        ) : null}
         <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-slate-900">
           서비스 열기
           <span className="transition group-hover:translate-x-1">→</span>

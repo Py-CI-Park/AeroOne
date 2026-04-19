@@ -19,7 +19,6 @@ export default async function HomePage({
       <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <ServiceCard
           title="Newsletter"
-          description="Open the latest issue and browse previous issues by date."
           href="/newsletters"
           badge="활성 서비스"
         />
