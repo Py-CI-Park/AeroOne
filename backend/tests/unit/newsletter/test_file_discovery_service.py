@@ -13,3 +13,9 @@ def test_scan_pairs_html_and_pdf_and_ignores_debug(test_paths) -> None:
     assert AssetType.PDF in issue.assets
     assert all(not asset.relative_path.endswith('_debug.html') for asset in issue.assets.values())
     assert issue.title_candidate == '테스트 뉴스레터'
+
+
+def test_scan_returns_empty_when_import_root_is_missing(tmp_path) -> None:
+    service = FileDiscoveryService(tmp_path / 'missing-import-root')
+
+    assert service.scan() == {}

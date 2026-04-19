@@ -33,17 +33,22 @@ if not exist "%WHEEL_DIR%" (
   goto :fail
 )
 
+for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(32); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "JWT_SECRET_KEY=%%S"
+for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(24); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "ADMIN_PASSWORD=%%S"
+if not defined JWT_SECRET_KEY goto :fail
+if not defined ADMIN_PASSWORD goto :fail
+
 if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >"%BACKEND_ENV%" echo APP_ENV=development
 >>"%BACKEND_ENV%" echo APP_NAME=AeroOne Newsletter Platform
 >>"%BACKEND_ENV%" echo BACKEND_PORT=18437
 >>"%BACKEND_ENV%" echo FRONTEND_PORT=29501
 >>"%BACKEND_ENV%" echo DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db
->>"%BACKEND_ENV%" echo JWT_SECRET_KEY=change-me
+>>"%BACKEND_ENV%" echo JWT_SECRET_KEY=%JWT_SECRET_KEY%
 >>"%BACKEND_ENV%" echo ADMIN_SESSION_COOKIE_NAME=admin_session
 >>"%BACKEND_ENV%" echo ACCESS_TOKEN_TTL_MINUTES=30
 >>"%BACKEND_ENV%" echo ADMIN_USERNAME=admin
->>"%BACKEND_ENV%" echo ADMIN_PASSWORD=change-me
+>>"%BACKEND_ENV%" echo ADMIN_PASSWORD=%ADMIN_PASSWORD%
 >>"%BACKEND_ENV%" echo CSRF_COOKIE_NAME=csrf_token
 >>"%BACKEND_ENV%" echo NEWSLETTER_IMPORT_ROOT_CONTAINER=%ROOT_FWD%/Newsletter/output
 >>"%BACKEND_ENV%" echo STORAGE_ROOT=%ROOT_FWD%/storage
@@ -57,12 +62,14 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
 >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
 >>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
+>>"%FRONTEND_ENV%" echo NEXT_PUBLIC_CSRF_COOKIE_NAME=csrf_token
 
 if not exist "%BACKEND_VENV%\Scripts\python.exe" (
   py -3.12 -m venv "%BACKEND_VENV%" || py -3 -m venv "%BACKEND_VENV%" || python -m venv "%BACKEND_VENV%" || goto :fail
 )
 
 if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
+if not exist "%ROOT%\Newsletter\output" mkdir "%ROOT%\Newsletter\output"
 
 call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
 pushd "%BACKEND_DIR%"

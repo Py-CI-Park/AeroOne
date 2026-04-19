@@ -4,7 +4,7 @@ import React from 'react';
 
 import { useState } from 'react';
 import { syncNewsletters } from '@/lib/api';
-import { getCookie } from '@/lib/cookies';
+import { getCsrfCookie } from '@/lib/cookies';
 import type { SyncResponse } from '@/lib/types';
 
 export function ImportPanel() {
@@ -14,7 +14,7 @@ export function ImportPanel() {
   async function handleSync() {
     try {
       setError('');
-      setResult(await syncNewsletters(getCookie('csrf_token')));
+      setResult(await syncNewsletters(getCsrfCookie()));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'sync failed');
     }

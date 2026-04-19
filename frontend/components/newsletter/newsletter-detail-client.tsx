@@ -15,6 +15,7 @@ type HtmlResponse = {
 };
 
 type PdfPreviewState = 'idle' | 'loading' | 'success' | 'error';
+type AssetPreviewState = 'idle' | 'loading' | 'error';
 
 export function NewsletterDetailClient({
   newsletter,
@@ -26,6 +27,7 @@ export function NewsletterDetailClient({
   initialContentHtml?: string;
 }) {
   const [contentHtml, setContentHtml] = useState(initialContentHtml);
+  const [assetPreviewState, setAssetPreviewState] = useState<AssetPreviewState>('idle');
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewState, setPdfPreviewState] = useState<PdfPreviewState>('idle');
   const currentAsset = useMemo(
@@ -35,6 +37,7 @@ export function NewsletterDetailClient({
 
   useEffect(() => {
     setContentHtml(initialContentHtml);
+    setAssetPreviewState('idle');
   }, [initialContentHtml, newsletter.slug]);
 
   useEffect(() => {
@@ -42,13 +45,17 @@ export function NewsletterDetailClient({
       return;
     }
     if (selectedAsset === newsletter.default_asset_type && initialContentHtml) {
+      setAssetPreviewState('idle');
       return;
     }
 
     const assetPath = getNewsletterProxyPath(currentAsset.content_url);
+    let cancelled = false;
 
     void (async () => {
       try {
+        setContentHtml('');
+        setAssetPreviewState('loading');
         const response = await fetch(assetPath);
 
         if (!response.ok) {
@@ -56,11 +63,24 @@ export function NewsletterDetailClient({
         }
 
         const payload = (await response.json()) as HtmlResponse;
+        if (cancelled) {
+          return;
+        }
         setContentHtml(payload.content_html);
+        setAssetPreviewState('idle');
       } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setContentHtml('');
+        setAssetPreviewState('error');
         console.error(`[FRONTEND][FETCH] Failed to load newsletter asset ${assetPath}`, error);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentAsset, initialContentHtml, newsletter.default_asset_type, selectedAsset]);
 
   useEffect(() => {
@@ -122,10 +142,22 @@ export function NewsletterDetailClient({
   }
 
   if (selectedAsset === 'html') {
+    if (assetPreviewState === 'loading') {
+      return <p className="text-sm text-slate-500">Loading HTML preview...</p>;
+    }
+    if (assetPreviewState === 'error') {
+      return <AssetPreviewError assetLabel="HTML" />;
+    }
     return <HtmlViewer title={newsletter.title} html={contentHtml} />;
   }
 
   if (selectedAsset === 'markdown') {
+    if (assetPreviewState === 'loading') {
+      return <p className="text-sm text-slate-500">Loading Markdown preview...</p>;
+    }
+    if (assetPreviewState === 'error') {
+      return <AssetPreviewError assetLabel="Markdown" />;
+    }
     return <MarkdownViewer html={contentHtml} />;
   }
 
@@ -155,6 +187,17 @@ export function NewsletterDetailClient({
           Download PDF
         </a>
       </div>
+    </section>
+  );
+}
+
+function AssetPreviewError({ assetLabel }: { assetLabel: string }) {
+  return (
+    <section className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-800">
+      <h2 className="text-xl font-semibold">{assetLabel} preview is unavailable.</h2>
+      <p className="mt-3 text-sm">
+        The selected report format could not be loaded. Try another format or refresh the page.
+      </p>
     </section>
   );
 }

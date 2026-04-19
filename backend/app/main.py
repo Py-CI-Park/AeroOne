@@ -15,6 +15,7 @@ from app.modules.newsletter.api.public import router as public_router
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
+    settings.validate_runtime_security()
     ensure_runtime_directories(settings)
     database = Database(settings.database_url)
     app = FastAPI(title=settings.app_name)
@@ -27,7 +28,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=['*'],
         allow_headers=['*'],
     )
-    app.mount('/storage', StaticFiles(directory=settings.managed_storage_root), name='storage')
+    app.mount('/storage/thumbnails', StaticFiles(directory=settings.thumbnails_root), name='thumbnails')
 
     @app.get('/api/v1/health')
     def health() -> dict[str, object]:

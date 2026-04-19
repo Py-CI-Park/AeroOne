@@ -253,6 +253,12 @@ def test_setup_executes_full_flow_in_stub_repo(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert (repo_root / "backend" / ".env").exists()
     assert (repo_root / "frontend" / ".env.local").exists()
+    backend_env = (repo_root / "backend" / ".env").read_text(encoding="utf-8")
+    assert "JWT_SECRET_KEY=change-me" not in backend_env
+    assert "ADMIN_PASSWORD=change-me" not in backend_env
+    assert re.search(r"^JWT_SECRET_KEY=.{32,}$", backend_env, re.MULTILINE)
+    assert re.search(r"^ADMIN_PASSWORD=.{24,}$", backend_env, re.MULTILINE)
+    assert (repo_root / "Newsletter" / "output").is_dir()
 
     log_lines = log_file.read_text(encoding="utf-8").splitlines()
     assert any(line.startswith("pip.bat install -r requirements-dev.txt") for line in log_lines)
@@ -279,6 +285,8 @@ def test_start_dry_run_prints_launch_commands() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
     assert any("uvicorn app.main:app" in line for line in lines)
+    assert any("uvicorn app.main:app --host 127.0.0.1" in line for line in lines)
+    assert not any("uvicorn app.main:app --host 0.0.0.0" in line for line in lines)
     assert any("start_frontend_window.cmd" in line for line in lines)
     assert any("http://localhost:29501" in line for line in lines)
 

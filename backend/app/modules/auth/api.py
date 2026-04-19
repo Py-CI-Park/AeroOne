@@ -28,7 +28,7 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
         value=token,
         httponly=True,
         samesite='lax',
-        secure=False,
+        secure=settings.secure_cookies,
         max_age=settings.access_token_ttl_minutes * 60,
         path='/',
     )
@@ -37,7 +37,7 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
         value=csrf_token,
         httponly=False,
         samesite='lax',
-        secure=False,
+        secure=settings.secure_cookies,
         max_age=settings.access_token_ttl_minutes * 60,
         path='/',
     )

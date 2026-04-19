@@ -5,7 +5,7 @@ import React from 'react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createNewsletter, fetchCategories, fetchTags, updateNewsletter, uploadThumbnail } from '@/lib/api';
 import { getBrowserApiBase } from '@/lib/api';
-import { getCookie } from '@/lib/cookies';
+import { getCsrfCookie } from '@/lib/cookies';
 import type { NewsletterDetail } from '@/lib/types';
 
 type Props = {
@@ -46,7 +46,7 @@ export function NewsletterForm({ mode, initialData }: Props) {
       is_active: isActive,
       ...(isMarkdown ? { source_type: 'markdown', markdown_body: markdownBody || undefined } : {}),
     };
-    const csrfToken = getCookie('csrf_token');
+    const csrfToken = getCsrfCookie();
 
     if (mode === 'create') {
       await createNewsletter(payload, csrfToken);
@@ -66,7 +66,7 @@ export function NewsletterForm({ mode, initialData }: Props) {
     }
     const formData = new FormData();
     formData.append('file', thumbnailFile);
-    const csrfToken = getCookie('csrf_token');
+    const csrfToken = getCsrfCookie();
     const response = await uploadThumbnail(initialData.id, formData, csrfToken);
     setThumbnailPath(response.thumbnail_path);
     setThumbnailUrl(`${getBrowserApiBase()}/storage/${response.thumbnail_path}`);

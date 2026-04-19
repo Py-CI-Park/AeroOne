@@ -8,7 +8,7 @@ import { login } from '@/lib/api';
 export function LoginForm() {
   const router = useRouter();
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('change-me');
+  const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

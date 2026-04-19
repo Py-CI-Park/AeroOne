@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import jwt
-from fastapi import Cookie, Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -37,10 +37,10 @@ def get_current_admin(
 def require_csrf(
     request: Request,
     _: User = Depends(get_current_admin),
-            settings: Settings = Depends(get_settings),
-            csrf_cookie: str | None = Cookie(default=None, alias='csrf_token'),
-        ) -> None:
+    settings: Settings = Depends(get_settings),
+) -> None:
     header_value = request.headers.get('x-csrf-token')
+    csrf_cookie = request.cookies.get(settings.csrf_cookie_name)
     payload = getattr(request.state, 'auth_payload', None)
     expected = payload.get('csrf') if payload else None
     if not header_value or not csrf_cookie or header_value != csrf_cookie or header_value != expected:

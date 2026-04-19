@@ -15,6 +15,12 @@ def test_markdown_content_endpoint_returns_rendered_html(client) -> None:
     assert '<h1>' in response.json()['content_html']
 
 
+def test_markdown_storage_file_is_not_publicly_static_served(client) -> None:
+    response = client.get('/storage/markdown/newsletters/sample-welcome.md')
+
+    assert response.status_code == 404
+
+
 def test_pdf_content_endpoint_returns_pdf(csrf_client, client) -> None:
     csrf_client.post('/api/v1/admin/newsletters/sync')
 
