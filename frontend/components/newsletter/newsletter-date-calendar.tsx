@@ -50,7 +50,7 @@ export function NewsletterDateCalendar({
   );
 
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [year, month] = (monthKeys[monthIndex] ?? monthKeys[0] ?? `${new Date().getFullYear()}-${new Date().getMonth()}`)
     .split('-')
     .map(Number);
