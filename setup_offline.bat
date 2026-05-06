@@ -1,5 +1,6 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
+chcp 65001 >nul
 
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
@@ -27,6 +28,34 @@ if defined DRY_RUN (
   echo [DRY-RUN] frontend production build will run
   goto :success
 )
+
+echo [PRE  ] Python / Node / npm 사전 요건 점검
+where py >nul 2>&1
+set "HAVE_PY=%ERRORLEVEL%"
+where python >nul 2>&1
+set "HAVE_PYTHON=%ERRORLEVEL%"
+if not "%HAVE_PY%"=="0" if not "%HAVE_PYTHON%"=="0" (
+  echo [ERROR] Python ^(py 또는 python^)을 찾을 수 없습니다.
+  echo [INFO ] 폐쇄망 PC에 Python 3.12 가 설치되어 있어야 합니다.
+  echo [INFO ] ZIP 안에 동봉된 설치 파일이 있다면 먼저 실행하세요:
+  echo [INFO ]   offline_assets\installers\python-*.exe
+  goto :fail
+)
+where node >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] Node.js 를 찾을 수 없습니다.
+  echo [INFO ] 폐쇄망 PC에 Node.js LTS 가 설치되어 있어야 합니다.
+  echo [INFO ] ZIP 안에 동봉된 설치 파일이 있다면 먼저 실행하세요:
+  echo [INFO ]   offline_assets\installers\node-*.msi
+  goto :fail
+)
+where npm >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] npm 을 찾을 수 없습니다.
+  echo [INFO ] Node.js 재설치 또는 PATH 점검 후 다시 실행하세요.
+  goto :fail
+)
+echo [OK   ] 사전 요건 점검 통과
 
 if not exist "%WHEEL_DIR%" (
   echo [ERROR] offline wheelhouse not found: %WHEEL_DIR%
@@ -94,7 +123,19 @@ if not exist "node_modules" (
 call npm run build || goto :fail_from_frontend
 popd
 
-echo [OK] setup_offline.bat completed successfully.
+echo.
+echo ==================================================
+echo [OK] setup_offline.bat 완료
+echo ==================================================
+echo 다음 단계:
+echo   1. start_offline.bat 실행
+echo   2. backend\.env 에서 ADMIN_PASSWORD 확인 ^(랜덤 생성됨^)
+echo   3. 브라우저: http://localhost:29501/newsletters
+echo   4. 관리자 로그인: http://localhost:29501/login
+echo.
+echo [DATA] Newsletter/output 폴더에 HTML/PDF 원본을 추가한 뒤
+echo        관리자 페이지의 Import / Sync 버튼으로 동기화하세요.
+echo ==================================================
 goto :success
 
 :fail_from_backend

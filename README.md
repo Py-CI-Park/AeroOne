@@ -121,20 +121,39 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    ZIP 안에 들어가는 것:
 
    - 저장소 소스 (`.git`, `.venv`, `node_modules`, `dist`, `backend/data` 등은 제외)
+   - `Newsletter/output/` 의 HTML/PDF 원본 (패키징 시점 스냅샷)
    - `frontend/node_modules` (오프라인용 별도 복사본)
    - Python wheelhouse (`offline_assets/python-wheels/`)
    - 선택적으로 `offline_installers/` 에 미리 둔 Python·Node 설치파일 → `offline_assets/installers/`
+     - 예: `python-3.12.7-amd64.exe`, `node-v20.18.0-x64.msi`
+     - 폐쇄망 PC에 Python 3.12 또는 Node.js LTS 가 없는 경우 반드시 동봉
 
 2. **폐쇄망 PC**
 
+   - 권장 압축 해제 위치: `D:\AeroOne\` 또는 `C:\Programs\AeroOne\` 등 **사용자 쓰기 권한이 있는 절대 경로** (`Program Files` 같은 권한 제한 폴더 / 한글 경로 / 공백 경로 회피)
+   - `Python 3.12` 와 `Node.js LTS` 가 PC에 없으면 ZIP 안 `offline_assets\installers\` 의 설치 파일을 먼저 실행
+
    ```cmd
-   setup_offline.bat    :: .env 재작성, 가상환경, 오프라인 pip install, DB, build
-   start_offline.bat    :: 백엔드/프런트 실행 + 브라우저 자동 오픈
+   setup_offline.bat    :: 사전 점검 + .env 재작성 + 가상환경 + 오프라인 pip install + DB + build
+   start_offline.bat    :: 백엔드/프런트 실행 + 브라우저 자동 오픈 (모두 127.0.0.1 바인딩)
    ```
 
-   `setup_offline.bat` 는 폐쇄망 PC에서도 `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 를 새 랜덤 값으로 다시 생성하고, 기존 `.env` 는 `.bak` 로 자동 백업합니다.
+   `setup_offline.bat` 는 폐쇄망 PC에서도 `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 를 새 랜덤 값으로 다시 생성하고, 기존 `.env` 는 `.bak` 로 자동 백업합니다. 설치 직후 `backend\.env` 의 `ADMIN_PASSWORD` 를 확인해 두세요.
 
-자세한 절차와 FAQ: [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md)
+3. **신규 뉴스레터 추가 (운영 PC에서 반복 작업)**
+
+   - `Newsletter\output\` 폴더에 새 HTML / PDF 파일을 추가
+   - 관리자 페이지 (`/login` 로그인 → `/admin/newsletters`) 에서 **Import / Sync** 버튼 클릭
+   - DB 메타데이터가 새 파일 기준으로 동기화되며, 활성 상태가 자동 활성화됩니다.
+
+4. **백업 (정기 작업)**
+
+   - DB: `backend\data\aeroone.db` 한 파일 복사
+   - 사용자 콘텐츠: `storage\markdown\` 와 `storage\thumbnails\` 폴더 백업
+   - 원본: `Newsletter\output\` 폴더 백업
+   - 위 세 경로만 보관하면 동일 PC 또는 다른 폐쇄망 PC에서 복원 가능합니다.
+
+자세한 절차·FAQ·트러블슈팅: [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md)
 
 ---
 
