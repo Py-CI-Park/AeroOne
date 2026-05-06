@@ -27,6 +27,9 @@ storage/attachments/
 .omx/tmux-hook.json
 .omx/hud-config.json
 
+# OMC runtime state
+.omc/
+
 Newsletter/output/
 
 frontend/tsconfig.tsbuildinfo
