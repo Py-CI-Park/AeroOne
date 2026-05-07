@@ -204,7 +204,12 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 - HTML 미리보기는 백엔드 sanitize + CSP + sandbox iframe 조합. `_debug.html` 은 import / 공개 모두에서 제외.
 - 관리자 모든 mutation 과 sync 는 CSRF 토큰을 요구.
 
-> `setup_offline.bat` 는 폐쇄망 PC 의 `APP_ENV` 을 기본 `development` 로 둡니다. HTTP-only 폐쇄망 환경에서 `secure cookie` 동작을 일시적으로 끄기 위함입니다. HTTPS 환경으로 운영하려면 `backend\.env` 의 `APP_ENV=production` 으로 바꾸고, 동시에 secure cookie 를 받을 수 있도록 리버스 프록시 / 인증서를 준비해야 합니다.
+> `setup_offline.bat` 는 폐쇄망 PC 의 `APP_ENV` 을 기본 `closed_network` 로 둡니다. 이 모드는 다음 두 가지를 동시에 만족시키기 위한 전용 모드입니다.
+>
+> - secure cookie 를 끔 — HTTP-only 폐쇄망 브라우저에서 `admin_session` / `csrf_token` 쿠키가 살아 있도록 합니다.
+> - secret 강도 검증을 켬 — `JWT_SECRET_KEY` 가 `change-me` 또는 32자 미만일 때, `ADMIN_PASSWORD` 가 `change-me` 또는 12자 미만일 때 부팅 즉시 거부합니다. (`setup_offline.bat` 가 매 실행 시 64자 hex JWT 와 48자 hex ADMIN 을 새로 생성하므로 자동 통과합니다.)
+>
+> HTTPS 리버스 프록시 / 인증서를 준비해 인터넷 노출 production 으로 운영하려면 `backend\.env` 의 `APP_ENV=production` 으로 바꾸세요. 이 경우 secure cookie 가 켜지므로 반드시 HTTPS 가 선행되어야 하며, 그렇지 않으면 로그인 쿠키가 전달되지 않습니다.
 
 ---
 

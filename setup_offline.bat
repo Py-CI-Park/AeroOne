@@ -68,7 +68,7 @@ if not defined JWT_SECRET_KEY goto :fail
 if not defined ADMIN_PASSWORD goto :fail
 
 if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
->"%BACKEND_ENV%" echo APP_ENV=development
+>"%BACKEND_ENV%" echo APP_ENV=closed_network
 >>"%BACKEND_ENV%" echo APP_NAME=AeroOne Newsletter Platform
 >>"%BACKEND_ENV%" echo BACKEND_PORT=18437
 >>"%BACKEND_ENV%" echo FRONTEND_PORT=29501

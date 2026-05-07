@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     app_name: str = 'AeroOne Newsletter Platform'
-    app_env: Literal['development', 'test', 'production'] = 'development'
+    app_env: Literal['development', 'test', 'production', 'closed_network'] = 'development'
     backend_port: int = 18437
     frontend_port: int = 29501
     database_url: str = 'sqlite:///./backend/data/aeroone.db'
@@ -83,7 +83,7 @@ class Settings(BaseSettings):
         return self.app_env == 'production'
 
     def validate_runtime_security(self) -> None:
-        if self.app_env != 'production':
+        if self.app_env not in {'production', 'closed_network'}:
             return
 
         errors: list[str] = []
