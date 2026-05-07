@@ -17,8 +17,14 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _run_cmd(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    resolved = list(args)
+    if resolved:
+        first = resolved[0]
+        lowered = first.lower()
+        if (lowered.endswith(".bat") or lowered.endswith(".cmd")) and not Path(first).is_absolute() and not first.startswith((".\\", "./")):
+            resolved[0] = ".\\" + first
     return subprocess.run(
-        ["cmd", "/d", "/c", *args],
+        ["cmd", "/d", "/c", *resolved],
         cwd=cwd,
         env=env,
         capture_output=True,

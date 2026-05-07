@@ -31,8 +31,9 @@ def test_start_frontend_dev_script_runs_npm_with_call() -> None:
     assert "call npm run dev" in contents
 
 
-def test_start_frontend_offline_script_runs_npx_with_call() -> None:
+def test_start_frontend_offline_script_runs_local_next_with_call() -> None:
     script = REPO_ROOT / "scripts" / "start_frontend_offline.cmd"
     contents = script.read_text(encoding="utf-8")
 
-    assert "call npx next start" in contents
+    assert "call .\\node_modules\\.bin\\next.cmd start" in contents
+    assert "node_modules\\.bin\\next.cmd" in contents
