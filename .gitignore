@@ -38,7 +38,8 @@ backend/backend/data/
 
 dist/
 
-offline_installers/
+offline_installers/*
+!offline_installers/README.md
 .worktrees/
 
 frontend/.env.local
