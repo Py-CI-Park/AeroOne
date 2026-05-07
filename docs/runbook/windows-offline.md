@@ -222,14 +222,19 @@ start_offline.bat --dry-run
 :: 3. 헬스체크
 curl http://localhost:18437/api/v1/health
 
-:: 4. 공개 목록 한 건 조회
-curl "http://localhost:18437/api/v1/newsletters?limit=1"
+:: 4. 공개 목록 (전체 반환 — 페이지네이션 미지원, HTTP 200 만 확인)
+curl http://localhost:18437/api/v1/newsletters
 
-:: 5. 관리자 로그인 (admin_session 쿠키 확인)
+:: 4-1. 단건 조회 (최신 발행 1건)
+curl http://localhost:18437/api/v1/newsletters/latest
+
+:: 5. 관리자 로그인 (admin_session + csrf_token 두 쿠키 확인)
 curl -i -X POST -H "Content-Type: application/json" ^
      -d "{\"username\":\"admin\",\"password\":\"<backend\.env 의 ADMIN_PASSWORD>\"}" ^
      http://localhost:18437/api/v1/auth/login
 ```
+
+> 4번 응답이 길어서 부담스러우면 PowerShell 에서 `... | ConvertFrom-Json | Select-Object -First 1` 로 한 건만 보거나, 4-1 의 `/latest` 단건 조회로 대체하세요. 카테고리·태그 라우트는 관리자 전용 (`/api/v1/admin/categories`, `/api/v1/admin/tags`) 이라 5번 로그인 후 쿠키를 첨부해야 응답을 받을 수 있습니다.
 
 위 다섯 단계가 모두 정상이면 폐쇄망 운영 준비가 끝난 것입니다.
 
