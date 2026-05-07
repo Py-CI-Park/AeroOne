@@ -112,6 +112,69 @@ offline_package.bat      ─┘──→ ZIP 복사 ──→  압축 해제
 8. `start_offline.bat` — 두 포트 준비 시 브라우저 자동 오픈
 9. 신규 발행 시 `Newsletter\output\` 에 파일 추가 → 관리자 페이지 **Import / Sync** 클릭
 
+### 5.1 9단계 진행 체크리스트 (실 배포 추적용)
+
+운영자가 본 PC 에서 폐쇄망 PC 까지 한 번에 따라가며 체크박스로 진행을 추적할 때 사용합니다. 마크다운 뷰어에서 `[ ]` 를 `[x]` 로 바꿔 가며 진행 상황을 기록할 수 있습니다.
+
+#### 본 PC — 인터넷 가능
+
+- [ ] **단계 1** — Python 3.12.x Windows installer (64-bit) 와 Node 20.x LTS .msi (64-bit) 다운로드.
+  - 출처: <https://www.python.org/downloads/windows/> , <https://nodejs.org/en/download>
+  - 완료 조건: 두 파일 (`python-3.12.x-amd64.exe`, `node-v20.x.x-x64.msi`) 확보.
+  - 매뉴얼: `offline_installers/README.md`, `docs/runbook/windows-offline.md` §3.
+
+- [ ] **단계 2** — 두 인스톨러를 `offline_installers/` 폴더에 그대로 배치.
+  - 명령: `copy <다운로드받은_파일> D:\Chanil_Park\Project\Programming\AeroOne\offline_installers\`
+  - 완료 조건: `dir offline_installers` 가 두 파일을 보여줌.
+  - 매뉴얼: `offline_installers/README.md`.
+
+- [ ] **단계 3** — 패키징.
+  - 명령: `cd D:\Chanil_Park\Project\Programming\AeroOne` → `offline_package.bat`
+  - 완료 조건: `dist\AeroOne-offline-YYYYMMDD-HHMMSS.zip` 신규 생성 (대략 500–700 MB).
+  - 검증: `dir dist\AeroOne-offline-*.zip`.
+  - 매뉴얼: `docs/runbook/windows-offline.md` §1·§2, 본 가이드 §5 다이어그램.
+
+#### 이동
+
+- [ ] **단계 4** — ZIP 1개를 폐쇄망 PC 로 복사 (USB / 사내 파일서버 등 **단방향 허용 경로**).
+  - 완료 조건: 폐쇄망 PC 에서 ZIP 파일이 보임.
+  - 매뉴얼: `docs/runbook/windows-offline.md` §2.
+
+#### 폐쇄망 PC — 인터넷 차단
+
+- [ ] **단계 5** — 권장 위치에 압축 해제.
+  - 권장: `D:\AeroOne\`, `C:\Programs\AeroOne\`, `C:\Users\<유저>\AeroOne\` (모두 한글·공백 없음).
+  - 피해야 할 곳: `C:\Program Files\` (관리자 권한), 데스크톱 (path limit), 한글/공백 포함 경로.
+  - 완료 조건: 압축 해제한 폴더 안에 `setup_offline.bat`, `start_offline.bat`, `offline_assets\` 가 보임.
+  - 매뉴얼: `docs/runbook/windows-offline.md` §4.
+
+- [ ] **단계 6** — (Python/Node 부재 시) 동봉된 인스톨러 두 개 차례로 실행.
+  - 명령: `offline_assets\installers\python-3.12.x-amd64.exe` → 설치 마법사에서 **"Add python.exe to PATH"** 체크.
+  - 명령: `offline_assets\installers\node-v20.x.x-x64.msi` → 설치 마법사에서 **"Add to PATH"** 체크.
+  - 완료 조건: 새 CMD 창에서 `where py`, `where node`, `where npm` 모두 경로 출력.
+  - 이미 설치되어 있으면 건너뜀.
+  - 매뉴얼: `docs/runbook/windows-offline.md` §3.
+
+- [ ] **단계 7** — 설치.
+  - 단일 PC 운영: `setup_offline.bat`
+  - LAN 다중 PC 운영: `setup_offline.bat --allow-host=192.168.1.10` (사내 IP 로 교체)
+  - 완료 조건: `[OK] setup_offline.bat 완료` 메시지 + `backend\.env`, `frontend\.env.local`, `backend\.venv\`, `backend\data\aeroone.db` 모두 생성.
+  - 매뉴얼: `docs/runbook/windows-offline.md` §6, 본 가이드 §6 / §7.
+
+- [ ] **단계 8** — 실행.
+  - 단일 PC: `start_offline.bat`
+  - LAN: `start_offline.bat --allow-host=192.168.1.10` (단계 7과 동일 호스트)
+  - 완료 조건: 두 CMD 창 (backend 녹색, frontend 청록) 자동 기동 + 브라우저 자동 오픈 (`http://localhost:29501/` 또는 `http://<host>:29501/`).
+  - 매뉴얼: `docs/runbook/windows-offline.md` §5, 본 가이드 §6 / §7.
+
+- [ ] **단계 9** — `ADMIN_PASSWORD` 확인 + 관리자 로그인 검증.
+  - 명령: `type backend\.env | findstr ADMIN_PASSWORD` → 출력된 48자 hex 비밀번호 메모.
+  - 검증: 브라우저에서 `http://localhost:29501/login` (또는 `http://<host>:29501/login`) 으로 들어가 `admin` + 위 비밀번호로 로그인 성공.
+  - 추가 검증 (선택): `curl http://localhost:18437/api/v1/health` → `{"status":"ok",...}`.
+  - 매뉴얼: `docs/runbook/windows-offline.md` §7.3, 본 가이드 §8.2 + §11.1.
+
+> 단계 7 또는 8 에서 실패하면 본 가이드 §12 트러블슈팅 표를 먼저 확인하세요. 가장 흔한 두 원인은 (a) `[ERROR] Python` / `[ERROR] Node.js` (단계 6 인스톨러 미실행 또는 PATH 미반영), (b) 포트 18437/29501 점유 (다른 프로세스가 같은 포트 사용 중) 입니다.
+
 ---
 
 ## 6. 모드 A — 단일 PC (loopback)
