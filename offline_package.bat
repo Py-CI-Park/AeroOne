@@ -31,7 +31,7 @@ mkdir "%REPO_STAGE%" || exit /b 1
 mkdir "%WHEEL_DIR%" || exit /b 1
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 
-robocopy "%ROOT%" "%REPO_STAGE%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD .git .omx .venv .python_packages dist backend\.venv frontend\node_modules frontend\.next backend\data offline_installers >nul
+robocopy "%ROOT%" "%REPO_STAGE%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD .git .omx .omc .worktrees .venv .python_packages dist backend\.venv frontend\node_modules frontend\.next backend\data offline_installers >nul
 if errorlevel 8 exit /b 1
 
 if not exist "%ROOT%\frontend\node_modules" (
@@ -56,7 +56,7 @@ if exist "%INSTALLER_SRC%" (
 >>"%REPO_STAGE%\offline_assets\README-OFFLINE.txt" echo 3. Optional installers can be placed in offline_installers before packaging.
 
 if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
-powershell -NoProfile -Command "Compress-Archive -Path '%REPO_STAGE%\*' -DestinationPath '%ZIP_PATH%' -Force" || exit /b 1
+powershell -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory('%REPO_STAGE%', '%ZIP_PATH%', [System.IO.Compression.CompressionLevel]::Fastest, $false)" || exit /b 1
 
 echo [OK] offline package created: %ZIP_PATH%
 exit /b 0
