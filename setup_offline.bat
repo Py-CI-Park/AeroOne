@@ -14,10 +14,41 @@ set "BACKEND_VENV=%BACKEND_DIR%\.venv"
 set "WHEEL_DIR=%ROOT%\offline_assets\python-wheels"
 set "DRY_RUN="
 set "NO_PAUSE="
-if /I "%~1"=="--dry-run" set "DRY_RUN=1"
-if /I "%~1"=="--no-pause" set "NO_PAUSE=1"
+set "ALLOW_HOST=%AEROONE_ALLOW_HOST%"
+
+:parse_args
+if "%~1"=="" goto :parse_done
+if /I "%~1"=="--dry-run" (set "DRY_RUN=1" & shift & goto :parse_args)
+if /I "%~1"=="--no-pause" (set "NO_PAUSE=1" & shift & goto :parse_args)
 if /I "%~1"=="--help" goto :help
-if /I "%~2"=="--no-pause" set "NO_PAUSE=1"
+if /I "%~1"=="--allow-host" (shift & goto :capture_host)
+echo %~1 | findstr /B /I /C:"--allow-host=" >nul
+if not errorlevel 1 (
+  for /F "tokens=2 delims==" %%V in ("%~1") do set "ALLOW_HOST=%%V"
+  shift
+  goto :parse_args
+)
+shift
+goto :parse_args
+
+:capture_host
+if "%~1"=="" (
+  echo [ERROR] --allow-host requires a host argument ^(IP or hostname^).
+  exit /b 1
+)
+set "ALLOW_HOST=%~1"
+shift
+goto :parse_args
+
+:parse_done
+
+if defined ALLOW_HOST (
+  set "EFFECTIVE_BACKEND_BASE=http://%ALLOW_HOST%:18437"
+  set "EFFECTIVE_CORS=http://localhost:29501,http://%ALLOW_HOST%:29501"
+) else (
+  set "EFFECTIVE_BACKEND_BASE=http://localhost:18437"
+  set "EFFECTIVE_CORS=http://localhost:29501"
+)
 
 if defined DRY_RUN (
   echo [DRY-RUN] offline wheelhouse expected at %WHEEL_DIR%
@@ -26,6 +57,13 @@ if defined DRY_RUN (
   echo [DRY-RUN] backend venv will be created at %BACKEND_VENV%
   echo [DRY-RUN] backend migration and seed will run
   echo [DRY-RUN] frontend production build will run
+  if defined ALLOW_HOST (
+    echo [DRY-RUN] LAN host = %ALLOW_HOST%
+    echo [DRY-RUN] CORS_ORIGINS = %EFFECTIVE_CORS%
+    echo [DRY-RUN] NEXT_PUBLIC_API_BASE_URL = %EFFECTIVE_BACKEND_BASE%
+  ) else (
+    echo [DRY-RUN] LAN host = ^(unset, loopback only^)
+  )
   goto :success
 )
 
@@ -84,12 +122,13 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo THUMBNAILS_DIR_NAME=thumbnails
 >>"%BACKEND_ENV%" echo ATTACHMENTS_DIR_NAME=attachments
 >>"%BACKEND_ENV%" echo MARKDOWN_DIR_NAME=markdown
->>"%BACKEND_ENV%" echo CORS_ORIGINS=http://localhost:29501
->>"%BACKEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
+>>"%BACKEND_ENV%" echo CORS_ORIGINS=%EFFECTIVE_CORS%
+>>"%BACKEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=%EFFECTIVE_BACKEND_BASE%
 >>"%BACKEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
+if defined ALLOW_HOST >>"%BACKEND_ENV%" echo LAN_HOST=%ALLOW_HOST%
 
 if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
->"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
+>"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=%EFFECTIVE_BACKEND_BASE%
 >>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
 >>"%FRONTEND_ENV%" echo NEXT_PUBLIC_CSRF_COOKIE_NAME=csrf_token
 
@@ -156,13 +195,18 @@ if not defined NO_PAUSE pause
 exit /b 0
 
 :help
-echo Usage: setup_offline.bat [--dry-run] [--no-pause]
+echo Usage: setup_offline.bat [--dry-run] [--no-pause] [--allow-host=^<host^>]
 echo.
 echo Installs the packaged offline bundle on an offline Windows PC.
 echo - Rewrites backend\.env with offline-local absolute paths ^(backup: .env.bak^)
 echo - Rewrites frontend\.env.local ^(backup: .env.local.bak^)
 echo - Uses Python wheelhouse from offline_assets\python-wheels
 echo - Runs Alembic migration or stamps an existing DB when tables already exist
+echo.
+echo --allow-host=^<host^>  Expose to LAN. Sets CORS_ORIGINS / NEXT_PUBLIC_API_BASE_URL
+echo                     to include http://^<host^>:29501 and http://^<host^>:18437.
+echo                     Example: --allow-host=192.168.1.10
+echo                     Environment fallback: AEROONE_ALLOW_HOST.
 echo.
 echo Use --no-pause when launching from an existing terminal and you do not want the window to wait at the end.
 exit /b 0

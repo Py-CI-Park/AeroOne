@@ -106,13 +106,38 @@ C:\Users\<유저명>\AeroOne\
 
 ### 5.2 바인딩 호스트
 
-| 서비스 | 호스트 | 포트 |
-|---|---|---|
-| Backend uvicorn | `127.0.0.1` | `18437` |
-| Frontend next start (offline) | `127.0.0.1` | `29501` |
-| Frontend next dev (online) | Next.js 기본 | `29501` |
+기본값(loopback) 과 LAN 모드(`--allow-host=<host>`) 를 한 표로 정리합니다.
 
-> 두 서비스 모두 loopback 바인딩이라 같은 PC 의 브라우저에서만 접속됩니다. LAN 내 다른 PC 에서 접근해야 한다면 §11 트러블슈팅을 참고하세요.
+| 서비스 | 기본 (loopback) | LAN 모드 |
+|---|---|---|
+| Backend uvicorn | `127.0.0.1:18437` | `0.0.0.0:18437` |
+| Frontend next start (offline) | `127.0.0.1:29501` | `0.0.0.0:29501` |
+| 자동 오픈 URL | `http://localhost:29501/` | `http://<host>:29501/` |
+| `backend\.env` `CORS_ORIGINS` | `http://localhost:29501` | `http://localhost:29501,http://<host>:29501` |
+| `backend\.env` `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:18437` | `http://<host>:18437` |
+| `backend\.env` `SERVER_API_BASE_URL` | `http://localhost:18437` | `http://localhost:18437` (Next.js SSR 은 같은 PC 자기 자신을 호출) |
+
+### 5.3 LAN 모드 사용법 (`--allow-host`)
+
+폐쇄망 안에서 다른 PC 가 본 PC 의 AeroOne 에 접근해야 할 때, 다섯 자리(backend 호스트, frontend 호스트, CORS_ORIGINS, NEXT_PUBLIC_API_BASE_URL, 자동 오픈 URL) 를 옵션 1개로 한 번에 맞춥니다.
+
+```cmd
+:: 1. 먼저 LAN 모드로 .env 작성
+setup_offline.bat --allow-host=192.168.1.10
+
+:: 2. 같은 호스트로 운영 시작 (backend / frontend 모두 0.0.0.0 바인딩)
+start_offline.bat --allow-host=192.168.1.10
+```
+
+또는 환경 변수로 한 번 설정해 둘 수도 있습니다.
+
+```cmd
+set AEROONE_ALLOW_HOST=192.168.1.10
+setup_offline.bat
+start_offline.bat
+```
+
+> LAN 모드에서 자기 PC 로 접속할 때도 반드시 `http://<host>:29501/` 로 들어가세요. `http://localhost:29501/` 로 들어가면 페이지 호스트(`localhost`) 와 API 호스트(`<host>`) 가 달라 쿠키가 격리되어 로그인이 동작하지 않습니다. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하면 항상 같은 호스트로 통일됩니다.
 
 ---
 
@@ -198,8 +223,9 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 
 ## 9. 보안 기본값
 
-- `JWT_SECRET_KEY`, `ADMIN_PASSWORD` 는 setup 시 랜덤 생성. `change-me` 같은 기본값은 production 환경에서 거부됩니다.
-- 두 서비스 모두 `127.0.0.1` 바인딩 → 동일 PC 의 브라우저에서만 접속 가능.
+- `JWT_SECRET_KEY`, `ADMIN_PASSWORD` 는 setup 시 랜덤 생성. `change-me` 같은 기본값은 `production` / `closed_network` 두 모드 모두에서 거부됩니다.
+- 기본 모드는 두 서비스 모두 `127.0.0.1` 바인딩 → 동일 PC 의 브라우저에서만 접속 가능.
+- LAN 모드 (`--allow-host=<host>`) 사용 시 `0.0.0.0` 바인딩으로 LAN 전체에 노출됩니다. **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하고, Windows 방화벽에서 `18437`, `29501` 두 포트를 LAN 외부로 차단하는 규칙을 함께 두세요. 인터넷 노출 production 으로 사용하지 마세요.
 - 정적 파일 노출 범위는 `storage\thumbnails\` 하위로 제한.
 - HTML 미리보기는 백엔드 sanitize + CSP + sandbox iframe 조합. `_debug.html` 은 import / 공개 모두에서 제외.
 - 관리자 모든 mutation 과 sync 는 CSRF 토큰을 요구.
@@ -254,7 +280,8 @@ curl -i -X POST -H "Content-Type: application/json" ^
 | 사전 점검은 통과하지만 wheelhouse 단계에서 실패 | wheel 파일 일부 누락 (온라인 PC 에서 transitive dep 누락) | 온라인 PC 에서 `offline_package.bat --dry-run` 으로 wheelhouse 재수집 후 재패키징 |
 | 포트 충돌 (`port 18437/29501 is already in use`) | 다른 프로세스가 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료, 또는 `.env` 의 포트 변경 (CORS_ORIGINS, NEXT_PUBLIC_API_BASE_URL 도 함께 수정) |
 | 페이지 로딩 후 `Failed to fetch` | 페이지 호스트와 API 호스트가 다름 (`127.0.0.1` vs `localhost` 쿠키 격리) | 브라우저 주소를 `http://localhost:29501/...` 로 통일 |
-| LAN 내 다른 PC 에서 접근 불가 | `127.0.0.1` 바인딩 | 두 서비스 모두 외부 호스트 바인딩으로 바꾸려면 `start_offline.bat` 의 backend 호스트와 `scripts\start_frontend_offline.cmd` 의 `-H` 인자, `backend\.env` 의 `CORS_ORIGINS`, `NEXT_PUBLIC_API_BASE_URL`, `SERVER_API_BASE_URL` 을 모두 동일한 외부 IP / 호스트명으로 맞춰야 합니다 |
+| LAN 내 다른 PC 에서 접근 불가 | `127.0.0.1` 바인딩 (기본) | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 로 다섯 자리를 한 번에 LAN 모드로 전환합니다. 자세한 동작은 §5.3 참고. |
+| LAN 모드에서 같은 PC 로 접속했는데 로그인 후 화면이 빈 채로 멈춤 | `localhost` ↔ `<host>` 쿠키 격리 | 페이지 주소를 `http://<host>:29501/` 로 통일. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하세요. |
 | 관리자 화면에 `Failed to fetch` | 로그인 후 admin_session 쿠키 미적용 | 로그인 직후 페이지 새로고침. 그래도 실패하면 `backend\.env` 의 `ADMIN_SESSION_COOKIE_NAME`/`CSRF_COOKIE_NAME` 과 `frontend\.env.local` 의 `NEXT_PUBLIC_CSRF_COOKIE_NAME` 이 일치하는지 확인 |
 | `start_offline.bat` 가 브라우저를 열지 않음 | frontend 빌드 미완료 또는 `.next` 누락 | `setup_offline.bat` 를 다시 실행해 `npm run build` 까지 완료 |
 | `Newsletter/output` 에 파일을 넣었는데 목록에 안 보임 | sync 미실행 | 관리자 페이지의 **Import / Sync** 버튼 클릭, 또는 `setup_offline.bat` 재실행 (seed 가 sync 까지 수행) |

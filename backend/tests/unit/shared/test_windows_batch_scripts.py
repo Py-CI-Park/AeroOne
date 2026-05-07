@@ -460,6 +460,66 @@ def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
     assert pattern.search(browser_line), browser_line
 
 
+def test_setup_offline_dry_run_allow_host_prints_lan_info() -> None:
+    result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause", "--allow-host=192.168.1.10")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("LAN host = 192.168.1.10" in line for line in lines)
+    assert any("http://localhost:29501,http://192.168.1.10:29501" in line for line in lines)
+    assert any("NEXT_PUBLIC_API_BASE_URL = http://192.168.1.10:18437" in line for line in lines)
+
+
+def test_setup_offline_dry_run_default_loopback_only() -> None:
+    result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("LAN host = (unset, loopback only)" in line for line in lines)
+    assert not any("0.0.0.0" in line for line in lines)
+
+
+def test_start_offline_dry_run_allow_host_uses_external_binding() -> None:
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run", "--allow-host=10.0.0.5")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("uvicorn app.main:app --host 0.0.0.0 --port 18437" in line for line in lines)
+    assert any("URL  : http://10.0.0.5:18437" in line for line in lines)
+    assert any("URL  : http://10.0.0.5:29501/" in line for line in lines)
+    browser_line = next((line for line in lines if "open_browser.cmd" in line), None)
+    assert browser_line is not None
+    assert "http://10.0.0.5:29501/" in browser_line
+    assert any("LAN host = 10.0.0.5" in line for line in lines)
+
+
+def test_start_offline_dry_run_default_keeps_loopback() -> None:
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("uvicorn app.main:app --host 127.0.0.1 --port 18437" in line for line in lines)
+    assert not any("uvicorn app.main:app --host 0.0.0.0" in line for line in lines)
+    assert any("URL  : http://localhost:18437" in line for line in lines)
+    assert any("LAN host = (unset, loopback only)" in line for line in lines)
+
+
+def test_start_offline_allow_host_missing_value_fails() -> None:
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--allow-host")
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "--allow-host requires a host argument" in result.stdout
+
+
+def test_start_frontend_offline_script_supports_allow_host_branch() -> None:
+    script = REPO_ROOT / "scripts" / "start_frontend_offline.cmd"
+    contents = script.read_text(encoding="utf-8")
+
+    assert "if defined AEROONE_ALLOW_HOST" in contents
+    assert "next.cmd start -H 0.0.0.0 -p 29501" in contents
+    assert "next.cmd start -H 127.0.0.1 -p 29501" in contents
+
+
 def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     bin_dir, log_file = _make_powershell_stub(tmp_path)
     script_path = _make_open_browser_test_copy(tmp_path)
