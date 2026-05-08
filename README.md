@@ -68,7 +68,9 @@
 | 관리자 화면 | 로그인, 메타데이터 CRUD, 카테고리·태그 관리, 썸네일 업로드, `Newsletter/output` import / sync |
 | 인증 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰, 단일 시드 관리자 |
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
-| 검증 | backend pytest + httpx, frontend Vitest + Testing Library, Windows 실행 스모크 |
+| 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
+| LAN 모드 | `setup_offline.bat --allow-host=<IP>` / `start_offline.bat --allow-host=<IP>` 옵션 1개로 backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리를 LAN 호스트로 일괄 동기화 |
+| 검증 | backend pytest + httpx (66 passed), frontend Vitest + Testing Library, Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 
 ---
@@ -133,12 +135,23 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    - 권장 압축 해제 위치: `D:\AeroOne\` 또는 `C:\Programs\AeroOne\` 등 **사용자 쓰기 권한이 있는 절대 경로** (`Program Files` 같은 권한 제한 폴더 / 한글 경로 / 공백 경로 회피)
    - `Python 3.12` 와 `Node.js LTS` 가 PC에 없으면 ZIP 안 `offline_assets\installers\` 의 설치 파일을 먼저 실행
 
+   **단일 PC (loopback)** — 같은 PC 의 브라우저에서만 접속
+
    ```cmd
    setup_offline.bat    :: 사전 점검 + .env 재작성 + 가상환경 + 오프라인 pip install + DB + build
    start_offline.bat    :: 백엔드/프런트 실행 + 브라우저 자동 오픈 (모두 127.0.0.1 바인딩)
    ```
 
-   `setup_offline.bat` 는 폐쇄망 PC에서도 `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 를 새 랜덤 값으로 다시 생성하고, 기존 `.env` 는 `.bak` 로 자동 백업합니다. 설치 직후 `backend\.env` 의 `ADMIN_PASSWORD` 를 확인해 두세요.
+   **LAN 모드 (`--allow-host=<IP>`)** — 같은 폐쇄망 LAN 의 다른 PC 도 접속
+
+   ```cmd
+   setup_offline.bat --allow-host=192.168.1.10    :: .env 의 CORS_ORIGINS / NEXT_PUBLIC_API_BASE_URL 5자리 일괄 LAN 모드
+   start_offline.bat --allow-host=192.168.1.10    :: backend / frontend 모두 0.0.0.0 바인딩, 자동 오픈 URL 도 동일 호스트
+   ```
+
+   환경 변수 `AEROONE_ALLOW_HOST` 도 동일하게 받습니다. LAN 모드에서 자기 PC 도 반드시 `http://<IP>:29501/` 로 접속해야 쿠키 격리를 피할 수 있습니다. Windows 방화벽에서 `18437`, `29501` 두 포트의 LAN 외부 차단 규칙을 함께 두세요.
+
+   `setup_offline.bat` 는 폐쇄망 PC 에서 `APP_ENV=closed_network` 로 부팅하고 `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 를 새 랜덤 값으로 다시 생성합니다 (기존 `.env` 는 `.bak` 로 자동 백업). `closed_network` 모드는 HTTP 폐쇄망에서 secure cookie 는 끄고 secret 강도 검증은 켜는 전용 모드입니다. 설치 직후 `backend\.env` 의 `ADMIN_PASSWORD` 를 확인해 두세요.
 
 3. **신규 뉴스레터 추가 (운영 PC에서 반복 작업)**
 
@@ -153,7 +166,8 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    - 원본: `Newsletter\output\` 폴더 백업
    - 위 세 경로만 보관하면 동일 PC 또는 다른 폐쇄망 PC에서 복원 가능합니다.
 
-자세한 절차·FAQ·트러블슈팅: [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md)
+- 종합 가이드 (사람·AI 모두 위한 단일 진입점, 9단계 진행 체크리스트 포함): [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md)
+- 자세한 절차·FAQ·트러블슈팅: [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md)
 
 ---
 
@@ -198,16 +212,20 @@ AeroOne/
 
 | 키 | 의미 | 기본값 / 비고 |
 |---|---|---|
-| `APP_ENV` | 실행 모드 | `development` / `production` (production 은 기본 secret 거부) |
+| `APP_ENV` | 실행 모드 | `development` (`setup.bat`) / `test` / `closed_network` (`setup_offline.bat`) / `production`. `closed_network` 와 `production` 은 기본 secret 거부 |
 | `BACKEND_PORT` / `FRONTEND_PORT` | 서비스 포트 | `18437` / `29501` |
 | `DATABASE_URL` | DB 연결 문자열 | SQLite 기본, PostgreSQL 가능 |
-| `JWT_SECRET_KEY` | 세션 서명 키 | setup 시 랜덤 생성 |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 단일 시드 관리자 | setup 시 비밀번호 랜덤 생성 |
+| `JWT_SECRET_KEY` | 세션 서명 키 | setup 시 랜덤 생성 (64자 hex) |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 단일 시드 관리자 | setup 시 비밀번호 랜덤 생성 (48자 hex) |
 | `ADMIN_SESSION_COOKIE_NAME` | 관리자 세션 쿠키 이름 | `admin_session` |
 | `CSRF_COOKIE_NAME` | CSRF 토큰 쿠키 이름 | 프런트와 동일 값 사용 |
 | `NEWSLETTER_IMPORT_ROOT_HOST` / `_CONTAINER` | 원본 폴더 호스트/컨테이너 경로 | 컨테이너 실행 시 양쪽 사용 |
 | `STORAGE_ROOT` | 앱 storage 루트 | 정적 노출은 `thumbnails` 하위만 |
-| `CORS_ORIGINS` | 프런트 origin 화이트리스트 | `http://localhost:29501` |
+| `CORS_ORIGINS` | 프런트 origin 화이트리스트 | `http://localhost:29501` (LAN 모드면 두 origin) |
+| `NEXT_PUBLIC_API_BASE_URL` | 브라우저가 호출할 backend 베이스 | loopback 시 `http://localhost:18437`, LAN 모드 시 `http://<host>:18437` |
+| `SERVER_API_BASE_URL` | Next.js SSR 이 호출할 backend 베이스 | 항상 loopback (`http://localhost:18437`) |
+| `LAN_HOST` | (옵션) `setup_offline.bat --allow-host` 가 .env 에 남기는 메타 | LAN 모드 운영 중인 호스트 표시용 |
+| `AEROONE_ALLOW_HOST` | LAN 모드 호스트 (옵션 인자 대신 환경 변수로 지정) | `setup_offline.bat` / `start_offline.bat` 모두 인식 |
 
 ---
 
@@ -256,14 +274,15 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.0.1 기준 모두 통과 상태입니다.
+현재 main (`9551e92`) 기준 backend `pytest tests` 결과 **66 passed** (실패 0). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 
 ## 보안과 운영 권장사항
 
-- production 배포 시 `.env` 의 `APP_ENV=production` 으로 설정 → 기본 secret 과 admin 비밀번호가 즉시 거부됩니다.
-- HTTPS 종단을 두면 `secure cookie` 가 자동으로 활성화됩니다.
+- 운영 모드는 `APP_ENV` 로 4 가지 — `development` (개발자 로컬), `test` (pytest 픽스처), `closed_network` (폐쇄망 HTTP, secret 강도 검증 ON / secure cookie OFF), `production` (인터넷 노출 HTTPS, 둘 다 ON). `closed_network` 와 `production` 은 `change-me` 또는 짧은 secret 을 부팅 시 거부합니다.
+- HTTPS 종단을 두면 `production` 에서 `secure cookie` 가 자동 활성화됩니다. HTTP-only 폐쇄망은 `closed_network` 로 둬야 쿠키가 살아 있으면서 검증도 켜집니다.
+- LAN 모드 (`--allow-host=<IP>`) 는 backend / frontend 를 `0.0.0.0` 으로 노출하므로 **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하고, Windows 방화벽에서 `18437` / `29501` 두 포트의 LAN 외부 차단 규칙을 함께 두세요. 인터넷 노출 production 으로 사용 금지.
 - `Newsletter/output` 와 `storage/` 는 운영 PC에 한정해 두고, 백업·접근 권한은 사내 정책에 맞춰 분리하세요.
 - 관리자 비밀번호 노출이 의심되면 `setup.bat` 또는 `setup_offline.bat` 을 다시 실행하세요. 새 랜덤 값으로 교체되며 기존 `.env` 는 `.bak` 로 자동 백업됩니다.
 - 관리자 인증은 `/admin/*` 모든 mutation/sync 엔드포인트의 신뢰 경계입니다. 정책 배경: [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md)
