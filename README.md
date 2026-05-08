@@ -272,15 +272,18 @@ npm run build
 
 ## 문서
 
+전체 문서 색인은 [`docs/INDEX.md`](docs/INDEX.md) 입니다. 자주 찾는 자리만 추리면 다음과 같습니다.
+
 | 분류 | 위치 |
 |---|---|
-| 개발 계획 | [`docs/dev_plan/20260327_newsletter_platform_mvp.md`](docs/dev_plan/20260327_newsletter_platform_mvp.md) |
-| PRD | [`.omx/plans/prd-newsletter-platform-mvp.md`](.omx/plans/prd-newsletter-platform-mvp.md) |
-| 테스트 명세 | [`.omx/plans/test-spec-newsletter-platform-mvp.md`](.omx/plans/test-spec-newsletter-platform-mvp.md) |
+| 폐쇄망 운영 종합 가이드 | [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) (15장 + 부록) |
+| 폐쇄망 실행 런북 | [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md) (가장 깊은 세부) |
 | 로컬 개발 런북 | [`docs/runbook/local-dev.md`](docs/runbook/local-dev.md) |
-| 폐쇄망 실행 런북 | [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md) |
 | 관리자 인증 정책 | [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md) |
-| 설계 산출물 | [`docs/superpowers/specs/`](docs/superpowers/specs/), [`docs/superpowers/plans/`](docs/superpowers/plans/) |
+| 단계별 변경 보고서 (closed_network / --allow-host / 시뮬레이션 / docstring) | [`docs/reports/INDEX.md`](docs/reports/INDEX.md) |
+| 설계 산출물 (plan + spec) | [`docs/superpowers/INDEX.md`](docs/superpowers/INDEX.md) |
+| 개발 계획 (MVP) | [`docs/dev_plan/20260327_newsletter_platform_mvp.md`](docs/dev_plan/20260327_newsletter_platform_mvp.md) |
+| AI 에이전트 / 협업자 진입점 | [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
 ---
 
@@ -291,5 +294,5 @@ npm run build
   - HTTPS 종단과 `secure cookie` 보장
   - `Newsletter/output` 와 `storage/` 의 접근 권한
   - CORS / 리버스 프록시 / 방화벽 구성
-- 커밋 메시지는 한국어 제목 + 한국어 본문 + Lore trailer 규칙을 따릅니다. 자세한 규칙: [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md).
-- 외부 PR / 이슈 / 라이선스 정책이 필요한 경우 별도 문서로 추가하세요. 현재 저장소에는 라이선스 파일이 포함되어 있지 않습니다.
+- 커밋 메시지는 한국어 제목 + 한국어 본문 + Lore trailer 규칙을 따릅니다. 자세한 규칙: [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- 라이선스는 [`LICENSE`](LICENSE) (All Rights Reserved) — 사내 사용을 일차 목적으로 합니다. 외부 사용·재배포·라이선스 예외 / 보안 신고는 LICENSE 의 연락처로 직접 연락하세요.

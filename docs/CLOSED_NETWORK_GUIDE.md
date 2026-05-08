@@ -464,6 +464,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 
 ### 15.2 운영 매뉴얼
 
+- **단일 진입점**: [`docs/INDEX.md`](INDEX.md) — 본 가이드 외 모든 문서의 wiki 색인
 - [`README.md`](../README.md) — 시스템 정체성과 빠른 시작
 - [`docs/runbook/windows-offline.md`](runbook/windows-offline.md) — 폐쇄망 운영 13장 전체
 - [`docs/runbook/local-dev.md`](runbook/local-dev.md) — 개발자 로컬 실행
