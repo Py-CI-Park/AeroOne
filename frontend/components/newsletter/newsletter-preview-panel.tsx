@@ -30,7 +30,6 @@ export function NewsletterPreviewPanel({
   theme?: NewsletterTheme;
 }) {
   const dark = theme === 'dark';
-  const metaClass = `text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`;
   const navLinkClass = `rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
     dark
       ? 'border-slate-700 bg-slate-950 text-slate-200 hover:border-slate-600 hover:bg-slate-900'
@@ -47,13 +46,11 @@ export function NewsletterPreviewPanel({
         dark ? 'border-slate-800 bg-slate-900/95 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
       }`}
     >
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>Preview</p>
-          {displayDate ? <p className={metaClass}>{displayDate}</p> : null}
-          <h2 className={`mt-1 text-lg font-semibold ${dark ? 'text-slate-100' : 'text-slate-900'}`}>{title}</h2>
-          <p className={metaClass}>선택한 형식을 아래 큰 미리보기 표면에서 확인합니다.</p>
-        </div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className={`text-base font-semibold ${dark ? 'text-slate-100' : 'text-slate-900'}`}>
+          {title}
+          {displayDate ? <span className={`ml-2 text-sm font-normal ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{displayDate}</span> : null}
+        </h2>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {dateNavigation?.previous ? (
             <a href={dateNavigation.previous.href} className={navLinkClass}>{dateNavigation.previous.label}</a>

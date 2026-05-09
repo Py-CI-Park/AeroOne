@@ -30,7 +30,7 @@ export function NewslettersWorkspace({
   const [selectedAsset, setSelectedAsset] = useState(newsletter.default_asset_type);
 
   return (
-    <div data-testid="newsletters-workspace" className="space-y-3">
+    <div data-testid="newsletters-workspace" className="space-y-2">
       <div
         data-testid="newsletters-control-grid"
         className={`grid items-stretch gap-3 ${calendarPanel ? 'lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]' : ''}`}

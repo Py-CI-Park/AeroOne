@@ -135,15 +135,15 @@ export function NewsletterDateCalendar({
         <div className="grid grid-cols-7 gap-2">
           {cells.map((cell, index) => {
             if (!cell.day) {
-              return <div key={`empty-${index}`} className={`h-14 rounded-xl ${dark ? 'bg-slate-950/30' : 'bg-slate-50'}`} />;
+              return <div key={`empty-${index}`} className={`h-10 rounded-xl ${dark ? 'bg-slate-950/30' : 'bg-slate-50'}`} />;
             }
             if (!cell.entry) {
               return (
                 <div
                   key={`inactive-${cell.day}`}
                   className={dark
-                    ? 'flex h-14 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-950/60 text-sm text-slate-600'
-                    : 'flex h-14 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-sm text-slate-300'}
+                    ? 'flex h-10 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-950/60 text-sm text-slate-600'
+                    : 'flex h-10 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-sm text-slate-300'}
                 >
                   {cell.day}
                 </div>
@@ -162,20 +162,12 @@ export function NewsletterDateCalendar({
               <Link
                 key={cell.entry.slug}
                 href={`/newsletters?slug=${cell.entry.slug}&theme=${theme}`}
-                className={`flex h-14 flex-col items-center justify-center rounded-xl border text-sm transition ${
+                className={`flex h-10 items-center justify-center rounded-xl border text-sm font-semibold transition ${
                   isSelected ? selectedClass : availableClass
                 }`}
-                title={cell.entry.title}
+                title={`${cell.entry.title} (${cell.entry.source_type.toUpperCase()})`}
               >
-                <span className="font-semibold">{cell.day}</span>
-                <span className={`text-[10px] uppercase ${
-                  dark
-                    ? isSelected ? 'text-blue-100' : 'text-emerald-300'
-                    : isSelected ? 'text-slate-200' : 'text-blue-500'
-                }`}
-                >
-                  {cell.entry.source_type}
-                </span>
+                {cell.day}
               </Link>
             );
           })}
