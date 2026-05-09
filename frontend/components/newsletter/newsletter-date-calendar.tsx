@@ -162,20 +162,12 @@ export function NewsletterDateCalendar({
               <Link
                 key={cell.entry.slug}
                 href={`/newsletters?slug=${cell.entry.slug}&theme=${theme}`}
-                className={`flex h-10 flex-col items-center justify-center rounded-xl border text-sm transition ${
+                className={`flex h-10 items-center justify-center rounded-xl border text-sm font-semibold transition ${
                   isSelected ? selectedClass : availableClass
                 }`}
-                title={cell.entry.title}
+                title={`${cell.entry.title} (${cell.entry.source_type.toUpperCase()})`}
               >
-                <span className="font-semibold">{cell.day}</span>
-                <span className={`text-[10px] uppercase ${
-                  dark
-                    ? isSelected ? 'text-blue-100' : 'text-emerald-300'
-                    : isSelected ? 'text-slate-200' : 'text-blue-500'
-                }`}
-                >
-                  {cell.entry.source_type}
-                </span>
+                {cell.day}
               </Link>
             );
           })}
