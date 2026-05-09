@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 export function HtmlViewer({ title, html }: { title: string; html: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [height, setHeight] = useState(1400);
+  const [height, setHeight] = useState(1800);
   const observerRef = useRef<ResizeObserver | null>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -13,7 +13,7 @@ export function HtmlViewer({ title, html }: { title: string; html: string }) {
     const doc = iframe.contentWindow.document;
     const bodyHeight = doc.body?.scrollHeight ?? 0;
     const htmlHeight = doc.documentElement?.scrollHeight ?? 0;
-    setHeight(Math.max(bodyHeight, htmlHeight, 1400));
+    setHeight(Math.max(bodyHeight, htmlHeight, 1800));
   }
 
   function bindResizeTracking() {
