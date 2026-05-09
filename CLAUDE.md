@@ -48,6 +48,16 @@ Claude Code 가 ralph 또는 autopilot 모드로 작업할 때는 작업 완료 
 
 Claude Code 가 새 문서를 추가하거나 기존 문서의 본문 섹션을 크게 바꿀 때, [`docs/INDEX.md`](docs/INDEX.md) 의 해당 섹션도 같은 commit 에서 갱신합니다. wiki 의 입구가 코드 변경과 어긋나면 다음 독자가 잘못된 자리에 도착합니다.
 
+### 2.6 릴리즈 사이클의 강화 규칙
+
+[`AGENTS.md`](AGENTS.md) §9 의 5 단계 릴리즈 사이클을 Claude Code 는 다음 강화 규칙과 함께 따릅니다.
+
+- **dev 브랜치 보존 절대** — 운영자가 명시적으로 "정리해" 라고 말하지 않는 한 `<버전>-dev` 브랜치를 `git branch -d` 또는 `git push --delete` 로 삭제하지 않습니다. 1.0.2-dev / 1.0.3-dev 가 origin 에 남아있는 것이 의도된 상태입니다.
+- **버전 표기 commit 단독화** — README 의 배지 / "검증" 섹션 한 줄 두 자리는 release 직전 마지막 commit 한 개로만 묶고, 다른 코드 / 문서 변경과 섞지 않습니다. 다음 release 직전에 같은 한 줄 갱신만 반복하면 되도록 표면을 최소화합니다.
+- **merge commit 의 본문은 release note 의 초안** — `git merge --no-ff` 의 commit 메시지 본문이 GitHub release 의 notes 와 거의 같은 구조 (변경 분류 + commit 목록 + 호환성 + 검증) 가 되도록 작성합니다. 같은 정보를 두 자리에 다시 적지 않아도 됩니다.
+- **검증 게이트는 명시적 측정값으로** — pytest 카운트 (66 passed 등), Playwright 측정값 (iframe.height, body.scrollHeight 등), broken-link grep 결과 (0 건) 같은 숫자를 commit 본문의 `Tested:` 에 포함합니다. "통과 확인함" 같은 추상 표현은 거부.
+- **긴급 hotfix 도 한국어 + Lore trailer** — AGENTS.md §9.4 의 hotfix 예외도 §3 commit 규칙과 §2.1 본문 분량은 그대로 적용합니다. 긴급하다고 영문 한 줄 commit 으로 우회하지 않습니다.
+
 ---
 
 ## 3. 진입점 색인

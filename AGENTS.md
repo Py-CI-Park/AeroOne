@@ -121,7 +121,61 @@ cd backend && .venv\Scripts\activate && set PYTHONPATH=. && python -m pytest tes
 
 ---
 
-## 9. 진입점 색인
+## 9. 릴리즈 사이클
+
+본 저장소는 시멘틱 버전 (예: `1.0.3`) 단위로 릴리즈합니다. 1.0.0 부터 1.0.3 까지 정착된 사이클을 같은 모양으로 반복합니다.
+
+### 9.1 표준 5 단계
+
+1. **새 dev 브랜치 분기** — `<버전>-dev` 형식 (예: `1.0.4-dev`). 직전 태그 또는 최신 main 에서 분기.
+2. **개발 commit 누적** — §3 커밋 규칙 (한국어 제목 + 한국어 본문 + Lore trailer) 을 모든 commit 에 적용. dev 브랜치에만 push 하고 main 에 직접 commit 하지 않음.
+3. **버전 표기 갱신** — 정식 릴리즈 직전 마지막 commit 으로 README.md 의 두 자리만 업데이트:
+   - `![version](https://img.shields.io/badge/version-X.Y.Z-1f6feb)`
+   - "검증" 섹션의 "릴리스 X.Y.Z 기준" 한 줄
+4. **main 병합** — `git merge --no-ff <버전>-dev`. squash 금지 — commit 단위 추적이 깨진다. 병합 commit 메시지는 §3 규칙 그대로 한국어 + Lore trailer 사용.
+5. **annotated tag + GitHub release** —
+   ```
+   git tag -a X.Y.Z -m "X.Y.Z — 한 줄 설명"
+   git push origin main X.Y.Z
+   gh release create X.Y.Z --title "..." --notes "..."
+   ```
+
+### 9.2 브랜치 보존 정책
+
+`<버전>-dev` 브랜치는 릴리즈 후에도 **삭제하지 않습니다**. 각 dev 브랜치는 그 버전의 변경 의도와 검증 흔적을 보존하는 release archaeology 입니다. 1.0.2-dev / 1.0.3-dev 가 origin 에 그대로 남아있는 것이 정상 상태.
+
+### 9.3 검증 게이트 (병합 직전)
+
+- backend `pytest tests` — **66 passed** 유지 (실패 0).
+- 코드 / 배치 / 문서 변경의 §6 위험 신호 6 가지를 commit 직전 자체 점검.
+- UI 변경이면 운영자가 dev 서버에서 직접 화면 확인 + Playwright 자동 검증 (preview, 셀, iframe 등 의도된 자리의 측정값).
+- 문서 변경이면 broken-link grep + 정합성 검증 (참조 commit / 코드 라인 번호가 실재).
+
+### 9.4 예외 — 긴급 hotfix
+
+긴급 보안 패치나 1 줄 fix 처럼 별 dev 브랜치 분기가 과한 경우는 다음 흐름을 허용합니다.
+
+1. main 에서 직접 hotfix commit (단, §3 한국어 + Lore trailer 규칙은 그대로).
+2. 같은 자리에서 patch 버전 (예: `1.0.4` -> `1.0.4.1` 또는 다음 patch 인 `1.0.5`) annotated tag 부착.
+3. README 버전 갱신은 다음 정규 release 사이클 때 한 번에 처리.
+
+긴급 hotfix 의 기준은 다음 중 하나 이상 — 보안 결함, 부팅 불가, 데이터 손상 위험. 단순 UI 개선이나 문서 보강은 정규 사이클로 가야 합니다.
+
+### 9.5 minor / major 트리거
+
+본 저장소의 버전 의미는 다음과 같이 합의되어 있습니다.
+
+| 변경 | 사이클 |
+|---|---|
+| 버그 픽스, UI 정리, 문서 보강, 폐쇄망 흐름 강화 | patch 증가 (`1.0.X`) |
+| 신기능 추가 (예: PDF 썸네일 파이프라인, Markdown CRUD UI), 새 운영 모드, 새 모듈 | minor 증가 (`1.X.0`) |
+| 데이터 스키마 breaking change, 명령 시그니처 호환 깨짐, `.env` 키 호환 깨짐 | major 증가 (`X.0.0`) |
+
+major 또는 minor 사이클은 정식 PR + `docs/reports/phase-N-...md` 형태의 단계 보고서 1 건 이상이 함께 요구됩니다. patch 사이클은 단계 보고서가 없어도 됩니다.
+
+---
+
+## 10. 진입점 색인
 
 | 독자 | 첫 입구 |
 |---|---|
