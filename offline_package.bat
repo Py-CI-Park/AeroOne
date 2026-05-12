@@ -8,11 +8,17 @@ if /I "%~1"=="--dry-run" set "DRY_RUN=1"
 if /I "%~1"=="--help" goto :help
 
 for /f %%I in ('powershell -NoProfile -Command "(Get-Date).ToString(\"yyyyMMdd-HHmmss\")"') do set "STAMP=%%I"
+set "GIT_VERSION="
+for /f "delims=" %%V in ('git describe --tags --abbrev^=0 2^>nul') do set "GIT_VERSION=%%V"
 set "DIST_DIR=%ROOT%\dist"
 set "STAGE_DIR=%DIST_DIR%\offline-package-%STAMP%"
 set "REPO_STAGE=%STAGE_DIR%\AeroOne"
 set "WHEEL_DIR=%REPO_STAGE%\offline_assets\python-wheels"
-set "ZIP_PATH=%DIST_DIR%\AeroOne-offline-%STAMP%.zip"
+if defined GIT_VERSION (
+  set "ZIP_PATH=%DIST_DIR%\AeroOne-offline-%GIT_VERSION%-%STAMP%.zip"
+) else (
+  set "ZIP_PATH=%DIST_DIR%\AeroOne-offline-%STAMP%.zip"
+)
 set "INSTALLER_SRC=%ROOT%\offline_installers"
 
 if defined DRY_RUN (
