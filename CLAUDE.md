@@ -58,6 +58,20 @@ Claude Code 가 새 문서를 추가하거나 기존 문서의 본문 섹션을 
 - **검증 게이트는 명시적 측정값으로** — pytest 카운트 (66 passed 등), Playwright 측정값 (iframe.height, body.scrollHeight 등), broken-link grep 결과 (0 건) 같은 숫자를 commit 본문의 `Tested:` 에 포함합니다. "통과 확인함" 같은 추상 표현은 거부.
 - **긴급 hotfix 도 한국어 + Lore trailer** — AGENTS.md §9.4 의 hotfix 예외도 §3 commit 규칙과 §2.1 본문 분량은 그대로 적용합니다. 긴급하다고 영문 한 줄 commit 으로 우회하지 않습니다.
 
+### 2.7 ZIP asset upload 누락 금지
+
+[`AGENTS.md`](AGENTS.md) §9.1 단계 5 의 ZIP asset upload (`gh release upload`) 는 Claude Code 가 release 사이클을 진행할 때 **자동 적용하는 의무 단계** 입니다. tag + GitHub release notes 까지만 만들고 ZIP asset 첨부를 건너뛰면, 운영자가 본 PC 외 어떤 경로로도 ZIP 을 받을 수 없는 사고로 이어집니다 (`dist/` 는 .gitignore 로 git 추적 안 됨).
+
+매 release 의 자가 점검 항목:
+
+- `git push origin main X.Y.Z` 가 끝났는가?
+- `gh release create X.Y.Z` 가 새 release 페이지를 만들었는가?
+- `offline_package.bat` 가 `AeroOne-offline-X.Y.Z-*.zip` 파일을 `dist/` 에 만들었는가?
+- `gh release upload X.Y.Z dist\AeroOne-offline-X.Y.Z-*.zip dist\AeroOne-offline-X.Y.Z-*.zip.sha256` 가 실패 없이 끝났는가?
+- `gh release view X.Y.Z --json assets` 로 ZIP + sha256 두 파일이 등록됐는지 직접 확인했는가?
+
+위 5 항목이 모두 OK 인 상태로만 사용자에게 "release 완료" 보고를 합니다.
+
 ---
 
 ## 3. 진입점 색인
