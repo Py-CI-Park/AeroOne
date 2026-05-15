@@ -48,7 +48,15 @@ if not exist "%ROOT%\frontend\node_modules" (
   echo [INFO] frontend\node_modules already exists. Reusing current install.
 )
 
+echo [INFO] Pre-building frontend (.next) on online PC so the offline PC skips webpack
+pushd "%ROOT%\frontend"
+call npm run build || (popd & exit /b 1)
+popd
+
 robocopy "%ROOT%\frontend\node_modules" "%REPO_STAGE%\frontend\node_modules" /E /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
+if errorlevel 8 exit /b 1
+
+robocopy "%ROOT%\frontend\.next" "%REPO_STAGE%\frontend\.next" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD cache >nul
 if errorlevel 8 exit /b 1
 
 py -3.12 -m pip download -r "%ROOT%\backend\requirements-dev.txt" -d "%WHEEL_DIR%" || py -3 -m pip download -r "%ROOT%\backend\requirements-dev.txt" -d "%WHEEL_DIR%" || python -m pip download -r "%ROOT%\backend\requirements-dev.txt" -d "%WHEEL_DIR%" || exit /b 1

@@ -150,9 +150,11 @@ start_offline.bat
 [3   ] pip install --no-index --find-links offline_assets\python-wheels -r requirements-dev.txt
 [4   ] backend\data\aeroone.db 점검 → alembic upgrade head 또는 stamp head
 [5   ] python scripts\seed.py (관리자 / 카테고리 / 태그 / 샘플 Markdown / Newsletter import-sync)
-[6   ] frontend\node_modules 존재 확인 후 npm run build (프로덕션 빌드)
+[6   ] frontend\node_modules 존재 확인 → frontend\.next\BUILD_ID 가 있으면 npm run build 건너뛰기 (1.0.6 부터 ZIP 에 prebuild .next 동봉)
 [OK  ] 다음 단계 안내
 ```
+
+> 1.0.6 부터는 `offline_package.bat` 가 본 PC 에서 `npm run build` 까지 끝낸 `frontend\.next` (cache 폴더 제외) 를 ZIP 에 동봉합니다. 폐쇄망 PC 의 `setup_offline.bat` 는 `.next\BUILD_ID` 가 보이면 webpack 단계를 통째로 건너뛰어 native binding mismatch (본 PC 와 폐쇄망 PC 의 Node 버전 / arch 차이로 SWC, bcrypt 등이 webpack 단계에서 실패하는 사고) 를 구조적으로 회피합니다. 1.0.5 이하 ZIP 으로 `setup_offline.bat` 를 돌리면 `.next` 가 없으므로 옛 동작 (폐쇄망 PC 에서 직접 build) 으로 fallback 합니다.
 
 ### 6.1 alembic upgrade vs stamp
 
