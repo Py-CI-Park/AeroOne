@@ -56,7 +56,7 @@ if defined DRY_RUN (
   echo [DRY-RUN] frontend env will be written to %FRONTEND_ENV%
   echo [DRY-RUN] backend venv will be created at %BACKEND_VENV%
   echo [DRY-RUN] backend migration and seed will run
-  echo [DRY-RUN] frontend production build will run
+  echo [DRY-RUN] frontend production build: skip if .next prebuild exists, else npm run build (1.0.6+)
   if defined ALLOW_HOST (
     echo [DRY-RUN] LAN host = %ALLOW_HOST%
     echo [DRY-RUN] CORS_ORIGINS = %EFFECTIVE_CORS%
@@ -159,7 +159,13 @@ if not exist "node_modules" (
   echo [ERROR] frontend\node_modules is missing. Recreate the offline package on the online PC.
   goto :fail_from_frontend
 )
-call npm run build || goto :fail_from_frontend
+if exist ".next\BUILD_ID" (
+  echo [INFO] frontend\.next prebuild detected — skipping npm run build on offline PC
+) else (
+  echo [WARN] frontend\.next prebuild not found. Falling back to npm run build on offline PC.
+  echo [WARN] If webpack fails here, repackage the ZIP on the online PC with the latest offline_package.bat.
+  call npm run build || goto :fail_from_frontend
+)
 popd
 
 echo.
