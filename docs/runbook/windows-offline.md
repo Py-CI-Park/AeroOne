@@ -243,6 +243,8 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 
 ## 10. 사후 검증 체크리스트
 
+**이 섹션은 `setup_offline.bat` 와 `start_offline.bat` 가 끝나 실제 설치/실행이 정상 완료된 다음에 돌리는 자가 점검입니다.** 첫 설치는 §6 의 흐름을 따라 옵션 없이 `setup_offline.bat` 만 실행하면 됩니다 — 본 §10 의 `--dry-run` 명령들은 **설치 후** 환경 점검용이고 첫 진입에 쓰는 것이 아닙니다.
+
 설치 직후 한 번 돌려 두면 90% 의 운영 사고를 예방할 수 있습니다.
 
 ```cmd

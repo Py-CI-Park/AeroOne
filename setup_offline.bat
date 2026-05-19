@@ -51,6 +51,7 @@ if defined ALLOW_HOST (
 )
 
 if defined DRY_RUN (
+  echo [DRY-RUN] 미리보기 모드 - 실제 설치는 하지 않습니다. 설치하려면 --dry-run 옵션을 빼고 다시 실행하세요.
   echo [DRY-RUN] offline wheelhouse expected at %WHEEL_DIR%
   echo [DRY-RUN] backend env will be written to %BACKEND_ENV%
   echo [DRY-RUN] frontend env will be written to %FRONTEND_ENV%
@@ -67,6 +68,10 @@ if defined DRY_RUN (
   goto :success
 )
 
+echo ==================================================
+echo [INSTALL] setup_offline.bat 실제 설치를 시작합니다.
+echo           미리보기만 원하시면 Ctrl+C 로 중단하고 --dry-run 옵션을 추가해 다시 실행하세요.
+echo ==================================================
 echo [PRE  ] Python / Node / npm 사전 요건 점검
 where py >nul 2>&1
 set "HAVE_PY=%ERRORLEVEL%"

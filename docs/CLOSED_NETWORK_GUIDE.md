@@ -155,9 +155,10 @@ offline_package.bat      ─┘──→ ZIP 복사 ──→  압축 해제
   - 이미 설치되어 있으면 건너뜀.
   - 매뉴얼: `docs/runbook/windows-offline.md` §3.
 
-- [ ] **단계 7** — 설치.
-  - 단일 PC 운영: `setup_offline.bat`
+- [ ] **단계 7** — 설치. **`--dry-run` 옵션은 붙이지 마세요** (그 옵션은 실제 설치 없이 단계만 미리보기). 곧장 실제 설치를 시작하려면:
+  - 단일 PC 운영: `setup_offline.bat` (옵션 없이) — 또는 탐색기에서 파일 더블클릭
   - LAN 다중 PC 운영: `setup_offline.bat --allow-host=192.168.1.10` (사내 IP 로 교체)
+  - 미리 단계만 보고 싶으면 `setup_offline.bat --dry-run` — 설치 안 함, 단계 흐름만 출력. **단계 7 의 정답은 옵션 없이 실행**.
   - 완료 조건: `[OK] setup_offline.bat 완료` 메시지 + `backend\.env`, `frontend\.env.local`, `backend\.venv\`, `backend\data\aeroone.db` 모두 생성.
   - 매뉴얼: `docs/runbook/windows-offline.md` §6, 본 가이드 §6 / §7.
 
