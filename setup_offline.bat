@@ -50,24 +50,28 @@ if defined ALLOW_HOST (
   set "EFFECTIVE_CORS=http://localhost:29501"
 )
 
-if defined DRY_RUN (
-  echo [DRY-RUN] 미리보기 모드 - 실제 설치는 하지 않습니다. 설치하려면 --dry-run 옵션을 빼고 다시 실행하세요.
-  echo [DRY-RUN] offline wheelhouse expected at %WHEEL_DIR%
-  echo [DRY-RUN] backend env will be written to %BACKEND_ENV%
-  echo [DRY-RUN] frontend env will be written to %FRONTEND_ENV%
-  echo [DRY-RUN] backend venv will be created at %BACKEND_VENV%
-  echo [DRY-RUN] backend migration and seed will run
-  echo [DRY-RUN] frontend production build: skip if .next prebuild exists, else npm run build (1.0.6+)
-  if defined ALLOW_HOST (
-    echo [DRY-RUN] LAN host = %ALLOW_HOST%
-    echo [DRY-RUN] CORS_ORIGINS = %EFFECTIVE_CORS%
-    echo [DRY-RUN] NEXT_PUBLIC_API_BASE_URL = %EFFECTIVE_BACKEND_BASE%
-  ) else (
-    echo [DRY-RUN] LAN host = ^(unset, loopback only^)
-  )
-  goto :success
-)
+if "%DRY_RUN%"=="1" goto :run_dry_branch
+goto :install_real
 
+:run_dry_branch
+echo [DRY-RUN] 미리보기 모드 - 실제 설치는 하지 않습니다. 설치하려면 --dry-run 옵션을 빼고 다시 실행하세요.
+echo [DRY-RUN] offline wheelhouse expected at %WHEEL_DIR%
+echo [DRY-RUN] backend env will be written to %BACKEND_ENV%
+echo [DRY-RUN] frontend env will be written to %FRONTEND_ENV%
+echo [DRY-RUN] backend venv will be created at %BACKEND_VENV%
+echo [DRY-RUN] backend migration and seed will run
+echo [DRY-RUN] frontend production build: skip if .next prebuild exists, else npm run build (1.0.6+)
+if not defined ALLOW_HOST goto :dry_loopback
+echo [DRY-RUN] LAN host = %ALLOW_HOST%
+echo [DRY-RUN] CORS_ORIGINS = %EFFECTIVE_CORS%
+echo [DRY-RUN] NEXT_PUBLIC_API_BASE_URL = %EFFECTIVE_BACKEND_BASE%
+goto :success
+
+:dry_loopback
+echo [DRY-RUN] LAN host = ^(unset, loopback only^)
+goto :success
+
+:install_real
 echo ==================================================
 echo [INSTALL] setup_offline.bat 실제 설치를 시작합니다.
 echo           미리보기만 원하시면 Ctrl+C 로 중단하고 --dry-run 옵션을 추가해 다시 실행하세요.

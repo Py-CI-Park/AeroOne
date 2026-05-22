@@ -60,20 +60,25 @@ if not exist "%FRONTEND_DIR%" (
   exit /b 1
 )
 
-if defined DRY_RUN (
-  echo [DRY-RUN] offline backend window command:
-  echo cmd /k "title AeroOne Backend Offline ^&^& chcp 65001 ^>nul ^&^& color 0A ^&^& echo ================================================== ^&^& echo [BACKEND][BOOT ] AeroOne API Server ^&^& echo URL  : %BACKEND_URL% ^&^& echo MODE : OFFLINE ^&^& echo ROOT : %BACKEND_DIR% ^&^& echo CMD  : uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% ^&^& echo ================================================== ^&^& echo. ^&^& cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT%"
-  echo [DRY-RUN] offline frontend window command:
-  echo cmd /k "title AeroOne Frontend Offline ^&^& chcp 65001 ^>nul ^&^& color 0B ^&^& echo ================================================== ^&^& echo [FRONTEND][BOOT] AeroOne Web UI ^&^& echo URL  : %FRONTEND_URL% ^&^& echo MODE : OFFLINE ^&^& echo ROOT : %FRONTEND_DIR% ^&^& echo CMD  : scripts\\start_frontend_offline.cmd ^&^& echo ================================================== ^&^& echo. ^&^& call \"%SCRIPTS_DIR%\\start_frontend_offline.cmd\""
-  echo [DRY-RUN] browser readiness command:
-  echo call "%SCRIPTS_DIR%\open_browser.cmd" "%FRONTEND_URL%" %BACKEND_PORT% %FRONTEND_PORT% %BACKEND_TIMEOUT% %FRONTEND_TIMEOUT%
-  if defined ALLOW_HOST (
-    echo [DRY-RUN] LAN host = %ALLOW_HOST% ^(backend / frontend bind 0.0.0.0^)
-  ) else (
-    echo [DRY-RUN] LAN host = ^(unset, loopback only^)
-  )
-  exit /b 0
-)
+if "%DRY_RUN%"=="1" goto :dry_run_emit
+goto :real_run
+
+:dry_run_emit
+echo [DRY-RUN] offline backend window command:
+echo cmd /k "title AeroOne Backend Offline ^&^& chcp 65001 ^>nul ^&^& color 0A ^&^& echo ================================================== ^&^& echo [BACKEND][BOOT ] AeroOne API Server ^&^& echo URL  : %BACKEND_URL% ^&^& echo MODE : OFFLINE ^&^& echo ROOT : %BACKEND_DIR% ^&^& echo CMD  : uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% ^&^& echo ================================================== ^&^& echo. ^&^& cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT%"
+echo [DRY-RUN] offline frontend window command:
+echo cmd /k "title AeroOne Frontend Offline ^&^& chcp 65001 ^>nul ^&^& color 0B ^&^& echo ================================================== ^&^& echo [FRONTEND][BOOT] AeroOne Web UI ^&^& echo URL  : %FRONTEND_URL% ^&^& echo MODE : OFFLINE ^&^& echo ROOT : %FRONTEND_DIR% ^&^& echo CMD  : scripts\\start_frontend_offline.cmd ^&^& echo ================================================== ^&^& echo. ^&^& call \"%SCRIPTS_DIR%\\start_frontend_offline.cmd\""
+echo [DRY-RUN] browser readiness command:
+echo call "%SCRIPTS_DIR%\open_browser.cmd" "%FRONTEND_URL%" %BACKEND_PORT% %FRONTEND_PORT% %BACKEND_TIMEOUT% %FRONTEND_TIMEOUT%
+if not defined ALLOW_HOST goto :dry_loopback
+echo [DRY-RUN] LAN host = %ALLOW_HOST% ^(backend / frontend bind 0.0.0.0^)
+exit /b 0
+
+:dry_loopback
+echo [DRY-RUN] LAN host = ^(unset, loopback only^)
+exit /b 0
+
+:real_run
 
 call :ensure_port_free %BACKEND_PORT% "offline backend"
 if errorlevel 1 exit /b 1
