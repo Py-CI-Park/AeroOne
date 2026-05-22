@@ -32,15 +32,19 @@ if not exist "%FRONTEND_DIR%" (
   exit /b 1
 )
 
-if defined DRY_RUN (
-  echo [DRY-RUN] backend window command:
-  echo cmd /k "title AeroOne Backend ^&^& chcp 65001 ^>nul ^&^& color 0A ^&^& echo ================================================== ^&^& echo [BACKEND][BOOT ] AeroOne API Server ^&^& echo URL  : %BACKEND_URL% ^&^& echo ROOT : %BACKEND_DIR% ^&^& echo CMD  : uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% ^&^& echo ================================================== ^&^& echo. ^&^& cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT%"
-  echo [DRY-RUN] frontend window command:
-  echo cmd /k start_frontend_window.cmd
-  echo [DRY-RUN] browser readiness command:
-  echo call "%SCRIPTS_DIR%\open_browser.cmd" "%FRONTEND_URL%" %BACKEND_PORT% %FRONTEND_PORT% %BACKEND_TIMEOUT% %FRONTEND_TIMEOUT%
-  exit /b 0
-)
+if "%DRY_RUN%"=="1" goto :dry_run_emit
+goto :real_run
+
+:dry_run_emit
+echo [DRY-RUN] backend window command:
+echo cmd /k "title AeroOne Backend ^&^& chcp 65001 ^>nul ^&^& color 0A ^&^& echo ================================================== ^&^& echo [BACKEND][BOOT ] AeroOne API Server ^&^& echo URL  : %BACKEND_URL% ^&^& echo ROOT : %BACKEND_DIR% ^&^& echo CMD  : uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% ^&^& echo ================================================== ^&^& echo. ^&^& cd /d ""%BACKEND_DIR%"" ^&^& call .venv\Scripts\activate.bat ^&^& set PYTHONPATH=. ^&^& uvicorn app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT%"
+echo [DRY-RUN] frontend window command:
+echo cmd /k start_frontend_window.cmd
+echo [DRY-RUN] browser readiness command:
+echo call "%SCRIPTS_DIR%\open_browser.cmd" "%FRONTEND_URL%" %BACKEND_PORT% %FRONTEND_PORT% %BACKEND_TIMEOUT% %FRONTEND_TIMEOUT%
+exit /b 0
+
+:real_run
 
 call :ensure_port_free %BACKEND_PORT% "backend"
 if errorlevel 1 exit /b 1

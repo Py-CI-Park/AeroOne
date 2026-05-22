@@ -21,16 +21,20 @@ if defined GIT_VERSION (
 )
 set "INSTALLER_SRC=%ROOT%\offline_installers"
 
-if defined DRY_RUN (
-  echo [DRY-RUN] create %REPO_STAGE%
-  echo [DRY-RUN] robocopy repository into stage
-  echo [DRY-RUN] py -3.12 -m pip download -r backend\requirements-dev.txt -d %WHEEL_DIR%
-  echo [DRY-RUN] npm install in frontend if needed
-  echo [DRY-RUN] robocopy frontend\node_modules into staged frontend\node_modules
-  echo [DRY-RUN] copy offline_installers if present
-  echo [DRY-RUN] Compress-Archive to %ZIP_PATH%
-  exit /b 0
-)
+if "%DRY_RUN%"=="1" goto :dry_run_emit
+goto :real_run
+
+:dry_run_emit
+echo [DRY-RUN] create %REPO_STAGE%
+echo [DRY-RUN] robocopy repository into stage
+echo [DRY-RUN] py -3.12 -m pip download -r backend\requirements-dev.txt -d %WHEEL_DIR%
+echo [DRY-RUN] npm install in frontend if needed
+echo [DRY-RUN] robocopy frontend\node_modules into staged frontend\node_modules
+echo [DRY-RUN] copy offline_installers if present
+echo [DRY-RUN] Compress-Archive to %ZIP_PATH%
+exit /b 0
+
+:real_run
 
 if exist "%STAGE_DIR%" rmdir /s /q "%STAGE_DIR%"
 mkdir "%REPO_STAGE%" || exit /b 1
