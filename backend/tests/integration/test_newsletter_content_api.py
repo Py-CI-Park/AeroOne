@@ -5,7 +5,8 @@ def test_html_content_endpoint_returns_csp_header(csrf_client, client) -> None:
 
     assert response.status_code == 200
     assert 'Content-Security-Policy' in response.headers
-    assert '<script' not in response.json()['content_html']
+    # 신뢰 로컬 HTML 은 원본 그대로 서빙 — JS 렌더 본문이 살도록 <script> 보존.
+    assert '<script' in response.json()['content_html']
 
 
 def test_markdown_content_endpoint_returns_rendered_html(client) -> None:

@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.0.9-1f6feb)
+![version](https://img.shields.io/badge/version-1.0.10-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -29,7 +29,7 @@
   </tr>
 </table>
 
-<sub>1.0.9 디자인 시스템 적용 화면 (<code>[data-theme]</code> 라이트·다크, 시스템 폰트만). <code>docs/images/</code> 의 <code>dashboard.png</code> · <code>newsletter.png</code> · <code>newsletter-dark.png</code> 를 교체하면 자동 렌더링됩니다.</sub>
+<sub>디자인 시스템 적용 화면 (<code>[data-theme]</code> 라이트·다크, 시스템 폰트만). <code>docs/images/</code> 의 <code>dashboard.png</code> · <code>newsletter.png</code> · <code>newsletter-dark.png</code> 를 교체하면 자동 렌더링됩니다.</sub>
 
 ---
 
@@ -274,7 +274,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.0.9 기준 backend `pytest tests` 결과 **66 passed** (실패 0). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.0.10 기준 backend `pytest tests` 결과 **67 passed** (실패 0). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 
