@@ -18,18 +18,18 @@
 
 <table>
   <tr>
-    <td align="center"><b>공개 목록 / 달력</b></td>
-    <td align="center"><b>미리보기 (HTML / PDF / Markdown)</b></td>
-    <td align="center"><b>관리자 페이지</b></td>
+    <td align="center"><b>대시보드</b></td>
+    <td align="center"><b>뉴스레터 (달력 + HTML 본문)</b></td>
+    <td align="center"><b>다크 모드</b></td>
   </tr>
   <tr>
-    <td><img src="docs/images/list.png" alt="공개 뉴스레터 목록과 달력 네비게이션" width="320"></td>
-    <td><img src="docs/images/preview.png" alt="HTML / PDF / Markdown 통합 미리보기" width="320"></td>
-    <td><img src="docs/images/admin.png" alt="관리자 메타데이터 및 import 화면" width="320"></td>
+    <td><img src="docs/images/dashboard.png" alt="모듈 카드 대시보드" width="320"></td>
+    <td><img src="docs/images/newsletter.png" alt="펼친 달력과 최신 이슈 HTML 본문 직접 렌더" width="320"></td>
+    <td><img src="docs/images/newsletter-dark.png" alt="다크 모드 뉴스레터 리딩 뷰" width="320"></td>
   </tr>
 </table>
 
-<sub>스크린샷이 아직 비어 있다면 <code>docs/images/</code> 에 <code>list.png</code> · <code>preview.png</code> · <code>admin.png</code> 를 추가하면 자동으로 렌더링됩니다.</sub>
+<sub>1.0.9 디자인 시스템 적용 화면 (<code>[data-theme]</code> 라이트·다크, 시스템 폰트만). <code>docs/images/</code> 의 <code>dashboard.png</code> · <code>newsletter.png</code> · <code>newsletter-dark.png</code> 를 교체하면 자동 렌더링됩니다.</sub>
 
 ---
 
@@ -63,7 +63,7 @@
 
 | 영역 | 내용 |
 |---|---|
-| 사용자 화면 | 뉴스레터 목록, 달력 네비게이션(기본 접힘), 검색·태그·카테고리 필터, 미리보기와 이전/다음 이동, 테마 토글 |
+| 사용자 화면 | 대시보드 모듈 카드, 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, `[data-theme]` 라이트·다크 테마 토글 |
 | 콘텐츠 분기 | HTML(sandbox iframe + sanitize + CSP), PDF(direct delivery), Markdown(서버 렌더) |
 | 관리자 화면 | 로그인, 메타데이터 CRUD, 카테고리·태그 관리, 썸네일 업로드, `Newsletter/output` import / sync |
 | 인증 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰, 단일 시드 관리자 |
