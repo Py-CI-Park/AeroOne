@@ -2,15 +2,32 @@ from app.modules.newsletter.services.html_render_service import HtmlRenderServic
 from app.modules.shared.storage.service import StorageService
 
 
-def test_html_render_serves_trusted_local_html_raw(settings) -> None:
+def test_render_keeps_scripts_but_strips_external_resources(settings) -> None:
     storage_service = StorageService(settings)
     service = HtmlRenderService(storage_service)
 
+    # 신뢰 로컬 HTML 의 인라인 스크립트(본문 주입 JS)는 보존된다.
     html = service.render('newsletter_20260206.html')
-
-    # 로컬 뉴스레터는 신뢰 콘텐츠라 원본 그대로 서빙한다. JS 렌더 방식 산출물의
-    # 본문이 살아있도록 <script> 등을 보존(격리는 프론트 sandbox iframe 담당).
     assert '<script' in html
+
+    # 폐쇄망 순도: 외부로 자동 요청을 내보내는 참조만 차단한다.
+    cleaned = service.strip_external_resources(
+        '<html><head>'
+        '<link rel="preconnect" href="https://fonts.googleapis.com">'
+        '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?x">'
+        '<style>.x{color:red}</style></head>'
+        '<body><script>render()</script>'
+        '<img src="https://cdn.example.com/a.png">'
+        '<img src="data:image/png;base64,AAAA">'
+        '<a href="https://example.com">link</a></body></html>'
+    )
+
+    assert '<script' in cleaned  # 인라인 스크립트 보존
+    assert '<style' in cleaned  # 인라인 스타일 보존
+    assert 'fonts.googleapis.com' not in cleaned  # 외부 <link> 제거
+    assert 'cdn.example.com' not in cleaned  # 외부 img src 제거
+    assert 'data:image/png' in cleaned  # data: 리소스 보존
+    assert 'noopener noreferrer' in cleaned  # 외부 <a> 는 보존 + 새 탭
 
 
 def test_sanitize_html_still_strips_scripts_for_markdown_path(settings) -> None:

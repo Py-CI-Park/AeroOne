@@ -50,7 +50,7 @@ export function AppShell({
             <Icon.logo size={20} />
           </span>
           <span className="text-md font-semibold tracking-tighter">AeroOne</span>
-          <span className="ml-1.5 font-mono text-xs text-ink-3">v1.0.10</span>
+          <span className="ml-1.5 font-mono text-xs text-ink-3">v1.0.11</span>
         </Link>
 
         <nav className="ml-4 flex gap-1" aria-label="주요 메뉴">
