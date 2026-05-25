@@ -55,13 +55,14 @@
 
 ---
 
-## 4. 설계 산출물 (`docs/superpowers/`, `docs/dev_plan/`)
+## 4. 설계 산출물 (`docs/superpowers/`, `docs/dev_plan/`, `design-handoff/`)
 
 | 디렉토리 | 내용 | 개수 |
 |---|---|---|
 | [`superpowers/plans/`](superpowers/plans/) | 기능별 구현 계획 (Tier-0 OMC superpowers 형식) | 13건 |
 | [`superpowers/specs/`](superpowers/specs/) | 기능별 설계 명세 (plan 과 1:1 매칭) | 14건 |
 | [`dev_plan/20260327_newsletter_platform_mvp.md`](dev_plan/20260327_newsletter_platform_mvp.md) | 2026-03-27 작성 MVP 개발 계획 (범위·완료 기준·리스크) | 299줄 |
+| [`../design-handoff/`](../design-handoff/) | **UI/UX 재디자인 요청용 핸드오프 패키지** (브리프 / 여정 / 화면 인벤토리 / 제약 + 추천 프롬프트) | 6건 |
 
 자세한 인덱스: [`docs/superpowers/INDEX.md`](superpowers/INDEX.md).
 
@@ -90,6 +91,10 @@
 | DB 분기 (배치용) | `backend/scripts/ensure_db_state.py` | 종료 코드 0/1/2/3, docstring 에 의미 직접 기재 |
 | 폐쇄망 LAN 옵션 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` 라벨 | `--allow-host=<host>` + `AEROONE_ALLOW_HOST` env |
 | 패키징 제외 목록 | `offline_package.bat:34` | robocopy `/XD` 인자 |
+| 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
+| 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트가 쿠키 설정 후 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>` |
+| 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |
+| 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일 |
 
 ---
 

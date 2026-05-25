@@ -3,7 +3,11 @@ import { render, screen, within } from '@testing-library/react';
 
 import { AppShell } from '@/components/layout/app-shell';
 
-test('renders the default shell with light theme classes and a theme selector', () => {
+// Claude Design 핸드오프 적용 후 셸 계약:
+// - 테마는 data-theme 속성으로 표현 (토큰 CSS 변수가 색을 스위치).
+// - 헤더 nav 는 Dashboard + Newsletter 영문 라벨 (디자인 시안 기준).
+// - 관리자/로그인 링크는 헤더에 노출하지 않음.
+test('renders the default shell with light data-theme and a theme selector', () => {
   render(
     <AppShell title="Light Shell">
       <p>content</p>
@@ -13,15 +17,16 @@ test('renders the default shell with light theme classes and a theme selector', 
   const shell = screen.getByTestId('app-shell');
   const header = screen.getByTestId('app-shell-header');
 
-  expect(shell).toHaveClass('bg-slate-100');
-  expect(header).toHaveClass('bg-white');
-  expect(screen.getByRole('heading', { name: 'Light Shell' })).toHaveClass('text-slate-900');
-  expect(screen.getByText('사내 뉴스레터 / 문서 플랫폼')).toBeInTheDocument();
+  expect(shell).toHaveClass('bg-surface-base');
+  expect(header).toHaveClass('bg-surface-raised');
+  expect(screen.getByRole('heading', { name: 'Light Shell' })).toHaveClass('text-ink-1');
+  // 테마는 <html> 에 부착되므로 셸은 data-theme 를 갖지 않는다. light → 토글은 dark 전환을 제시.
+  expect(shell).not.toHaveAttribute('data-theme');
+  expect(screen.getByRole('link', { name: '다크 테마로 전환' })).toBeInTheDocument();
+
   const nav = screen.getByRole('navigation');
-  expect(within(nav).getByRole('link', { name: '대시보드' })).toHaveAttribute('href', '/');
-  expect(within(nav).queryByText('Newsletter')).not.toBeInTheDocument();
-  expect(within(nav).queryByRole('link', { name: 'Newsletter' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: '뉴스레터' })).not.toBeInTheDocument();
+  expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/');
+  expect(within(nav).getByRole('link', { name: 'Newsletter' })).toHaveAttribute('href', '/newsletters');
   expect(screen.queryByRole('link', { name: '관리자' })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
@@ -47,9 +52,30 @@ test('renders a dark shell when theme is dark', () => {
   const shell = screen.getByTestId('app-shell');
   const header = screen.getByTestId('app-shell-header');
 
-  expect(shell).toHaveClass('bg-slate-950');
-  expect(header).toHaveClass('bg-slate-950');
-  expect(screen.getByRole('heading', { name: 'Dark Shell' })).toHaveClass('text-slate-100');
+  expect(shell).toHaveClass('bg-surface-base');
+  expect(header).toHaveClass('bg-surface-raised');
+  expect(screen.getByRole('heading', { name: 'Dark Shell' })).toHaveClass('text-ink-1');
+  // dark → 토글은 light 전환을 제시.
+  expect(screen.getByRole('link', { name: '라이트 테마로 전환' })).toBeInTheDocument();
+});
+
+test('marks the active nav item and exposes the page title meta + actions', () => {
+  render(
+    <AppShell
+      title="Newsletter"
+      active="newsletters"
+      titleMeta="142 issues"
+      titleActions={<button type="button">Grid</button>}
+    >
+      <p>content</p>
+    </AppShell>,
+  );
+
+  const nav = screen.getByRole('navigation');
+  expect(within(nav).getByRole('link', { name: 'Newsletter' })).toHaveAttribute('aria-current', 'page');
+  expect(within(nav).getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
+  expect(screen.getByText('142 issues')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Grid' })).toBeInTheDocument();
 });
 
 test('renders compact theme selector after dashboard link when a path is provided', () => {
@@ -59,7 +85,7 @@ test('renders compact theme selector after dashboard link when a path is provide
     </AppShell>,
   );
 
-  const dashboard = screen.getByRole('link', { name: '대시보드' });
+  const dashboard = screen.getByRole('link', { name: 'Dashboard' });
   const selector = screen.getByTestId('newsletter-theme-selector');
   const toggle = screen.getByRole('link', { name: '라이트 테마로 전환' });
 

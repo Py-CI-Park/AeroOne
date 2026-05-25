@@ -20,7 +20,7 @@ export function NewsletterPreviewPanel({
   children,
   displayDate,
   dateNavigation,
-  theme = 'light',
+  theme: _theme = 'light',
 }: {
   title: string;
   selectedAsset: AssetType;
@@ -29,43 +29,44 @@ export function NewsletterPreviewPanel({
   dateNavigation?: NewsletterDateNavigation;
   theme?: NewsletterTheme;
 }) {
-  const dark = theme === 'dark';
-  const navLinkClass = `rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-    dark
-      ? 'border-slate-700 bg-slate-950 text-slate-200 hover:border-slate-600 hover:bg-slate-900'
-      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-200 hover:bg-blue-50'
-  }`;
-  const disabledNavClass = `rounded-lg border px-3 py-1.5 text-xs font-medium opacity-40 ${
-    dark ? 'border-slate-800 bg-slate-950 text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-400'
-  }`;
+  const navLinkClass =
+    'rounded border border-line-subtle bg-surface-elevated px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1';
+  const disabledNavClass =
+    'rounded border border-line-subtle bg-surface-elevated px-3 py-1.5 text-xs font-medium text-ink-4 opacity-50';
 
   return (
     <section
       data-testid="newsletters-preview-panel"
-      className={`rounded-xl border p-4 shadow-sm ${
-        dark ? 'border-slate-800 bg-slate-900/95 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
-      }`}
+      className="rounded-lg border border-line-subtle bg-surface-raised p-4 text-ink-1"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className={`text-base font-semibold ${dark ? 'text-slate-100' : 'text-slate-900'}`}>
-          {title}
-          {displayDate ? <span className={`ml-2 text-sm font-normal ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{displayDate}</span> : null}
-        </h2>
+        <div>
+          <p className="font-mono text-xs uppercase tracking-wide text-ink-3">Preview</p>
+          <h2 className="mt-0.5 text-xl font-semibold tracking-tight text-ink-1">
+            {title}
+            {displayDate ? <span className="ml-2 font-mono text-sm font-normal text-ink-3">{displayDate}</span> : null}
+          </h2>
+        </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {dateNavigation?.previous ? (
-            <a href={dateNavigation.previous.href} className={navLinkClass}>{dateNavigation.previous.label}</a>
+            <a href={dateNavigation.previous.href} className={navLinkClass}>
+              {dateNavigation.previous.label}
+            </a>
           ) : (
-            <span aria-disabled="true" className={disabledNavClass}>이전 날짜</span>
+            <span aria-disabled="true" className={disabledNavClass}>
+              이전 날짜
+            </span>
           )}
           {dateNavigation?.next ? (
-            <a href={dateNavigation.next.href} className={navLinkClass}>{dateNavigation.next.label}</a>
+            <a href={dateNavigation.next.href} className={navLinkClass}>
+              {dateNavigation.next.label}
+            </a>
           ) : (
-            <span aria-disabled="true" className={disabledNavClass}>다음 날짜</span>
+            <span aria-disabled="true" className={disabledNavClass}>
+              다음 날짜
+            </span>
           )}
-          <span className={`rounded-full border px-3 py-1 text-xs font-medium ${
-            dark ? 'border-slate-700 bg-slate-950 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'
-          }`}
-          >
+          <span className="rounded border border-line-subtle bg-surface-elevated px-3 py-1 font-mono text-xs font-medium text-ink-2">
             {selectedAsset.toUpperCase()}
           </span>
         </div>

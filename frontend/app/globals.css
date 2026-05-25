@@ -2,6 +2,183 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-slate-100 text-slate-900;
+/* =========================================================================
+ * AeroOne — Design Tokens (Claude Design 핸드오프 이식)
+ * 한 파일로 라이트/다크 두 모드 정의.
+ * 적용: AppShell 루트에 data-theme="light" 또는 data-theme="dark".
+ * :root 는 라이트 기본값을 담아 data-theme 미부착 영역(body)도 자연스럽게.
+ * 모든 토큰은 tailwind.config.ts theme.extend 와 1:1 이름으로 매핑.
+ * 외부 폰트/CDN 0 — 폐쇄망 안전 (시스템 폰트만).
+ * ========================================================================= */
+
+:root,
+[data-theme] {
+  /* ---------- Semantic mapping (raw → 의미) ---------- */
+  --surface-base: var(--c-base);
+  --surface-raised: var(--c-raised);
+  --surface-elevated: var(--c-elevated);
+  --surface-sunken: var(--c-sunken);
+  --surface-overlay: var(--c-overlay);
+
+  --border-subtle: var(--c-border-1);
+  --border-default: var(--c-border-2);
+  --border-strong: var(--c-border-3);
+
+  --text-primary: var(--c-text-1);
+  --text-secondary: var(--c-text-2);
+  --text-tertiary: var(--c-text-3);
+  --text-quaternary: var(--c-text-4);
+  --text-inverse: var(--c-text-inv);
+
+  --accent: var(--c-accent);
+  --accent-hover: var(--c-accent-h);
+  --accent-active: var(--c-accent-a);
+  --accent-soft: var(--c-accent-soft);
+  --accent-onaccent: var(--c-on-accent);
+
+  --ok: var(--c-ok);
+  --ok-soft: var(--c-ok-soft);
+  --warn: var(--c-warn);
+  --warn-soft: var(--c-warn-soft);
+  --danger: var(--c-danger);
+  --danger-soft: var(--c-danger-soft);
+
+  --focus-ring: var(--c-focus);
+
+  /* ---------- Type — 시스템 폰트만 ---------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+               "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --font-serif: "Iowan Old Style", "Charter", "Georgia", "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono",
+               "Consolas", "Liberation Mono", monospace;
+
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-semibold: 600;
+  --w-bold: 700;
+
+  /* ---------- Space (4px base) ---------- */
+  --s-0: 0;       --s-px: 1px;   --s-0_5: 2px;  --s-1: 4px;   --s-1_5: 6px;
+  --s-2: 8px;     --s-2_5: 10px; --s-3: 12px;   --s-4: 16px;  --s-5: 20px;
+  --s-6: 24px;    --s-7: 28px;   --s-8: 32px;   --s-10: 40px; --s-12: 48px;
+  --s-14: 56px;   --s-16: 64px;  --s-20: 80px;  --s-24: 96px;
+
+  /* ---------- Radius ---------- */
+  --r-none: 0;   --r-xs: 2px;  --r-sm: 3px;  --r-md: 4px;
+  --r-lg: 6px;   --r-xl: 8px;  --r-pill: 999px;
+
+  /* ---------- Shadow — 매우 얕게 ---------- */
+  --sh-none: none;
+  --sh-xs: 0 1px 1px var(--c-sh-1);
+  --sh-sm: 0 1px 2px var(--c-sh-1), 0 0 0 1px var(--c-sh-line);
+  --sh-md: 0 2px 4px var(--c-sh-1), 0 1px 2px var(--c-sh-2);
+  --sh-lg: 0 8px 24px var(--c-sh-2), 0 2px 6px var(--c-sh-1);
+  --sh-focus: 0 0 0 3px var(--c-focus-soft);
+
+  /* ---------- Motion ---------- */
+  --ease-out: cubic-bezier(.2,.7,.3,1);
+  --ease-in-out: cubic-bezier(.4,0,.2,1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
 }
+
+/* ========== Light (also :root default) ========== */
+:root,
+[data-theme="light"] {
+  --c-base: #F6F4EF;          /* warm paper */
+  --c-raised: #FBFAF6;
+  --c-elevated: #FFFFFF;
+  --c-sunken: #EDEAE2;
+  --c-overlay: rgba(20, 22, 18, 0.42);
+
+  --c-border-1: #ECE8DE;
+  --c-border-2: #DAD5C6;
+  --c-border-3: #B6B0A0;
+
+  --c-text-1: #1A1C18;
+  --c-text-2: #4C4F47;
+  --c-text-3: #797B72;
+  --c-text-4: #A4A599;
+  --c-text-inv: #F6F4EF;
+
+  --c-accent: #2D5D80;        /* 차분한 슬레이트 블루 */
+  --c-accent-h: #234A68;
+  --c-accent-a: #1B3A53;
+  --c-accent-soft: #E2ECF3;
+  --c-on-accent: #FAFAF7;
+
+  --c-ok: #2E6A4D;        --c-ok-soft: #E1ECE5;
+  --c-warn: #8A5E1A;      --c-warn-soft: #F1E7D2;
+  --c-danger: #8B3A2E;    --c-danger-soft: #F1DDD7;
+
+  --c-focus: #2D5D80;
+  --c-focus-soft: rgba(45, 93, 128, 0.22);
+
+  --c-sh-1: rgba(28, 26, 20, 0.05);
+  --c-sh-2: rgba(28, 26, 20, 0.07);
+  --c-sh-line: rgba(28, 26, 20, 0.06);
+
+  color-scheme: light;
+}
+
+/* ========== Dark ========== */
+[data-theme="dark"] {
+  --c-base: #0F1216;
+  --c-raised: #161A20;
+  --c-elevated: #1B2027;
+  --c-sunken: #0A0C0F;
+  --c-overlay: rgba(0, 0, 0, 0.6);
+
+  --c-border-1: #232831;
+  --c-border-2: #2E343F;
+  --c-border-3: #444B57;
+
+  --c-text-1: #E8E5DC;
+  --c-text-2: #A5A89F;
+  --c-text-3: #767972;
+  --c-text-4: #555852;
+  --c-text-inv: #0F1216;
+
+  --c-accent: #7AB1D6;
+  --c-accent-h: #95C0DE;
+  --c-accent-a: #B5D3E8;
+  --c-accent-soft: #1C2D3A;
+  --c-on-accent: #0F1216;
+
+  --c-ok: #79BE9B;        --c-ok-soft: #1C2A24;
+  --c-warn: #D4A864;      --c-warn-soft: #2A2418;
+  --c-danger: #D4866F;    --c-danger-soft: #2A1B16;
+
+  --c-focus: #7AB1D6;
+  --c-focus-soft: rgba(122, 177, 214, 0.30);
+
+  --c-sh-1: rgba(0, 0, 0, 0.4);
+  --c-sh-2: rgba(0, 0, 0, 0.55);
+  --c-sh-line: rgba(255, 255, 255, 0.04);
+
+  color-scheme: dark;
+}
+
+/* ========== Base ========== */
+body {
+  font-family: var(--font-sans);
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 22px;
+  font-feature-settings: "ss01", "cv01", "tnum" 1;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 테마 스코프 표면 — data-theme 루트가 자기 배경/글자색을 갖도록 */
+[data-theme] {
+  background: var(--surface-base);
+  color: var(--text-primary);
+}
+
+::selection { background: var(--accent-soft); color: var(--text-primary); }
+
+.font-mono { font-feature-settings: "tnum" 1; letter-spacing: 0; }

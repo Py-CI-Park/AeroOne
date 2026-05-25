@@ -20,7 +20,7 @@ it('starts collapsed and expands the light calendar on click', () => {
   const toggle = screen.getByRole('button', { name: '달력 펼치기' });
   const calendarGrid = screen.getByTestId('newsletter-calendar-grid');
 
-  expect(panel).toHaveClass('bg-white');
+  expect(panel).toHaveClass('bg-surface-raised');
   expect(panel).toHaveClass('h-full');
   expect(panel?.className).not.toContain('bg-slate-900');
   expect(screen.getByText('2026년 3월')).toBeInTheDocument();
@@ -56,7 +56,7 @@ it('can render the calendar panel with dark theme classes', () => {
 
   const panel = container.querySelector('section');
 
-  expect(panel).toHaveClass('bg-slate-900/95');
+  expect(panel).toHaveClass('bg-surface-raised');
   expect(screen.getByRole('button', { name: '달력 펼치기' })).toHaveAttribute('aria-expanded', 'false');
   expect(screen.getByTestId('newsletter-calendar-grid')).not.toBeVisible();
   expect(screen.getByRole('link', { name: /26/, hidden: true })).toHaveAttribute(

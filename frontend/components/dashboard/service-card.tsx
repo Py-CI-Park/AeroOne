@@ -1,45 +1,92 @@
 import React from 'react';
 import Link from 'next/link';
 
+import { Icon } from '@/components/ui/icons';
+import { Tag } from '@/components/ui/primitives';
+
+// 대시보드 모듈 카드 (Claude Design 핸드오프). active 카드는 Link, coming-soon 은 정적 div.
 export function ServiceCard({
   title,
   description,
   href,
   badge,
   icon,
+  active = true,
+  count,
 }: {
   title: string;
   description?: string;
   href: string;
   badge: string;
   icon?: string;
+  active?: boolean;
+  count?: number;
 }) {
-  return (
-    <Link
-      href={href}
-      className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50 opacity-80" />
-      <div className="relative">
-        <div className={`mb-6 flex items-center ${icon ? 'justify-between' : 'justify-end'}`}>
+  const body = (
+    <>
+      <div>
+        <div className="mb-3 flex items-center justify-between">
           {icon ? (
-            <div data-testid="service-card-icon" className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 text-3xl text-white shadow-md">
+            <span
+              data-testid="service-card-icon"
+              className="inline-flex h-7 w-7 items-center justify-center rounded bg-accent-soft text-base text-accent"
+            >
               {icon}
-            </div>
-          ) : null}
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{badge}</span>
+            </span>
+          ) : (
+            <span
+              className={`inline-flex h-7 w-7 items-center justify-center rounded ${
+                active ? 'bg-accent-soft text-accent' : 'bg-surface-sunken text-ink-3'
+              }`}
+            >
+              <Icon.doc size={15} />
+            </span>
+          )}
+          <Tag tone={active ? 'ok' : 'neutral'}>
+            <Icon.dot size={6} /> {badge}
+          </Tag>
         </div>
-        <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
+        <h2 className="mb-1 text-xl font-semibold tracking-tighter text-ink-1">{title}</h2>
         {description ? (
-          <p data-testid="service-card-description" className="mt-3 text-sm leading-6 text-slate-600">
+          <p data-testid="service-card-description" className="text-base text-ink-2">
             {description}
           </p>
         ) : null}
-        <div className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-slate-900">
-          서비스 열기
-          <span className="transition group-hover:translate-x-1">→</span>
-        </div>
       </div>
+      <div className="mt-4 flex items-baseline gap-1.5">
+        {typeof count === 'number' ? (
+          <>
+            <span className="font-serif text-2xl font-semibold tracking-tighter">{count}</span>
+            <span className="text-sm text-ink-3">issues published</span>
+          </>
+        ) : active ? (
+          <span className="inline-flex items-center gap-1 text-sm text-accent">
+            Open <Icon.chevR size={11} />
+          </span>
+        ) : (
+          <span className="font-mono text-sm text-ink-4">—</span>
+        )}
+      </div>
+    </>
+  );
+
+  const className = `flex min-h-[200px] flex-col justify-between rounded-lg border p-6 ${
+    active
+      ? 'cursor-pointer border-line bg-surface-elevated shadow-sm transition-shadow hover:shadow-md'
+      : 'cursor-default border-line-subtle bg-surface-raised opacity-65'
+  }`;
+
+  if (!active) {
+    return (
+      <div className={className} aria-disabled>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={href} className={className}>
+      {body}
     </Link>
   );
 }
