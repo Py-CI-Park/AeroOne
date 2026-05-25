@@ -12,8 +12,13 @@ class HtmlRenderService:
         self.storage_service = storage_service
 
     def render(self, relative_path: str) -> str:
-        html = self.storage_service.read_external_text(relative_path)
-        return self.sanitize_html(html)
+        # 로컬 Newsletter/output 의 HTML 은 운영자 자신의 파이프라인(Newsletter_AI)
+        # 산출물 = 신뢰 콘텐츠다. 최신 산출물은 <script> 로 본문(기사 카드)을
+        # innerHTML 주입하는 JS 렌더 방식이라, sanitize 로 <script> 를 제거하면
+        # 본문이 통째로 사라진다. 따라서 신뢰 콘텐츠는 원본 그대로 서빙하고,
+        # 격리는 프론트엔드의 sandbox iframe(allow-scripts, 별 문서)에 맡긴다.
+        # (sanitize_html 은 신뢰도가 낮은 Markdown 변환 경로에서 계속 사용한다.)
+        return self.storage_service.read_external_text(relative_path)
 
     def sanitize_html(self, html: str) -> str:
         soup = BeautifulSoup(html, 'html.parser')

@@ -58,7 +58,13 @@ export function HtmlViewer({ title, html }: { title: string; html: string }) {
     <iframe
       ref={iframeRef}
       title={title}
-      sandbox="allow-same-origin"
+      // allow-scripts 포함: Newsletter_AI 산출 HTML 은 <script> 로 본문(기사
+      // 카드)을 innerHTML 주입하는 JS 렌더 방식이라, 스크립트가 막히면 본문이
+      // 빈 화면으로 보인다. 콘텐츠는 운영자 자신의 파이프라인 산출물(신뢰
+      // 가능)이므로 Newsletter_AI 의 report preview 와 동일하게 allow-scripts
+      // 를 허용한다. 폐쇄망에서 외부 폰트/CDN 은 차단되지만 본문 주입 JS 는
+      // 페이지 내 데이터만 쓰므로 정상 동작한다.
+      sandbox="allow-same-origin allow-scripts"
       scrolling="no"
       srcDoc={html}
       onLoad={() => {
