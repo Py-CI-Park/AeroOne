@@ -35,7 +35,7 @@ test('removes the home hero copy while keeping the Newsletter link and theme sel
 
   expect(newsletterLink).toHaveAttribute('href', '/newsletters');
   expect(newsletterLink).not.toHaveTextContent('Open the latest issue and browse previous issues by date.');
-  expect(newsletterLink).toHaveTextContent('활성 서비스');
+  expect(newsletterLink).toHaveTextContent('Active');
   expect(newsletterLink).not.toHaveTextContent('뉴스레터 서비스');
   expect(newsletterLink).not.toHaveTextContent('뉴스레터');
   expect(within(newsletterLink).queryByTestId('service-card-description')).not.toBeInTheDocument();
@@ -48,6 +48,6 @@ test('home page uses dark theme from cookie', async () => {
 
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.getByTestId('app-shell')).toHaveClass('bg-slate-950');
+  // 테마는 <html>(layout) 에 부착 — 셸이 아니라 토글 방향으로 dark 반영을 확인.
   expect(screen.getByRole('link', { name: '라이트 테마로 전환' })).toBeInTheDocument();
 });

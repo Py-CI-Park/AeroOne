@@ -1,21 +1,29 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
 
 const {
+  cookieThemeMock,
   fetchLatestNewsletterMock,
   fetchNewsletterAssetContentMock,
   fetchNewsletterCalendarMock,
   fetchNewsletterDetailMock,
   fetchNewslettersMock,
 } = vi.hoisted(() => ({
+  cookieThemeMock: vi.fn<() => string | undefined>(),
   fetchLatestNewsletterMock: vi.fn(),
   fetchNewsletterAssetContentMock: vi.fn(),
   fetchNewsletterCalendarMock: vi.fn(),
   fetchNewsletterDetailMock: vi.fn(),
   fetchNewslettersMock: vi.fn(),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => ({
+    getAll: () => (cookieThemeMock() ? [{ name: 'aeroone_theme', value: cookieThemeMock() }] : []),
+  })),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -30,14 +38,23 @@ vi.mock('@/lib/api', async () => {
   };
 });
 
-vi.mock('next/headers', () => ({
-  cookies: vi.fn(() => ({
-    getAll: () => [],
-  })),
-}));
-
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
-  NewsletterDateCalendar: ({ selectedSlug }: { selectedSlug: string }) => <div data-testid="newsletter-date-calendar">{selectedSlug}</div>,
+  NewsletterDateCalendar: ({
+    selectedSlug,
+    theme,
+    defaultOpen,
+  }: {
+    selectedSlug?: string;
+    theme: string;
+    defaultOpen?: boolean;
+  }) => (
+    <div
+      data-testid="newsletter-date-calendar"
+      data-selected-slug={selectedSlug}
+      data-theme={theme}
+      data-default-open={String(Boolean(defaultOpen))}
+    />
+  ),
 }));
 
 vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
@@ -49,87 +66,120 @@ vi.mock('@/components/newsletter/newsletter-detail-client', () => ({
   ),
 }));
 
-vi.mock('@/components/newsletter/newsletter-list', () => ({
-  NewsletterList: ({ items }: { items: NewsletterItem[] }) => <div data-testid="newsletter-list">{items.length}</div>,
-}));
-
-const detail: NewsletterDetail = {
+const latest: NewsletterDetail = {
   id: 1,
-  title: 'Newsletter 2026-03-30',
-  slug: 'newsletter-20260330',
-  description: 'Summary',
+  title: 'Runway surface treatment results',
+  slug: 'runway-surface',
+  description: 'Q1 trials',
   source_type: 'html',
+  published_at: '2026-05-23T00:00:00',
+  category: { id: 1, name: 'Aerospace Daily', slug: 'aerospace-daily' },
   tags: [],
-  available_assets: [
-    {
-      asset_type: 'html',
-      content_url: '/api/v1/newsletters/1/content/html',
-      download_url: '/api/v1/newsletters/1/download/html',
-      is_primary: true,
-    },
-  ],
+  available_assets: [{ asset_type: 'html', content_url: '/api/v1/newsletters/1/content/html', download_url: '/d', is_primary: true }],
   default_asset_type: 'html',
   summary: 'Summary',
-  category: null,
   thumbnail_url: null,
 };
 
 const items: NewsletterItem[] = [
   {
     id: 1,
-    title: detail.title,
-    slug: detail.slug,
-    description: detail.description,
-    source_type: detail.source_type,
+    title: latest.title,
+    slug: latest.slug,
+    description: latest.description,
+    source_type: 'html',
+    published_at: '2026-05-23T00:00:00',
+    category: { id: 1, name: 'Aerospace Daily', slug: 'aerospace-daily' },
     tags: [],
-    available_assets: detail.available_assets,
-    category: null,
+    available_assets: latest.available_assets,
+  },
+  {
+    id: 2,
+    title: 'Supply chain normalizes',
+    slug: 'supply-chain',
+    description: 'lead times',
+    source_type: 'html',
+    published_at: '2026-05-22T00:00:00',
+    category: { id: 2, name: 'Supply Watch', slug: 'supply' },
+    tags: [],
+    available_assets: [{ asset_type: 'html', content_url: '/a2', download_url: '/d2', is_primary: true }],
   },
 ];
 
 const calendarEntries: NewsletterCalendarEntry[] = [
-  {
-    date: '2026-03-30',
-    slug: detail.slug,
-    title: detail.title,
-    source_type: detail.source_type,
-  },
+  { date: '2026-05-23', slug: 'runway-surface', title: latest.title, source_type: 'html' },
+  { date: '2026-05-22', slug: 'supply-chain', title: items[1].title, source_type: 'html' },
 ];
 
 beforeEach(() => {
-  fetchLatestNewsletterMock.mockResolvedValue(detail);
-  fetchNewsletterAssetContentMock.mockResolvedValue({ asset_type: 'html', content_html: '<h1>hello</h1>' });
-  fetchNewsletterCalendarMock.mockResolvedValue(calendarEntries);
-  fetchNewsletterDetailMock.mockResolvedValue(detail);
+  cookieThemeMock.mockReturnValue(undefined);
   fetchNewslettersMock.mockResolvedValue(items);
+  fetchNewsletterCalendarMock.mockResolvedValue(calendarEntries);
+  fetchLatestNewsletterMock.mockResolvedValue(latest);
+  fetchNewsletterDetailMock.mockResolvedValue(latest);
+  fetchNewsletterAssetContentMock.mockResolvedValue({ asset_type: 'html', content_html: '<h1>hello</h1>' });
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
-  fetchLatestNewsletterMock.mockReset();
-  fetchNewsletterAssetContentMock.mockReset();
-  fetchNewsletterCalendarMock.mockReset();
-  fetchNewsletterDetailMock.mockReset();
+  cookieThemeMock.mockReset();
   fetchNewslettersMock.mockReset();
+  fetchNewsletterCalendarMock.mockReset();
+  fetchLatestNewsletterMock.mockReset();
+  fetchNewsletterDetailMock.mockReset();
+  fetchNewsletterAssetContentMock.mockReset();
 });
 
-test('renders newsletters page without hero copy and quick move section', async () => {
+test('defaults to the latest issue, renders its HTML directly, with an expanded calendar and existing categories', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.getByTestId('newsletter-date-calendar')).toHaveTextContent(detail.slug);
-  expect(screen.getByTestId('newsletter-detail-client')).toHaveTextContent(detail.title);
-  expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('<h1>hello</h1>');
-  expect(screen.queryByText('Latest First')).not.toBeInTheDocument();
-  expect(screen.queryByText('quick move')).not.toBeInTheDocument();
+  expect(fetchLatestNewsletterMock).toHaveBeenCalled();
+  expect(screen.getByRole('heading', { name: 'Newsletter' })).toBeInTheDocument();
+
+  const reading = screen.getByTestId('newsletters-reading');
+  // 최신 이슈 HTML 이 본문에 직접 렌더된다.
+  expect(within(reading).getByTestId('newsletter-detail-client')).toHaveTextContent(latest.title);
+  expect(within(reading).getByTestId('newsletter-detail-html')).toHaveTextContent('<h1>hello</h1>');
+
+  // 달력은 기본 펼침 + 최신 이슈 선택.
+  const calendar = screen.getByTestId('newsletter-date-calendar');
+  expect(calendar).toHaveAttribute('data-default-open', 'true');
+  expect(calendar).toHaveAttribute('data-selected-slug', latest.slug);
+
+  // Categories 패널은 더 이상 렌더하지 않는다.
+  expect(screen.queryByTestId('newsletters-category-panel')).not.toBeInTheDocument();
 });
 
-test('renders newsletters page when asset html fetch fails', async () => {
-  fetchNewsletterAssetContentMock.mockRejectedValueOnce(new Error('asset unavailable'));
+test('loads the requested issue when a slug is provided', async () => {
+  const supply: NewsletterDetail = {
+    ...latest,
+    id: 2,
+    title: 'Supply chain normalizes',
+    slug: 'supply-chain',
+    category: { id: 2, name: 'Supply Watch', slug: 'supply' },
+    published_at: '2026-05-22T00:00:00',
+  };
+  fetchNewsletterDetailMock.mockResolvedValue(supply);
 
-  render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+  render(await NewslettersPage({ searchParams: Promise.resolve({ slug: 'supply-chain' }) }));
 
-  expect(screen.getByTestId('newsletter-date-calendar')).toHaveTextContent(detail.slug);
-  expect(screen.getByTestId('newsletter-detail-client')).toHaveTextContent(detail.title);
-  expect(screen.getByTestId('newsletter-detail-html')).toHaveTextContent('');
-  expect(screen.queryByText('asset unavailable')).not.toBeInTheDocument();
+  expect(fetchNewsletterDetailMock).toHaveBeenCalledWith('supply-chain');
+  expect(fetchLatestNewsletterMock).not.toHaveBeenCalled();
+  expect(screen.getByTestId('newsletter-detail-client')).toHaveTextContent('Supply chain normalizes');
+  expect(screen.getByTestId('newsletter-date-calendar')).toHaveAttribute('data-selected-slug', 'supply-chain');
+});
+
+test('query theme overrides cookie and env defaults', async () => {
+  cookieThemeMock.mockReturnValue('dark');
+  vi.stubEnv('NEWSLETTERS_THEME', 'dark');
+
+  render(await NewslettersPage({ searchParams: Promise.resolve({ theme: 'light' }) }));
+
+  // 테마는 <html> 에 부착 — 페이지가 해석한 theme 은 자식(달력)으로 전달돼 확인.
+  expect(screen.getByTestId('newsletter-date-calendar')).toHaveAttribute('data-theme', 'light');
+  expect(screen.getByRole('link', { name: '다크 테마로 전환' })).toHaveAttribute(
+    'href',
+    '/theme?theme=dark&next=%2Fnewsletters%3Fslug%3Drunway-surface',
+  );
 });

@@ -12,7 +12,7 @@ test('renders a dominant preview panel with stable wrapper identity, title, and 
 
   const panel = screen.getByTestId('newsletters-preview-panel');
 
-  expect(panel).toHaveClass('bg-white');
+  expect(panel).toHaveClass('bg-surface-raised');
   expect(panel.className).not.toContain('bg-slate-900');
   expect(within(panel).getByText('Preview')).toBeInTheDocument();
   expect(within(panel).getByRole('heading', { name: 'Preview Title' })).toBeInTheDocument();
@@ -29,8 +29,8 @@ test('renders the preview panel with dark theme classes', () => {
 
   const panel = screen.getByTestId('newsletters-preview-panel');
 
-  expect(panel).toHaveClass('bg-slate-900/95');
-  expect(within(panel).getByRole('heading', { name: 'Dark Preview' })).toHaveClass('text-slate-100');
+  expect(panel).toHaveClass('bg-surface-raised');
+  expect(within(panel).getByRole('heading', { name: 'Dark Preview' })).toHaveClass('text-ink-1');
 });
 
 test('renders selected issue date and previous next navigation', () => {

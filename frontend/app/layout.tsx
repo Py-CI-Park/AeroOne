@@ -1,7 +1,10 @@
 import './globals.css';
 
 import { ReactNode } from 'react';
+import { cookies } from 'next/headers';
 import Script from 'next/script';
+
+import { NEWSLETTER_THEME_COOKIE, resolveNewsletterTheme } from '@/lib/theme';
 
 const EXTENSION_HYDRATION_GUARD = `
 (() => {
@@ -44,9 +47,15 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // 테마는 쿠키 한 곳을 진실 소스로 삼아 <html> 에 1회 부착한다.
+  // 페이지별 data-theme 는 클라이언트 라우터 캐시로 stale 해질 수 있어 여기로 올린다.
+  const cookieStore = await cookies();
+  const cookieTheme = cookieStore.getAll().find((cookie) => cookie.name === NEWSLETTER_THEME_COOKIE)?.value;
+  const theme = resolveNewsletterTheme(cookieTheme ?? process.env.NEWSLETTERS_THEME);
+
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang="ko" data-theme={theme} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Script id="extension-hydration-guard" strategy="beforeInteractive">
           {EXTENSION_HYDRATION_GUARD}

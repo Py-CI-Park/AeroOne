@@ -6,6 +6,40 @@ type SearchParams = {
   theme?: string;
 };
 
+const MODULES = [
+  {
+    id: 'newsletter',
+    title: 'Newsletter',
+    href: '/newsletters',
+    badge: 'Active',
+    active: true,
+  },
+  {
+    id: 'announcement',
+    title: 'Announcement',
+    description: 'Company-wide announcements module.',
+    href: '/newsletters',
+    badge: 'Coming soon',
+    active: false,
+  },
+  {
+    id: 'schedule',
+    title: 'Schedule',
+    description: 'Shared calendar & event tracking.',
+    href: '/newsletters',
+    badge: 'Coming soon',
+    active: false,
+  },
+  {
+    id: 'document',
+    title: 'Document',
+    description: 'Long-form document archive.',
+    href: '/newsletters',
+    badge: 'Coming soon',
+    active: false,
+  },
+] as const;
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -15,13 +49,18 @@ export default async function HomePage({
   const theme = await getAppTheme(params.theme);
 
   return (
-    <AppShell title="서비스 대시보드" theme={theme} themePath="/">
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        <ServiceCard
-          title="Newsletter"
-          href="/newsletters"
-          badge="활성 서비스"
-        />
+    <AppShell title="Dashboard" theme={theme} themePath="/" active="dashboard" titleMeta="1 active · 3 coming soon">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {MODULES.map((module) => (
+          <ServiceCard
+            key={module.id}
+            title={module.title}
+            description={'description' in module ? module.description : undefined}
+            href={module.href}
+            badge={module.badge}
+            active={module.active}
+          />
+        ))}
       </section>
     </AppShell>
   );
