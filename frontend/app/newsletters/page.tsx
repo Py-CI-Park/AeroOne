@@ -19,13 +19,6 @@ type SearchParams = {
   theme?: string;
 };
 
-function buildDisplayDate(detail: NewsletterDetail, entries: NewsletterCalendarEntry[]) {
-  if (detail.published_at) {
-    return detail.published_at.slice(0, 10);
-  }
-  return entries.find((entry) => entry.slug === detail.slug)?.date;
-}
-
 export default async function NewslettersPage({
   searchParams,
 }: {
@@ -61,7 +54,6 @@ export default async function NewslettersPage({
   const cookieTheme = cookieStore.getAll().find((cookie) => cookie.name === NEWSLETTER_THEME_COOKIE)?.value;
   const newsletterTheme = resolveNewsletterThemeFromSearchParam(params.theme, process.env.NEWSLETTERS_THEME, cookieTheme);
   const themePath = detail?.slug ? `/newsletters?slug=${detail.slug}` : '/newsletters';
-  const displayDate = detail ? buildDisplayDate(detail, calendarEntries) : undefined;
 
   return (
     <AppShell
@@ -85,7 +77,6 @@ export default async function NewslettersPage({
           key={detail.slug}
           newsletter={detail}
           initialContentHtml={initialContentHtml}
-          displayDate={displayDate}
           calendarEntries={calendarEntries}
           theme={newsletterTheme}
         />

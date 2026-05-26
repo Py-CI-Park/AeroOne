@@ -5,16 +5,9 @@ import { AppShell } from '@/components/layout/app-shell';
 import { NewslettersReading } from '@/components/newsletter/newsletters-reading';
 import { fetchNewsletterAssetContent, fetchNewsletterCalendar, fetchNewsletterDetail } from '@/lib/api';
 import { NEWSLETTER_THEME_COOKIE, resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
-import type { NewsletterCalendarEntry, NewsletterDetail } from '@/lib/types';
+import type { NewsletterCalendarEntry } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-function buildDisplayDate(detail: NewsletterDetail, entries: NewsletterCalendarEntry[]) {
-  if (detail.published_at) {
-    return detail.published_at.slice(0, 10);
-  }
-  return entries.find((entry) => entry.slug === detail.slug)?.date;
-}
 
 export default async function NewsletterDetailPage({
   params,
@@ -64,7 +57,6 @@ export default async function NewsletterDetailPage({
         key={detail.slug}
         newsletter={detail}
         initialContentHtml={initialContentHtml}
-        displayDate={buildDisplayDate(detail, calendarEntries)}
         calendarEntries={calendarEntries}
         theme={newsletterTheme}
       />
