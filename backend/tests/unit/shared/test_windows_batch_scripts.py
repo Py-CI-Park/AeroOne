@@ -520,6 +520,16 @@ def test_start_frontend_offline_script_supports_allow_host_branch() -> None:
     assert "next.cmd start -H 127.0.0.1 -p 29501" in contents
 
 
+def test_start_frontend_offline_recovers_node_when_not_on_path() -> None:
+    script = REPO_ROOT / "scripts" / "start_frontend_offline.cmd"
+    contents = script.read_text(encoding="utf-8")
+
+    # node 가 PATH 에 없는 창(탐색기 더블클릭 등)에서도 표준 설치 위치가 있으면
+    # PATH 앞에 추가해 프론트가 뜨도록 하는 복구 라인.
+    assert r"%ProgramFiles%\nodejs\node.exe" in contents
+    assert r'set "PATH=%ProgramFiles%\nodejs;%PATH%"' in contents
+
+
 def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     bin_dir, log_file = _make_powershell_stub(tmp_path)
     script_path = _make_open_browser_test_copy(tmp_path)
