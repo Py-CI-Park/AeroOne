@@ -16,61 +16,120 @@ export function expandNewsletterArticles(doc: Document): number {
   return articles.length;
 }
 
+// scrolling="no" iframe 의 높이를 콘텐츠 전체 높이에 맞춘다. 본문이 JS 로 늦게
+// 주입되고 이미지·폰트 로드로 레이아웃이 더 커지므로 측정 시점에 따라 값이
+// 달라진다. body/documentElement 의 scroll/offset 높이 최댓값을 쓰고 최소 1800.
+function measureContentHeight(doc: Document): number {
+  const body = doc.body;
+  const root = doc.documentElement;
+  return Math.max(
+    body?.scrollHeight ?? 0,
+    body?.offsetHeight ?? 0,
+    root?.scrollHeight ?? 0,
+    root?.offsetHeight ?? 0,
+    1800,
+  );
+}
+
 export function HtmlViewer({ title, html }: { title: string; html: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState(1800);
-  const observerRef = useRef<ResizeObserver | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const mutationObserverRef = useRef<MutationObserver | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  function syncHeight() {
-    const iframe = iframeRef.current;
-    if (!iframe?.contentWindow?.document) {
-      return;
-    }
-    const doc = iframe.contentWindow.document;
-    const bodyHeight = doc.body?.scrollHeight ?? 0;
-    const htmlHeight = doc.documentElement?.scrollHeight ?? 0;
-    setHeight(Math.max(bodyHeight, htmlHeight, 1800));
+  function getDoc(): Document | null {
+    return iframeRef.current?.contentWindow?.document ?? null;
   }
 
-  // 기사 본문이 JS 로 비동기 주입되므로, 같은 iframe 문서(allow-same-origin)에서
-  // 기사를 펼친다. :not([data-aeroone-defopen]) 로 이미 처리한 기사는 건너뛰어,
-  // 폴링/Observer 가 반복 호출돼도 사용자가 접은 기사를 다시 펼치지 않는다.
+  // 높이를 측정값으로 맞춘다(증가뿐 아니라 사용자가 기사를 접어 줄어든 경우도 반영).
+  function syncHeight() {
+    const doc = getDoc();
+    if (!doc) {
+      return;
+    }
+    setHeight(measureContentHeight(doc));
+  }
+
+  // 기사 본문이 JS 로 비동기 주입되므로 같은 문서(allow-same-origin)에서 펼친다.
+  // :not([data-aeroone-defopen]) 로 처리한 기사는 건너뛰어, 재호출돼도 사용자가
+  // 접은 기사를 다시 펼치지 않는다.
   function expandArticles() {
-    const doc = iframeRef.current?.contentWindow?.document;
+    const doc = getDoc();
     if (!doc) {
       return;
     }
     expandNewsletterArticles(doc);
   }
 
-  function bindResizeTracking() {
-    const iframe = iframeRef.current;
-    const doc = iframe?.contentWindow?.document;
+  // 기사 카드 이미지는 loading="lazy" 라, 높이가 작게 잡힌 iframe 의 뷰포트
+  // 밖에 있으면 영영 로드되지 않는다(고정 높이 iframe ↔ lazy 의 교착). 그러면
+  // 카드 높이가 안 늘어 본문이 잘리고, 새로고침 때만(이미지 캐시로 즉시 complete)
+  // 정상으로 보인다. 이를 끊으려 lazy 이미지를 eager 로 바꿔 위치와 무관하게
+  // 로드시키고, 아직 로드 전인 이미지엔 load/error 핸들러를 1회 달아 로드 완료
+  // 시 높이를 다시 맞춘다.
+  function prepareImages() {
+    const doc = getDoc();
+    if (!doc) {
+      return;
+    }
+    doc.querySelectorAll<HTMLImageElement>('img:not([data-aeroone-img])').forEach((img) => {
+      img.setAttribute('data-aeroone-img', '1');
+      if (img.loading === 'lazy') {
+        img.loading = 'eager';
+      }
+      if (!img.complete) {
+        img.addEventListener('load', syncHeight);
+        img.addEventListener('error', syncHeight);
+      }
+    });
+  }
+
+  function refresh() {
+    expandArticles();
+    prepareImages();
+    syncHeight();
+  }
+
+  function startTracking() {
+    const doc = getDoc();
     if (!doc?.body || !doc.documentElement) {
       return;
     }
-    if (typeof ResizeObserver === 'undefined') {
-      return;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = new ResizeObserver(() => syncHeight());
+      resizeObserverRef.current.observe(doc.body);
+      resizeObserverRef.current.observe(doc.documentElement);
     }
 
-    observerRef.current?.disconnect();
-    observerRef.current = new ResizeObserver(() => {
-      syncHeight();
-      expandArticles();
-    });
-    observerRef.current.observe(doc.body);
-    observerRef.current.observe(doc.documentElement);
+    // 콘텐츠 주입·기사 펼침 등 DOM 변화를 즉시 잡아 높이를 다시 맞춘다.
+    // 첫(콜드) 로드에서 본문이 잘리던 원인(과소측정)을 직접 해소하는 핵심 트리거.
+    if (typeof MutationObserver !== 'undefined') {
+      mutationObserverRef.current?.disconnect();
+      mutationObserverRef.current = new MutationObserver(() => refresh());
+      mutationObserverRef.current.observe(doc.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+    }
 
+    // 폰트 로드 완료 후 리플로우로 높이가 바뀔 수 있어 한 번 더 맞춘다.
+    const fonts = (doc as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+    fonts?.ready?.then(() => syncHeight()).catch(() => undefined);
+
+    // Observer 가 못 잡는 틈(폰트 리플로우 등)을 메우는 안전망 폴링.
+    // 12초(40 * 300ms)까지 재측정하고 멈춘다.
     let runs = 0;
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
     }
     timerRef.current = window.setInterval(() => {
-      syncHeight();
-      expandArticles();
+      refresh();
       runs += 1;
-      if (runs >= 20 && timerRef.current) {
+      if (runs >= 40 && timerRef.current) {
         window.clearInterval(timerRef.current);
         timerRef.current = null;
       }
@@ -79,7 +138,8 @@ export function HtmlViewer({ title, html }: { title: string; html: string }) {
 
   useEffect(() => {
     return () => {
-      observerRef.current?.disconnect();
+      resizeObserverRef.current?.disconnect();
+      mutationObserverRef.current?.disconnect();
       if (timerRef.current) {
         window.clearInterval(timerRef.current);
       }
@@ -100,9 +160,8 @@ export function HtmlViewer({ title, html }: { title: string; html: string }) {
       scrolling="no"
       srcDoc={html}
       onLoad={() => {
-        syncHeight();
-        expandArticles();
-        bindResizeTracking();
+        refresh();
+        startTracking();
       }}
       style={{ height }}
       className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
