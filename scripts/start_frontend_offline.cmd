@@ -10,6 +10,13 @@ if not exist "node_modules\.bin\next.cmd" (
   echo [ERROR] frontend\node_modules\.bin\next.cmd 가 없습니다. setup_offline.bat 으로 의존성 복원이 필요합니다.
   exit /b 1
 )
+
+REM next.cmd invokes node via PATH. If Node is installed but PATH was not
+REM refreshed in this window (common with Explorer double-click), prepend the
+REM standard install dir so node resolves. Harmless when node is already found.
+if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
+if exist "%LOCALAPPDATA%\Programs\nodejs\node.exe" set "PATH=%LOCALAPPDATA%\Programs\nodejs;%PATH%"
+
 if defined AEROONE_ALLOW_HOST (
   call .\node_modules\.bin\next.cmd start -H 0.0.0.0 -p 29501
 ) else (
