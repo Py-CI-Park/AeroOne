@@ -2,7 +2,6 @@ import React from 'react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
-import { Tag } from '@/components/ui/primitives';
 import type { NewsletterTheme } from '@/lib/theme';
 import type { NewsletterCalendarEntry, NewsletterDetail } from '@/lib/types';
 
@@ -10,13 +9,11 @@ import type { NewsletterCalendarEntry, NewsletterDetail } from '@/lib/types';
 export function NewslettersReading({
   newsletter,
   initialContentHtml = '',
-  displayDate,
   calendarEntries,
   theme = 'light',
 }: {
   newsletter: NewsletterDetail;
   initialContentHtml?: string;
-  displayDate?: string;
   calendarEntries: NewsletterCalendarEntry[];
   theme?: NewsletterTheme;
 }) {
@@ -36,25 +33,13 @@ export function NewslettersReading({
         ) : null}
       </aside>
 
-      {/* 우측 — 이슈 메타 + HTML 본문 직접 */}
-      <section className="flex min-w-0 flex-col gap-4">
-        <div>
-          {newsletter.category ? (
-            <div className="mb-2">
-              <Tag tone="accent">{newsletter.category.name}</Tag>
-            </div>
-          ) : null}
-          <h2 className="text-3xl font-semibold leading-tight tracking-tight text-ink-1">{newsletter.title}</h2>
-          {displayDate ? <p className="mt-1.5 font-mono text-sm text-ink-3">{displayDate}</p> : null}
-        </div>
-
-        <div className="min-w-0">
-          <NewsletterDetailClient
-            newsletter={newsletter}
-            selectedAsset={newsletter.default_asset_type}
-            initialContentHtml={initialContentHtml}
-          />
-        </div>
+      {/* 우측 — 헤더 없이 이슈 HTML 본문을 곧바로 렌더 */}
+      <section className="min-w-0">
+        <NewsletterDetailClient
+          newsletter={newsletter}
+          selectedAsset={newsletter.default_asset_type}
+          initialContentHtml={initialContentHtml}
+        />
       </section>
     </div>
   );
