@@ -460,6 +460,25 @@ def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
     assert pattern.search(browser_line), browser_line
 
 
+def test_start_offline_dry_run_frontend_window_avoids_broken_nested_quotes() -> None:
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    frontend_index = lines.index("[DRY-RUN] offline frontend window command:")
+    frontend_line = lines[frontend_index + 1]
+
+    # 회귀 가드: backslash 로 escape 한 따옴표(\")는 cmd 에서 escape 가 아니라 리터럴 \" 로
+    # 남아, 새 창에서 'call \"...start_frontend_offline.cmd\" 은(는) 내부/외부 명령... 배치
+    # 파일이 아닙니다' 오류를 냈다(1.0.14 폐쇄망 프론트 창 기동 실패). 백엔드 창과 동일하게
+    # cd /d ""path"" 로 scripts 로 이동한 뒤 무인용 상대경로로 call 해야 한다.
+    old_nested_launch_pattern = re.compile(r'call \\".*start_frontend_offline\.cmd\\"')
+    assert not old_nested_launch_pattern.search(frontend_line), frontend_line
+    assert not any(old_nested_launch_pattern.search(line) for line in lines), result.stdout
+    assert 'cd /d ""' in frontend_line, frontend_line
+    assert frontend_line.rstrip('"').endswith("call start_frontend_offline.cmd"), frontend_line
+
+
 def test_setup_offline_dry_run_allow_host_prints_lan_info() -> None:
     result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause", "--allow-host=192.168.1.10")
 
