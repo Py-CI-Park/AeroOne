@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.19',
+    date: '2026-06-02',
+    items: [
+      '뉴스레터 페이지에서 아래로 스크롤하면 우하단에 "맨 위로" 버튼이 나타나 한 번에 위로 이동.',
+    ],
+  },
+  {
     version: '1.0.18',
     date: '2026-06-02',
     items: [
