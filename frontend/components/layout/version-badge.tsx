@@ -75,9 +75,6 @@ export function VersionBadge() {
 
             <div className="mt-6 border-t border-line-subtle pt-4 text-sm text-ink-2">
               <span className="font-medium text-ink-1">문의:</span> {APP_CONTACT.name}
-              <a className="ml-2 text-accent hover:underline" href={`mailto:${APP_CONTACT.email}`}>
-                {APP_CONTACT.email}
-              </a>
             </div>
 
             <div className="mt-5 flex justify-end">

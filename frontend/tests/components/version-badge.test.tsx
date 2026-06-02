@@ -20,13 +20,10 @@ test('opens the changelog dialog with latest entry and contact info on click', (
   expect(screen.getByRole('heading', { name: '업데이트 내역' })).toBeInTheDocument();
   // 최신 릴리스의 첫 항목 본문이 보인다.
   expect(screen.getByText(CHANGELOG[0].items[0])).toBeInTheDocument();
-  // 문의 정보(박찬일 + 메일 링크).
+  // 문의 정보는 이름만 노출(이메일/링크 없음).
   expect(screen.getByText('문의:')).toBeInTheDocument();
   expect(screen.getByText(APP_CONTACT.name, { exact: false })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: APP_CONTACT.email })).toHaveAttribute(
-    'href',
-    `mailto:${APP_CONTACT.email}`,
-  );
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
 });
 
 test('closes the dialog with a close control', () => {

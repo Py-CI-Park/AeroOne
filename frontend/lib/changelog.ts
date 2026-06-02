@@ -4,7 +4,6 @@
 
 export const APP_CONTACT = {
   name: '박찬일',
-  email: 'parkchanil77@naver.com',
 } as const;
 
 export type ChangelogEntry = {
@@ -15,6 +14,13 @@ export type ChangelogEntry = {
 
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.0.18',
+    date: '2026-06-02',
+    items: [
+      '버전 팝업의 문의 표기를 이름만 노출하도록 정리(이메일 제외).',
+    ],
+  },
   {
     version: '1.0.17',
     date: '2026-06-02',
