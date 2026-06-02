@@ -543,6 +543,31 @@ def test_start_offline_dry_run_allow_host_omits_lan_hint() -> None:
     assert not any("allow_lan_firewall.cmd" in line for line in lines)
 
 
+def test_start_offline_dry_run_allow_host_auto_resolves_lan_ip() -> None:
+    # --allow-host=auto 는 이 PC 의 LAN IPv4 를 감지해 0.0.0.0 바인딩으로 띄운다.
+    # 감지 가능한 LAN IPv4 가 없는 환경에서는 명확한 에러로 끝난다(두 경로 모두 결정적).
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run", "--allow-host=auto")
+
+    if result.returncode == 0:
+        lines = _non_empty_lines(result.stdout)
+        assert any(re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", line) for line in lines)
+        assert not any("LAN host = auto" in line for line in lines)
+        assert any("uvicorn app.main:app --host 0.0.0.0" in line for line in lines)
+    else:
+        assert "could not detect" in result.stdout.lower()
+
+
+def test_setup_offline_dry_run_allow_host_auto_resolves_lan_ip() -> None:
+    result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause", "--allow-host=auto")
+
+    if result.returncode == 0:
+        lines = _non_empty_lines(result.stdout)
+        assert any(re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", line) for line in lines)
+        assert not any("LAN host = auto" in line for line in lines)
+    else:
+        assert "could not detect" in result.stdout.lower()
+
+
 def test_start_offline_allow_host_missing_value_fails() -> None:
     result = _run_cmd(REPO_ROOT, "start_offline.bat", "--allow-host")
 

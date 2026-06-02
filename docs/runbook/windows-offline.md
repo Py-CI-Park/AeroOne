@@ -129,6 +129,13 @@ setup_offline.bat --allow-host=192.168.1.10
 start_offline.bat --allow-host=192.168.1.10
 ```
 
+IP 를 직접 입력하기 번거로우면 `--allow-host=auto` 로 이 PC 의 LAN IPv4 를 자동 감지합니다(기본 게이트웨이가 있는 어댑터를 우선하고, 폐쇄망처럼 게이트웨이가 없으면 사설 IP 로 폴백). 감지 로직은 `scripts\windows\detect_lan_ip.ps1` 입니다.
+
+```cmd
+setup_offline.bat --allow-host=auto
+start_offline.bat --allow-host=auto
+```
+
 또는 환경 변수로 한 번 설정해 둘 수도 있습니다.
 
 ```cmd

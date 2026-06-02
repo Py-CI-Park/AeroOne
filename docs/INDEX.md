@@ -89,13 +89,13 @@
 | secret 강도 검증 | `backend/app/core/config.py:85-95` | `validate_runtime_security` (production / closed_network 에서 강제) |
 | 부팅 검증 호출 | `backend/app/main.py:18` | startup 시 1회 호출 |
 | DB 분기 (배치용) | `backend/scripts/ensure_db_state.py` | 종료 코드 0/1/2/3, docstring 에 의미 직접 기재 |
-| 폐쇄망 LAN 옵션 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` 라벨 | `--allow-host=<host>` + `AEROONE_ALLOW_HOST` env |
+| 폐쇄망 LAN 옵션 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | `--allow-host=<host>` + `AEROONE_ALLOW_HOST` env. `--allow-host=auto` 는 `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(기본 게이트웨이 어댑터 우선, 없으면 사설 IP 폴백) |
 | 패키징 제외 목록 | `offline_package.bat:34` | robocopy `/XD` 인자 |
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
 | 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트가 쿠키 설정 후 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>` |
 | 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |
 | 출력 폴더 자동 동기화 | `backend/app/modules/newsletter/services/newsletter_autosync_service.py` + `backend/app/modules/newsletter/api/public.py` (`auto_sync_newsletters` 의존성) | 공개 읽기 요청 시 `Newsletter/output` 시그니처(파일명+크기+mtime) 변화를 감지해 변경 시에만 `sync()`. 수동 Sync 엔드포인트(`api/imports.py`)도 베이스라인 시그니처를 갱신해 직후 읽기가 관리자 메타데이터 편집을 덮어쓰지 않게 함 |
-| LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=private, remoteip=LocalSubnet) 추가/`--remove`. `start_offline.bat --allow-host` 와 짝 |
+| LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
 | 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 
@@ -103,15 +103,16 @@
 
 ## 7. 회귀 테스트 위치
 
-총 78건 PASS (1.0.19-dev 기준, backend pytest). 프론트엔드 Vitest 는 71건 PASS (27 파일).
+총 81건 PASS (1.0.20-dev 기준, backend pytest). 프론트엔드 Vitest 는 71건 PASS (27 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
 | `backend/tests/unit/test_config.py` | 10 | `closed_network` / `production` / `development` / `test` 모드 + `secure_cookies` |
 | `backend/tests/unit/test_ensure_db_state.py` | 7 | 종료 코드 0/1/2/3 + 부모 디렉토리 자동 생성 |
-| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 24 | setup.bat / start.bat / start_offline.bat 의 dry-run / 실행 / `--allow-host` / LAN 접속 힌트 |
+| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 26 | setup.bat / start.bat / start_offline.bat 의 dry-run / 실행 / `--allow-host` / `--allow-host=auto` / LAN 접속 힌트 |
 | `backend/tests/unit/shared/test_windows_frontend_cmd_scripts.py` | 2 | frontend 런처 본문 가드 |
-| `backend/tests/unit/shared/test_lan_firewall_cmd_script.py` | 2 | LAN 방화벽 헬퍼 cmd 본문 가드 (포트 / 스코프 / `--remove` / help) |
+| `backend/tests/unit/shared/test_lan_firewall_cmd_script.py` | 2 | LAN 방화벽 헬퍼 cmd 본문 가드 (포트 / 스코프 profile=any / `--remove` / help) |
+| `backend/tests/unit/shared/test_detect_lan_ip_ps1_script.py` | 1 | `--allow-host=auto` LAN IP 자동 감지 스크립트 본문 가드 |
 | `backend/tests/unit/newsletter/test_newsletter_autosync_service.py` | 3 | 읽기 시 지연 자동 동기화 (변경 감지 / 무변화 스킵 / 폴더 부재 가드) |
 | `backend/tests/integration/test_newsletter_autosync.py` | 2 | 새 output 파일이 관리자 Sync 없이 달력 / 최신글에 반영 |
 | 그 외 unit / integration | 28 | 인증 API, 뉴스레터 public/admin/imports/content API, seed 등 |

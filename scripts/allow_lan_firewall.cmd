@@ -29,10 +29,10 @@ if errorlevel 1 (
 
 if /I "%ACTION%"=="remove" goto :remove
 
-echo [INFO ] Adding inbound allow rules ^(profile=private, remoteip=LocalSubnet only^).
-netsh advfirewall firewall add rule name="%RULE_BACKEND%" dir=in action=allow protocol=TCP localport=%BACKEND_PORT% profile=private remoteip=LocalSubnet
+echo [INFO ] Adding inbound allow rules ^(profile=any, remoteip=LocalSubnet only^).
+netsh advfirewall firewall add rule name="%RULE_BACKEND%" dir=in action=allow protocol=TCP localport=%BACKEND_PORT% profile=any remoteip=LocalSubnet
 if errorlevel 1 goto :fail
-netsh advfirewall firewall add rule name="%RULE_FRONTEND%" dir=in action=allow protocol=TCP localport=%FRONTEND_PORT% profile=private remoteip=LocalSubnet
+netsh advfirewall firewall add rule name="%RULE_FRONTEND%" dir=in action=allow protocol=TCP localport=%FRONTEND_PORT% profile=any remoteip=LocalSubnet
 if errorlevel 1 goto :fail
 echo [OK   ] LAN inbound allowed for %BACKEND_PORT% / %FRONTEND_PORT%.
 echo [OK   ] Other PCs on the same subnet can now reach http://^<this-PC-IP^>:%FRONTEND_PORT%/
@@ -56,7 +56,7 @@ echo Usage: allow_lan_firewall.cmd [--remove] [--help]
 echo.
 echo Adds Windows Firewall inbound allow rules so other PCs on the same closed LAN can
 echo reach the AeroOne backend ^(%BACKEND_PORT%^) and frontend ^(%FRONTEND_PORT%^).
-echo Scope: profile=private, remoteip=LocalSubnet ^(local subnet only; not exposed beyond LAN^).
+echo Scope: profile=any, remoteip=LocalSubnet ^(local subnet only; not exposed beyond LAN^).
 echo Must be run as Administrator. Pair with: start_offline.bat --allow-host=^<IP^>.
 echo.
 echo   --remove   Delete the two AeroOne inbound rules created by this script.

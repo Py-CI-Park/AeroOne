@@ -38,6 +38,10 @@ set "FRONTEND_DIR=%ROOT%\frontend"
 set "SCRIPTS_DIR=%ROOT%\scripts"
 set "BACKEND_PORT=18437"
 set "FRONTEND_PORT=29501"
+if /I "%ALLOW_HOST%"=="auto" (
+  call :resolve_auto_host
+  if errorlevel 1 exit /b 1
+)
 if defined ALLOW_HOST (
   set "BACKEND_HOST=0.0.0.0"
   set "BACKEND_URL=http://%ALLOW_HOST%:18437"
@@ -128,6 +132,16 @@ if not "!PORT_PROBE_EXIT!"=="0" (
 )
 exit /b 0
 
+:resolve_auto_host
+echo [INFO ] --allow-host=auto: detecting LAN IPv4...
+for /f "usebackq delims=" %%I in (`powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\detect_lan_ip.ps1"`) do set "ALLOW_HOST=%%I"
+if /I "!ALLOW_HOST!"=="auto" (
+  echo [ERROR] --allow-host=auto: could not detect a LAN IPv4. Pass --allow-host=^<IP^> explicitly.
+  exit /b 1
+)
+echo [INFO ] --allow-host=auto resolved to !ALLOW_HOST!
+exit /b 0
+
 :help
 echo Usage: start_offline.bat [--dry-run] [--open-browser] [--allow-host=^<host^>]
 echo.
@@ -136,5 +150,6 @@ echo.
 echo --allow-host=^<host^>  Bind backend / frontend to 0.0.0.0 for LAN access and
 echo                     auto-open browser at http://^<host^>:29501/.
 echo                     Example: --allow-host=192.168.1.10
+echo                     Use --allow-host=auto to auto-detect this PC's LAN IPv4.
 echo                     Environment fallback: AEROONE_ALLOW_HOST.
 exit /b 0
