@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.22',
+    date: '2026-06-02',
+    items: [
+      '기본 실행을 LAN(IP)으로 변경 — setup_offline/start_offline 을 옵션 없이 실행하면(더블클릭 포함) 프롬프트 없이 이 PC 의 LAN IP 를 자동 감지해 0.0.0.0 으로 띄웁니다. 이 PC 에서만 쓰려면 --local.',
+    ],
+  },
+  {
     version: '1.0.21',
     date: '2026-06-02',
     items: [

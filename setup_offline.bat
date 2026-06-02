@@ -14,12 +14,14 @@ set "BACKEND_VENV=%BACKEND_DIR%\.venv"
 set "WHEEL_DIR=%ROOT%\offline_assets\python-wheels"
 set "DRY_RUN="
 set "NO_PAUSE="
+set "LOCAL_ONLY="
 set "ALLOW_HOST=%AEROONE_ALLOW_HOST%"
 
 :parse_args
 if "%~1"=="" goto :parse_done
 if /I "%~1"=="--dry-run" (set "DRY_RUN=1" & shift & goto :parse_args)
 if /I "%~1"=="--no-pause" (set "NO_PAUSE=1" & shift & goto :parse_args)
+if /I "%~1"=="--local" (set "LOCAL_ONLY=1" & shift & goto :parse_args)
 if /I "%~1"=="--help" goto :help
 if /I "%~1"=="--allow-host" (shift & goto :capture_host)
 echo %~1 | findstr /B /I /C:"--allow-host=" >nul
@@ -42,10 +44,10 @@ goto :parse_args
 
 :parse_done
 
-if /I "%ALLOW_HOST%"=="auto" (
-  call :resolve_auto_host
-  if errorlevel 1 exit /b 1
-)
+REM 기본 동작 = LAN(IP). 옵션이 없으면 LAN IPv4 를 자동 감지해 .env 를 LAN 기준으로 쓴다.
+REM 이 PC 에서만 쓰려면 --local, 특정 IP 는 --allow-host=<IP>. 감지 실패 시 localhost 폴백.
+if not defined LOCAL_ONLY if not defined ALLOW_HOST set "ALLOW_HOST=auto"
+if /I "%ALLOW_HOST%"=="auto" call :resolve_auto_host
 
 if defined ALLOW_HOST (
   set "EFFECTIVE_BACKEND_BASE=http://%ALLOW_HOST%:18437"
@@ -73,7 +75,7 @@ echo [DRY-RUN] NEXT_PUBLIC_API_BASE_URL = %EFFECTIVE_BACKEND_BASE%
 goto :success
 
 :dry_loopback
-echo [DRY-RUN] LAN host = ^(unset, loopback only^)
+echo [DRY-RUN] LAN host = ^(localhost only: --local or LAN IPv4 not detected^)
 goto :success
 
 :install_real
@@ -215,17 +217,18 @@ if not defined NO_PAUSE pause
 exit /b 0
 
 :resolve_auto_host
-echo [INFO ] --allow-host=auto: detecting LAN IPv4...
+echo [INFO ] Detecting this PC's LAN IPv4 for LAN access...
+set "ALLOW_HOST="
 for /f "usebackq delims=" %%I in (`powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\detect_lan_ip.ps1"`) do set "ALLOW_HOST=%%I"
-if /I "!ALLOW_HOST!"=="auto" (
-  echo [ERROR] --allow-host=auto: could not detect a LAN IPv4. Pass --allow-host=^<IP^> explicitly.
-  exit /b 1
+if not defined ALLOW_HOST (
+  echo [WARN ] LAN IPv4 not detected. Writing localhost-only .env. Use --allow-host=^<IP^> to force.
+  goto :eof
 )
-echo [INFO ] --allow-host=auto resolved to !ALLOW_HOST!
-exit /b 0
+echo [INFO ] LAN IPv4 = !ALLOW_HOST!
+goto :eof
 
 :help
-echo Usage: setup_offline.bat [--dry-run] [--no-pause] [--allow-host=^<host^>]
+echo Usage: setup_offline.bat [--dry-run] [--no-pause] [--local] [--allow-host=^<host^>]
 echo.
 echo Installs the packaged offline bundle on an offline Windows PC.
 echo - Rewrites backend\.env with offline-local absolute paths ^(backup: .env.bak^)
@@ -233,10 +236,13 @@ echo - Rewrites frontend\.env.local ^(backup: .env.local.bak^)
 echo - Uses Python wheelhouse from offline_assets\python-wheels
 echo - Runs Alembic migration or stamps an existing DB when tables already exist
 echo.
-echo --allow-host=^<host^>  Expose to LAN. Sets CORS_ORIGINS / NEXT_PUBLIC_API_BASE_URL
-echo                     to include http://^<host^>:29501 and http://^<host^>:18437.
+echo By default writes a LAN .env: this PC's LAN IPv4 is auto-detected and put into
+echo CORS_ORIGINS / NEXT_PUBLIC_API_BASE_URL. If no LAN IPv4 is found it falls back to localhost.
+echo.
+echo --local             Write a localhost-only .env ^(no LAN exposure^).
+echo --allow-host=^<host^>  Force a specific LAN host/IP instead of auto-detection.
 echo                     Example: --allow-host=192.168.1.10
-echo                     Use --allow-host=auto to auto-detect this PC's LAN IPv4.
+echo --allow-host=auto   Explicitly auto-detect this PC's LAN IPv4 ^(same as default^).
 echo                     Environment fallback: AEROONE_ALLOW_HOST.
 echo.
 echo Use --no-pause when launching from an existing terminal and you do not want the window to wait at the end.
