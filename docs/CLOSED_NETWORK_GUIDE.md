@@ -209,6 +209,9 @@ start_offline.bat
 setup_offline.bat --allow-host=192.168.1.10
 start_offline.bat --allow-host=192.168.1.10
 
+:: 형태 1b — auto: 이 PC 의 LAN IPv4 를 자동 감지 (scripts\windows\detect_lan_ip.ps1)
+start_offline.bat --allow-host=auto
+
 :: 형태 2 — 환경 변수 (자동화 스크립트 권장)
 set AEROONE_ALLOW_HOST=192.168.1.10
 setup_offline.bat

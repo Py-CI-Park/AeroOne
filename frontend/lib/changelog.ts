@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.20',
+    date: '2026-06-02',
+    items: [
+      'LAN(IP) 접속 편의 개선 — setup_offline/start_offline 에 --allow-host=auto(이 PC의 LAN IP 자동 감지)를 추가하고, 방화벽 인바운드 허용 헬퍼를 모든 네트워크 프로필에 적용.',
+    ],
+  },
+  {
     version: '1.0.19',
     date: '2026-06-02',
     items: [

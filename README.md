@@ -147,6 +147,9 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    ```cmd
    setup_offline.bat --allow-host=192.168.1.10    :: .env 의 CORS_ORIGINS / NEXT_PUBLIC_API_BASE_URL 5자리 일괄 LAN 모드
    start_offline.bat --allow-host=192.168.1.10    :: backend / frontend 모두 0.0.0.0 바인딩, 자동 오픈 URL 도 동일 호스트
+
+   :: IP 를 직접 모르면 auto — 이 PC 의 LAN IPv4 를 자동 감지해 0.0.0.0 바인딩
+   start_offline.bat --allow-host=auto
    ```
 
    환경 변수 `AEROONE_ALLOW_HOST` 도 동일하게 받습니다. 같은 PC 에서 IP 로 접속하려 해도 `--allow-host` 가 없으면 `127.0.0.1` 바인딩이라 접속되지 않습니다 — 위 두 명령을 반드시 `--allow-host=<IP>` 로 실행하세요. LAN 모드에서 자기 PC 도 반드시 `http://<IP>:29501/` 로 접속해야 쿠키 격리를 피할 수 있습니다. **LAN 의 다른 PC** 에서 접속하려면 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 한 번 실행해 방화벽 인바운드(`18437`/`29501`, 로컬 서브넷 한정)를 허용하세요 (`--remove` 로 원복). 인터넷 노출 차단을 위해 두 포트의 LAN 외부 차단 규칙도 함께 두세요.

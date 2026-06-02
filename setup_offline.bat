@@ -42,6 +42,11 @@ goto :parse_args
 
 :parse_done
 
+if /I "%ALLOW_HOST%"=="auto" (
+  call :resolve_auto_host
+  if errorlevel 1 exit /b 1
+)
+
 if defined ALLOW_HOST (
   set "EFFECTIVE_BACKEND_BASE=http://%ALLOW_HOST%:18437"
   set "EFFECTIVE_CORS=http://localhost:29501,http://%ALLOW_HOST%:29501"
@@ -209,6 +214,16 @@ exit /b 1
 if not defined NO_PAUSE pause
 exit /b 0
 
+:resolve_auto_host
+echo [INFO ] --allow-host=auto: detecting LAN IPv4...
+for /f "usebackq delims=" %%I in (`powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\detect_lan_ip.ps1"`) do set "ALLOW_HOST=%%I"
+if /I "!ALLOW_HOST!"=="auto" (
+  echo [ERROR] --allow-host=auto: could not detect a LAN IPv4. Pass --allow-host=^<IP^> explicitly.
+  exit /b 1
+)
+echo [INFO ] --allow-host=auto resolved to !ALLOW_HOST!
+exit /b 0
+
 :help
 echo Usage: setup_offline.bat [--dry-run] [--no-pause] [--allow-host=^<host^>]
 echo.
@@ -221,6 +236,7 @@ echo.
 echo --allow-host=^<host^>  Expose to LAN. Sets CORS_ORIGINS / NEXT_PUBLIC_API_BASE_URL
 echo                     to include http://^<host^>:29501 and http://^<host^>:18437.
 echo                     Example: --allow-host=192.168.1.10
+echo                     Use --allow-host=auto to auto-detect this PC's LAN IPv4.
 echo                     Environment fallback: AEROONE_ALLOW_HOST.
 echo.
 echo Use --no-pause when launching from an existing terminal and you do not want the window to wait at the end.

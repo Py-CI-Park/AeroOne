@@ -18,8 +18,10 @@ def test_allow_lan_firewall_cmd_opens_both_ports_scoped_to_local_subnet() -> Non
     assert "29501" in contents
     assert "localport=%BACKEND_PORT%" in contents
     assert "localport=%FRONTEND_PORT%" in contents
-    # LAN 외부로 노출되지 않도록 private 프로필 + 로컬 서브넷으로 제한한다.
-    assert "profile=private" in contents
+    # 폐쇄망 NIC 가 Public/Unidentified 로 분류돼도 적용되도록 profile=any 로 두되,
+    # remoteip=LocalSubnet 로 로컬 서브넷에만 허용해 LAN 외부 노출을 막는다.
+    assert "profile=any" in contents
+    assert "profile=private" not in contents
     assert "remoteip=LocalSubnet" in contents
 
 
