@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from app.modules.newsletter.models.newsletter import AssetType, SourceType
 from app.modules.newsletter.schemas.newsletter import NewsletterCalendarEntry, NewsletterDetailResponse, NewsletterListItem
 from app.modules.newsletter.services.html_render_service import HTML_CSP, HtmlRenderService
 from app.modules.newsletter.services.markdown_render_service import MarkdownRenderService
+from app.modules.newsletter.services.newsletter_autosync_service import NewsletterAutoSyncService
 from app.modules.newsletter.services.newsletter_service import NewsletterService
 from app.modules.newsletter.services.pdf_delivery_service import PdfDeliveryService
 from app.modules.shared.storage.service import StorageService
@@ -25,22 +26,32 @@ def get_newsletter_service(db: Session = Depends(get_db), settings: Settings = D
     return NewsletterService(db, settings, storage_service)
 
 
-@router.get('', response_model=list[NewsletterListItem])
+def auto_sync_newsletters(request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> None:
+    # 공개 읽기 엔드포인트의 사전 의존성으로 붙여, Newsletter/output 이 바뀌었을 때만
+    # 핸들러 본문의 DB 조회 전에 sync 를 돌린다. get_db 는 요청당 1세션을 캐시하므로
+    # 이 sync 와 핸들러의 조회가 같은 세션을 공유하고, 요청 종료 시 함께 commit 된다.
+    state = getattr(request.app.state, 'autosync_state', None)
+    if state is None:
+        return
+    NewsletterAutoSyncService(db, settings.import_root, state).refresh_if_changed()
+
+
+@router.get('', response_model=list[NewsletterListItem], dependencies=[Depends(auto_sync_newsletters)])
 def list_newsletters(q: str | None = None, category: str | None = None, tag: str | None = None, source_type: SourceType | None = None, service: NewsletterService = Depends(get_newsletter_service)) -> list[NewsletterListItem]:
     return service.list_public(q=q, category=category, tag=tag, source_type=source_type)
 
 
-@router.get('/latest', response_model=NewsletterDetailResponse)
+@router.get('/latest', response_model=NewsletterDetailResponse, dependencies=[Depends(auto_sync_newsletters)])
 def get_latest_newsletter(service: NewsletterService = Depends(get_newsletter_service)) -> NewsletterDetailResponse:
     return service.get_latest_detail()
 
 
-@router.get('/calendar', response_model=list[NewsletterCalendarEntry])
+@router.get('/calendar', response_model=list[NewsletterCalendarEntry], dependencies=[Depends(auto_sync_newsletters)])
 def get_newsletter_calendar(service: NewsletterService = Depends(get_newsletter_service)) -> list[NewsletterCalendarEntry]:
     return service.list_calendar_entries()
 
 
-@router.get('/{slug}', response_model=NewsletterDetailResponse)
+@router.get('/{slug}', response_model=NewsletterDetailResponse, dependencies=[Depends(auto_sync_newsletters)])
 def get_newsletter(slug: str, service: NewsletterService = Depends(get_newsletter_service)) -> NewsletterDetailResponse:
     return service.get_detail_by_slug(slug)
 

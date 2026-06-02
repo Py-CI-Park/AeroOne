@@ -230,7 +230,7 @@ start_offline.bat
 
 - **자기 PC 도 반드시** `http://<host>:29501/` 로 접속. `localhost` 로 들어가면 페이지 호스트와 API 호스트가 달라 쿠키가 격리되어 로그인 실패.
 - 자동 오픈 URL 을 그대로 사용하면 항상 같은 호스트로 통일됨.
-- Windows 방화벽에서 `18437`, `29501` 두 포트를 LAN 외부로 차단하는 인바운드 규칙 별도 설정 권장.
+- LAN 의 다른 PC 접속은 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 실행해 인바운드(`18437`/`29501`, 로컬 서브넷 한정)를 허용 (`--remove` 로 원복). Windows 방화벽에서 두 포트를 LAN 외부로 차단하는 규칙도 함께 두기 권장.
 - 인터넷 노출 production 으로 사용 금지 — 트래픽 평문 HTTP.
 
 ---
@@ -305,7 +305,7 @@ python -m pytest tests -q
 | 시점 | 명령 / 절차 |
 |---|---|
 | PC 부팅 후 | `start_offline.bat` (LAN 모드면 `--allow-host=<host>` 또는 `AEROONE_ALLOW_HOST` 유지) |
-| 신규 발행 추가 | `Newsletter\output\` 에 HTML/PDF 복사 → 관리자 페이지 **Import / Sync** |
+| 신규 발행 추가 | `Newsletter\output\` 에 HTML/PDF 복사 → `/newsletters` 새로고침 시 자동 반영 (서버 재시작 불필요). 즉시 강제는 관리자 페이지 **Import / Sync** |
 | 메타데이터 수정 | 관리자 화면의 **편집** 버튼 (제목·요약·카테고리·태그·활성 여부·썸네일) |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
 | 비밀번호 교체 | `setup_offline.bat` 재실행 → `backend\.env` 의 `ADMIN_PASSWORD` 재확인. 기존 `.env` 는 `.bak` 자동 백업 |
@@ -390,9 +390,9 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 | 포트 충돌 | 다른 프로세스 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료 |
 | 페이지 로딩 후 `Failed to fetch` | 페이지 호스트 ↔ API 호스트 다름 | 주소를 동일 호스트 (`localhost` 또는 `<host>`) 로 통일 |
 | LAN 모드에서 같은 PC 로 들어갔는데 로그인 후 빈 화면 | `localhost` ↔ `<host>` 쿠키 격리 | `http://<host>:29501/` 로 접속 (`start_offline.bat` 자동 오픈 URL 사용) |
-| LAN 내 다른 PC 에서 접근 불가 | 기본 모드 (loopback) | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` |
+| LAN 내 다른 PC 에서 접근 불가 | 기본 모드 (loopback) 또는 방화벽 인바운드 차단 | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 관리자 실행 (`--remove` 로 원복) |
 | `start_offline.bat` 가 브라우저를 안 엶 | frontend 빌드 미완료 / `.next` 누락 | `setup_offline.bat` 재실행 (`npm run build` 까지) |
-| `Newsletter/output` 추가했는데 목록에 안 보임 | sync 미실행 | 관리자 페이지 **Import / Sync** 또는 `setup_offline.bat` 재실행 |
+| `Newsletter/output` 추가했는데 목록에 안 보임 | 페이지를 새로고침하지 않음 (공개 읽기 시 자동 동기화됨) | `/newsletters` 새로고침으로 자동 반영. 즉시 강제는 관리자 페이지 **Import / Sync** |
 
 ### FAQ
 

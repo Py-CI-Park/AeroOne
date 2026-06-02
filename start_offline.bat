@@ -76,6 +76,8 @@ exit /b 0
 
 :dry_loopback
 echo [DRY-RUN] LAN host = ^(unset, loopback only^)
+echo [DRY-RUN][INFO ] For IP / LAN access, rerun with --allow-host=^<IP^> ^(e.g. --allow-host=192.168.1.10^).
+echo [DRY-RUN][INFO ] Other PCs on the LAN also need: run scripts\allow_lan_firewall.cmd as Administrator.
 exit /b 0
 
 :real_run
@@ -105,6 +107,8 @@ echo [READY] Offline frontend: http://localhost:29501
 echo [INFO ] Browser auto-open is enabled.
 echo [INFO ] Separate colorized windows opened for backend/frontend.
 echo ==================================================
+if not defined ALLOW_HOST echo [INFO ] For IP / LAN access, rerun with --allow-host=^<IP^> ^(e.g. --allow-host=192.168.1.10^).
+if not defined ALLOW_HOST echo [INFO ] Other PCs on the LAN also need: run scripts\allow_lan_firewall.cmd as Administrator.
 exit /b 0
 
 :ensure_port_free
