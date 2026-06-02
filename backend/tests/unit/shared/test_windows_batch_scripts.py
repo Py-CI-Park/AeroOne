@@ -568,6 +568,24 @@ def test_setup_offline_dry_run_allow_host_auto_resolves_lan_ip() -> None:
         assert "could not detect" in result.stdout.lower()
 
 
+def test_start_offline_prompts_for_lan_only_on_interactive_real_run() -> None:
+    # 더블클릭(인자 없는 실제 실행)에서 LAN 노출 여부를 한 번 묻되, dry-run / --allow-host
+    # 지정 시엔 묻지 않는다(테스트·자동화·명시 옵션 우선). 기본은 N(loopback)이라 자동 노출 없음.
+    contents = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
+    assert ":prompt_lan_choice" in contents
+    assert "choice /C YN" in contents
+    assert 'if not "%DRY_RUN%"=="1" if not defined ALLOW_HOST call :prompt_lan_choice' in contents
+    assert "/D N" in contents  # 무입력/타임아웃 기본 = loopback (회귀-0 원칙)
+
+
+def test_start_offline_dry_run_never_prompts_for_lan() -> None:
+    # dry-run 은 프롬프트 없이 끝나야 한다(테스트가 입력 대기로 멈추지 않도록).
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "[SELECT]" not in result.stdout
+
+
 def test_start_offline_allow_host_missing_value_fails() -> None:
     result = _run_cmd(REPO_ROOT, "start_offline.bat", "--allow-host")
 
