@@ -5,12 +5,14 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "DRY_RUN="
 set "OPEN_BROWSER="
+set "LOCAL_ONLY="
 set "ALLOW_HOST=%AEROONE_ALLOW_HOST%"
 
 :parse_args
 if "%~1"=="" goto :parse_done
 if /I "%~1"=="--dry-run" (set "DRY_RUN=1" & shift & goto :parse_args)
 if /I "%~1"=="--open-browser" (set "OPEN_BROWSER=1" & shift & goto :parse_args)
+if /I "%~1"=="--local" (set "LOCAL_ONLY=1" & shift & goto :parse_args)
 if /I "%~1"=="--help" goto :help
 if /I "%~1"=="--allow-host" (shift & goto :capture_host)
 echo %~1 | findstr /B /I /C:"--allow-host=" >nul
@@ -38,13 +40,10 @@ set "FRONTEND_DIR=%ROOT%\frontend"
 set "SCRIPTS_DIR=%ROOT%\scripts"
 set "BACKEND_PORT=18437"
 set "FRONTEND_PORT=29501"
-REM 인자 없이 더블클릭한 실제 실행에서는 LAN 노출 여부를 한 번 물어본다(기본 N=loopback).
-REM dry-run / --allow-host 지정 시엔 묻지 않는다(테스트·자동화·명시 옵션 우선).
-if not "%DRY_RUN%"=="1" if not defined ALLOW_HOST call :prompt_lan_choice
-if /I "%ALLOW_HOST%"=="auto" (
-  call :resolve_auto_host
-  if errorlevel 1 exit /b 1
-)
+REM 기본 동작 = LAN(IP). 옵션이 없으면 이 PC 의 LAN IPv4 를 자동 감지해 0.0.0.0 으로 띄운다.
+REM 이 PC 에서만 쓰려면 --local, 특정 IP 는 --allow-host=<IP>. 감지 실패 시 loopback 폴백.
+if not defined LOCAL_ONLY if not defined ALLOW_HOST set "ALLOW_HOST=auto"
+if /I "%ALLOW_HOST%"=="auto" call :resolve_auto_host
 if defined ALLOW_HOST (
   set "BACKEND_HOST=0.0.0.0"
   set "BACKEND_URL=http://%ALLOW_HOST%:18437"
@@ -82,9 +81,7 @@ echo [DRY-RUN] LAN host = %ALLOW_HOST% ^(backend / frontend bind 0.0.0.0^)
 exit /b 0
 
 :dry_loopback
-echo [DRY-RUN] LAN host = ^(unset, loopback only^)
-echo [DRY-RUN][INFO ] For IP / LAN access, rerun with --allow-host=^<IP^> ^(e.g. --allow-host=192.168.1.10^).
-echo [DRY-RUN][INFO ] Other PCs on the LAN also need: run scripts\allow_lan_firewall.cmd as Administrator.
+echo [DRY-RUN] LAN host = ^(localhost only: --local or LAN IPv4 not detected^)
 exit /b 0
 
 :real_run
@@ -114,8 +111,8 @@ echo [READY] Offline frontend: http://localhost:29501
 echo [INFO ] Browser auto-open is enabled.
 echo [INFO ] Separate colorized windows opened for backend/frontend.
 echo ==================================================
-if not defined ALLOW_HOST echo [INFO ] For IP / LAN access, rerun with --allow-host=^<IP^> ^(e.g. --allow-host=192.168.1.10^).
-if not defined ALLOW_HOST echo [INFO ] Other PCs on the LAN also need: run scripts\allow_lan_firewall.cmd as Administrator.
+if not defined ALLOW_HOST echo [INFO ] Serving this PC only ^(localhost^). Omit --local to expose on the LAN.
+if defined ALLOW_HOST echo [INFO ] LAN access: open http://%ALLOW_HOST%:29501/ . Other PCs may need scripts\allow_lan_firewall.cmd ^(Administrator^).
 exit /b 0
 
 :ensure_port_free
@@ -136,34 +133,27 @@ if not "!PORT_PROBE_EXIT!"=="0" (
 exit /b 0
 
 :resolve_auto_host
-echo [INFO ] --allow-host=auto: detecting LAN IPv4...
+echo [INFO ] Detecting this PC's LAN IPv4 for LAN access...
+set "ALLOW_HOST="
 for /f "usebackq delims=" %%I in (`powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\detect_lan_ip.ps1"`) do set "ALLOW_HOST=%%I"
-if /I "!ALLOW_HOST!"=="auto" (
-  echo [ERROR] --allow-host=auto: could not detect a LAN IPv4. Pass --allow-host=^<IP^> explicitly.
-  exit /b 1
+if not defined ALLOW_HOST (
+  echo [WARN ] LAN IPv4 not detected. Serving this PC only ^(localhost^). Use --allow-host=^<IP^> to force.
+  goto :eof
 )
-echo [INFO ] --allow-host=auto resolved to !ALLOW_HOST!
-exit /b 0
-
-:prompt_lan_choice
-echo.
-echo ==================================================
-echo [SELECT] Choose how to serve AeroOne:
-echo   Y = LAN   : reachable from other devices via this PC's IP ^(auto-detected^)
-echo   N = local : this PC only ^(localhost^) - default
-echo ==================================================
-choice /C YN /T 15 /D N /M "Serve on the LAN? (auto N in 15s)"
-if not errorlevel 2 set "ALLOW_HOST=auto"
+echo [INFO ] LAN IPv4 = !ALLOW_HOST! ^(serving on 0.0.0.0^)
 goto :eof
 
 :help
-echo Usage: start_offline.bat [--dry-run] [--open-browser] [--allow-host=^<host^>]
+echo Usage: start_offline.bat [--dry-run] [--open-browser] [--local] [--allow-host=^<host^>]
 echo.
 echo Starts the offline-installed backend and frontend in production mode.
+echo By default it serves on the LAN: this PC's LAN IPv4 is auto-detected and both
+echo services bind 0.0.0.0 ^(reachable from other devices at http://^<IP^>:29501/^).
+echo If no LAN IPv4 is found it falls back to localhost only.
 echo.
-echo --allow-host=^<host^>  Bind backend / frontend to 0.0.0.0 for LAN access and
-echo                     auto-open browser at http://^<host^>:29501/.
+echo --local             Serve on this PC only ^(127.0.0.1 / localhost^). No LAN exposure.
+echo --allow-host=^<host^>  Force a specific LAN host/IP instead of auto-detection.
 echo                     Example: --allow-host=192.168.1.10
-echo                     Use --allow-host=auto to auto-detect this PC's LAN IPv4.
+echo --allow-host=auto   Explicitly auto-detect this PC's LAN IPv4 ^(same as default^).
 echo                     Environment fallback: AEROONE_ALLOW_HOST.
 exit /b 0

@@ -156,15 +156,15 @@ offline_package.bat      ─┘──→ ZIP 복사 ──→  압축 해제
   - 매뉴얼: `docs/runbook/windows-offline.md` §3.
 
 - [ ] **단계 7** — 설치. **`--dry-run` 옵션은 붙이지 마세요** (그 옵션은 실제 설치 없이 단계만 미리보기). 곧장 실제 설치를 시작하려면:
-  - 단일 PC 운영: `setup_offline.bat` (옵션 없이) — 또는 탐색기에서 파일 더블클릭
+  - 단일 PC 전용(이 PC 만): `setup_offline.bat --local` / LAN 배포(기본): `setup_offline.bat` (옵션 없이 = LAN) — 또는 탐색기에서 파일 더블클릭(기본 LAN)
   - LAN 다중 PC 운영: `setup_offline.bat --allow-host=192.168.1.10` (사내 IP 로 교체)
   - 미리 단계만 보고 싶으면 `setup_offline.bat --dry-run` — 설치 안 함, 단계 흐름만 출력. **단계 7 의 정답은 옵션 없이 실행**.
   - 완료 조건: `[OK] setup_offline.bat 완료` 메시지 + `backend\.env`, `frontend\.env.local`, `backend\.venv\`, `backend\data\aeroone.db` 모두 생성.
   - 매뉴얼: `docs/runbook/windows-offline.md` §6, 본 가이드 §6 / §7.
 
 - [ ] **단계 8** — 실행.
-  - 단일 PC: `start_offline.bat`
-  - LAN: `start_offline.bat --allow-host=192.168.1.10` (단계 7과 동일 호스트)
+  - 단일 PC 전용(이 PC 만): `start_offline.bat --local`
+  - LAN(기본): `start_offline.bat` (옵션 없이 = LAN, IP 자동 감지) 또는 호스트 고정 `start_offline.bat --allow-host=192.168.1.10`
   - 완료 조건: 두 CMD 창 (backend 녹색, frontend 청록) 자동 기동 + 브라우저 자동 오픈 (`http://localhost:29501/` 또는 `http://<host>:29501/`).
   - 매뉴얼: `docs/runbook/windows-offline.md` §5, 본 가이드 §6 / §7.
 
@@ -178,11 +178,13 @@ offline_package.bat      ─┘──→ ZIP 복사 ──→  압축 해제
 
 ---
 
-## 6. 모드 A — 단일 PC (loopback)
+## 6. 모드 A — 단일 PC (loopback, `--local`)
+
+> **1.0.22+ 부터 옵션 없는 기본 실행은 LAN(모드 B)입니다.** 이 PC 에서만 쓰는 모드 A 는 이제 `--local` 로 명시 선택합니다(localhost 전용, 외부 노출 없음).
 
 ```cmd
-setup_offline.bat
-start_offline.bat
+setup_offline.bat --local
+start_offline.bat --local
 ```
 
 | 자리 | 값 |
@@ -292,7 +294,7 @@ python -m pytest tests -q
 | 검증 | 결과 | 발견 사항 |
 |---|---|---|
 | `setup_offline.bat --dry-run` | PASS | 6단계 분기 모두 의도대로 |
-| `start_offline.bat --dry-run` | PASS | backend `127.0.0.1` / frontend `127.0.0.1` 유지 |
+| `start_offline.bat --dry-run --local` | PASS | backend `127.0.0.1` / frontend `127.0.0.1` (옵션 없는 기본은 1.0.22+ 부터 LAN) |
 | `offline_package.bat --dry-run` | PASS | robocopy 제외 목록과 wheelhouse 경로 정합 |
 | `GET /api/v1/health` | HTTP 200 | db_ok / import_root / storage_root 모두 true |
 | `GET /api/v1/newsletters` | HTTP 200 | 38건 반환 (limit 미지원, F1) |
@@ -393,7 +395,7 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 | 포트 충돌 | 다른 프로세스 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료 |
 | 페이지 로딩 후 `Failed to fetch` | 페이지 호스트 ↔ API 호스트 다름 | 주소를 동일 호스트 (`localhost` 또는 `<host>`) 로 통일 |
 | LAN 모드에서 같은 PC 로 들어갔는데 로그인 후 빈 화면 | `localhost` ↔ `<host>` 쿠키 격리 | `http://<host>:29501/` 로 접속 (`start_offline.bat` 자동 오픈 URL 사용) |
-| LAN 내 다른 PC 에서 접근 불가 | 기본 모드 (loopback) 또는 방화벽 인바운드 차단 | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 관리자 실행 (`--remove` 로 원복) |
+| LAN 내 다른 PC 에서 접근 불가 | `--local` 로 실행했거나 방화벽 인바운드 차단 (1.0.22+ 기본은 LAN) | `--local` 없이 실행(기본 LAN, IP 자동 감지) 또는 `--allow-host=<host>` 로 고정 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 관리자 실행 (`--remove` 로 원복) |
 | `start_offline.bat` 가 브라우저를 안 엶 | frontend 빌드 미완료 / `.next` 누락 | `setup_offline.bat` 재실행 (`npm run build` 까지) |
 | `Newsletter/output` 추가했는데 목록에 안 보임 | 페이지를 새로고침하지 않음 (공개 읽기 시 자동 동기화됨) | `/newsletters` 새로고침으로 자동 반영. 즉시 강제는 관리자 페이지 **Import / Sync** |
 

@@ -89,7 +89,7 @@
 | secret 강도 검증 | `backend/app/core/config.py:85-95` | `validate_runtime_security` (production / closed_network 에서 강제) |
 | 부팅 검증 호출 | `backend/app/main.py:18` | startup 시 1회 호출 |
 | DB 분기 (배치용) | `backend/scripts/ensure_db_state.py` | 종료 코드 0/1/2/3, docstring 에 의미 직접 기재 |
-| 폐쇄망 LAN 옵션 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` / `:prompt_lan_choice` 라벨 | `--allow-host=<host>` + `AEROONE_ALLOW_HOST` env. `--allow-host=auto` 는 `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지. 인자 없는 더블클릭 실제 실행은 `:prompt_lan_choice`(choice /D N)로 LAN 여부를 물어봄(기본 loopback, dry-run·옵션 지정 시 생략) |
+| 폐쇄망 LAN 옵션 / 기본 바인딩 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | **1.0.22+ 기본 = LAN**: 옵션 없으면 `ALLOW_HOST=auto` → `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(미감지 시 loopback 폴백, 0.0.0.0 바인딩). `--local` 로 loopback 전용, `--allow-host=<IP>` 로 호스트 고정, `AEROONE_ALLOW_HOST` env 도 인식 |
 | 패키징 제외 목록 | `offline_package.bat:34` | robocopy `/XD` 인자 |
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
 | 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트가 쿠키 설정 후 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>` |
@@ -103,13 +103,13 @@
 
 ## 7. 회귀 테스트 위치
 
-총 83건 PASS (1.0.21-dev 기준, backend pytest). 프론트엔드 Vitest 는 71건 PASS (27 파일).
+총 83건 PASS (1.0.22-dev 기준, backend pytest). 프론트엔드 Vitest 는 71건 PASS (27 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
 | `backend/tests/unit/test_config.py` | 10 | `closed_network` / `production` / `development` / `test` 모드 + `secure_cookies` |
 | `backend/tests/unit/test_ensure_db_state.py` | 7 | 종료 코드 0/1/2/3 + 부모 디렉토리 자동 생성 |
-| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 28 | setup.bat / start.bat / start_offline.bat 의 dry-run / 실행 / `--allow-host` / `--allow-host=auto` / LAN 선택 프롬프트 / 접속 힌트 |
+| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 28 | setup.bat / start.bat / start_offline.bat 의 dry-run / 실행 / 기본 LAN / `--local` / `--allow-host` / `--allow-host=auto` |
 | `backend/tests/unit/shared/test_windows_frontend_cmd_scripts.py` | 2 | frontend 런처 본문 가드 |
 | `backend/tests/unit/shared/test_lan_firewall_cmd_script.py` | 2 | LAN 방화벽 헬퍼 cmd 본문 가드 (포트 / 스코프 profile=any / `--remove` / help) |
 | `backend/tests/unit/shared/test_detect_lan_ip_ps1_script.py` | 1 | `--allow-host=auto` LAN IP 자동 감지 스크립트 본문 가드 |

@@ -12,7 +12,7 @@
 | `start.bat` | 온라인 PC | 백엔드/프런트 동시 실행 (개발용 dev 서버) |
 | `offline_package.bat` | 온라인 PC | 현재 리포 + Python wheelhouse + frontend node_modules + 동봉 인스톨러를 ZIP 으로 패키징 |
 | `setup_offline.bat` | 폐쇄망 PC | Python/Node 사전 점검, `.env` 재작성, 오프라인 pip install, DB, frontend production 빌드 |
-| `start_offline.bat` | 폐쇄망 PC | 운영 모드 실행 (`next start` + uvicorn, 두 서비스 모두 `127.0.0.1` 바인딩) |
+| `start_offline.bat` | 폐쇄망 PC | 운영 모드 실행 (`next start` + uvicorn). 1.0.22+ 기본은 LAN(`0.0.0.0`, IP 자동 감지), 이 PC 전용은 `--local` |
 
 각 배치 파일 모두 `--dry-run` 과 `--no-pause` 옵션을 지원합니다.
 
@@ -103,13 +103,13 @@ C:\Users\<유저명>\AeroOne\
 - 백엔드와 프런트 CMD 창을 각각 열고, 두 포트 (`18437`, `29501`) 가 준비되면 브라우저를 자동으로 띄웁니다.
 - 두 포트 중 하나라도 이미 사용 중이면 브라우저를 열지 않고 즉시 안내 메시지를 출력한 뒤 종료합니다.
 - 포트 준비 점검은 PowerShell 의 TCP 리스너 조회를 사용합니다.
-- `start_offline.bat` 을 **인자 없이 더블클릭**하면 "LAN 으로 띄울까요?(Y/N)" 를 한 번 물어봅니다. `Y` 면 이 PC 의 LAN IP 를 자동 감지해 `0.0.0.0` 으로(=`--allow-host=auto`), `N` 또는 15초 무입력이면 이 PC 전용(`127.0.0.1`)으로 뜹니다. `--allow-host=...` 를 직접 주거나 `--dry-run` 이면 묻지 않습니다.
+- (1.0.22+) `start_offline.bat` 을 **인자 없이 더블클릭**하면 프롬프트 없이 **기본 LAN** 으로 뜹니다 — 이 PC 의 LAN IPv4 를 자동 감지해 `0.0.0.0` 으로 바인딩하고(LAN IPv4 미감지 시 localhost 로 폴백), 다른 기기에서 `http://<IP>:29501/` 로 접속할 수 있습니다. 이 PC 에서만 쓰려면 `--local`(`127.0.0.1`), 호스트를 고정하려면 `--allow-host=<IP>`.
 
 ### 5.2 바인딩 호스트
 
-기본값(loopback) 과 LAN 모드(`--allow-host=<host>`) 를 한 표로 정리합니다.
+1.0.22+ 기본은 **LAN** 입니다. 이 PC 전용(`--local`) 과 기본 LAN 을 한 표로 정리합니다 (LAN 열의 `<host>` 는 옵션 없을 때 자동 감지된 IP, 또는 `--allow-host=<IP>` 로 고정한 값).
 
-| 서비스 | 기본 (loopback) | LAN 모드 |
+| 서비스 | 이 PC 만 (`--local`) | 기본 = LAN |
 |---|---|---|
 | Backend uvicorn | `127.0.0.1:18437` | `0.0.0.0:18437` |
 | Frontend next start (offline) | `127.0.0.1:29501` | `0.0.0.0:29501` |
@@ -243,7 +243,7 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 ## 9. 보안 기본값
 
 - `JWT_SECRET_KEY`, `ADMIN_PASSWORD` 는 setup 시 랜덤 생성. `change-me` 같은 기본값은 `production` / `closed_network` 두 모드 모두에서 거부됩니다.
-- 기본 모드는 두 서비스 모두 `127.0.0.1` 바인딩 → 동일 PC 의 브라우저에서만 접속 가능.
+- 1.0.22+ 기본은 두 서비스 모두 `0.0.0.0` 바인딩(LAN) → 같은 PC + LAN 의 다른 기기에서 접속 가능. 이 PC 에서만 쓰려면 `--local` 로 `127.0.0.1` 바인딩.
 - LAN 모드 (`--allow-host=<host>`) 사용 시 `0.0.0.0` 바인딩으로 LAN 전체에 노출됩니다. **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. 다른 PC 접속용 인바운드 허용은 `scripts\allow_lan_firewall.cmd` (관리자 권한, 로컬 서브넷 한정) 로 추가하고 `--remove` 로 원복합니다. Windows 방화벽에서 `18437`, `29501` 두 포트를 LAN 외부로 차단하는 규칙도 함께 두세요. 인터넷 노출 production 으로 사용하지 마세요.
 - 정적 파일 노출 범위는 `storage\thumbnails\` 하위로 제한.
 - HTML 미리보기는 백엔드 sanitize + CSP + sandbox iframe 조합. `_debug.html` 은 import / 공개 모두에서 제외.

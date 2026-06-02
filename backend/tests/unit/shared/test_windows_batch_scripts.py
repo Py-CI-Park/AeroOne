@@ -448,7 +448,9 @@ def test_wait_for_services_accepts_ipv6_loopback_listeners(tmp_path: Path) -> No
 
 
 def test_start_offline_dry_run_prints_readiness_wrapper_command() -> None:
-    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+    # 기본이 LAN 으로 바뀌어 URL 이 감지된 IP 가 되므로, 이 구조 검증은 --local 로 고정해
+    # localhost URL 을 결정적으로 만든다(여기서 검증하려는 건 open_browser 래퍼 인자 구조다).
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run", "--local")
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
@@ -489,12 +491,27 @@ def test_setup_offline_dry_run_allow_host_prints_lan_info() -> None:
     assert any("NEXT_PUBLIC_API_BASE_URL = http://192.168.1.10:18437" in line for line in lines)
 
 
-def test_setup_offline_dry_run_default_loopback_only() -> None:
+def test_setup_offline_dry_run_default_writes_lan_env() -> None:
+    # 1.0.22+: 기본이 LAN. 옵션 없으면 LAN IPv4 를 감지해 .env(CORS/NEXT_PUBLIC)에 IP 를 넣고,
+    # LAN IPv4 가 없는 환경에서는 localhost 로 폴백한다(두 경로 모두 결정적).
     result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause")
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
-    assert any("LAN host = (unset, loopback only)" in line for line in lines)
+    lan = next((line for line in lines if line.startswith("[DRY-RUN] LAN host = ")), "")
+    assert lan, result.stdout
+    if re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", lan):
+        assert any("NEXT_PUBLIC_API_BASE_URL = http://" in line and ":18437" in line for line in lines)
+    else:
+        assert "localhost only" in lan
+
+
+def test_setup_offline_dry_run_local_is_loopback_only() -> None:
+    result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause", "--local")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("localhost only" in line for line in lines)
     assert not any("0.0.0.0" in line for line in lines)
 
 
@@ -512,74 +529,70 @@ def test_start_offline_dry_run_allow_host_uses_external_binding() -> None:
     assert any("LAN host = 10.0.0.5" in line for line in lines)
 
 
-def test_start_offline_dry_run_default_keeps_loopback() -> None:
+def test_start_offline_dry_run_default_serves_lan() -> None:
+    # 1.0.22+: 기본이 LAN. 옵션 없으면 LAN IPv4 를 감지해 0.0.0.0 으로 바인딩하고,
+    # LAN IPv4 가 없는 환경에서는 localhost 로 폴백한다(두 경로 모두 결정적).
     result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    lan = next((line for line in lines if line.startswith("[DRY-RUN] LAN host = ")), "")
+    assert lan, result.stdout
+    if re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", lan):
+        assert any("uvicorn app.main:app --host 0.0.0.0 --port 18437" in line for line in lines)
+    else:
+        assert "localhost only" in lan
+        assert any("uvicorn app.main:app --host 127.0.0.1 --port 18437" in line for line in lines)
+
+
+def test_start_offline_dry_run_local_keeps_loopback() -> None:
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run", "--local")
 
     assert result.returncode == 0, result.stdout + result.stderr
     lines = _non_empty_lines(result.stdout)
     assert any("uvicorn app.main:app --host 127.0.0.1 --port 18437" in line for line in lines)
     assert not any("uvicorn app.main:app --host 0.0.0.0" in line for line in lines)
     assert any("URL  : http://localhost:18437" in line for line in lines)
-    assert any("LAN host = (unset, loopback only)" in line for line in lines)
+    assert any("localhost only" in line for line in lines)
 
 
-def test_start_offline_dry_run_default_prints_lan_access_hint() -> None:
-    # loopback 기본 실행은 127.0.0.1 바인딩이라 IP 접속이 안 되는 게 정상이다. 운영자가
-    # 헤매지 않도록 --allow-host 와 방화벽 헬퍼를 안내하는 정보성 힌트를 출력한다.
-    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    lines = _non_empty_lines(result.stdout)
-    assert any("--allow-host=<IP>" in line for line in lines)
-    assert any("allow_lan_firewall.cmd" in line for line in lines)
-
-
-def test_start_offline_dry_run_allow_host_omits_lan_hint() -> None:
-    # 이미 LAN 모드면 힌트는 불필요 — 출력하지 않는다.
-    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run", "--allow-host=10.0.0.5")
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    lines = _non_empty_lines(result.stdout)
-    assert not any("allow_lan_firewall.cmd" in line for line in lines)
+def test_start_offline_defaults_to_lan_with_local_optout() -> None:
+    # 1.0.22+: 기본 LAN. 인자/--local 없으면 ALLOW_HOST=auto 로 두고, 감지 실패 시 loopback 폴백.
+    # 더 이상 인터랙티브 프롬프트(choice)는 쓰지 않는다.
+    contents = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
+    assert 'if not defined LOCAL_ONLY if not defined ALLOW_HOST set "ALLOW_HOST=auto"' in contents
+    assert '"--local"' in contents
+    assert ":prompt_lan_choice" not in contents
+    assert "choice /C YN" not in contents
 
 
 def test_start_offline_dry_run_allow_host_auto_resolves_lan_ip() -> None:
-    # --allow-host=auto 는 이 PC 의 LAN IPv4 를 감지해 0.0.0.0 바인딩으로 띄운다.
-    # 감지 가능한 LAN IPv4 가 없는 환경에서는 명확한 에러로 끝난다(두 경로 모두 결정적).
+    # --allow-host=auto 는 LAN IPv4 를 감지해 0.0.0.0 으로 띄운다(없으면 localhost 폴백, 에러 없음).
     result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run", "--allow-host=auto")
 
-    if result.returncode == 0:
-        lines = _non_empty_lines(result.stdout)
-        assert any(re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", line) for line in lines)
-        assert not any("LAN host = auto" in line for line in lines)
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    lan = next((line for line in lines if line.startswith("[DRY-RUN] LAN host = ")), "")
+    if re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", lan):
         assert any("uvicorn app.main:app --host 0.0.0.0" in line for line in lines)
     else:
-        assert "could not detect" in result.stdout.lower()
+        assert "localhost only" in lan
 
 
 def test_setup_offline_dry_run_allow_host_auto_resolves_lan_ip() -> None:
     result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause", "--allow-host=auto")
 
-    if result.returncode == 0:
-        lines = _non_empty_lines(result.stdout)
-        assert any(re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", line) for line in lines)
-        assert not any("LAN host = auto" in line for line in lines)
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    lan = next((line for line in lines if line.startswith("[DRY-RUN] LAN host = ")), "")
+    if re.search(r"LAN host = \d+\.\d+\.\d+\.\d+", lan):
+        assert any("NEXT_PUBLIC_API_BASE_URL = http://" in line and ":18437" in line for line in lines)
     else:
-        assert "could not detect" in result.stdout.lower()
+        assert "localhost only" in lan
 
 
-def test_start_offline_prompts_for_lan_only_on_interactive_real_run() -> None:
-    # 더블클릭(인자 없는 실제 실행)에서 LAN 노출 여부를 한 번 묻되, dry-run / --allow-host
-    # 지정 시엔 묻지 않는다(테스트·자동화·명시 옵션 우선). 기본은 N(loopback)이라 자동 노출 없음.
-    contents = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
-    assert ":prompt_lan_choice" in contents
-    assert "choice /C YN" in contents
-    assert 'if not "%DRY_RUN%"=="1" if not defined ALLOW_HOST call :prompt_lan_choice' in contents
-    assert "/D N" in contents  # 무입력/타임아웃 기본 = loopback (회귀-0 원칙)
-
-
-def test_start_offline_dry_run_never_prompts_for_lan() -> None:
-    # dry-run 은 프롬프트 없이 끝나야 한다(테스트가 입력 대기로 멈추지 않도록).
+def test_start_offline_no_interactive_prompt_remains() -> None:
+    # 1.0.22+: 기본이 LAN 이라 인터랙티브 프롬프트는 제거됨. dry-run 은 입력 대기 없이 끝난다.
     result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
 
     assert result.returncode == 0, result.stdout + result.stderr

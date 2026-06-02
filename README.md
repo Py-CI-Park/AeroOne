@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.0.21-1f6feb)
+![version](https://img.shields.io/badge/version-1.0.22-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -69,7 +69,7 @@
 | 인증 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰, 단일 시드 관리자 |
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
-| LAN 모드 | `setup_offline.bat --allow-host=<IP>` / `start_offline.bat --allow-host=<IP>` 옵션 1개로 backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리를 LAN 호스트로 일괄 동기화 |
+| 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
 | 검증 | backend pytest + httpx (66 passed), frontend Vitest + Testing Library, Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 
@@ -135,24 +135,28 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    - 권장 압축 해제 위치: `D:\AeroOne\` 또는 `C:\Programs\AeroOne\` 등 **사용자 쓰기 권한이 있는 절대 경로** (`Program Files` 같은 권한 제한 폴더 / 한글 경로 / 공백 경로 회피)
    - `Python 3.12` 와 `Node.js LTS` 가 PC에 없으면 ZIP 안 `offline_assets\installers\` 의 설치 파일을 먼저 실행
 
-   **단일 PC (loopback)** — 같은 PC 의 브라우저에서만 접속
+   **기본 = LAN (1.0.22+)** — 옵션 없이 실행하면 이 PC 의 LAN IPv4 를 자동 감지해 `0.0.0.0` 으로 띄웁니다. 같은 PC 와 LAN 의 다른 PC 모두 `http://<IP>:29501/` 로 접속 가능 (LAN IPv4 미감지 시 localhost 로 폴백).
 
    ```cmd
-   setup_offline.bat    :: 사전 점검 + .env 재작성 + 가상환경 + 오프라인 pip install + DB + build
-   start_offline.bat    :: 백엔드/프런트 실행 + 브라우저 자동 오픈 (모두 127.0.0.1 바인딩)
+   setup_offline.bat    :: 사전 점검 + .env 재작성 + 가상환경 + 오프라인 pip install + DB + build (기본 LAN)
+   start_offline.bat    :: 백엔드/프런트 실행 + 브라우저 자동 오픈 (기본 LAN, 0.0.0.0 바인딩)
    ```
 
-   **LAN 모드 (`--allow-host=<IP>`)** — 같은 폐쇄망 LAN 의 다른 PC 도 접속
+   **이 PC 에서만 (`--local`)** — LAN 노출 없이 localhost 전용
 
    ```cmd
-   setup_offline.bat --allow-host=192.168.1.10    :: .env 의 CORS_ORIGINS / NEXT_PUBLIC_API_BASE_URL 5자리 일괄 LAN 모드
-   start_offline.bat --allow-host=192.168.1.10    :: backend / frontend 모두 0.0.0.0 바인딩, 자동 오픈 URL 도 동일 호스트
-
-   :: IP 를 직접 모르면 auto — 이 PC 의 LAN IPv4 를 자동 감지해 0.0.0.0 바인딩
-   start_offline.bat --allow-host=auto
+   setup_offline.bat --local
+   start_offline.bat --local    :: 모두 127.0.0.1 바인딩
    ```
 
-   환경 변수 `AEROONE_ALLOW_HOST` 도 동일하게 받습니다. 같은 PC 에서 IP 로 접속하려 해도 `--allow-host` 가 없으면 `127.0.0.1` 바인딩이라 접속되지 않습니다 — 위 두 명령을 반드시 `--allow-host=<IP>` 로 실행하세요. LAN 모드에서 자기 PC 도 반드시 `http://<IP>:29501/` 로 접속해야 쿠키 격리를 피할 수 있습니다. **LAN 의 다른 PC** 에서 접속하려면 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 한 번 실행해 방화벽 인바운드(`18437`/`29501`, 로컬 서브넷 한정)를 허용하세요 (`--remove` 로 원복). 인터넷 노출 차단을 위해 두 포트의 LAN 외부 차단 규칙도 함께 두세요.
+   **특정 IP 고정 (`--allow-host=<IP>`)** — 자동 감지가 틀리거나 호스트를 명시하고 싶을 때
+
+   ```cmd
+   setup_offline.bat --allow-host=192.168.1.10
+   start_offline.bat --allow-host=192.168.1.10
+   ```
+
+   환경 변수 `AEROONE_ALLOW_HOST` 도 동일하게 받습니다(`auto` 도 가능). **1.0.22+ 부터 기본이 LAN** 이므로 옵션 없이 실행해도 IP 로 접속됩니다 — 명시 IP 고정이 필요할 때만 `--allow-host=<IP>` 를 쓰세요. LAN 으로 접속할 땐 자기 PC 도 `http://<IP>:29501/` 로 들어가야 쿠키 격리를 피할 수 있습니다(`start_offline.bat` 가 자동 오픈하는 URL 을 그대로 사용). **LAN 의 다른 PC** 에서 접속하려면 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 한 번 실행해 방화벽 인바운드(`18437`/`29501`, 로컬 서브넷 한정)를 허용하세요 (`--remove` 로 원복). 인터넷 노출 차단을 위해 두 포트의 LAN 외부 차단 규칙도 함께 두세요. LAN 노출 없이 이 PC 에서만 쓰려면 `--local`.
 
    `setup_offline.bat` 는 폐쇄망 PC 에서 `APP_ENV=closed_network` 로 부팅하고 `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 를 새 랜덤 값으로 다시 생성합니다 (기존 `.env` 는 `.bak` 로 자동 백업). `closed_network` 모드는 HTTP 폐쇄망에서 secure cookie 는 끄고 secret 강도 검증은 켜는 전용 모드입니다. 설치 직후 `backend\.env` 의 `ADMIN_PASSWORD` 를 확인해 두세요.
 
@@ -277,7 +281,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.0.21 기준 backend `pytest tests` 결과 **83 passed** (실패 0). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.0.22 기준 backend `pytest tests` 결과 **83 passed** (실패 0). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 
@@ -285,7 +289,7 @@ npm run build
 
 - 운영 모드는 `APP_ENV` 로 4 가지 — `development` (개발자 로컬), `test` (pytest 픽스처), `closed_network` (폐쇄망 HTTP, secret 강도 검증 ON / secure cookie OFF), `production` (인터넷 노출 HTTPS, 둘 다 ON). `closed_network` 와 `production` 은 `change-me` 또는 짧은 secret 을 부팅 시 거부합니다.
 - HTTPS 종단을 두면 `production` 에서 `secure cookie` 가 자동 활성화됩니다. HTTP-only 폐쇄망은 `closed_network` 로 둬야 쿠키가 살아 있으면서 검증도 켜집니다.
-- LAN 모드 (`--allow-host=<IP>`) 는 backend / frontend 를 `0.0.0.0` 으로 노출하므로 **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하고, Windows 방화벽에서 `18437` / `29501` 두 포트의 LAN 외부 차단 규칙을 함께 두세요. 인터넷 노출 production 으로 사용 금지.
+- **1.0.22+ 기본이 LAN** 이라 backend / frontend 를 `0.0.0.0` 으로 노출합니다(이 PC 의 LAN IP 자동 감지). **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. LAN 노출을 원치 않으면 `--local` 로 localhost 전용 실행이 가능합니다. 다른 PC 접속은 `scripts\allow_lan_firewall.cmd`(관리자, 로컬 서브넷 한정)로 허용하고, Windows 방화벽에서 `18437` / `29501` 두 포트의 LAN **외부** 차단 규칙을 함께 두세요. 인터넷 노출 production 으로 사용 금지.
 - `Newsletter/output` 와 `storage/` 는 운영 PC에 한정해 두고, 백업·접근 권한은 사내 정책에 맞춰 분리하세요.
 - 관리자 비밀번호 노출이 의심되면 `setup.bat` 또는 `setup_offline.bat` 을 다시 실행하세요. 새 랜덤 값으로 교체되며 기존 `.env` 는 `.bak` 로 자동 백업됩니다.
 - 관리자 인증은 `/admin/*` 모든 mutation/sync 엔드포인트의 신뢰 경계입니다. 정책 배경: [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md)
