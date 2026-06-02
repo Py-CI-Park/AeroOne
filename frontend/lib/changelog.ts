@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.21',
+    date: '2026-06-02',
+    items: [
+      'start_offline.bat 더블클릭 시 LAN(IP)으로 띄울지 한 번 물어보는 선택 프롬프트 추가 — Y면 LAN IP 자동, 기본(N/15초)은 이 PC 만(localhost).',
+    ],
+  },
+  {
     version: '1.0.20',
     date: '2026-06-02',
     items: [

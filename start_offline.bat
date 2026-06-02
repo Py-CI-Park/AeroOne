@@ -38,6 +38,9 @@ set "FRONTEND_DIR=%ROOT%\frontend"
 set "SCRIPTS_DIR=%ROOT%\scripts"
 set "BACKEND_PORT=18437"
 set "FRONTEND_PORT=29501"
+REM 인자 없이 더블클릭한 실제 실행에서는 LAN 노출 여부를 한 번 물어본다(기본 N=loopback).
+REM dry-run / --allow-host 지정 시엔 묻지 않는다(테스트·자동화·명시 옵션 우선).
+if not "%DRY_RUN%"=="1" if not defined ALLOW_HOST call :prompt_lan_choice
 if /I "%ALLOW_HOST%"=="auto" (
   call :resolve_auto_host
   if errorlevel 1 exit /b 1
@@ -141,6 +144,17 @@ if /I "!ALLOW_HOST!"=="auto" (
 )
 echo [INFO ] --allow-host=auto resolved to !ALLOW_HOST!
 exit /b 0
+
+:prompt_lan_choice
+echo.
+echo ==================================================
+echo [SELECT] Choose how to serve AeroOne:
+echo   Y = LAN   : reachable from other devices via this PC's IP ^(auto-detected^)
+echo   N = local : this PC only ^(localhost^) - default
+echo ==================================================
+choice /C YN /T 15 /D N /M "Serve on the LAN? (auto N in 15s)"
+if not errorlevel 2 set "ALLOW_HOST=auto"
+goto :eof
 
 :help
 echo Usage: start_offline.bat [--dry-run] [--open-browser] [--allow-host=^<host^>]
