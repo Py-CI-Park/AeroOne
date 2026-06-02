@@ -2,6 +2,7 @@ import React from 'react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
+import { ScrollToTop } from '@/components/ui/scroll-to-top';
 import type { NewsletterTheme } from '@/lib/theme';
 import type { NewsletterCalendarEntry, NewsletterDetail } from '@/lib/types';
 
@@ -41,6 +42,8 @@ export function NewslettersReading({
           initialContentHtml={initialContentHtml}
         />
       </section>
+
+      <ScrollToTop />
     </div>
   );
 }
