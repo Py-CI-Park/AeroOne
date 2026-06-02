@@ -103,7 +103,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 78건 PASS (1.0.17-dev 기준, backend pytest). 프론트엔드 Vitest 는 70건 PASS (26 파일).
+총 78건 PASS (1.0.18-dev 기준, backend pytest). 프론트엔드 Vitest 는 70건 PASS (26 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
