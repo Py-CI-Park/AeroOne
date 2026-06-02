@@ -1,0 +1,45 @@
+// AeroOne 업데이트 내역 — 헤더의 버전 라벨을 누르면 뜨는 팝업의 데이터 원천.
+// 폐쇄망이라 외부 의존 없이 번들에 직접 담는다. 새 릴리스마다 맨 앞에 항목을 추가하고
+// APP_VERSION 은 항상 CHANGELOG[0].version 을 따른다(헤더 라벨이 자동으로 이를 표시).
+
+export const APP_CONTACT = {
+  name: '박찬일',
+  email: 'parkchanil77@naver.com',
+} as const;
+
+export type ChangelogEntry = {
+  version: string;
+  date: string; // YYYY-MM-DD
+  items: string[];
+};
+
+// 최신 버전이 맨 위.
+export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.0.17',
+    date: '2026-06-02',
+    items: [
+      '헤더의 버전 라벨을 누르면 업데이트 내역과 문의 정보를 보여주는 팝업을 추가.',
+    ],
+  },
+  {
+    version: '1.0.16',
+    date: '2026-06-02',
+    items: [
+      'Newsletter/output 에 파일을 넣으면 서버 재시작 없이 페이지 새로고침만으로 자동 반영(읽기 시 지연 동기화).',
+      'LAN(IP) 접속 보강 — 방화벽 인바운드 허용 헬퍼(scripts/allow_lan_firewall.cmd)와 start_offline 안내 힌트 추가.',
+    ],
+  },
+  {
+    version: '1.0.15',
+    date: '2026-05-27',
+    items: ['폐쇄망 프론트 창이 따옴표 escape 오류로 기동하지 못하던 문제 수정.'],
+  },
+  {
+    version: '1.0.14',
+    date: '2026-05-27',
+    items: ['뉴스레터 첫 진입 시 본문이 잘리던 문제 수정(iframe 높이 재측정 보강).'],
+  },
+];
+
+export const APP_VERSION = CHANGELOG[0].version;

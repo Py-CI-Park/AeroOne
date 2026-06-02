@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { Icon } from '@/components/ui/icons';
 import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
+import { VersionBadge } from '@/components/layout/version-badge';
 import type { NewsletterTheme } from '@/lib/theme';
 
 type ActiveNav = 'dashboard' | 'newsletters' | 'none';
@@ -45,13 +46,15 @@ export function AppShell({
         data-testid="app-shell-header"
         className="flex h-[60px] flex-shrink-0 items-center gap-6 border-b border-line-subtle bg-surface-raised px-8"
       >
-        <Link href="/" className="flex items-center gap-2 text-ink-1">
-          <span className="text-accent">
-            <Icon.logo size={20} />
-          </span>
-          <span className="text-md font-semibold tracking-tighter">AeroOne</span>
-          <span className="ml-1.5 font-mono text-xs text-ink-3">v1.0.15</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 text-ink-1">
+            <span className="text-accent">
+              <Icon.logo size={20} />
+            </span>
+            <span className="text-md font-semibold tracking-tighter">AeroOne</span>
+          </Link>
+          <VersionBadge />
+        </div>
 
         <nav className="ml-4 flex gap-1" aria-label="주요 메뉴">
           {NAV_ITEMS.map((item) => {
