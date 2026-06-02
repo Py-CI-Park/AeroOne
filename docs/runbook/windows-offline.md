@@ -137,6 +137,15 @@ setup_offline.bat
 start_offline.bat
 ```
 
+LAN 의 **다른 PC** 에서 접속하려면 이 PC 의 Windows 방화벽 인바운드를 한 번 허용해야 합니다 (같은 PC 에서 IP 로만 보는 경우는 대개 불필요). 관리자 권한 cmd 에서 실행하세요 — 로컬 서브넷으로만 제한되며 `--remove` 로 원복합니다.
+
+```cmd
+:: 관리자 권한 cmd 에서
+scripts\allow_lan_firewall.cmd
+:: 원복
+scripts\allow_lan_firewall.cmd --remove
+```
+
 > LAN 모드에서 자기 PC 로 접속할 때도 반드시 `http://<host>:29501/` 로 들어가세요. `http://localhost:29501/` 로 들어가면 페이지 호스트(`localhost`) 와 API 호스트(`<host>`) 가 달라 쿠키가 격리되어 로그인이 동작하지 않습니다. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하면 항상 같은 호스트로 통일됩니다.
 
 ---
@@ -179,8 +188,8 @@ start_offline.bat
 ### 7.1 신규 발행 추가
 
 1. 새 HTML / PDF 파일을 `Newsletter\output\` 에 복사
-2. 관리자 (`http://localhost:29501/login`) 로 로그인
-3. `관리자 뉴스레터 목록` 화면에서 **Import / Sync** 클릭
+2. `/newsletters` 페이지를 새로고침 — 공개 읽기 시 폴더 변경을 감지해 자동 동기화되므로 새 발행호가 바로 보입니다 (서버 재시작 불필요)
+3. (선택) 즉시 강제 동기화가 필요하면 관리자 (`http://localhost:29501/login`) 로그인 후 `관리자 뉴스레터 목록` 화면에서 **Import / Sync** 클릭
 4. 신규 행이 `활성` 상태로 추가되었는지 확인
 
 ### 7.2 메타데이터 수정
@@ -227,7 +236,7 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 
 - `JWT_SECRET_KEY`, `ADMIN_PASSWORD` 는 setup 시 랜덤 생성. `change-me` 같은 기본값은 `production` / `closed_network` 두 모드 모두에서 거부됩니다.
 - 기본 모드는 두 서비스 모두 `127.0.0.1` 바인딩 → 동일 PC 의 브라우저에서만 접속 가능.
-- LAN 모드 (`--allow-host=<host>`) 사용 시 `0.0.0.0` 바인딩으로 LAN 전체에 노출됩니다. **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하고, Windows 방화벽에서 `18437`, `29501` 두 포트를 LAN 외부로 차단하는 규칙을 함께 두세요. 인터넷 노출 production 으로 사용하지 마세요.
+- LAN 모드 (`--allow-host=<host>`) 사용 시 `0.0.0.0` 바인딩으로 LAN 전체에 노출됩니다. **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. 다른 PC 접속용 인바운드 허용은 `scripts\allow_lan_firewall.cmd` (관리자 권한, 로컬 서브넷 한정) 로 추가하고 `--remove` 로 원복합니다. Windows 방화벽에서 `18437`, `29501` 두 포트를 LAN 외부로 차단하는 규칙도 함께 두세요. 인터넷 노출 production 으로 사용하지 마세요.
 - 정적 파일 노출 범위는 `storage\thumbnails\` 하위로 제한.
 - HTML 미리보기는 백엔드 sanitize + CSP + sandbox iframe 조합. `_debug.html` 은 import / 공개 모두에서 제외.
 - 관리자 모든 mutation 과 sync 는 CSRF 토큰을 요구.
@@ -284,11 +293,11 @@ curl -i -X POST -H "Content-Type: application/json" ^
 | 사전 점검은 통과하지만 wheelhouse 단계에서 실패 | wheel 파일 일부 누락 (온라인 PC 에서 transitive dep 누락) | 온라인 PC 에서 `offline_package.bat --dry-run` 으로 wheelhouse 재수집 후 재패키징 |
 | 포트 충돌 (`port 18437/29501 is already in use`) | 다른 프로세스가 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료, 또는 `.env` 의 포트 변경 (CORS_ORIGINS, NEXT_PUBLIC_API_BASE_URL 도 함께 수정) |
 | 페이지 로딩 후 `Failed to fetch` | 페이지 호스트와 API 호스트가 다름 (`127.0.0.1` vs `localhost` 쿠키 격리) | 브라우저 주소를 `http://localhost:29501/...` 로 통일 |
-| LAN 내 다른 PC 에서 접근 불가 | `127.0.0.1` 바인딩 (기본) | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 로 다섯 자리를 한 번에 LAN 모드로 전환합니다. 자세한 동작은 §5.3 참고. |
+| LAN 내 다른 PC 에서 접근 불가 | `127.0.0.1` 바인딩 (기본) 또는 Windows 방화벽 인바운드 차단 | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 로 LAN 모드 전환 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 실행해 18437/29501 인바운드를 허용 (`--remove` 로 원복). 자세한 동작은 §5.3 참고. |
 | LAN 모드에서 같은 PC 로 접속했는데 로그인 후 화면이 빈 채로 멈춤 | `localhost` ↔ `<host>` 쿠키 격리 | 페이지 주소를 `http://<host>:29501/` 로 통일. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하세요. |
 | 관리자 화면에 `Failed to fetch` | 로그인 후 admin_session 쿠키 미적용 | 로그인 직후 페이지 새로고침. 그래도 실패하면 `backend\.env` 의 `ADMIN_SESSION_COOKIE_NAME`/`CSRF_COOKIE_NAME` 과 `frontend\.env.local` 의 `NEXT_PUBLIC_CSRF_COOKIE_NAME` 이 일치하는지 확인 |
 | `start_offline.bat` 가 브라우저를 열지 않음 | frontend 빌드 미완료 또는 `.next` 누락 | `setup_offline.bat` 를 다시 실행해 `npm run build` 까지 완료 |
-| `Newsletter/output` 에 파일을 넣었는데 목록에 안 보임 | sync 미실행 | 관리자 페이지의 **Import / Sync** 버튼 클릭, 또는 `setup_offline.bat` 재실행 (seed 가 sync 까지 수행) |
+| `Newsletter/output` 에 파일을 넣었는데 목록에 안 보임 | 페이지를 새로고침하지 않음 (공개 읽기 시 자동 동기화됨) | `/newsletters` 페이지를 새로고침하면 자동 반영. 즉시 강제하려면 관리자 페이지의 **Import / Sync** 버튼 클릭 |
 
 ---
 

@@ -523,6 +523,26 @@ def test_start_offline_dry_run_default_keeps_loopback() -> None:
     assert any("LAN host = (unset, loopback only)" in line for line in lines)
 
 
+def test_start_offline_dry_run_default_prints_lan_access_hint() -> None:
+    # loopback 기본 실행은 127.0.0.1 바인딩이라 IP 접속이 안 되는 게 정상이다. 운영자가
+    # 헤매지 않도록 --allow-host 와 방화벽 헬퍼를 안내하는 정보성 힌트를 출력한다.
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("--allow-host=<IP>" in line for line in lines)
+    assert any("allow_lan_firewall.cmd" in line for line in lines)
+
+
+def test_start_offline_dry_run_allow_host_omits_lan_hint() -> None:
+    # 이미 LAN 모드면 힌트는 불필요 — 출력하지 않는다.
+    result = _run_cmd(REPO_ROOT, "start_offline.bat", "--dry-run", "--allow-host=10.0.0.5")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert not any("allow_lan_firewall.cmd" in line for line in lines)
+
+
 def test_start_offline_allow_host_missing_value_fails() -> None:
     result = _run_cmd(REPO_ROOT, "start_offline.bat", "--allow-host")
 

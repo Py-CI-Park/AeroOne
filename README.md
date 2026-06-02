@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.0.15-1f6feb)
+![version](https://img.shields.io/badge/version-1.0.16-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -149,15 +149,15 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    start_offline.bat --allow-host=192.168.1.10    :: backend / frontend 모두 0.0.0.0 바인딩, 자동 오픈 URL 도 동일 호스트
    ```
 
-   환경 변수 `AEROONE_ALLOW_HOST` 도 동일하게 받습니다. LAN 모드에서 자기 PC 도 반드시 `http://<IP>:29501/` 로 접속해야 쿠키 격리를 피할 수 있습니다. Windows 방화벽에서 `18437`, `29501` 두 포트의 LAN 외부 차단 규칙을 함께 두세요.
+   환경 변수 `AEROONE_ALLOW_HOST` 도 동일하게 받습니다. 같은 PC 에서 IP 로 접속하려 해도 `--allow-host` 가 없으면 `127.0.0.1` 바인딩이라 접속되지 않습니다 — 위 두 명령을 반드시 `--allow-host=<IP>` 로 실행하세요. LAN 모드에서 자기 PC 도 반드시 `http://<IP>:29501/` 로 접속해야 쿠키 격리를 피할 수 있습니다. **LAN 의 다른 PC** 에서 접속하려면 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 한 번 실행해 방화벽 인바운드(`18437`/`29501`, 로컬 서브넷 한정)를 허용하세요 (`--remove` 로 원복). 인터넷 노출 차단을 위해 두 포트의 LAN 외부 차단 규칙도 함께 두세요.
 
    `setup_offline.bat` 는 폐쇄망 PC 에서 `APP_ENV=closed_network` 로 부팅하고 `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 를 새 랜덤 값으로 다시 생성합니다 (기존 `.env` 는 `.bak` 로 자동 백업). `closed_network` 모드는 HTTP 폐쇄망에서 secure cookie 는 끄고 secret 강도 검증은 켜는 전용 모드입니다. 설치 직후 `backend\.env` 의 `ADMIN_PASSWORD` 를 확인해 두세요.
 
 3. **신규 뉴스레터 추가 (운영 PC에서 반복 작업)**
 
    - `Newsletter\output\` 폴더에 새 HTML / PDF 파일을 추가
-   - 관리자 페이지 (`/login` 로그인 → `/admin/newsletters`) 에서 **Import / Sync** 버튼 클릭
-   - DB 메타데이터가 새 파일 기준으로 동기화되며, 활성 상태가 자동 활성화됩니다.
+   - **별도 조작 없이** `/newsletters` 페이지를 새로고침하면 새 발행호가 자동 반영됩니다 (서버 재시작 불필요). 공개 읽기 요청이 들어올 때 폴더 변경(파일명·크기·수정시각)을 감지해 DB 를 자동 동기화합니다.
+   - 관리자 페이지 (`/login` 로그인 → `/admin/newsletters`) 의 **Import / Sync** 버튼은 즉시 강제 동기화하는 수동 폴백으로 남아 있습니다.
 
 4. **백업 (정기 작업)**
 
@@ -274,7 +274,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.0.15 기준 backend `pytest tests` 결과 **69 passed** (실패 0). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.0.16 기준 backend `pytest tests` 결과 **78 passed** (실패 0). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

@@ -11,6 +11,7 @@ from app.modules.auth.api import router as auth_router
 from app.modules.newsletter.api.admin import router as admin_router
 from app.modules.newsletter.api.imports import router as imports_router
 from app.modules.newsletter.api.public import router as public_router
+from app.modules.newsletter.services.newsletter_autosync_service import AutoSyncState
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -21,6 +22,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title=settings.app_name)
     app.state.settings = settings
     app.state.db = database
+    # 공개 읽기 경로의 지연 자동 동기화 상태(프로세스 1개 공유). 운영자가
+    # Newsletter/output 에 파일을 넣으면 서버 재시작 없이 다음 페이지 로드에서 반영된다.
+    app.state.autosync_state = AutoSyncState()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
