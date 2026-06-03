@@ -2,6 +2,7 @@ import React from 'react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
+import { ReadBeacon } from '@/components/newsletter/read-beacon';
 import { ScrollToTop } from '@/components/ui/scroll-to-top';
 import type { NewsletterTheme } from '@/lib/theme';
 import type { NewsletterCalendarEntry, NewsletterDetail } from '@/lib/types';
@@ -20,6 +21,9 @@ export function NewslettersReading({
 }) {
   return (
     <div data-testid="newsletters-reading" className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+      {/* 읽음 비콘 — 독자 브라우저가 백엔드를 직접 호출해 접속 IP 를 기록(렌더 출력 없음) */}
+      <ReadBeacon newsletterId={newsletter.id} />
+
       {/* 좌측 — 달력(기본 펼침) */}
       <aside className="flex flex-col gap-3">
         {calendarEntries.length > 0 ? (

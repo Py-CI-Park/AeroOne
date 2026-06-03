@@ -24,6 +24,7 @@ export function AdminNewsletterList() {
       <div className="flex justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">관리자 뉴스레터</h1>
         <div className="flex gap-2">
+          <Link href="/admin/read-events" className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">읽음 현황</Link>
           <Link href="/admin/imports" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Import / Sync</Link>
           <Link href="/admin/newsletters/new" className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white">새 Markdown</Link>
         </div>

@@ -73,3 +73,25 @@ export interface SyncResponse {
   skipped: number;
   issues: number;
 }
+
+export interface ReadEventRow {
+  newsletter_id: number;
+  client_ip: string;
+  read_count: number;
+  first_seen_at?: string | null;
+  last_seen_at?: string | null;
+}
+
+export interface NewsletterReadSummary {
+  newsletter_id: number;
+  title: string;
+  slug: string;
+  total_reads: number;
+  unique_ips: number;
+}
+
+export interface ReadEventsResponse {
+  summaries: NewsletterReadSummary[];
+  events: ReadEventRow[];
+  loopback_only: boolean;
+}

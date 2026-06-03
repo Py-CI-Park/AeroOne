@@ -383,6 +383,16 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 - Windows 방화벽 `18437`, `29501` 두 포트를 LAN 외부로 차단하는 인바운드 규칙 추가
 - 인터넷 노출 시 반드시 HTTPS + `APP_ENV=production` + 리버스 프록시 (별 PR 작업)
 
+### 11.6 읽음추적과 개인정보 (IP)
+
+뉴스레터 읽기는 접속 IP 별 열람 횟수로 기록되어 관리자만 `/admin/read-events` 에서 조회한다(독자 고지 없음 — 운영자 결정). 주의할 점:
+
+- **IP 는 개인정보로 분류될 수 있다.** 고지 없는 수집은 사내 정책·법적 검토 대상이 될 수 있으므로 **사내 고지·보존기간 정책 수립을 권고**한다.
+- **IP ≠ 개인.** DHCP 표류·NAT·공유 PC 환경에서는 IP 가 사람과 1:1 이 아니다. LAN 모드에서만 실제 IP 가 잡히고, `--local` 이면 전부 `127.0.0.1` 로 퇴화한다.
+- **보존은 무기한**이며 자동 삭제가 없다. 정리는 관리자 화면 "전체 기록 삭제"(CSRF) 또는 SQL 로 수동 수행한다.
+- 읽음 기록은 `backend/data/aeroone.db` 에 저장되어 기존 DB 백업 대상에 자동 포함된다.
+- 설계·한계·절차 상세: [`runbook/read-tracking.md`](runbook/read-tracking.md)
+
 ---
 
 ## 12. 트러블슈팅과 FAQ

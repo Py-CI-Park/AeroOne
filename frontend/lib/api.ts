@@ -5,6 +5,7 @@ import type {
   NewsletterCalendarEntry,
   NewsletterDetail,
   NewsletterItem,
+  ReadEventsResponse,
   SyncResponse,
   Tag,
 } from '@/lib/types';
@@ -154,4 +155,38 @@ export async function fetchCategories() {
 
 export async function fetchTags() {
   return browserFetch<Tag[]>('/api/v1/admin/tags', { method: 'GET' });
+}
+
+// 읽음 비콘 — 브라우저가 백엔드를 "직접" 호출해야 request.client.host 가 독자 LAN IP 가 된다
+// (SSR/프록시 경로는 Next 서버 IP 로 퇴화). body 없음. sendBeacon 우선(페이지 이탈에도 전송 보장),
+// 미지원 환경은 fetch keepalive 폴백. 실패는 읽기 경험에 영향 없으므로 조용히 무시한다.
+export function recordNewsletterRead(newsletterId: number): void {
+  const url = `${getBrowserApiBase()}/api/v1/newsletters/${newsletterId}/read`;
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      navigator.sendBeacon(url);
+      return;
+    }
+  } catch {
+    // sendBeacon 실패 시 fetch 폴백으로 넘어간다.
+  }
+  void fetch(url, { method: 'POST', keepalive: true, credentials: 'include' }).catch(() => {
+    // 비콘 실패는 무시.
+  });
+}
+
+export async function fetchAdminReadEvents(params?: { newsletter_id?: number; ip?: string }): Promise<ReadEventsResponse> {
+  const query = new URLSearchParams();
+  if (params?.newsletter_id != null) query.set('newsletter_id', String(params.newsletter_id));
+  if (params?.ip) query.set('ip', params.ip);
+  const qs = query.toString();
+  return browserFetch<ReadEventsResponse>(`/api/v1/admin/read-events${qs ? `?${qs}` : ''}`, { method: 'GET' });
+}
+
+export async function purgeReadEvents(csrfToken: string, newsletterId?: number) {
+  const query = newsletterId != null ? `?newsletter_id=${newsletterId}` : '';
+  return browserFetch<{ deleted: number }>(`/api/v1/admin/read-events/purge${query}`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
 }
