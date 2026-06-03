@@ -39,6 +39,7 @@
 | [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 13장) | 315줄 |
 | [`runbook/local-dev.md`](runbook/local-dev.md) | 개발자 로컬 실행 가이드 (worktree 주의 포함) | 92줄 |
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
+| [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 
 ---
 
@@ -98,12 +99,13 @@
 | LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
 | 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
+| 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
 
 ---
 
 ## 7. 회귀 테스트 위치
 
-총 83건 PASS (1.0.22-dev 기준, backend pytest). 프론트엔드 Vitest 는 71건 PASS (27 파일).
+총 96건 PASS (읽음추적 도입 기준, backend pytest). 프론트엔드 Vitest 는 77건 PASS (30 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -115,7 +117,11 @@
 | `backend/tests/unit/shared/test_detect_lan_ip_ps1_script.py` | 1 | `--allow-host=auto` LAN IP 자동 감지 스크립트 본문 가드 |
 | `backend/tests/unit/newsletter/test_newsletter_autosync_service.py` | 3 | 읽기 시 지연 자동 동기화 (변경 감지 / 무변화 스킵 / 폴더 부재 가드) |
 | `backend/tests/integration/test_newsletter_autosync.py` | 2 | 새 output 파일이 관리자 Sync 없이 달력 / 최신글에 반영 |
+| `backend/tests/unit/read_tracking/test_read_event_repository.py` | 6 | record_read 30분 디바운스 upsert / 별도 IP 별도 행 / summarize / purge |
+| `backend/tests/integration/test_read_tracking_api.py` | 7 | 공개 비콘 200·404(행 미생성) / 관리자 read-events 401·200 / purge 401·403(무CSRF)·삭제 |
 | 그 외 unit / integration | 28 | 인증 API, 뉴스레터 public/admin/imports/content API, seed 등 |
+
+프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1).
 
 회귀 1건이라도 발생하면 §3의 단계 보고서 4종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 

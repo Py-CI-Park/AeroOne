@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 4종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 1건(읽음추적)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 5종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -45,6 +45,14 @@
 - 무엇: 종료 코드 0/1/2/3 의 의미를 모듈/함수 docstring 에 직접 새기고, 4분기를 회귀 차단하는 단위 테스트 7건 추가.
 - 코드: `backend/scripts/ensure_db_state.py`
 - 회귀 방지: `backend/tests/unit/test_ensure_db_state.py` (7건)
+
+### 단계 10 — IP 기반 읽음추적(열람 횟수) 모듈
+
+- 파일: [`phase-10-read-tracking.md`](phase-10-read-tracking.md)
+- 분류: minor (`1.1.0`) — 신규 모듈. commit: `2ec9016` (dev 브랜치 `1.1.0-dev`)
+- 무엇: 브라우저 직접 호출 read-beacon 으로 접속 IP 를 잡아 `(newsletter_id, client_ip)` 30분 디바운스 upsert 로 열람 횟수를 집계하고, 관리자만 조회·수동 purge. SSR loopback 우회가 핵심.
+- 코드: `backend/app/modules/read_tracking/`, `frontend/components/newsletter/read-beacon.tsx`, `frontend/app/admin/read-events/`
+- 회귀 방지: `backend/tests/unit/read_tracking/` (6), `backend/tests/integration/test_read_tracking_api.py` (7), frontend Vitest 6건
 
 ---
 

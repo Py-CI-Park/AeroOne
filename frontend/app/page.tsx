@@ -18,7 +18,9 @@ const MODULES = [
     id: 'announcement',
     title: 'Announcement',
     description: 'Company-wide announcements module.',
-    href: '/newsletters',
+    // 비활성 모듈 — ServiceCard 가 active:false 를 비링크 div 로 렌더하므로 이동하지 않는다.
+    // href 는 '/newsletters' 오인 연결 대신 무의미 앵커로 둔다.
+    href: '#',
     badge: 'Coming soon',
     active: false,
   },
@@ -26,7 +28,7 @@ const MODULES = [
     id: 'schedule',
     title: 'Schedule',
     description: 'Shared calendar & event tracking.',
-    href: '/newsletters',
+    href: '#',
     badge: 'Coming soon',
     active: false,
   },
@@ -34,7 +36,7 @@ const MODULES = [
     id: 'document',
     title: 'Document',
     description: 'Long-form document archive.',
-    href: '/newsletters',
+    href: '#',
     badge: 'Coming soon',
     active: false,
   },

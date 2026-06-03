@@ -12,6 +12,8 @@ from app.modules.newsletter.api.admin import router as admin_router
 from app.modules.newsletter.api.imports import router as imports_router
 from app.modules.newsletter.api.public import router as public_router
 from app.modules.newsletter.services.newsletter_autosync_service import AutoSyncState
+from app.modules.read_tracking.api.admin import router as read_events_admin_router
+from app.modules.read_tracking.api.public import router as read_beacon_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -55,6 +57,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(public_router, prefix='/api/v1/newsletters')
     app.include_router(admin_router, prefix='/api/v1/admin')
     app.include_router(imports_router, prefix='/api/v1/admin')
+    # 읽음추적: 공개 비콘(POST /newsletters/{id}/read)과 관리자 조회/purge(/admin/read-events).
+    app.include_router(read_beacon_router, prefix='/api/v1/newsletters')
+    app.include_router(read_events_admin_router, prefix='/api/v1/admin')
     return app
 
 

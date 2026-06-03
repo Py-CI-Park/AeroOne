@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1.0',
+    date: '2026-06-03',
+    items: [
+      '뉴스레터 읽음추적 추가 — 접속 IP 별 열람 횟수를 기록하고, 관리자 화면(읽음 현황)에서 글별 집계와 IP 별 횟수를 조회·정리할 수 있습니다. LAN 모드에서 실제 접속 IP 가 기록되며, 이 PC 전용(--local)에서는 모두 localhost 로 표시됩니다.',
+    ],
+  },
+  {
     version: '1.0.22',
     date: '2026-06-02',
     items: [
