@@ -95,3 +95,10 @@ export interface ReadEventsResponse {
   events: ReadEventRow[];
   loopback_only: boolean;
 }
+
+export interface DocumentListItem {
+  // _database/document 기준 상대 경로(.html), 표시 이름(stem), 부모 폴더("" = 루트).
+  path: string;
+  name: string;
+  folder: string;
+}

@@ -45,7 +45,7 @@
 
 ## 3. 단계별 변경 보고서 (`docs/reports/`)
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 2건(읽음추적·민간 항공기 보고서)의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
+폐쇄망 운영 보강 4단계 + 기능 모듈 3건(읽음추적·민간 항공기 보고서·문서 보관소)의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
 
 | 단계 | 보고서 | 핵심 결과 | commit |
 |---|---|---|---|
@@ -55,6 +55,7 @@
 | 단계 9 | [`reports/phase-9-docstring.md`](reports/phase-9-docstring.md) | `ensure_db_state.py` 종료 코드 docstring + 회귀 테스트 7건 | `2e69b4b` |
 | 단계 10 | [`reports/phase-10-read-tracking.md`](reports/phase-10-read-tracking.md) | IP 기반 읽음추적(열람 횟수) 모듈 — minor 1.1.0 | `2ec9016` |
 | 단계 11 | [`reports/phase-11-civil-aircraft-report.md`](reports/phase-11-civil-aircraft-report.md) | 민간 항공기 보고서 모듈 + 콘텐츠 폴더 `_database` 재편 — minor 1.2.0 | `9898203` |
+| 단계 12 | [`reports/phase-12-document-module.md`](reports/phase-12-document-module.md) | 문서(Document) 보관소 모듈 — `_database/document` HTML 을 폴더 트리로 열람 — minor 1.3.0 | `1.3.0-dev` |
 
 ---
 
@@ -101,6 +102,7 @@
 | LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
 | 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일. 대시보드에 민간항공기 규격 카탈로그 카드(활성)도 포함 |
 | 민간항공기 규격 보고서 | `backend/app/modules/reports/api/public.py` (`GET /api/v1/reports/civil-aircraft/content/html`, `HtmlRenderService` 재사용) + `frontend/app/reports/civil-aircraft/page.tsx` + `frontend/components/reports/civil-aircraft-report.tsx` | `_database/civil_aircraft` 의 단일 HTML 보고서를 달력 없이 HtmlViewer 로 렌더. sanitize·CSP·sandbox iframe 은 뉴스레터와 동일 |
+| 문서 보관소 | `backend/app/modules/documents/api/public.py` (`GET /api/v1/documents/list` `_discover_documents` rglob, `GET /api/v1/documents/content/html?path=` path-guard + `HtmlRenderService` 재사용) + `frontend/app/documents/page.tsx` + `frontend/components/documents/documents-workspace.tsx`(재귀 폴더 트리) | `_database/document` 의 HTML 을 하위 폴더 포함 재귀 수집해 좌측 접을 수 있는 폴더 트리로 목록화, 선택 1개를 우측 HtmlViewer(sandbox iframe)로 렌더. `_debug.html` 제외, `(folder,name)` 정렬, 디렉토리 이탈 400. `document_root` 기본값 보유라 .env 호환 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 | 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
 
@@ -108,7 +110,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 99건 PASS (민간 항공기 보고서 도입 기준, backend pytest). 프론트엔드 Vitest 는 80건 PASS (31 파일).
+총 104건 PASS (문서 보관소 모듈 도입 기준, backend pytest). 프론트엔드 Vitest 는 88건 PASS (33 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -123,11 +125,12 @@
 | `backend/tests/unit/read_tracking/test_read_event_repository.py` | 6 | record_read 30분 디바운스 upsert / 별도 IP 별도 행 / summarize / purge |
 | `backend/tests/integration/test_read_tracking_api.py` | 7 | 공개 비콘 200·404(행 미생성) / 관리자 read-events 401·200 / purge 401·403(무CSRF)·삭제 |
 | `backend/tests/integration/test_reports_api.py` | 3 | 민간 항공기 보고서 200·sanitize·CSP / 404 / `_debug` 제외 |
+| `backend/tests/integration/test_documents_api.py` | 5 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / 404 / 디렉토리 이탈 400 |
 | 그 외 unit / integration | 28 | 인증 API, 뉴스레터 public/admin/imports/content API, seed 등 |
 
-프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 2), `home-page.test.tsx`(보고서 카드 1).
+프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 2), `home-page.test.tsx`(보고서 카드 1). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기 4), `home-page.test.tsx`(Document 카드·`3 active · 2 coming soon` 카운트).
 
-회귀 1건이라도 발생하면 §3의 단계 보고서 6종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+회귀 1건이라도 발생하면 §3의 단계 보고서 7종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 
@@ -143,6 +146,7 @@
 | `offline_installers/*` | 폐쇄망 인스톨러 (Python EXE / Node MSI) | NO (단 `README.md` 만 예외) |
 | `_database/newsletter/` | 뉴스레터 발행 원본 HTML/PDF (`newsletter_YYYYMMDD.html`) | NO (정책상 비공개) |
 | `_database/civil_aircraft/` | 민간항공기 규격 정적 HTML 보고서 | NO (정책상 비공개) |
+| `_database/document/` | 문서 보관소 HTML (하위 폴더로 분류 가능) | NO (정책상 비공개) |
 | `storage/` | 운영 storage (썸네일·markdown·첨부) | NO |
 | `backend/data/aeroone.db` | 운영 DB | NO |
 

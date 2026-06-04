@@ -53,8 +53,19 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(reportLink).toHaveTextContent('Active');
   expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
 
-  // 상단 요약 카운트는 MODULES 에서 파생 — 활성 카드가 2개로 갱신된다.
-  expect(screen.getByText('2 active · 3 coming soon')).toBeInTheDocument();
+  // 상단 요약 카운트는 MODULES 에서 파생 — Document 활성화로 활성 카드가 3개로 갱신된다.
+  expect(screen.getByText('3 active · 2 coming soon')).toBeInTheDocument();
+});
+
+test('adds an active Document card linking to the documents page', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const documentLink = within(main).getByRole('link', { name: /Document/i });
+
+  expect(documentLink).toHaveAttribute('href', '/documents');
+  expect(documentLink).toHaveTextContent('Active');
+  expect(within(documentLink).getByTestId('service-card-description')).toHaveTextContent(/HTML documents organized in folders/i);
 });
 
 test('home page uses dark theme from cookie', async () => {

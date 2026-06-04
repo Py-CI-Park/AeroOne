@@ -311,6 +311,7 @@ python -m pytest tests -q
 |---|---|
 | PC 부팅 후 | `start_offline.bat` (LAN 모드면 `--allow-host=<host>` 또는 `AEROONE_ALLOW_HOST` 유지) |
 | 신규 발행 추가 | `_database\newsletter\` 에 HTML/PDF 복사 (`newsletter_YYYYMMDD.html` 형식) → `/newsletters` 새로고침 시 자동 반영 (서버 재시작 불필요). 즉시 강제는 관리자 페이지 **Import / Sync** |
+| 문서 추가 | `_database\document\` 에 HTML 복사 (하위 폴더로 분류하면 폴더 트리로 구분) → `/documents` 새로고침 시 바로 반영 (서버 재시작 불필요) |
 | 메타데이터 수정 | 관리자 화면의 **편집** 버튼 (제목·요약·카테고리·태그·활성 여부·썸네일) |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
 | 비밀번호 교체 | `setup_offline.bat` 재실행 → `backend\.env` 의 `ADMIN_PASSWORD` 재확인. 기존 `.env` 는 `.bak` 자동 백업 |
@@ -328,11 +329,12 @@ python -m pytest tests -q
 | `storage\thumbnails\` | 업로드된 썸네일 | 썸네일 업로드 시 |
 | `_database\newsletter\` | 뉴스레터 발행 원본 HTML/PDF | 신규 발행 시 |
 | `_database\civil_aircraft\` | 민간항공기 규격 정적 HTML 보고서 (데이터 투입 위치) | 보고서 갱신 시 |
+| `_database\document\` | 문서 보관소 HTML (하위 폴더로 분류 가능, `/documents` 폴더 트리) | 문서 추가/갱신 시 |
 
 ```cmd
 xcopy /Y /E /I backend\data D:\backup\AeroOne\data
 xcopy /Y /E /I storage D:\backup\AeroOne\storage
-xcopy /Y /E /I _database\newsletter D:\backup\AeroOne\_database\newsletter
+xcopy /Y /E /I _database D:\backup\AeroOne\_database
 ```
 
 ### 10.2 복원

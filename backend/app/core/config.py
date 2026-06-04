@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     admin_password: str = 'change-me'
     newsletter_import_root_container: str = './_database/newsletter'
     civil_aircraft_root: str = './_database/civil_aircraft'
+    document_root: str = './_database/document'
     storage_root: str = './storage'
     thumbnails_dir_name: str = 'thumbnails'
     attachments_dir_name: str = 'attachments'
@@ -44,6 +45,10 @@ class Settings(BaseSettings):
     @property
     def civil_aircraft_root_path(self) -> Path:
         return self._resolve_path(self.civil_aircraft_root)
+
+    @property
+    def document_root_path(self) -> Path:
+        return self._resolve_path(self.document_root)
 
     @property
     def managed_storage_root(self) -> Path:

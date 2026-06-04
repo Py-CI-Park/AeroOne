@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.2.0-1f6feb)
+![version](https://img.shields.io/badge/version-1.3.0-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -63,7 +63,7 @@
 
 | 영역 | 내용 |
 |---|---|
-| 사용자 화면 | 대시보드 모듈 카드(뉴스레터·민간항공기 보고서 등), 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, 민간항공기 규격 카탈로그(/reports/civil-aircraft, 달력 없음), `[data-theme]` 라이트·다크 테마 토글 |
+| 사용자 화면 | 대시보드 모듈 카드(뉴스레터·민간항공기 보고서·문서 보관소 등), 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, 민간항공기 규격 카탈로그(/reports/civil-aircraft, 달력 없음), 문서 보관소(/documents, `_database/document` HTML 을 폴더 트리로 열람), `[data-theme]` 라이트·다크 테마 토글 |
 | 콘텐츠 분기 | HTML(sandbox iframe + sanitize + CSP), PDF(direct delivery), Markdown(서버 렌더) |
 | 관리자 화면 | 로그인, 메타데이터 CRUD, 카테고리·태그 관리, 썸네일 업로드, `_database/newsletter` import / sync |
 | 인증 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰, 단일 시드 관리자 |
@@ -200,6 +200,7 @@ AeroOne/
 ├─ frontend/             Next.js 앱
 ├─ _database/newsletter/ 뉴스레터 HTML/PDF 원본 (newsletter_YYYYMMDD.html 형식, import root)
 ├─ _database/civil_aircraft/ 민간항공기 규격 정적 HTML 보고서
+├─ _database/document/   문서 보관소 HTML (하위 폴더로 분류 가능, /documents 에서 폴더 트리로 열람)
 ├─ storage/              Markdown / 썸네일 / 첨부 (앱 관리)
 ├─ docs/                 개발 계획, 런북, 설계 문서
 ├─ infra/                Dockerfile / compose 자원
@@ -282,7 +283,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.2.0 기준 backend `pytest tests` 결과 **99 passed** (실패 0), frontend Vitest **80 passed**. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10/11 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.3.0 기준 backend `pytest tests` 결과 **104 passed** (실패 0), frontend Vitest **88 passed**. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10/11/12 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

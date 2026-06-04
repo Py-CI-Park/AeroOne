@@ -6,11 +6,12 @@ import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-them
 import { VersionBadge } from '@/components/layout/version-badge';
 import type { NewsletterTheme } from '@/lib/theme';
 
-type ActiveNav = 'dashboard' | 'newsletters' | 'none';
+type ActiveNav = 'dashboard' | 'newsletters' | 'documents' | 'none';
 
 const NAV_ITEMS: { id: Exclude<ActiveNav, 'none'>; label: string; href: string }[] = [
   { id: 'dashboard', label: 'Dashboard', href: '/' },
   { id: 'newsletters', label: 'Newsletter', href: '/newsletters' },
+  { id: 'documents', label: 'Document', href: '/documents' },
 ];
 
 export function AppShell({
