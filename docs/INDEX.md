@@ -60,7 +60,7 @@
 
 | 디렉토리 | 내용 | 개수 |
 |---|---|---|
-| [`superpowers/plans/`](superpowers/plans/) | 기능별 구현 계획 (Tier-0 OMC superpowers 형식) | 13건 |
+| [`superpowers/plans/`](superpowers/plans/) | 기능별 구현 계획 (Tier-0 OMC superpowers 형식) | 14건 |
 | [`superpowers/specs/`](superpowers/specs/) | 기능별 설계 명세 (plan 과 1:1 매칭) | 14건 |
 | [`dev_plan/20260327_newsletter_platform_mvp.md`](dev_plan/20260327_newsletter_platform_mvp.md) | 2026-03-27 작성 MVP 개발 계획 (범위·완료 기준·리스크) | 299줄 |
 | [`../design-handoff/`](../design-handoff/) | **UI/UX 재디자인 요청용 핸드오프 패키지** (브리프 / 여정 / 화면 인벤토리 / 제약 + 추천 프롬프트) | 6건 |

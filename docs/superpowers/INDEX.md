@@ -2,7 +2,7 @@
 
 본 디렉토리는 OMC `superpowers` 형식으로 작성된 **기능별 plan / spec 한 쌍**을 모은 자리입니다. plan 은 구현 단계와 수용 기준, spec 은 같은 기능의 인터페이스·내부 구조 설계를 담습니다.
 
-- `plans/` — 13건
+- `plans/` — 14건
 - `specs/` — 14건
 - 기준 commit: `bb94269`
 
@@ -26,6 +26,7 @@
 | 2026-04-16 | 글로벌 테마 쿠키 | [global-theme-cookie.md](plans/2026-04-16-global-theme-cookie.md) | [global-theme-cookie-design.md](specs/2026-04-16-global-theme-cookie-design.md) |
 | 2026-04-18 | 뉴스레터 미리보기 네비 정리 | [newsletter-preview-navigation-cleanup.md](plans/2026-04-18-newsletter-preview-navigation-cleanup.md) | [newsletter-preview-navigation-cleanup-design.md](specs/2026-04-18-newsletter-preview-navigation-cleanup-design.md) |
 | 2026-04-19 | 홈 nav 달력 정리 | [home-nav-calendar-cleanup.md](plans/2026-04-19-home-nav-calendar-cleanup.md) | [home-nav-calendar-cleanup-design.md](specs/2026-04-19-home-nav-calendar-cleanup-design.md) |
+| 2026-06-04 | 대시보드 외부 서비스/포트 패널 (계획만, 미구현) | [dashboard-external-service-panel.md](plans/2026-06-04-dashboard-external-service-panel.md) | — (구현 시 작성) |
 
 ---
 
