@@ -15,6 +15,14 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.2.0',
+    date: '2026-06-04',
+    items: [
+      '대시보드에 "Civil Aircraft Spec Catalog"(민간 항공기 종합 분석) 보고서 버튼 추가 — 누르면 달력 없이 보고서 HTML 을 바로 보여줍니다.',
+      '뉴스레터·보고서 원본 폴더를 _database 로 정리 — 뉴스레터는 _database/newsletter, 민간 항공기 보고서는 _database/civil_aircraft 에 둡니다.',
+    ],
+  },
+  {
     version: '1.1.1',
     date: '2026-06-04',
     items: [
