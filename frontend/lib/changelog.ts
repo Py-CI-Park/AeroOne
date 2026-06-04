@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.3.1',
+    date: '2026-06-05',
+    items: [
+      'Document(문서) 화면에서 좌측 목록을 접어 문서 뷰어를 전체 폭으로 볼 수 있습니다 — "목록 접기"를 누르면 목록이 접히고 상단에 문서 선택 드롭다운이 나타나며, 폭이 넓은 문서가 더 시원하게 보입니다.',
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-06-04',
     items: [

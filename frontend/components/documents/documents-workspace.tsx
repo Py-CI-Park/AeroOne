@@ -143,10 +143,25 @@ function FolderTree({
   );
 }
 
+// 상단 셀렉트용 — 폴더별로 묶는다. documents 는 (folder, name) 정렬돼 들어오므로 삽입 순서가 곧 표시 순서.
+function buildSelectGroups(documents: DocumentListItem[]): [string, DocumentListItem[]][] {
+  const map = new Map<string, DocumentListItem[]>();
+  for (const doc of documents) {
+    const key = doc.folder || '';
+    const list = map.get(key) ?? [];
+    list.push(doc);
+    map.set(key, list);
+  }
+  return Array.from(map.entries());
+}
+
 export function DocumentsWorkspace({ documents }: { documents: DocumentListItem[] }) {
   const tree = useMemo(() => buildTree(documents), [documents]);
+  const selectGroups = useMemo(() => buildSelectGroups(documents), [documents]);
   const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set(collectFolderPaths(documents)));
   const [selected, setSelected] = useState<DocumentListItem | null>(documents[0] ?? null);
+  // 좌측 목록을 접어 뷰어가 전체 폭을 쓰게 한다. 접으면 상단 셀렉트로 문서를 고른다(위치 위로 이동).
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [html, setHtml] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -192,46 +207,94 @@ export function DocumentsWorkspace({ documents }: { documents: DocumentListItem[
     });
   }
 
-  return (
-    <div data-testid="documents-workspace" className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-      {/* 좌측 — 폴더 트리(접을 수 있음) */}
-      <aside className="flex flex-col gap-2">
-        <nav
-          data-testid="documents-tree"
-          aria-label="문서 목록"
-          className="rounded-2xl border border-line-subtle bg-surface-raised p-2"
-        >
-          <FolderTree
-            node={tree}
-            parentPath=""
-            depth={0}
-            openFolders={openFolders}
-            onToggle={toggleFolder}
-            selectedPath={selected?.path ?? ''}
-            onSelect={setSelected}
-          />
-        </nav>
-      </aside>
+  function selectByPath(path: string) {
+    const doc = documents.find((item) => item.path === path);
+    if (doc) {
+      setSelected(doc);
+    }
+  }
 
-      {/* 우측 — 선택한 문서 본문(sandbox iframe 뷰어) */}
-      <section className="min-w-0">
-        {error ? (
-          <div className="rounded-lg border border-dashed border-line bg-surface-raised p-8 text-sm text-ink-2">
-            문서를 불러오지 못했습니다.
-            <div className="mt-2 text-xs text-ink-3">{error}</div>
-          </div>
-        ) : loading && !html ? (
-          <div
-            data-testid="documents-loading"
-            className="rounded-lg border border-dashed border-line bg-surface-raised p-8 text-sm text-ink-3"
+  return (
+    <div data-testid="documents-workspace" className="flex flex-col gap-3">
+      {/* 상단 컨트롤 — 목록 접기/펼치기 토글 + (접었을 때) 상단 문서 셀렉트 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          data-testid="documents-sidebar-toggle"
+          aria-expanded={sidebarOpen}
+          aria-label={sidebarOpen ? '문서 목록 접기' : '문서 목록 펼치기'}
+          onClick={() => setSidebarOpen((open) => !open)}
+          className="inline-flex items-center gap-1.5 rounded border border-line-subtle px-2.5 py-1.5 text-base text-ink-2 transition-colors hover:bg-surface-sunken"
+        >
+          <Icon.list size={14} />
+          {sidebarOpen ? '목록 접기' : '목록 펼치기'}
+        </button>
+
+        {!sidebarOpen ? (
+          <select
+            data-testid="documents-select"
+            aria-label="문서 선택"
+            value={selected?.path ?? ''}
+            onChange={(event) => selectByPath(event.target.value)}
+            className="min-w-0 max-w-full rounded border border-line-subtle bg-surface-raised px-2 py-1.5 text-base text-ink-1"
           >
-            문서를 불러오는 중…
-          </div>
-        ) : selected ? (
-          <HtmlViewer title={selected.name} html={html} />
+            {selectGroups.map(([folder, items]) => (
+              <optgroup key={folder || '__root'} label={folder || '기본'}>
+                {items.map((doc) => (
+                  <option key={doc.path} value={doc.path}>
+                    {doc.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
         ) : null}
-        <ScrollToTop />
-      </section>
+      </div>
+
+      <div
+        className={`grid gap-5 ${sidebarOpen ? 'lg:grid-cols-[280px_minmax(0,1fr)]' : 'grid-cols-1'}`}
+      >
+        {/* 좌측 — 폴더 트리(펼쳤을 때만 렌더; 접으면 뷰어가 전체 폭) */}
+        {sidebarOpen ? (
+          <aside className="flex flex-col gap-2">
+            <nav
+              data-testid="documents-tree"
+              aria-label="문서 목록"
+              className="rounded-2xl border border-line-subtle bg-surface-raised p-2"
+            >
+              <FolderTree
+                node={tree}
+                parentPath=""
+                depth={0}
+                openFolders={openFolders}
+                onToggle={toggleFolder}
+                selectedPath={selected?.path ?? ''}
+                onSelect={setSelected}
+              />
+            </nav>
+          </aside>
+        ) : null}
+
+        {/* 우측 — 선택한 문서 본문(sandbox iframe 뷰어) */}
+        <section className="min-w-0">
+          {error ? (
+            <div className="rounded-lg border border-dashed border-line bg-surface-raised p-8 text-sm text-ink-2">
+              문서를 불러오지 못했습니다.
+              <div className="mt-2 text-xs text-ink-3">{error}</div>
+            </div>
+          ) : loading && !html ? (
+            <div
+              data-testid="documents-loading"
+              className="rounded-lg border border-dashed border-line bg-surface-raised p-8 text-sm text-ink-3"
+            >
+              문서를 불러오는 중…
+            </div>
+          ) : selected ? (
+            <HtmlViewer title={selected.name} html={html} />
+          ) : null}
+          <ScrollToTop />
+        </section>
+      </div>
     </div>
   );
 }

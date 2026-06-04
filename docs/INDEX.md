@@ -110,7 +110,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 104건 PASS (문서 보관소 모듈 도입 기준, backend pytest). 프론트엔드 Vitest 는 88건 PASS (33 파일).
+총 104건 PASS (문서 보관소 모듈 도입 기준, backend pytest). 프론트엔드 Vitest 는 90건 PASS (33 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -128,7 +128,7 @@
 | `backend/tests/integration/test_documents_api.py` | 5 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / 404 / 디렉토리 이탈 400 |
 | 그 외 unit / integration | 28 | 인증 API, 뉴스레터 public/admin/imports/content API, seed 등 |
 
-프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 2), `home-page.test.tsx`(보고서 카드 1). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기 4), `home-page.test.tsx`(Document 카드·`3 active · 2 coming soon` 카운트).
+프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 2), `home-page.test.tsx`(보고서 카드 1). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기·사이드바 접기·상단 셀렉트 전환 6), `home-page.test.tsx`(Document 카드·`3 active · 2 coming soon` 카운트).
 
 회귀 1건이라도 발생하면 §3의 단계 보고서 7종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
