@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.3.0',
+    date: '2026-06-04',
+    items: [
+      '대시보드에 "Document"(문서 보관소) 탭 추가 — _database/document 폴더에 HTML 문서를 넣으면 화면에서 바로 골라 볼 수 있습니다. 여러 개면 목록으로, 하위 폴더로 분류하면 폴더 트리로 구분해 선택합니다(서버 재시작 불필요).',
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-06-04',
     items: [
