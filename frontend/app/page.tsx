@@ -43,10 +43,10 @@ const MODULES = [
   {
     id: 'document',
     title: 'Document',
-    description: 'Long-form document archive.',
-    href: '#',
-    badge: 'Coming soon',
-    active: false,
+    description: 'Browse HTML documents organized in folders.',
+    href: '/documents',
+    badge: 'Active',
+    active: true,
   },
 ] as const;
 

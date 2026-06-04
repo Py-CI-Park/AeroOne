@@ -2,6 +2,7 @@ import type {
   AssetType,
   AuthResponse,
   Category,
+  DocumentListItem,
   NewsletterCalendarEntry,
   NewsletterDetail,
   NewsletterItem,
@@ -94,6 +95,30 @@ export async function fetchCivilAircraftReport() {
     baseUrl: getServerApiBase(),
     path: '/api/v1/reports/civil-aircraft/content/html',
   });
+}
+
+export async function fetchDocumentList() {
+  // 문서 보관소 목록 — _database/document 의 HTML 을 폴더 트리로 그리기 위한 메타(path/name/folder)만 받는다.
+  // 콘텐츠는 선택 시 fetchDocumentContent 로 별도 요청한다. 폴더가 없으면 백엔드가 빈 목록을 준다.
+  return loggedServerFetchJson<{ documents: DocumentListItem[] }>({
+    label: 'documents.list',
+    baseUrl: getServerApiBase(),
+    path: '/api/v1/documents/list',
+  });
+}
+
+export async function fetchDocumentContent(path: string): Promise<{ asset_type: 'html'; content_html: string }> {
+  // 선택한 문서 1개의 sanitize 된 HTML 을 브라우저에서 직접 받는다(선택마다 즉시 갱신, 풀 페이지 리로드 회피).
+  // 경로는 백엔드 path-guard 로 _database/document 밖 접근이 차단된다.
+  const response = await fetch(
+    `${getBrowserApiBase()}/api/v1/documents/content/html?path=${encodeURIComponent(path)}`,
+    { cache: 'no-store' },
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to load document: ${response.status}`);
+  }
+  return (await response.json()) as { asset_type: 'html'; content_html: string };
 }
 
 export async function getPublicNewsletters(): Promise<{ items: NewsletterItem[] }> {
