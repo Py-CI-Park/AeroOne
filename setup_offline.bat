@@ -133,7 +133,8 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo ADMIN_USERNAME=admin
 >>"%BACKEND_ENV%" echo ADMIN_PASSWORD=%ADMIN_PASSWORD%
 >>"%BACKEND_ENV%" echo CSRF_COOKIE_NAME=csrf_token
->>"%BACKEND_ENV%" echo NEWSLETTER_IMPORT_ROOT_CONTAINER=%ROOT_FWD%/Newsletter/output
+>>"%BACKEND_ENV%" echo NEWSLETTER_IMPORT_ROOT_CONTAINER=%ROOT_FWD%/_database/newsletter
+>>"%BACKEND_ENV%" echo CIVIL_AIRCRAFT_ROOT=%ROOT_FWD%/_database/civil_aircraft
 >>"%BACKEND_ENV%" echo STORAGE_ROOT=%ROOT_FWD%/storage
 >>"%BACKEND_ENV%" echo THUMBNAILS_DIR_NAME=thumbnails
 >>"%BACKEND_ENV%" echo ATTACHMENTS_DIR_NAME=attachments
@@ -153,7 +154,8 @@ if not exist "%BACKEND_VENV%\Scripts\python.exe" (
 )
 
 if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
-if not exist "%ROOT%\Newsletter\output" mkdir "%ROOT%\Newsletter\output"
+if not exist "%ROOT%\_database\newsletter" mkdir "%ROOT%\_database\newsletter"
+if not exist "%ROOT%\_database\civil_aircraft" mkdir "%ROOT%\_database\civil_aircraft"
 
 call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
 pushd "%BACKEND_DIR%"
@@ -194,7 +196,7 @@ echo   2. backend\.env 에서 ADMIN_PASSWORD 확인 ^(랜덤 생성됨^)
 echo   3. 브라우저: http://localhost:29501/newsletters
 echo   4. 관리자 로그인: http://localhost:29501/login
 echo.
-echo [DATA] Newsletter/output 폴더에 HTML/PDF 원본을 추가한 뒤
+echo [DATA] _database/newsletter 폴더에 newsletter_YYYYMMDD.html 원본을 추가한 뒤
 echo        관리자 페이지의 Import / Sync 버튼으로 동기화하세요.
 echo ==================================================
 goto :success

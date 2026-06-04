@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 1건(읽음추적)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 5종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 2건(읽음추적·민간 항공기 보고서)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 6종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -53,6 +53,14 @@
 - 무엇: 브라우저 직접 호출 read-beacon 으로 접속 IP 를 잡아 `(newsletter_id, client_ip)` 30분 디바운스 upsert 로 열람 횟수를 집계하고, 관리자만 조회·수동 purge. SSR loopback 우회가 핵심.
 - 코드: `backend/app/modules/read_tracking/`, `frontend/components/newsletter/read-beacon.tsx`, `frontend/app/admin/read-events/`
 - 회귀 방지: `backend/tests/unit/read_tracking/` (6), `backend/tests/integration/test_read_tracking_api.py` (7), frontend Vitest 6건
+
+### 단계 11 — 민간 항공기 보고서 모듈 + 콘텐츠 폴더 `_database` 재편
+
+- 파일: [`phase-11-civil-aircraft-report.md`](phase-11-civil-aircraft-report.md)
+- 분류: minor (`1.2.0`) — 신규 read-only 모듈 + 콘텐츠 경로 이전. commit: `9898203` (dev 브랜치 `1.2.0-dev`)
+- 무엇: `Newsletter/output` → `_database/newsletter` 이전(+디버그 41개 정리), `_database/civil_aircraft` 의 단일 HTML 보고서를 뉴스레터와 동일 sanitize 로 제공하는 `GET /api/v1/reports/civil-aircraft/content/html`, 달력 없는 `/reports/civil-aircraft` 페이지 + 대시보드 active 카드.
+- 코드: `backend/app/modules/reports/`, `backend/app/core/config.py`(`civil_aircraft_root`), `frontend/app/reports/civil-aircraft/`, `frontend/components/reports/`
+- 회귀 방지: `backend/tests/integration/test_reports_api.py` (3), `frontend/tests/app/civil-aircraft-report-page.test.tsx` (2), `home-page.test.tsx` 카드
 
 ---
 

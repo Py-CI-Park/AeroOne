@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.1.1-1f6feb)
+![version](https://img.shields.io/badge/version-1.2.0-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -63,14 +63,14 @@
 
 | 영역 | 내용 |
 |---|---|
-| 사용자 화면 | 대시보드 모듈 카드, 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, `[data-theme]` 라이트·다크 테마 토글 |
+| 사용자 화면 | 대시보드 모듈 카드(뉴스레터·민간항공기 보고서 등), 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, 민간항공기 규격 카탈로그(/reports/civil-aircraft, 달력 없음), `[data-theme]` 라이트·다크 테마 토글 |
 | 콘텐츠 분기 | HTML(sandbox iframe + sanitize + CSP), PDF(direct delivery), Markdown(서버 렌더) |
-| 관리자 화면 | 로그인, 메타데이터 CRUD, 카테고리·태그 관리, 썸네일 업로드, `Newsletter/output` import / sync |
+| 관리자 화면 | 로그인, 메타데이터 CRUD, 카테고리·태그 관리, 썸네일 업로드, `_database/newsletter` import / sync |
 | 인증 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰, 단일 시드 관리자 |
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (66 passed), frontend Vitest + Testing Library, Windows 실행 스모크 |
+| 검증 | backend pytest + httpx (99 passed), frontend Vitest + Testing Library, Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 
 ---
@@ -123,7 +123,7 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    ZIP 안에 들어가는 것:
 
    - 저장소 소스 (`.git`, `.venv`, `node_modules`, `dist`, `backend/data` 등은 제외)
-   - `Newsletter/output/` 의 HTML/PDF 원본 (패키징 시점 스냅샷)
+   - `_database/newsletter/` 의 HTML/PDF 원본 (패키징 시점 스냅샷, `newsletter_YYYYMMDD.html` 형식)
    - `frontend/node_modules` (오프라인용 별도 복사본)
    - Python wheelhouse (`offline_assets/python-wheels/`)
    - 선택적으로 `offline_installers/` 에 미리 둔 Python·Node 설치파일 → `offline_assets/installers/`
@@ -162,7 +162,7 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
 
 3. **신규 뉴스레터 추가 (운영 PC에서 반복 작업)**
 
-   - `Newsletter\output\` 폴더에 새 HTML / PDF 파일을 추가
+   - `_database\newsletter\` 폴더에 새 HTML / PDF 파일을 추가 (파일명: `newsletter_YYYYMMDD.html`)
    - **별도 조작 없이** `/newsletters` 페이지를 새로고침하면 새 발행호가 자동 반영됩니다 (서버 재시작 불필요). 공개 읽기 요청이 들어올 때 폴더 변경(파일명·크기·수정시각)을 감지해 DB 를 자동 동기화합니다.
    - 관리자 페이지 (`/login` 로그인 → `/admin/newsletters`) 의 **Import / Sync** 버튼은 즉시 강제 동기화하는 수동 폴백으로 남아 있습니다.
 
@@ -170,7 +170,7 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
 
    - DB: `backend\data\aeroone.db` 한 파일 복사
    - 사용자 콘텐츠: `storage\markdown\` 와 `storage\thumbnails\` 폴더 백업
-   - 원본: `Newsletter\output\` 폴더 백업
+   - 원본: `_database\newsletter\` 폴더 백업
    - 위 세 경로만 보관하면 동일 PC 또는 다른 폐쇄망 PC에서 복원 가능합니다.
 
 - 종합 가이드 (사람·AI 모두 위한 단일 진입점, 9단계 진행 체크리스트 포함): [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md)
@@ -198,7 +198,8 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
 AeroOne/
 ├─ backend/              FastAPI 앱, Alembic 마이그레이션, 시드 스크립트
 ├─ frontend/             Next.js 앱
-├─ Newsletter/output/    실데이터 HTML/PDF 원본 (import root)
+├─ _database/newsletter/ 뉴스레터 HTML/PDF 원본 (newsletter_YYYYMMDD.html 형식, import root)
+├─ _database/civil_aircraft/ 민간항공기 규격 정적 HTML 보고서
 ├─ storage/              Markdown / 썸네일 / 첨부 (앱 관리)
 ├─ docs/                 개발 계획, 런북, 설계 문서
 ├─ infra/                Dockerfile / compose 자원
@@ -263,7 +264,7 @@ Docker:
 docker compose up --build
 ```
 
-`git worktree` 환경에서 `.venv` / `node_modules` / `backend/data` / `Newsletter/output` 가 비어 보이는 케이스 등 운영자 주의사항은 [`docs/runbook/local-dev.md`](docs/runbook/local-dev.md) 에 정리되어 있습니다.
+`git worktree` 환경에서 `.venv` / `node_modules` / `backend/data` / `_database/newsletter` 가 비어 보이는 케이스 등 운영자 주의사항은 [`docs/runbook/local-dev.md`](docs/runbook/local-dev.md) 에 정리되어 있습니다.
 
 ---
 
@@ -281,7 +282,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.1.1 기준 backend `pytest tests` 결과 **96 passed** (실패 0), frontend Vitest **77 passed**. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.2.0 기준 backend `pytest tests` 결과 **99 passed** (실패 0), frontend Vitest **80 passed**. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10/11 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 
@@ -290,7 +291,7 @@ npm run build
 - 운영 모드는 `APP_ENV` 로 4 가지 — `development` (개발자 로컬), `test` (pytest 픽스처), `closed_network` (폐쇄망 HTTP, secret 강도 검증 ON / secure cookie OFF), `production` (인터넷 노출 HTTPS, 둘 다 ON). `closed_network` 와 `production` 은 `change-me` 또는 짧은 secret 을 부팅 시 거부합니다.
 - HTTPS 종단을 두면 `production` 에서 `secure cookie` 가 자동 활성화됩니다. HTTP-only 폐쇄망은 `closed_network` 로 둬야 쿠키가 살아 있으면서 검증도 켜집니다.
 - **1.0.22+ 기본이 LAN** 이라 backend / frontend 를 `0.0.0.0` 으로 노출합니다(이 PC 의 LAN IP 자동 감지). **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. LAN 노출을 원치 않으면 `--local` 로 localhost 전용 실행이 가능합니다. 다른 PC 접속은 `scripts\allow_lan_firewall.cmd`(관리자, 로컬 서브넷 한정)로 허용하고, Windows 방화벽에서 `18437` / `29501` 두 포트의 LAN **외부** 차단 규칙을 함께 두세요. 인터넷 노출 production 으로 사용 금지.
-- `Newsletter/output` 와 `storage/` 는 운영 PC에 한정해 두고, 백업·접근 권한은 사내 정책에 맞춰 분리하세요.
+- `_database/newsletter` 와 `storage/` 는 운영 PC에 한정해 두고, 백업·접근 권한은 사내 정책에 맞춰 분리하세요.
 - 관리자 비밀번호 노출이 의심되면 `setup.bat` 또는 `setup_offline.bat` 을 다시 실행하세요. 새 랜덤 값으로 교체되며 기존 `.env` 는 `.bak` 로 자동 백업됩니다.
 - 관리자 인증은 `/admin/*` 모든 mutation/sync 엔드포인트의 신뢰 경계입니다. 정책 배경: [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md)
 
@@ -318,7 +319,7 @@ npm run build
 - AeroOne 은 사내 폐쇄망 운영을 일차 목적으로 하는 운영 소프트웨어입니다. 외부 환경에 그대로 노출하기 전에는 최소한 다음을 점검하세요.
   - `APP_ENV=production` 강제와 secret/비밀번호 정책
   - HTTPS 종단과 `secure cookie` 보장
-  - `Newsletter/output` 와 `storage/` 의 접근 권한
+  - `_database/newsletter` 와 `storage/` 의 접근 권한
   - CORS / 리버스 프록시 / 방화벽 구성
 - 커밋 메시지는 한국어 제목 + 한국어 본문 + Lore trailer 규칙을 따릅니다. 자세한 규칙: [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - 라이선스는 [`LICENSE`](LICENSE) (All Rights Reserved) — 사내 사용을 일차 목적으로 합니다. 외부 사용·재배포·라이선스 예외 / 보안 신고는 LICENSE 의 연락처로 직접 연락하세요.

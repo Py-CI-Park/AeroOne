@@ -110,7 +110,7 @@ offline_package.bat      ─┘──→ ZIP 복사 ──→  압축 해제
 6. (Python/Node 부재 시) `offline_assets\installers\python-*.exe`, `node-*.msi` 먼저 실행
 7. `setup_offline.bat` — 사전 점검 통과 후 자동 설치
 8. `start_offline.bat` — 두 포트 준비 시 브라우저 자동 오픈
-9. 신규 발행 시 `Newsletter\output\` 에 파일 추가 → 관리자 페이지 **Import / Sync** 클릭
+9. 신규 발행 시 `_database\newsletter\` 에 파일 추가 → 관리자 페이지 **Import / Sync** 클릭
 
 ### 5.1 9단계 진행 체크리스트 (실 배포 추적용)
 
@@ -310,7 +310,7 @@ python -m pytest tests -q
 | 시점 | 명령 / 절차 |
 |---|---|
 | PC 부팅 후 | `start_offline.bat` (LAN 모드면 `--allow-host=<host>` 또는 `AEROONE_ALLOW_HOST` 유지) |
-| 신규 발행 추가 | `Newsletter\output\` 에 HTML/PDF 복사 → `/newsletters` 새로고침 시 자동 반영 (서버 재시작 불필요). 즉시 강제는 관리자 페이지 **Import / Sync** |
+| 신규 발행 추가 | `_database\newsletter\` 에 HTML/PDF 복사 (`newsletter_YYYYMMDD.html` 형식) → `/newsletters` 새로고침 시 자동 반영 (서버 재시작 불필요). 즉시 강제는 관리자 페이지 **Import / Sync** |
 | 메타데이터 수정 | 관리자 화면의 **편집** 버튼 (제목·요약·카테고리·태그·활성 여부·썸네일) |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
 | 비밀번호 교체 | `setup_offline.bat` 재실행 → `backend\.env` 의 `ADMIN_PASSWORD` 재확인. 기존 `.env` 는 `.bak` 자동 백업 |
@@ -326,12 +326,13 @@ python -m pytest tests -q
 | `backend\data\aeroone.db` | 메타데이터 + 사용자 + 카테고리/태그 | 매일 |
 | `storage\markdown\` | 운영자가 직접 작성한 Markdown 본문 | Markdown 신규/수정 시 |
 | `storage\thumbnails\` | 업로드된 썸네일 | 썸네일 업로드 시 |
-| `Newsletter\output\` | 발행 원본 HTML/PDF | 신규 발행 시 |
+| `_database\newsletter\` | 뉴스레터 발행 원본 HTML/PDF | 신규 발행 시 |
+| `_database\civil_aircraft\` | 민간항공기 규격 정적 HTML 보고서 (데이터 투입 위치) | 보고서 갱신 시 |
 
 ```cmd
 xcopy /Y /E /I backend\data D:\backup\AeroOne\data
 xcopy /Y /E /I storage D:\backup\AeroOne\storage
-xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
+xcopy /Y /E /I _database\newsletter D:\backup\AeroOne\_database\newsletter
 ```
 
 ### 10.2 복원
@@ -407,7 +408,7 @@ xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
 | LAN 모드에서 같은 PC 로 들어갔는데 로그인 후 빈 화면 | `localhost` ↔ `<host>` 쿠키 격리 | `http://<host>:29501/` 로 접속 (`start_offline.bat` 자동 오픈 URL 사용) |
 | LAN 내 다른 PC 에서 접근 불가 | `--local` 로 실행했거나 방화벽 인바운드 차단 (1.0.22+ 기본은 LAN) | `--local` 없이 실행(기본 LAN, IP 자동 감지) 또는 `--allow-host=<host>` 로 고정 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 관리자 실행 (`--remove` 로 원복) |
 | `start_offline.bat` 가 브라우저를 안 엶 | frontend 빌드 미완료 / `.next` 누락 | `setup_offline.bat` 재실행 (`npm run build` 까지) |
-| `Newsletter/output` 추가했는데 목록에 안 보임 | 페이지를 새로고침하지 않음 (공개 읽기 시 자동 동기화됨) | `/newsletters` 새로고침으로 자동 반영. 즉시 강제는 관리자 페이지 **Import / Sync** |
+| `_database/newsletter` 에 파일 추가했는데 목록에 안 보임 | 페이지를 새로고침하지 않음 (공개 읽기 시 자동 동기화됨) | `/newsletters` 새로고침으로 자동 반영. 즉시 강제는 관리자 페이지 **Import / Sync** |
 
 ### FAQ
 

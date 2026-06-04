@@ -15,6 +15,14 @@ const MODULES = [
     active: true,
   },
   {
+    id: 'civil-aircraft',
+    title: 'Civil Aircraft Spec Catalog',
+    description: 'Commercial aircraft specs & market competition analysis.',
+    href: '/reports/civil-aircraft',
+    badge: 'Active',
+    active: true,
+  },
+  {
     id: 'announcement',
     title: 'Announcement',
     description: 'Company-wide announcements module.',
@@ -50,8 +58,18 @@ export default async function HomePage({
   const params = await searchParams;
   const theme = await getAppTheme(params.theme);
 
+  // 카운트는 MODULES 에서 파생 — 카드를 늘려도 상단 요약이 자동으로 맞는다.
+  const activeCount = MODULES.filter((module) => module.active).length;
+  const comingCount = MODULES.length - activeCount;
+
   return (
-    <AppShell title="Dashboard" theme={theme} themePath="/" active="dashboard" titleMeta="1 active · 3 coming soon">
+    <AppShell
+      title="Dashboard"
+      theme={theme}
+      themePath="/"
+      active="dashboard"
+      titleMeta={`${activeCount} active · ${comingCount} coming soon`}
+    >
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {MODULES.map((module) => (
           <ServiceCard

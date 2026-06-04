@@ -264,7 +264,10 @@ def test_setup_executes_full_flow_in_stub_repo(tmp_path: Path) -> None:
     assert "ADMIN_PASSWORD=change-me" not in backend_env
     assert re.search(r"^JWT_SECRET_KEY=.{32,}$", backend_env, re.MULTILINE)
     assert re.search(r"^ADMIN_PASSWORD=.{24,}$", backend_env, re.MULTILINE)
-    assert (repo_root / "Newsletter" / "output").is_dir()
+    assert (repo_root / "_database" / "newsletter").is_dir()
+    assert (repo_root / "_database" / "civil_aircraft").is_dir()
+    assert "/_database/newsletter" in backend_env
+    assert "CIVIL_AIRCRAFT_ROOT=" in backend_env and "/_database/civil_aircraft" in backend_env
 
     log_lines = log_file.read_text(encoding="utf-8").splitlines()
     assert any(line.startswith("pip.bat install -r requirements-dev.txt") for line in log_lines)

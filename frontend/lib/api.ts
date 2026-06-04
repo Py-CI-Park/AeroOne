@@ -86,6 +86,16 @@ export async function fetchNewsletterAssetContent(path: string) {
   });
 }
 
+export async function fetchCivilAircraftReport() {
+  // 민간 항공기 종합 분석 — 달력/DB 없이 _database/civil_aircraft 의 단일 HTML 을 서버에서
+  // 받아 그대로 렌더한다. 보고서가 없으면 백엔드가 404 → 호출부(page)에서 catch 해 안내한다.
+  return loggedServerFetchJson<{ asset_type: 'html'; content_html: string }>({
+    label: 'reports.civil-aircraft',
+    baseUrl: getServerApiBase(),
+    path: '/api/v1/reports/civil-aircraft/content/html',
+  });
+}
+
 export async function getPublicNewsletters(): Promise<{ items: NewsletterItem[] }> {
   return { items: await fetchNewsletters() };
 }

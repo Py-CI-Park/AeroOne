@@ -43,6 +43,20 @@ test('removes the home hero copy while keeping the Newsletter link and theme sel
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
 });
 
+test('adds an active Civil Aircraft Spec Catalog card linking to the report page', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const reportLink = within(main).getByRole('link', { name: /Civil Aircraft Spec Catalog/i });
+
+  expect(reportLink).toHaveAttribute('href', '/reports/civil-aircraft');
+  expect(reportLink).toHaveTextContent('Active');
+  expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
+
+  // 상단 요약 카운트는 MODULES 에서 파생 — 활성 카드가 2개로 갱신된다.
+  expect(screen.getByText('2 active · 3 coming soon')).toBeInTheDocument();
+});
+
 test('home page uses dark theme from cookie', async () => {
   cookieThemeMock.mockReturnValue('dark');
 

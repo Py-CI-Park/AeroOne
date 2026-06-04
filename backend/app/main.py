@@ -14,6 +14,7 @@ from app.modules.newsletter.api.public import router as public_router
 from app.modules.newsletter.services.newsletter_autosync_service import AutoSyncState
 from app.modules.read_tracking.api.admin import router as read_events_admin_router
 from app.modules.read_tracking.api.public import router as read_beacon_router
+from app.modules.reports.api.public import router as reports_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -25,7 +26,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db = database
     # 공개 읽기 경로의 지연 자동 동기화 상태(프로세스 1개 공유). 운영자가
-    # Newsletter/output 에 파일을 넣으면 서버 재시작 없이 다음 페이지 로드에서 반영된다.
+    # _database/newsletter 에 파일을 넣으면 서버 재시작 없이 다음 페이지 로드에서 반영된다.
     app.state.autosync_state = AutoSyncState()
     app.add_middleware(
         CORSMiddleware,
@@ -60,6 +61,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 읽음추적: 공개 비콘(POST /newsletters/{id}/read)과 관리자 조회/purge(/admin/read-events).
     app.include_router(read_beacon_router, prefix='/api/v1/newsletters')
     app.include_router(read_events_admin_router, prefix='/api/v1/admin')
+    # 정적 보고서(민간 항공기 종합 분석 등) — DB/달력 없이 _database/civil_aircraft 의 HTML 을 sanitize 해 제공.
+    app.include_router(reports_router, prefix='/api/v1/reports')
     return app
 
 

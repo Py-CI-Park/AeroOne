@@ -45,7 +45,7 @@
 
 ## 3. 단계별 변경 보고서 (`docs/reports/`)
 
-폐쇄망 운영 보강 4단계의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
+폐쇄망 운영 보강 4단계 + 기능 모듈 2건(읽음추적·민간 항공기 보고서)의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
 
 | 단계 | 보고서 | 핵심 결과 | commit |
 |---|---|---|---|
@@ -53,6 +53,8 @@
 | 단계 7 | [`reports/phase-7-lan-mode.md`](reports/phase-7-lan-mode.md) | `--allow-host=<host>` 옵션으로 LAN 5자리 일괄 동기화 | `7a6879e` |
 | 단계 8 | [`reports/phase-8-offline-simulation.md`](reports/phase-8-offline-simulation.md) | dry-run 3종 + 라이브 5단계 + 실 PC 플레이북 | `d2cec35` |
 | 단계 9 | [`reports/phase-9-docstring.md`](reports/phase-9-docstring.md) | `ensure_db_state.py` 종료 코드 docstring + 회귀 테스트 7건 | `2e69b4b` |
+| 단계 10 | [`reports/phase-10-read-tracking.md`](reports/phase-10-read-tracking.md) | IP 기반 읽음추적(열람 횟수) 모듈 — minor 1.1.0 | `2ec9016` |
+| 단계 11 | [`reports/phase-11-civil-aircraft-report.md`](reports/phase-11-civil-aircraft-report.md) | 민간 항공기 보고서 모듈 + 콘텐츠 폴더 `_database` 재편 — minor 1.2.0 | `9898203` |
 
 ---
 
@@ -95,9 +97,10 @@
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
 | 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트(`frontend/app/theme/route.ts`)가 쿠키 설정 후 **상대 경로**로 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>`. **1.1.1**: `/theme` 리다이렉트는 `request.url` 의 origin 대신 origin 없는 상대 Location 을 쓴다 — LAN 모드(`next start -H 0.0.0.0`)에서 origin 이 `http://0.0.0.0:29501` 로 잡혀 브라우저가 접속 불가 주소로 튕기던 테마 토글 연결 종료 버그를 회피 |
 | 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |
-| 출력 폴더 자동 동기화 | `backend/app/modules/newsletter/services/newsletter_autosync_service.py` + `backend/app/modules/newsletter/api/public.py` (`auto_sync_newsletters` 의존성) | 공개 읽기 요청 시 `Newsletter/output` 시그니처(파일명+크기+mtime) 변화를 감지해 변경 시에만 `sync()`. 수동 Sync 엔드포인트(`api/imports.py`)도 베이스라인 시그니처를 갱신해 직후 읽기가 관리자 메타데이터 편집을 덮어쓰지 않게 함 |
+| 출력 폴더 자동 동기화 | `backend/app/modules/newsletter/services/newsletter_autosync_service.py` + `backend/app/modules/newsletter/api/public.py` (`auto_sync_newsletters` 의존성) | 공개 읽기 요청 시 `_database/newsletter` 시그니처(파일명+크기+mtime) 변화를 감지해 변경 시에만 `sync()`. 수동 Sync 엔드포인트(`api/imports.py`)도 베이스라인 시그니처를 갱신해 직후 읽기가 관리자 메타데이터 편집을 덮어쓰지 않게 함 |
 | LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
-| 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일 |
+| 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일. 대시보드에 민간항공기 규격 카탈로그 카드(활성)도 포함 |
+| 민간항공기 규격 보고서 | `backend/app/modules/reports/api/public.py` (`GET /api/v1/reports/civil-aircraft/content/html`, `HtmlRenderService` 재사용) + `frontend/app/reports/civil-aircraft/page.tsx` + `frontend/components/reports/civil-aircraft-report.tsx` | `_database/civil_aircraft` 의 단일 HTML 보고서를 달력 없이 HtmlViewer 로 렌더. sanitize·CSP·sandbox iframe 은 뉴스레터와 동일 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 | 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
 
@@ -105,7 +108,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 96건 PASS (읽음추적 도입 기준, backend pytest). 프론트엔드 Vitest 는 77건 PASS (30 파일).
+총 99건 PASS (민간 항공기 보고서 도입 기준, backend pytest). 프론트엔드 Vitest 는 80건 PASS (31 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -119,11 +122,12 @@
 | `backend/tests/integration/test_newsletter_autosync.py` | 2 | 새 output 파일이 관리자 Sync 없이 달력 / 최신글에 반영 |
 | `backend/tests/unit/read_tracking/test_read_event_repository.py` | 6 | record_read 30분 디바운스 upsert / 별도 IP 별도 행 / summarize / purge |
 | `backend/tests/integration/test_read_tracking_api.py` | 7 | 공개 비콘 200·404(행 미생성) / 관리자 read-events 401·200 / purge 401·403(무CSRF)·삭제 |
+| `backend/tests/integration/test_reports_api.py` | 3 | 민간 항공기 보고서 200·sanitize·CSP / 404 / `_debug` 제외 |
 | 그 외 unit / integration | 28 | 인증 API, 뉴스레터 public/admin/imports/content API, seed 등 |
 
-프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1).
+프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 2), `home-page.test.tsx`(보고서 카드 1).
 
-회귀 1건이라도 발생하면 §3의 단계 보고서 4종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+회귀 1건이라도 발생하면 §3의 단계 보고서 6종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 
@@ -137,7 +141,8 @@
 | `.omx/` | 옛 OMC 런타임 상태 | NO |
 | `dist/` | 패키징 산출물 (`AeroOne-offline-*.zip`) | NO |
 | `offline_installers/*` | 폐쇄망 인스톨러 (Python EXE / Node MSI) | NO (단 `README.md` 만 예외) |
-| `Newsletter/output/` | 발행 원본 HTML/PDF | NO (정책상 비공개) |
+| `_database/newsletter/` | 뉴스레터 발행 원본 HTML/PDF (`newsletter_YYYYMMDD.html`) | NO (정책상 비공개) |
+| `_database/civil_aircraft/` | 민간항공기 규격 정적 HTML 보고서 | NO (정책상 비공개) |
 | `storage/` | 운영 storage (썸네일·markdown·첨부) | NO |
 | `backend/data/aeroone.db` | 운영 DB | NO |
 

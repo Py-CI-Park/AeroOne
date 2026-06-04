@@ -35,7 +35,7 @@ def compute_signature(import_root: Path) -> DirectorySignature:
 class AutoSyncState:
     """프로세스 1개가 공유하는 자동 동기화 상태.
 
-    실행 중인 서버는 Newsletter/output 을 스스로 재스캔하지 않는다 — sync 는
+    실행 중인 서버는 _database/newsletter 를 스스로 재스캔하지 않는다 — sync 는
     seed(=setup_offline) 와 관리자 Sync 엔드포인트에서만 돌았다. 그래서 새 발행호가
     달력/목록/최신글에 뜨려면 setup 을 다시 돌려야 했다. 이 상태는 공개 읽기 요청이
     들어올 때마다 폴더의 싸구려 시그니처를 비교해 *바뀐 경우에만* sync 를 돌리도록

@@ -27,7 +27,7 @@ def get_newsletter_service(db: Session = Depends(get_db), settings: Settings = D
 
 
 def auto_sync_newsletters(request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> None:
-    # 공개 읽기 엔드포인트의 사전 의존성으로 붙여, Newsletter/output 이 바뀌었을 때만
+    # 공개 읽기 엔드포인트의 사전 의존성으로 붙여, _database/newsletter 이 바뀌었을 때만
     # 핸들러 본문의 DB 조회 전에 sync 를 돌린다. get_db 는 요청당 1세션을 캐시하므로
     # 이 sync 와 핸들러의 조회가 같은 세션을 공유하고, 요청 종료 시 함께 commit 된다.
     state = getattr(request.app.state, 'autosync_state', None)

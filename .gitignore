@@ -30,7 +30,7 @@ storage/attachments/
 # OMC runtime state
 .omc/
 
-Newsletter/output/
+_database/
 
 frontend/tsconfig.tsbuildinfo
 
