@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 2건(읽음추적·민간 항공기 보고서)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 6종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 3건(읽음추적·민간 항공기 보고서·문서 보관소)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 7종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -61,6 +61,14 @@
 - 무엇: `Newsletter/output` → `_database/newsletter` 이전(+디버그 41개 정리), `_database/civil_aircraft` 의 단일 HTML 보고서를 뉴스레터와 동일 sanitize 로 제공하는 `GET /api/v1/reports/civil-aircraft/content/html`, 달력 없는 `/reports/civil-aircraft` 페이지 + 대시보드 active 카드.
 - 코드: `backend/app/modules/reports/`, `backend/app/core/config.py`(`civil_aircraft_root`), `frontend/app/reports/civil-aircraft/`, `frontend/components/reports/`
 - 회귀 방지: `backend/tests/integration/test_reports_api.py` (3), `frontend/tests/app/civil-aircraft-report-page.test.tsx` (2), `home-page.test.tsx` 카드
+
+### 단계 12 — 문서(Document) 보관소 모듈
+
+- 파일: [`phase-12-document-module.md`](phase-12-document-module.md)
+- 분류: minor (`1.3.0`) — 신규 read-only 모듈. dev 브랜치 `1.3.0-dev`
+- 무엇: `_database/document` 의 HTML 을 `rglob` 로 재귀 수집해 폴더 트리로 목록화(`GET /api/v1/documents/list`)하고, 선택 1개를 뉴스레터와 동일 sanitize 로 제공(`GET /api/v1/documents/content/html?path=`, path-guard 404/400). 좌측 접을 수 있는 폴더 트리 + 우측 `HtmlViewer` 의 `/documents` 페이지 + 대시보드 active 카드 + 헤더 네비.
+- 코드: `backend/app/modules/documents/`, `backend/app/core/config.py`(`document_root`), `frontend/app/documents/`, `frontend/components/documents/`, `frontend/components/layout/app-shell.tsx`
+- 회귀 방지: `backend/tests/integration/test_documents_api.py` (5), `frontend/tests/app/documents-page.test.tsx` (3), `frontend/tests/components/documents-workspace.test.tsx` (4), `home-page.test.tsx` 카드/카운트
 
 ---
 
