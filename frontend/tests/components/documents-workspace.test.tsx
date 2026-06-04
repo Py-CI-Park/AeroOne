@@ -84,3 +84,33 @@ test('collapsing a folder hides its documents', async () => {
   // 루트 문서는 폴더 접힘과 무관하게 그대로 보인다.
   expect(screen.getByTestId('doc-item-회사소개.html')).toBeInTheDocument();
 });
+
+test('collapsing the sidebar hides the tree and shows a top selector', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchContentMock).toHaveBeenCalled());
+
+  // 기본은 좌측 트리가 보이고 상단 셀렉트는 없다.
+  expect(screen.getByTestId('documents-tree')).toBeInTheDocument();
+  expect(screen.queryByTestId('documents-select')).not.toBeInTheDocument();
+
+  // 접으면 트리가 사라지고 상단 셀렉트가 나타난다(뷰어가 전체 폭).
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  expect(screen.queryByTestId('documents-tree')).not.toBeInTheDocument();
+  expect(screen.getByTestId('documents-select')).toBeInTheDocument();
+
+  // 다시 펼치면 트리 복귀.
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  expect(screen.getByTestId('documents-tree')).toBeInTheDocument();
+  expect(screen.queryByTestId('documents-select')).not.toBeInTheDocument();
+});
+
+test('selecting from the top selector loads that document', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchContentMock).toHaveBeenCalledWith('회사소개.html'));
+
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  fireEvent.change(screen.getByTestId('documents-select'), { target: { value: '항공/엔진.html' } });
+
+  await waitFor(() => expect(fetchContentMock).toHaveBeenCalledWith('항공/엔진.html'));
+  await waitFor(() => expect(screen.getByTestId('doc-html')).toHaveTextContent('<p>항공/엔진.html</p>'));
+});
