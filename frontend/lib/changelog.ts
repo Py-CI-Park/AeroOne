@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1.1',
+    date: '2026-06-04',
+    items: [
+      '다크/라이트 테마 전환 버튼이 LAN 접속에서 0.0.0.0 주소로 이동해 화면 연결이 끊기던 문제 수정 — 이제 접속한 주소(localhost·LAN IP) 그대로 테마가 전환됩니다.',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-06-03',
     items: [

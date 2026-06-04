@@ -60,7 +60,7 @@
 
 | 디렉토리 | 내용 | 개수 |
 |---|---|---|
-| [`superpowers/plans/`](superpowers/plans/) | 기능별 구현 계획 (Tier-0 OMC superpowers 형식) | 13건 |
+| [`superpowers/plans/`](superpowers/plans/) | 기능별 구현 계획 (Tier-0 OMC superpowers 형식) | 14건 |
 | [`superpowers/specs/`](superpowers/specs/) | 기능별 설계 명세 (plan 과 1:1 매칭) | 14건 |
 | [`dev_plan/20260327_newsletter_platform_mvp.md`](dev_plan/20260327_newsletter_platform_mvp.md) | 2026-03-27 작성 MVP 개발 계획 (범위·완료 기준·리스크) | 299줄 |
 | [`../design-handoff/`](../design-handoff/) | **UI/UX 재디자인 요청용 핸드오프 패키지** (브리프 / 여정 / 화면 인벤토리 / 제약 + 추천 프롬프트) | 6건 |
@@ -93,7 +93,7 @@
 | 폐쇄망 LAN 옵션 / 기본 바인딩 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | **1.0.22+ 기본 = LAN**: 옵션 없으면 `ALLOW_HOST=auto` → `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(미감지 시 loopback 폴백, 0.0.0.0 바인딩). `--local` 로 loopback 전용, `--allow-host=<IP>` 로 호스트 고정, `AEROONE_ALLOW_HOST` env 도 인식 |
 | 패키징 제외 목록 | `offline_package.bat:34` | robocopy `/XD` 인자 |
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
-| 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트가 쿠키 설정 후 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>` |
+| 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트(`frontend/app/theme/route.ts`)가 쿠키 설정 후 **상대 경로**로 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>`. **1.1.1**: `/theme` 리다이렉트는 `request.url` 의 origin 대신 origin 없는 상대 Location 을 쓴다 — LAN 모드(`next start -H 0.0.0.0`)에서 origin 이 `http://0.0.0.0:29501` 로 잡혀 브라우저가 접속 불가 주소로 튕기던 테마 토글 연결 종료 버그를 회피 |
 | 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |
 | 출력 폴더 자동 동기화 | `backend/app/modules/newsletter/services/newsletter_autosync_service.py` + `backend/app/modules/newsletter/api/public.py` (`auto_sync_newsletters` 의존성) | 공개 읽기 요청 시 `Newsletter/output` 시그니처(파일명+크기+mtime) 변화를 감지해 변경 시에만 `sync()`. 수동 Sync 엔드포인트(`api/imports.py`)도 베이스라인 시그니처를 갱신해 직후 읽기가 관리자 메타데이터 편집을 덮어쓰지 않게 함 |
 | LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
