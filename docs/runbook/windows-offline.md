@@ -37,7 +37,7 @@ offline_package.bat    ─┘──→ ZIP 복사 ──→  압축 해제
 5. 폐쇄망 PC 에서 압축 해제 (권장 위치는 §4 참고)
 6. `setup_offline.bat` 실행 — 사전 점검 통과 후 자동 설치 진행
 7. `start_offline.bat` 실행 — 두 포트 준비 시 브라우저 자동 오픈
-8. 신규 발행 시 `Newsletter\output\` 에 파일 추가 후 관리자 페이지의 Import / Sync 버튼 클릭
+8. 신규 발행 시 `_database\newsletter\` 에 파일 추가 후 관리자 페이지의 Import / Sync 버튼 클릭
 
 ---
 
@@ -187,7 +187,7 @@ scripts\allow_lan_firewall.cmd --remove
 
 ### 6.2 seed 결과 확인
 
-`seed complete (external sync: created=N, updated=N, deactivated=N, skipped=N, issues=N)` 라인이 보이면 `Newsletter\output\` 의 HTML/PDF 가 DB 에 인덱싱된 것입니다. `import root not found` 가 보이면 폴더가 비어 있는 상태이며, 이후 `Newsletter\output\` 에 파일을 채우고 관리자 페이지의 Import / Sync 를 실행해야 합니다.
+`seed complete (external sync: created=N, updated=N, deactivated=N, skipped=N, issues=N)` 라인이 보이면 `_database\newsletter\` 의 HTML/PDF 가 DB 에 인덱싱된 것입니다. `import root not found` 가 보이면 폴더가 비어 있는 상태이며, 이후 `_database\newsletter\` 에 파일을 채우고 관리자 페이지의 Import / Sync 를 실행해야 합니다.
 
 ---
 
@@ -195,7 +195,7 @@ scripts\allow_lan_firewall.cmd --remove
 
 ### 7.1 신규 발행 추가
 
-1. 새 HTML / PDF 파일을 `Newsletter\output\` 에 복사
+1. 새 HTML / PDF 파일을 `_database\newsletter\` 에 복사 (파일명: `newsletter_YYYYMMDD.html`)
 2. `/newsletters` 페이지를 새로고침 — 공개 읽기 시 폴더 변경을 감지해 자동 동기화되므로 새 발행호가 바로 보입니다 (서버 재시작 불필요)
 3. (선택) 즉시 강제 동기화가 필요하면 관리자 (`http://localhost:29501/login`) 로그인 후 `관리자 뉴스레터 목록` 화면에서 **Import / Sync** 클릭
 4. 신규 행이 `활성` 상태로 추가되었는지 확인
@@ -226,12 +226,12 @@ type backend\.env | findstr ADMIN_PASSWORD
 | `backend\data\aeroone.db` | 메타데이터 + 사용자 + 카테고리/태그 | 매일 |
 | `storage\markdown\` | 운영자가 직접 작성한 Markdown 본문 | Markdown 신규/수정 시 |
 | `storage\thumbnails\` | 업로드된 썸네일 | 썸네일 업로드 시 |
-| `Newsletter\output\` | 발행 원본 HTML/PDF | 신규 발행 시 |
+| `_database\newsletter\` | 뉴스레터 발행 원본 HTML/PDF | 신규 발행 시 |
 
 ```cmd
 xcopy /Y /E /I backend\data D:\backup\AeroOne\data
 xcopy /Y /E /I storage D:\backup\AeroOne\storage
-xcopy /Y /E /I Newsletter\output D:\backup\AeroOne\Newsletter\output
+xcopy /Y /E /I _database\newsletter D:\backup\AeroOne\_database\newsletter
 ```
 
 ### 8.2 복원
@@ -305,7 +305,7 @@ curl -i -X POST -H "Content-Type: application/json" ^
 | LAN 모드에서 같은 PC 로 접속했는데 로그인 후 화면이 빈 채로 멈춤 | `localhost` ↔ `<host>` 쿠키 격리 | 페이지 주소를 `http://<host>:29501/` 로 통일. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하세요. |
 | 관리자 화면에 `Failed to fetch` | 로그인 후 admin_session 쿠키 미적용 | 로그인 직후 페이지 새로고침. 그래도 실패하면 `backend\.env` 의 `ADMIN_SESSION_COOKIE_NAME`/`CSRF_COOKIE_NAME` 과 `frontend\.env.local` 의 `NEXT_PUBLIC_CSRF_COOKIE_NAME` 이 일치하는지 확인 |
 | `start_offline.bat` 가 브라우저를 열지 않음 | frontend 빌드 미완료 또는 `.next` 누락 | `setup_offline.bat` 를 다시 실행해 `npm run build` 까지 완료 |
-| `Newsletter/output` 에 파일을 넣었는데 목록에 안 보임 | 페이지를 새로고침하지 않음 (공개 읽기 시 자동 동기화됨) | `/newsletters` 페이지를 새로고침하면 자동 반영. 즉시 강제하려면 관리자 페이지의 **Import / Sync** 버튼 클릭 |
+| `_database/newsletter` 에 파일을 넣었는데 목록에 안 보임 | 페이지를 새로고침하지 않음 (공개 읽기 시 자동 동기화됨) | `/newsletters` 페이지를 새로고침하면 자동 반영. 즉시 강제하려면 관리자 페이지의 **Import / Sync** 버튼 클릭 |
 
 ---
 

@@ -59,7 +59,8 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo ADMIN_USERNAME=admin
 >>"%BACKEND_ENV%" echo ADMIN_PASSWORD=%ADMIN_PASSWORD%
 >>"%BACKEND_ENV%" echo CSRF_COOKIE_NAME=csrf_token
->>"%BACKEND_ENV%" echo NEWSLETTER_IMPORT_ROOT_CONTAINER=%ROOT_FWD%/Newsletter/output
+>>"%BACKEND_ENV%" echo NEWSLETTER_IMPORT_ROOT_CONTAINER=%ROOT_FWD%/_database/newsletter
+>>"%BACKEND_ENV%" echo CIVIL_AIRCRAFT_ROOT=%ROOT_FWD%/_database/civil_aircraft
 >>"%BACKEND_ENV%" echo STORAGE_ROOT=%ROOT_FWD%/storage
 >>"%BACKEND_ENV%" echo THUMBNAILS_DIR_NAME=thumbnails
 >>"%BACKEND_ENV%" echo ATTACHMENTS_DIR_NAME=attachments
@@ -87,7 +88,8 @@ if not exist "%BACKEND_VENV%\Scripts\python.exe" (
   echo [INFO] 기존 backend .venv 재사용
 )
 if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
-if not exist "%ROOT%\Newsletter\output" mkdir "%ROOT%\Newsletter\output"
+if not exist "%ROOT%\_database\newsletter" mkdir "%ROOT%\_database\newsletter"
+if not exist "%ROOT%\_database\civil_aircraft" mkdir "%ROOT%\_database\civil_aircraft"
 
 set "CURRENT_STEP=BACKEND_SETUP"
 echo [5/7][BACKEND] 의존성 설치 / DB 준비 / seed

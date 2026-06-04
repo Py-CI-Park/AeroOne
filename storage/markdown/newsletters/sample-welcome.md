@@ -8,5 +8,5 @@
 - 향후 관리자 Markdown CRUD 확장 포인트 확보
 
 ## 메모
-- 현재 운영 실데이터는 `Newsletter/output` 의 HTML/PDF 파일입니다.
+- 현재 운영 실데이터는 `_database/newsletter` 의 HTML 파일입니다.
 - 이 파일은 MVP 구조 검증과 seed 데이터용으로 함께 제공됩니다.

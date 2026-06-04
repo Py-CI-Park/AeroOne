@@ -12,7 +12,7 @@ class HtmlRenderService:
         self.storage_service = storage_service
 
     def render(self, relative_path: str) -> str:
-        # 로컬 Newsletter/output 의 HTML 은 운영자 자신의 파이프라인(Newsletter_AI)
+        # 로컬 _database/newsletter 의 HTML 은 운영자 자신의 파이프라인(Newsletter_AI)
         # 산출물 = 신뢰 콘텐츠다. 최신 산출물은 <script> 로 본문(기사 카드)을
         # innerHTML 주입하는 JS 렌더 방식이라 인라인 스크립트/스타일/콘텐츠는
         # 그대로 보존한다. 다만 폐쇄망 순도를 위해 "외부로 자동 요청을 내보내는"

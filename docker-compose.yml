@@ -8,7 +8,8 @@ services:
     ports:
       - "${BACKEND_PORT:-18437}:18437"
     volumes:
-      - ${NEWSLETTER_IMPORT_ROOT_HOST:-./Newsletter/output}:${NEWSLETTER_IMPORT_ROOT_CONTAINER:-/mnt/import/newsletters}:ro
+      - ${NEWSLETTER_IMPORT_ROOT_HOST:-./_database/newsletter}:${NEWSLETTER_IMPORT_ROOT_CONTAINER:-/mnt/import/newsletters}:ro
+      - ${CIVIL_AIRCRAFT_ROOT_HOST:-./_database/civil_aircraft}:${CIVIL_AIRCRAFT_ROOT:-/mnt/civil_aircraft}:ro
       - ./storage:/app/storage
       - ./backend/data:/app/backend/data
     healthcheck:

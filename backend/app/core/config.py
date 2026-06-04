@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     admin_session_cookie_name: str = 'admin_session'
     admin_username: str = 'admin'
     admin_password: str = 'change-me'
-    newsletter_import_root_container: str = './Newsletter/output'
+    newsletter_import_root_container: str = './_database/newsletter'
+    civil_aircraft_root: str = './_database/civil_aircraft'
     storage_root: str = './storage'
     thumbnails_dir_name: str = 'thumbnails'
     attachments_dir_name: str = 'attachments'
@@ -39,6 +40,10 @@ class Settings(BaseSettings):
     @property
     def import_root(self) -> Path:
         return self._resolve_path(self.newsletter_import_root_container)
+
+    @property
+    def civil_aircraft_root_path(self) -> Path:
+        return self._resolve_path(self.civil_aircraft_root)
 
     @property
     def managed_storage_root(self) -> Path:

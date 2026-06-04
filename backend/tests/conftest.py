@@ -26,7 +26,9 @@ def _write_pdf(path: Path) -> None:
 def test_paths(tmp_path: Path) -> dict[str, Path]:
     import_root = tmp_path / 'import_root'
     storage_root = tmp_path / 'storage'
+    civil_aircraft_root = tmp_path / 'civil_aircraft'
     import_root.mkdir(parents=True)
+    civil_aircraft_root.mkdir(parents=True)
     (storage_root / 'markdown' / 'newsletters').mkdir(parents=True)
     (storage_root / 'thumbnails').mkdir(parents=True)
     (storage_root / 'attachments').mkdir(parents=True)
@@ -38,7 +40,7 @@ def test_paths(tmp_path: Path) -> dict[str, Path]:
     (import_root / 'Aerospace Daily News_20260206_debug.html').write_text('<html>debug</html>', encoding='utf-8')
     (storage_root / 'markdown' / 'newsletters' / 'sample-welcome.md').write_text('# Welcome\n\nSample markdown body.', encoding='utf-8')
     db_path = tmp_path / 'test.db'
-    return {'import_root': import_root, 'storage_root': storage_root, 'db_path': db_path}
+    return {'import_root': import_root, 'storage_root': storage_root, 'civil_aircraft_root': civil_aircraft_root, 'db_path': db_path}
 
 
 @pytest.fixture()
@@ -47,6 +49,7 @@ def settings(test_paths: dict[str, Path]) -> Settings:
         app_env='test',
         database_url=f"sqlite:///{test_paths['db_path']}",
         newsletter_import_root_container=str(test_paths['import_root']),
+        civil_aircraft_root=str(test_paths['civil_aircraft_root']),
         storage_root=str(test_paths['storage_root']),
         jwt_secret_key='test-secret',
         admin_username='admin',
@@ -61,6 +64,7 @@ def app(settings: Settings):
     os.environ['APP_ENV'] = settings.app_env
     os.environ['DATABASE_URL'] = settings.database_url
     os.environ['NEWSLETTER_IMPORT_ROOT_CONTAINER'] = str(settings.import_root)
+    os.environ['CIVIL_AIRCRAFT_ROOT'] = str(settings.civil_aircraft_root_path)
     os.environ['STORAGE_ROOT'] = str(settings.managed_storage_root)
     os.environ['JWT_SECRET_KEY'] = settings.jwt_secret_key
     os.environ['ADMIN_USERNAME'] = settings.admin_username
