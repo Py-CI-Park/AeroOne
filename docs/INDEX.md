@@ -45,7 +45,7 @@
 
 ## 3. 단계별 변경 보고서 (`docs/reports/`)
 
-폐쇄망 운영 보강 4단계의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
+폐쇄망 운영 보강 4단계 + 기능 모듈 2건(읽음추적·민간 항공기 보고서)의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
 
 | 단계 | 보고서 | 핵심 결과 | commit |
 |---|---|---|---|
@@ -53,6 +53,8 @@
 | 단계 7 | [`reports/phase-7-lan-mode.md`](reports/phase-7-lan-mode.md) | `--allow-host=<host>` 옵션으로 LAN 5자리 일괄 동기화 | `7a6879e` |
 | 단계 8 | [`reports/phase-8-offline-simulation.md`](reports/phase-8-offline-simulation.md) | dry-run 3종 + 라이브 5단계 + 실 PC 플레이북 | `d2cec35` |
 | 단계 9 | [`reports/phase-9-docstring.md`](reports/phase-9-docstring.md) | `ensure_db_state.py` 종료 코드 docstring + 회귀 테스트 7건 | `2e69b4b` |
+| 단계 10 | [`reports/phase-10-read-tracking.md`](reports/phase-10-read-tracking.md) | IP 기반 읽음추적(열람 횟수) 모듈 — minor 1.1.0 | `2ec9016` |
+| 단계 11 | [`reports/phase-11-civil-aircraft-report.md`](reports/phase-11-civil-aircraft-report.md) | 민간 항공기 보고서 모듈 + 콘텐츠 폴더 `_database` 재편 — minor 1.2.0 | `9898203` |
 
 ---
 
@@ -106,7 +108,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 96건 PASS (읽음추적 도입 기준, backend pytest). 프론트엔드 Vitest 는 77건 PASS (30 파일).
+총 99건 PASS (민간 항공기 보고서 도입 기준, backend pytest). 프론트엔드 Vitest 는 80건 PASS (31 파일).
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -120,11 +122,12 @@
 | `backend/tests/integration/test_newsletter_autosync.py` | 2 | 새 output 파일이 관리자 Sync 없이 달력 / 최신글에 반영 |
 | `backend/tests/unit/read_tracking/test_read_event_repository.py` | 6 | record_read 30분 디바운스 upsert / 별도 IP 별도 행 / summarize / purge |
 | `backend/tests/integration/test_read_tracking_api.py` | 7 | 공개 비콘 200·404(행 미생성) / 관리자 read-events 401·200 / purge 401·403(무CSRF)·삭제 |
+| `backend/tests/integration/test_reports_api.py` | 3 | 민간 항공기 보고서 200·sanitize·CSP / 404 / `_debug` 제외 |
 | 그 외 unit / integration | 28 | 인증 API, 뉴스레터 public/admin/imports/content API, seed 등 |
 
-프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1).
+프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 2), `home-page.test.tsx`(보고서 카드 1).
 
-회귀 1건이라도 발생하면 §3의 단계 보고서 4종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+회귀 1건이라도 발생하면 §3의 단계 보고서 6종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

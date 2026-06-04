@@ -70,7 +70,7 @@
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (66 passed), frontend Vitest + Testing Library, Windows 실행 스모크 |
+| 검증 | backend pytest + httpx (99 passed), frontend Vitest + Testing Library, Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 
 ---
