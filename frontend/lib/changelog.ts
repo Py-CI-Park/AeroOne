@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.3.2',
+    date: '2026-06-05',
+    items: [
+      'Document(문서) 화면의 "목록 접기" 버튼을 더 눈에 잘 띄도록 강조했습니다 — 라이트·다크 테마 모두에서 또렷한 강조색 버튼으로 바뀌어 목록을 접고 펼치기가 쉬워졌습니다.',
+    ],
+  },
+  {
     version: '1.3.1',
     date: '2026-06-05',
     items: [
