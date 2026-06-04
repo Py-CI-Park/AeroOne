@@ -224,9 +224,9 @@ export function DocumentsWorkspace({ documents }: { documents: DocumentListItem[
           aria-expanded={sidebarOpen}
           aria-label={sidebarOpen ? '문서 목록 접기' : '문서 목록 펼치기'}
           onClick={() => setSidebarOpen((open) => !open)}
-          className="inline-flex items-center gap-1.5 rounded border border-line-subtle px-2.5 py-1.5 text-base text-ink-2 transition-colors hover:bg-surface-sunken"
+          className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-base font-medium text-accent-on shadow-sm transition-colors hover:bg-accent-hover"
         >
-          <Icon.list size={14} />
+          {sidebarOpen ? <Icon.chevL size={13} /> : <Icon.list size={14} />}
           {sidebarOpen ? '목록 접기' : '목록 펼치기'}
         </button>
 
