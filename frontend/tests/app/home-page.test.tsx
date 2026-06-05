@@ -53,15 +53,38 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(reportLink).toHaveTextContent('Active');
   expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
 
-  // 상단 요약 카운트는 MODULES 에서 파생 — Document 활성화로 활성 카드가 3개로 갱신된다.
-  expect(screen.getByText('3 active · 2 coming soon')).toBeInTheDocument();
+  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·Ladder 추가로 활성 5개 / coming 2개.
+  expect(screen.getByText('5 active · 2 coming soon')).toBeInTheDocument();
+});
+
+test('adds an active NSA card linking to /nsa', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const nsaLink = within(main).getByRole('link', { name: /NSA/i });
+
+  expect(nsaLink).toHaveAttribute('href', '/nsa');
+  expect(nsaLink).toHaveTextContent('Active');
+  expect(within(nsaLink).getByTestId('service-card-description')).toHaveTextContent(/Password-protected HTML documents/i);
+});
+
+test('adds an active Ladder card linking to /games/ladder', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const ladderLink = within(main).getByRole('link', { name: /Ladder/i });
+
+  expect(ladderLink).toHaveAttribute('href', '/games/ladder');
+  expect(ladderLink).toHaveTextContent('Active');
+  expect(within(ladderLink).getByTestId('service-card-description')).toHaveTextContent(/Coffee-bet ladder game/i);
 });
 
 test('adds an active Document card linking to the documents page', async () => {
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   const main = screen.getByRole('main');
-  const documentLink = within(main).getByRole('link', { name: /Document/i });
+  // Match by unique description text to avoid collision with the NSA card whose title also contains "Document".
+  const documentLink = within(main).getByRole('link', { name: /Browse HTML documents organized in folders/i });
 
   expect(documentLink).toHaveAttribute('href', '/documents');
   expect(documentLink).toHaveTextContent('Active');

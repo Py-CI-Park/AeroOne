@@ -3,13 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { DocumentsWorkspace } from '@/components/documents/documents-workspace';
 
-const { fetchContentMock } = vi.hoisted(() => ({
-  fetchContentMock: vi.fn(),
+const { fetchCollectionContentMock } = vi.hoisted(() => ({
+  fetchCollectionContentMock: vi.fn(),
 }));
 
 vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
-  return { ...actual, fetchDocumentContent: fetchContentMock };
+  return { ...actual, fetchCollectionContent: fetchCollectionContentMock };
 });
 
 // HtmlViewer 는 iframe + observer 라 단위 테스트에서는 단순 div 로 대체(선택 본문 주입만 확인).
@@ -28,89 +28,135 @@ const DOCS = [
 ];
 
 beforeEach(() => {
-  fetchContentMock.mockImplementation((path: string) =>
+  fetchCollectionContentMock.mockImplementation((collection: string, path: string) =>
     Promise.resolve({ asset_type: 'html', content_html: `<p>${path}</p>` }),
   );
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  fetchContentMock.mockReset();
+  fetchCollectionContentMock.mockReset();
 });
 
-test('renders folders and documents as a tree', async () => {
+test('default render: sidebar collapsed — tree hidden, select visible', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
 
-  // 폴더(항공) 토글 + 문서 버튼들이 모두 보인다(기본 펼침).
-  expect(screen.getByTestId('doc-folder-항공')).toBeInTheDocument();
-  expect(screen.getByTestId('doc-item-항공/상용기.html')).toBeInTheDocument();
-  expect(screen.getByTestId('doc-item-항공/엔진.html')).toBeInTheDocument();
-  expect(screen.getByTestId('doc-item-회사소개.html')).toBeInTheDocument();
+  // 기본 접힘: 좌측 트리 없음, 상단 셀렉트 있음.
+  expect(screen.queryByTestId('documents-tree')).not.toBeInTheDocument();
+  expect(screen.getByTestId('documents-select')).toBeInTheDocument();
 
-  // 자동 선택 effect 의 비동기 state 갱신을 act 안에서 흘려보낸다.
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalled());
-});
-
-test('auto-selects and loads the first document', async () => {
-  render(<DocumentsWorkspace documents={DOCS} />);
-
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalledWith('회사소개.html'));
+  // 첫 번째 문서 자동 선택 + 본문 로드 확인.
+  await waitFor(() =>
+    expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'),
+  );
   const viewer = await screen.findByTestId('doc-html');
   expect(viewer).toHaveTextContent('<p>회사소개.html</p>');
   expect(viewer).toHaveAttribute('data-title', '회사소개');
 });
 
-test('loads the document content when another item is selected', async () => {
+test('clicking sidebar toggle shows the tree; folders are collapsed by default', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
 
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalledWith('회사소개.html'));
+  // 토글 클릭 → 트리 표시.
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  expect(screen.getByTestId('documents-tree')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByTestId('doc-item-항공/상용기.html'));
+  // 폴더 버튼 자체는 보이지만(이름 표시), 하위 문서들은 기본 접힘이라 보이지 않는다.
+  expect(screen.getByTestId('doc-folder-항공')).toBeInTheDocument();
+  expect(screen.queryByTestId('doc-item-항공/상용기.html')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('doc-item-항공/엔진.html')).not.toBeInTheDocument();
 
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalledWith('항공/상용기.html'));
-  await waitFor(() => expect(screen.getByTestId('doc-html')).toHaveTextContent('<p>항공/상용기.html</p>'));
+  // 루트 문서는 폴더 없이 바로 보인다.
+  expect(screen.getByTestId('doc-item-회사소개.html')).toBeInTheDocument();
+});
+
+test('expanding a folder reveals its documents', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
+
+  // 트리 열기.
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+
+  // 폴더 접힘 상태 → 클릭으로 펼침.
+  expect(screen.queryByTestId('doc-item-항공/상용기.html')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByTestId('doc-folder-항공'));
+  expect(screen.getByTestId('doc-item-항공/상용기.html')).toBeInTheDocument();
+  expect(screen.getByTestId('doc-item-항공/엔진.html')).toBeInTheDocument();
 });
 
 test('collapsing a folder hides its documents', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
 
-  // 자동 선택 effect 가 끝난 뒤 접기 동작을 검증(act 경고 방지).
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalled());
+  // 트리 열기 후 폴더 펼침.
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  fireEvent.click(screen.getByTestId('doc-folder-항공'));
   expect(screen.getByTestId('doc-item-항공/상용기.html')).toBeInTheDocument();
 
+  // 다시 접으면 하위 문서 숨김.
   fireEvent.click(screen.getByTestId('doc-folder-항공'));
-
   expect(screen.queryByTestId('doc-item-항공/상용기.html')).not.toBeInTheDocument();
-  // 루트 문서는 폴더 접힘과 무관하게 그대로 보인다.
+
+  // 루트 문서는 무관하게 보인다.
   expect(screen.getByTestId('doc-item-회사소개.html')).toBeInTheDocument();
 });
 
-test('collapsing the sidebar hides the tree and shows a top selector', async () => {
+test('loads a different document when clicked in the tree', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalled());
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));
 
-  // 기본은 좌측 트리가 보이고 상단 셀렉트는 없다.
-  expect(screen.getByTestId('documents-tree')).toBeInTheDocument();
-  expect(screen.queryByTestId('documents-select')).not.toBeInTheDocument();
-
-  // 접으면 트리가 사라지고 상단 셀렉트가 나타난다(뷰어가 전체 폭).
+  // 트리 열고 폴더 펼쳐서 아이템 클릭.
   fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
-  expect(screen.queryByTestId('documents-tree')).not.toBeInTheDocument();
-  expect(screen.getByTestId('documents-select')).toBeInTheDocument();
+  fireEvent.click(screen.getByTestId('doc-folder-항공'));
+  fireEvent.click(screen.getByTestId('doc-item-항공/상용기.html'));
 
-  // 다시 펼치면 트리 복귀.
-  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
-  expect(screen.getByTestId('documents-tree')).toBeInTheDocument();
-  expect(screen.queryByTestId('documents-select')).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '항공/상용기.html'),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId('doc-html')).toHaveTextContent('<p>항공/상용기.html</p>'),
+  );
 });
 
 test('selecting from the top selector loads that document', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalledWith('회사소개.html'));
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));
 
-  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  // 기본 접힘이므로 셀렉트가 이미 보임.
   fireEvent.change(screen.getByTestId('documents-select'), { target: { value: '항공/엔진.html' } });
 
-  await waitFor(() => expect(fetchContentMock).toHaveBeenCalledWith('항공/엔진.html'));
-  await waitFor(() => expect(screen.getByTestId('doc-html')).toHaveTextContent('<p>항공/엔진.html</p>'));
+  await waitFor(() =>
+    expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '항공/엔진.html'),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId('doc-html')).toHaveTextContent('<p>항공/엔진.html</p>'),
+  );
+});
+
+test('collection prop is forwarded to fetchCollectionContent', async () => {
+  render(<DocumentsWorkspace documents={DOCS} collection="civil" />);
+
+  await waitFor(() =>
+    expect(fetchCollectionContentMock).toHaveBeenCalledWith('civil', '회사소개.html'),
+  );
+});
+
+test('expanding sidebar and re-collapsing restores select', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
+
+  // 기본: 셀렉트 보임, 트리 없음.
+  expect(screen.getByTestId('documents-select')).toBeInTheDocument();
+  expect(screen.queryByTestId('documents-tree')).not.toBeInTheDocument();
+
+  // 펼치면 트리, 셀렉트 숨김.
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  expect(screen.getByTestId('documents-tree')).toBeInTheDocument();
+  expect(screen.queryByTestId('documents-select')).not.toBeInTheDocument();
+
+  // 다시 접으면 원래대로.
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  expect(screen.queryByTestId('documents-tree')).not.toBeInTheDocument();
+  expect(screen.getByTestId('documents-select')).toBeInTheDocument();
 });

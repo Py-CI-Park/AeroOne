@@ -1,6 +1,9 @@
 import { vi } from 'vitest';
 
 import {
+  fetchCollectionContent,
+  fetchCollectionList,
+  fetchDocumentContent,
   fetchLatestNewsletter,
   getNewsletterProxyPath,
   getPublicNewsletters,
@@ -56,4 +59,55 @@ test('builds frontend newsletter proxy paths from backend asset urls', () => {
   expect(getNewsletterProxyPath('/api/v1/newsletters/9/content/html')).toBe(
     '/api/frontend/newsletters/9/content/html',
   );
+});
+
+// C1 회귀 가드 — 원버그(외부 PC에서 localhost 직접호출로 Failed to fetch)를 잡는 단언.
+// fetchCollectionContent 가 same-origin 상대경로를 쓰고 localhost:18437 를 붙이지 않는지 확인.
+test('fetchCollectionContent calls same-origin relative url, never localhost', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ asset_type: 'html', content_html: '<p>ok</p>' }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  await fetchCollectionContent('document', 'sub/doc.html');
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  const calledUrl: string = fetchMock.mock.calls[0][0] as string;
+  expect(calledUrl).toMatch(/^\/api\/frontend\/collections\/document\/content\/html\?path=/);
+  expect(calledUrl).not.toContain('localhost:18437');
+  expect(calledUrl).not.toContain('http://');
+});
+
+test('fetchCollectionList calls same-origin relative url for nsa, never localhost', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ documents: [] }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  await fetchCollectionList('nsa');
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  const calledUrl: string = fetchMock.mock.calls[0][0] as string;
+  expect(calledUrl).toBe('/api/frontend/collections/nsa/list');
+  expect(calledUrl).not.toContain('localhost');
+  expect(calledUrl).not.toContain('http://');
+});
+
+test('fetchDocumentContent delegates to collection content proxy path', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ asset_type: 'html', content_html: '<p>doc</p>' }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  await fetchDocumentContent('x.html');
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  const calledUrl: string = fetchMock.mock.calls[0][0] as string;
+  expect(calledUrl).toMatch(/^\/api\/frontend\/collections\/document\/content\/html\?path=x\.html/);
 });

@@ -48,6 +48,22 @@ const MODULES = [
     badge: 'Active',
     active: true,
   },
+  {
+    id: 'nsa',
+    title: 'NSA',
+    description: 'Password-protected HTML documents.',
+    href: '/nsa',
+    badge: 'Active',
+    active: true,
+  },
+  {
+    id: 'ladder',
+    title: 'Ladder',
+    description: 'Coffee-bet ladder game (사다리타기).',
+    href: '/games/ladder',
+    badge: 'Active',
+    active: true,
+  },
 ] as const;
 
 export default async function HomePage({

@@ -206,9 +206,24 @@ scripts\allow_lan_firewall.cmd --remove
 - 썸네일: 편집 화면에서 업로드
 - Markdown 신규 작성: 화면 우측 상단의 `새 Markdown` 버튼
 
-### 7.3 관리자 비밀번호 교체
+### 7.3 Civil 카탈로그·NSA 문서 추가
 
-`setup_offline.bat` 또는 `setup.bat` 을 다시 실행하면 새 랜덤 값으로 교체됩니다. 기존 `.env` 는 `.bak` 로 자동 백업됩니다.
+**Civil 카탈로그** — `_database\civil_aircraft\` 에 HTML 파일을 복사합니다. 하위 폴더로 분류하면 Document 와 동일한 폴더 트리 목록 UI 로 표시됩니다. `/reports/civil-aircraft` 를 새로고침하면 바로 반영됩니다 (서버 재시작 불필요).
+
+```
+_database\
+  civil_aircraft\
+    상용기\B737.html
+    군용기\F15.html
+```
+
+**NSA 문서** — `_database\nsa\` 에 HTML 파일을 복사합니다. `/nsa` 페이지에서 비밀번호(`0000`)를 입력해야 목록과 본문이 표시됩니다.
+
+> **보안 주의**: NSA 비밀번호는 클라이언트 가림막이며 실 인증이 아닙니다. 백엔드는 폐쇄망 내 무인증입니다. **기밀·개인정보 등 민감 자료를 `_database\nsa\` 에 보관하지 마십시오.**
+
+### 7.4 관리자 비밀번호 교체
+
+`setup_offline.bat` 또는 `setup.bat` 을 다시 실행하면 새 랜덤 값으로 교체됩니다. 기존 `.env` 는 `.bak` 로 자동 백업됩니다. (이전 버전 문서에서 §7.3 으로 안내한 내용과 동일합니다.)
 
 ```cmd
 setup_offline.bat
@@ -227,11 +242,14 @@ type backend\.env | findstr ADMIN_PASSWORD
 | `storage\markdown\` | 운영자가 직접 작성한 Markdown 본문 | Markdown 신규/수정 시 |
 | `storage\thumbnails\` | 업로드된 썸네일 | 썸네일 업로드 시 |
 | `_database\newsletter\` | 뉴스레터 발행 원본 HTML/PDF | 신규 발행 시 |
+| `_database\civil_aircraft\` | 민간항공기 규격 HTML 카탈로그 | 파일 추가/갱신 시 |
+| `_database\document\` | 문서 보관소 HTML | 파일 추가/갱신 시 |
+| `_database\nsa\` | NSA 탭 문서 (민감 자료 보관 금지) | 파일 추가/갱신 시 |
 
 ```cmd
 xcopy /Y /E /I backend\data D:\backup\AeroOne\data
 xcopy /Y /E /I storage D:\backup\AeroOne\storage
-xcopy /Y /E /I _database\newsletter D:\backup\AeroOne\_database\newsletter
+xcopy /Y /E /I _database D:\backup\AeroOne\_database
 ```
 
 ### 8.2 복원
@@ -300,7 +318,8 @@ curl -i -X POST -H "Content-Type: application/json" ^
 | 같은 자리에서 `[ERROR] Node.js` | Node 미설치 또는 PATH 누락 | `offline_assets\installers\node-*.msi` 실행 후 재시작 |
 | 사전 점검은 통과하지만 wheelhouse 단계에서 실패 | wheel 파일 일부 누락 (온라인 PC 에서 transitive dep 누락) | 온라인 PC 에서 `offline_package.bat --dry-run` 으로 wheelhouse 재수집 후 재패키징 |
 | 포트 충돌 (`port 18437/29501 is already in use`) | 다른 프로세스가 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료, 또는 `.env` 의 포트 변경 (CORS_ORIGINS, NEXT_PUBLIC_API_BASE_URL 도 함께 수정) |
-| 페이지 로딩 후 `Failed to fetch` | 페이지 호스트와 API 호스트가 다름 (`127.0.0.1` vs `localhost` 쿠키 격리) | 브라우저 주소를 `http://localhost:29501/...` 로 통일 |
+| 페이지 로딩 후 `Failed to fetch` (뉴스레터·관리자) | 페이지 호스트와 API 호스트가 다름 (`127.0.0.1` vs `localhost` 쿠키 격리) | 브라우저 주소를 `http://localhost:29501/...` 로 통일 |
+| Document·Civil·NSA 본문이 외부 PC 에서 `Failed to fetch` | 1.4.0 이전 버전 — 클라이언트가 `localhost:18437` 직접 호출 | **1.4.0 이상에서 자동 해결** (same-origin 프록시 경유). 구버전이면 ZIP 을 1.4.0 으로 재배포 |
 | LAN 내 다른 PC 에서 접근 불가 | `127.0.0.1` 바인딩 (기본) 또는 Windows 방화벽 인바운드 차단 | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 로 LAN 모드 전환 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 실행해 18437/29501 인바운드를 허용 (`--remove` 로 원복). 자세한 동작은 §5.3 참고. |
 | LAN 모드에서 같은 PC 로 접속했는데 로그인 후 화면이 빈 채로 멈춤 | `localhost` ↔ `<host>` 쿠키 격리 | 페이지 주소를 `http://<host>:29501/` 로 통일. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하세요. |
 | 관리자 화면에 `Failed to fetch` | 로그인 후 admin_session 쿠키 미적용 | 로그인 직후 페이지 새로고침. 그래도 실패하면 `backend\.env` 의 `ADMIN_SESSION_COOKIE_NAME`/`CSRF_COOKIE_NAME` 과 `frontend\.env.local` 의 `NEXT_PUBLIC_CSRF_COOKIE_NAME` 이 일치하는지 확인 |

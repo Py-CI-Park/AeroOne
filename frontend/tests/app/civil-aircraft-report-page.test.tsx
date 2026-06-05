@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react';
 
 import CivilAircraftReportPage from '@/app/reports/civil-aircraft/page';
 
-const { cookieThemeMock, fetchReportMock } = vi.hoisted(() => ({
+const { cookieThemeMock, fetchListMock } = vi.hoisted(() => ({
   cookieThemeMock: vi.fn<() => string | undefined>(),
-  fetchReportMock: vi.fn(),
+  fetchListMock: vi.fn(),
 }));
 
 vi.mock('next/headers', () => ({
@@ -16,15 +16,13 @@ vi.mock('next/headers', () => ({
 
 vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
-  return { ...actual, fetchCivilAircraftReport: fetchReportMock };
+  return { ...actual, fetchCollectionListServer: fetchListMock };
 });
 
-// HtmlViewer 는 iframe + observer 라 단위 테스트에서는 단순 div 로 대체(렌더 위임만 확인).
-vi.mock('@/components/newsletter/html-viewer', () => ({
-  HtmlViewer: ({ title, html }: { title: string; html: string }) => (
-    <div data-testid="report-html" data-title={title}>
-      {html}
-    </div>
+// DocumentsWorkspace 는 fetch effect + iframe 이라, 페이지 테스트에서는 렌더 위임만 확인하는 단순 div 로 대체.
+vi.mock('@/components/documents/documents-workspace', () => ({
+  DocumentsWorkspace: ({ documents }: { documents: { path: string }[] }) => (
+    <div data-testid="documents-workspace-stub">{documents.map((d) => d.path).join(',')}</div>
   ),
 }));
 
@@ -36,29 +34,38 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
   cookieThemeMock.mockReset();
-  fetchReportMock.mockReset();
+  fetchListMock.mockReset();
 });
 
-test('renders the civil aircraft report html directly, without a calendar', async () => {
-  fetchReportMock.mockResolvedValue({ asset_type: 'html', content_html: '<h1>spec</h1>' });
+test('renders the documents workspace when catalogs exist', async () => {
+  fetchListMock.mockResolvedValue({
+    documents: [
+      { path: 'A320.html', name: 'A320', folder: '' },
+      { path: 'B737.html', name: 'B737', folder: '' },
+    ],
+  });
 
   render(await CivilAircraftReportPage({ searchParams: Promise.resolve({}) }));
 
   expect(screen.getByRole('heading', { name: 'Civil Aircraft Spec Catalog' })).toBeInTheDocument();
-  expect(screen.getByTestId('civil-aircraft-report')).toBeInTheDocument();
-  expect(screen.getByTestId('report-html')).toHaveTextContent('<h1>spec</h1>');
-
-  // 달력 관련 요소는 일절 렌더되지 않는다(뉴스레터 리딩 뷰와의 핵심 차이).
-  expect(screen.queryByTestId('newsletter-date-calendar')).not.toBeInTheDocument();
-  expect(screen.queryByTestId('newsletters-calendar-panel')).not.toBeInTheDocument();
-  expect(screen.queryByTestId('newsletters-reading')).not.toBeInTheDocument();
+  expect(screen.getByTestId('documents-workspace-stub')).toHaveTextContent('A320.html,B737.html');
+  expect(screen.queryByText(/표시할 카탈로그가 없습니다/)).not.toBeInTheDocument();
 });
 
-test('shows a fallback message when the report is unavailable', async () => {
-  fetchReportMock.mockRejectedValue(new Error('not found'));
+test('shows a fallback message when there are no catalogs', async () => {
+  fetchListMock.mockResolvedValue({ documents: [] });
 
   render(await CivilAircraftReportPage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.getByText(/표시할 보고서가 없습니다/)).toBeInTheDocument();
-  expect(screen.queryByTestId('report-html')).not.toBeInTheDocument();
+  expect(screen.getByText(/표시할 카탈로그가 없습니다/)).toBeInTheDocument();
+  expect(screen.queryByTestId('documents-workspace-stub')).not.toBeInTheDocument();
+});
+
+test('shows a fallback message when the list request fails', async () => {
+  fetchListMock.mockRejectedValue(new Error('network error'));
+
+  render(await CivilAircraftReportPage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.getByText(/표시할 카탈로그가 없습니다/)).toBeInTheDocument();
+  expect(screen.getByText(/network error/)).toBeInTheDocument();
 });

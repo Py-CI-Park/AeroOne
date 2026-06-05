@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 3건(읽음추적·민간 항공기 보고서·문서 보관소)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 7종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 4건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 8종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -69,6 +69,14 @@
 - 무엇: `_database/document` 의 HTML 을 `rglob` 로 재귀 수집해 폴더 트리로 목록화(`GET /api/v1/documents/list`)하고, 선택 1개를 뉴스레터와 동일 sanitize 로 제공(`GET /api/v1/documents/content/html?path=`, path-guard 404/400). 좌측 접을 수 있는 폴더 트리 + 우측 `HtmlViewer` 의 `/documents` 페이지 + 대시보드 active 카드 + 헤더 네비.
 - 코드: `backend/app/modules/documents/`, `backend/app/core/config.py`(`document_root`), `frontend/app/documents/`, `frontend/components/documents/`, `frontend/components/layout/app-shell.tsx`
 - 회귀 방지: `backend/tests/integration/test_documents_api.py` (5), `frontend/tests/app/documents-page.test.tsx` (3), `frontend/tests/components/documents-workspace.test.tsx` (4), `home-page.test.tsx` 카드/카운트
+
+### 단계 13 — 컬렉션 same-origin 프록시 + Civil/NSA 목록화 + 사다리 게임
+
+- 파일: [`phase-13-collections-proxy-and-features.md`](phase-13-collections-proxy-and-features.md)
+- 분류: minor (`1.4.0`) — 외부접속 버그 수정 + 신규 모듈/페이지 다수. dev 브랜치 `1.4.0-dev`
+- 무엇: Document/Civil/NSA 본문을 same-origin BFF 프록시(`/api/frontend/collections/[...segments]`)로 받아 **다른 PC 접속 시 "failed to fetch" 해결**(브라우저가 `localhost` 직접 호출 안 함). 백엔드 `HtmlCollectionService` + 화이트리스트 라우터(`/api/v1/collections/{document,civil,nsa}`)로 일반화하고 `documents`/`reports` 는 위임. Civil 다중 카탈로그 목록, 비번(0000) 가림막 NSA 탭, 사다리 게임(`/games/ladder`) 추가. Document 목록 기본 접힘, 뉴스레터 달력 접힘 시 컴팩트. 상단 네비는 3개 유지.
+- 코드: `backend/app/modules/collections/`, `backend/app/core/config.py`(`nsa_root`), `frontend/lib/collection-proxy.ts`, `frontend/app/api/frontend/collections/`, `frontend/components/collections/`, `frontend/components/games/`, `frontend/app/{nsa,games/ladder}/`, `frontend/app/reports/civil-aircraft/`
+- 회귀 방지: `backend/tests/integration/test_collections_api.py`, `frontend/tests/app/api/frontend/collections-route.test.ts`, `api.test.ts`(C1 가드), `collection-password-gate.test.tsx`, `ladder-game.test.tsx`, 갱신된 `documents-workspace`/`civil-aircraft-report-page`/`home-page`/`app-shell`/`newsletter-date-calendar` 테스트
 
 ---
 

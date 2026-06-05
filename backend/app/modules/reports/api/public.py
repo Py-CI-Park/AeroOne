@@ -6,10 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.core.config import Settings
 from app.modules.auth.dependencies import get_settings
-from app.modules.newsletter.services.html_render_service import HTML_CSP, HtmlRenderService
-from app.modules.shared.storage.service import StorageService
+from app.modules.collections.service import CollectionItemError, HtmlCollectionService
+from app.modules.newsletter.services.html_render_service import HTML_CSP
+from app.modules.shared.storage.service import StorageError
 
 router = APIRouter()
+
+service = HtmlCollectionService()
 
 
 def _latest_report(root: Path) -> Path | None:
@@ -26,14 +29,16 @@ def _latest_report(root: Path) -> Path | None:
 
 @router.get('/civil-aircraft/content/html')
 def get_civil_aircraft_report(response: Response, settings: Settings = Depends(get_settings)):
-    # 뉴스레터 HTML 과 동일한 sanitize 파이프라인(HtmlRenderService.render)을 재사용한다 —
-    # 폐쇄망 순도를 위해 외부 <link>/외부 src 만 차단하고 인라인 스크립트/스타일은 보존.
-    # 격리는 프론트엔드의 sandbox iframe(allow-scripts)이 담당한다. 달력/DB/슬러그 없이
-    # 폴더의 단일 보고서를 곧바로 렌더하는 읽기 전용 경로다.
+    # 폴더의 단일(최신) 보고서를 선택하는 정책(_latest_report)만 보존하고, 실제 렌더/경로가드는
+    # 공유 HtmlCollectionService 에 위임한다(document/civil/nsa 단일 구현). 보고서가 없으면 404,
+    # 렌더는 뉴스레터 HTML 과 동일한 sanitize 파이프라인 + 동일 CSP 헤더로 제공한다.
     root = settings.civil_aircraft_root_path
     report = _latest_report(root)
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Civil aircraft report not found')
-    storage = StorageService(root, settings.managed_storage_root)
+    try:
+        content_html = service.render_one(root, report.name, settings.managed_storage_root)
+    except (CollectionItemError, StorageError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Civil aircraft report not found') from exc
     response.headers['Content-Security-Policy'] = HTML_CSP
-    return {'asset_type': 'html', 'content_html': HtmlRenderService(storage).render(report.name)}
+    return {'asset_type': 'html', 'content_html': content_html}

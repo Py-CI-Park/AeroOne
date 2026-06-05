@@ -78,12 +78,16 @@ export function NewsletterDateCalendar({
     'rounded border border-line-subtle bg-surface-elevated px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1 disabled:cursor-not-allowed disabled:opacity-40';
 
   return (
-    <section className="h-full rounded-lg border border-line-subtle bg-surface-raised p-4 text-ink-1">
+    <section className={`h-full rounded-lg border border-line-subtle bg-surface-raised text-ink-1 ${open ? 'p-4' : 'p-2'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-wide text-ink-3">Calendar</p>
-          <h2 className="mt-1 text-lg font-semibold text-ink-1">{monthLabel(currentMonthDate)}</h2>
-          <p className="mt-1 text-xs text-ink-3">발행일을 선택하면 해당 뉴스레터 미리보기로 이동합니다.</p>
+          {open ? (
+            <>
+              <h2 className="mt-1 text-lg font-semibold text-ink-1">{monthLabel(currentMonthDate)}</h2>
+              <p className="mt-1 text-xs text-ink-3">발행일을 선택하면 해당 뉴스레터 미리보기로 이동합니다.</p>
+            </>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {open ? (
@@ -118,48 +122,50 @@ export function NewsletterDateCalendar({
         </div>
       </div>
 
-      <div id="newsletter-calendar-grid" data-testid="newsletter-calendar-grid" hidden={!open} className="mt-4">
-        <div className="mb-2 grid grid-cols-7 gap-1 text-center font-mono text-xs text-ink-3">
-          {['일', '월', '화', '수', '목', '금', '토'].map((label) => (
-            <div key={label}>{label}</div>
-          ))}
-        </div>
+      {open ? (
+        <div id="newsletter-calendar-grid" data-testid="newsletter-calendar-grid" className="mt-4">
+          <div className="mb-2 grid grid-cols-7 gap-1 text-center font-mono text-xs text-ink-3">
+            {['일', '월', '화', '수', '목', '금', '토'].map((label) => (
+              <div key={label}>{label}</div>
+            ))}
+          </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {cells.map((cell, index) => {
-            if (!cell.day) {
-              return <div key={`empty-${index}`} className="h-9 rounded-sm" />;
-            }
-            if (!cell.entry) {
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((cell, index) => {
+              if (!cell.day) {
+                return <div key={`empty-${index}`} className="h-9 rounded-sm" />;
+              }
+              if (!cell.entry) {
+                return (
+                  <div
+                    key={`inactive-${cell.day}`}
+                    className="flex h-9 items-center justify-center rounded-sm font-mono text-sm text-ink-4"
+                  >
+                    {cell.day}
+                  </div>
+                );
+              }
+
+              const isSelected = cell.entry.slug === selectedSlug;
+
               return (
-                <div
-                  key={`inactive-${cell.day}`}
-                  className="flex h-9 items-center justify-center rounded-sm font-mono text-sm text-ink-4"
+                <Link
+                  key={cell.entry.slug}
+                  href={`/newsletters?slug=${cell.entry.slug}&theme=${theme}`}
+                  className={`flex h-9 items-center justify-center rounded-sm font-mono text-sm font-medium transition-colors ${
+                    isSelected
+                      ? 'bg-accent text-accent-on'
+                      : 'bg-accent-soft text-accent hover:bg-surface-sunken'
+                  }`}
+                  title={`${cell.entry.title} (${cell.entry.source_type.toUpperCase()})`}
                 >
                   {cell.day}
-                </div>
+                </Link>
               );
-            }
-
-            const isSelected = cell.entry.slug === selectedSlug;
-
-            return (
-              <Link
-                key={cell.entry.slug}
-                href={`/newsletters?slug=${cell.entry.slug}&theme=${theme}`}
-                className={`flex h-9 items-center justify-center rounded-sm font-mono text-sm font-medium transition-colors ${
-                  isSelected
-                    ? 'bg-accent text-accent-on'
-                    : 'bg-accent-soft text-accent hover:bg-surface-sunken'
-                }`}
-                title={`${cell.entry.title} (${cell.entry.source_type.toUpperCase()})`}
-              >
-                {cell.day}
-              </Link>
-            );
-          })}
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }

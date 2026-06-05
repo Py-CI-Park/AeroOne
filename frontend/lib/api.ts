@@ -107,11 +107,15 @@ export async function fetchDocumentList() {
   });
 }
 
-export async function fetchDocumentContent(path: string): Promise<{ asset_type: 'html'; content_html: string }> {
-  // 선택한 문서 1개의 sanitize 된 HTML 을 브라우저에서 직접 받는다(선택마다 즉시 갱신, 풀 페이지 리로드 회피).
-  // 경로는 백엔드 path-guard 로 _database/document 밖 접근이 차단된다.
+export async function fetchCollectionContent(
+  collection: string,
+  path: string,
+): Promise<{ asset_type: 'html'; content_html: string }> {
+  // 컬렉션 본문 1개의 sanitize 된 HTML 을 same-origin 프록시 경유로 받는다.
+  // getBrowserApiBase()/localhost 를 쓰지 않고 상대 경로만 사용해 외부 PC 에서도 동작한다.
+  // 경로는 백엔드 path-guard 로 루트 밖 접근이 차단된다.
   const response = await fetch(
-    `${getBrowserApiBase()}/api/v1/documents/content/html?path=${encodeURIComponent(path)}`,
+    `/api/frontend/collections/${collection}/content/html?path=${encodeURIComponent(path)}`,
     { cache: 'no-store' },
   );
   if (!response.ok) {
@@ -119,6 +123,30 @@ export async function fetchDocumentContent(path: string): Promise<{ asset_type: 
     throw new Error(text || `Failed to load document: ${response.status}`);
   }
   return (await response.json()) as { asset_type: 'html'; content_html: string };
+}
+
+export async function fetchCollectionList(collection: string): Promise<{ documents: DocumentListItem[] }> {
+  // 컬렉션 목록 — NSA 언락 후 클라이언트에서 same-origin 프록시 경유로 받는다.
+  const response = await fetch(`/api/frontend/collections/${collection}/list`, { cache: 'no-store' });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to load collection list: ${response.status}`);
+  }
+  return (await response.json()) as { documents: DocumentListItem[] };
+}
+
+export async function fetchCollectionListServer(collection: string): Promise<{ documents: DocumentListItem[] }> {
+  // SSR 전용 — 서버에서 getServerApiBase() 를 직접 호출해 컬렉션 목록을 받는다(civil 페이지 SSR 등).
+  return loggedServerFetchJson<{ documents: DocumentListItem[] }>({
+    label: `collections.${collection}.list`,
+    baseUrl: getServerApiBase(),
+    path: `/api/v1/collections/${collection}/list`,
+  });
+}
+
+export async function fetchDocumentContent(path: string): Promise<{ asset_type: 'html'; content_html: string }> {
+  // fetchCollectionContent('document', path) 로 위임한다 — same-origin 프록시 경유.
+  return fetchCollectionContent('document', path);
 }
 
 export async function getPublicNewsletters(): Promise<{ items: NewsletterItem[] }> {

@@ -12,6 +12,7 @@ from app.modules.newsletter.api.admin import router as admin_router
 from app.modules.newsletter.api.imports import router as imports_router
 from app.modules.newsletter.api.public import router as public_router
 from app.modules.newsletter.services.newsletter_autosync_service import AutoSyncState
+from app.modules.collections.api.public import router as collections_router
 from app.modules.documents.api.public import router as documents_router
 from app.modules.read_tracking.api.admin import router as read_events_admin_router
 from app.modules.read_tracking.api.public import router as read_beacon_router
@@ -66,6 +67,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(reports_router, prefix='/api/v1/reports')
     # 문서 보관소 — _database/document 의 HTML 을 폴더 트리로 목록화하고 선택 1개를 sanitize 해 제공.
     app.include_router(documents_router, prefix='/api/v1/documents')
+    # HTML 컬렉션 공유 라우터 — document/civil/nsa 화이트리스트로 목록/본문을 한 자리에서 제공.
+    app.include_router(collections_router, prefix='/api/v1/collections')
     return app
 
 
