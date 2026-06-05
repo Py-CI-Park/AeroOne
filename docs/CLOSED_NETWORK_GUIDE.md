@@ -26,6 +26,7 @@
 13. [테스트 인벤토리](#13-테스트-인벤토리)
 14. [AI 에이전트 사용 지침](#14-ai-에이전트-사용-지침)
 15. [참조 문서 색인](#15-참조-문서-색인)
+16. [1.4.0 신규 기능 운영 안내](#16-140-신규-기능-운영-안내)
 
 ---
 
@@ -312,6 +313,8 @@ python -m pytest tests -q
 | PC 부팅 후 | `start_offline.bat` (LAN 모드면 `--allow-host=<host>` 또는 `AEROONE_ALLOW_HOST` 유지) |
 | 신규 발행 추가 | `_database\newsletter\` 에 HTML/PDF 복사 (`newsletter_YYYYMMDD.html` 형식) → `/newsletters` 새로고침 시 자동 반영 (서버 재시작 불필요). 즉시 강제는 관리자 페이지 **Import / Sync** |
 | 문서 추가 | `_database\document\` 에 HTML 복사 (하위 폴더로 분류하면 폴더 트리로 구분) → `/documents` 새로고침 시 바로 반영 (서버 재시작 불필요) |
+| Civil 카탈로그 추가 | `_database\civil_aircraft\` 에 HTML 복사 (여러 파일, 하위 폴더 가능) → `/reports/civil-aircraft` 새로고침 시 목록에 반영 |
+| NSA 문서 추가 | `_database\nsa\` 에 HTML 복사 (하위 폴더로 분류 가능) → `/nsa` 에서 비밀번호(0000) 입력 후 목록에 반영. **가벼운 가림막이며 실 인증이 아님** — 민감 자료 보관 금지 |
 | 메타데이터 수정 | 관리자 화면의 **편집** 버튼 (제목·요약·카테고리·태그·활성 여부·썸네일) |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
 | 비밀번호 교체 | `setup_offline.bat` 재실행 → `backend\.env` 의 `ADMIN_PASSWORD` 재확인. 기존 `.env` 는 `.bak` 자동 백업 |
@@ -330,6 +333,7 @@ python -m pytest tests -q
 | `_database\newsletter\` | 뉴스레터 발행 원본 HTML/PDF | 신규 발행 시 |
 | `_database\civil_aircraft\` | 민간항공기 규격 정적 HTML 보고서 (데이터 투입 위치) | 보고서 갱신 시 |
 | `_database\document\` | 문서 보관소 HTML (하위 폴더로 분류 가능, `/documents` 폴더 트리) | 문서 추가/갱신 시 |
+| `_database\nsa\` | NSA 탭 문서 (비밀번호 가림막 후 표시) — 민감 자료 보관 금지 | 문서 추가/갱신 시 |
 
 ```cmd
 xcopy /Y /E /I backend\data D:\backup\AeroOne\data
@@ -406,7 +410,8 @@ xcopy /Y /E /I _database D:\backup\AeroOne\_database
 | 같은 자리에서 `[ERROR] Node.js` | Node 미설치 / PATH 누락 | `offline_assets\installers\node-*.msi` 실행 → 재시작 |
 | 사전 점검 통과 후 wheelhouse 단계 실패 | wheel 파일 일부 누락 | 온라인 PC 에서 `offline_package.bat` 재실행 후 ZIP 재배포 |
 | 포트 충돌 | 다른 프로세스 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료 |
-| 페이지 로딩 후 `Failed to fetch` | 페이지 호스트 ↔ API 호스트 다름 | 주소를 동일 호스트 (`localhost` 또는 `<host>`) 로 통일 |
+| 페이지 로딩 후 `Failed to fetch` (뉴스레터·관리자) | 페이지 호스트 ↔ API 호스트 다름 | 주소를 동일 호스트 (`localhost` 또는 `<host>`) 로 통일 |
+| Document·Civil·NSA 본문이 외부 PC 에서 `Failed to fetch` | (1.4.0 이전 버전) 클라이언트가 `localhost:18437` 를 직접 호출 | **1.4.0 이상에서는 same-origin 프록시로 자동 해결** — 별도 조치 불필요. 구버전이면 ZIP 을 1.4.0 으로 재배포하세요 |
 | LAN 모드에서 같은 PC 로 들어갔는데 로그인 후 빈 화면 | `localhost` ↔ `<host>` 쿠키 격리 | `http://<host>:29501/` 로 접속 (`start_offline.bat` 자동 오픈 URL 사용) |
 | LAN 내 다른 PC 에서 접근 불가 | `--local` 로 실행했거나 방화벽 인바운드 차단 (1.0.22+ 기본은 LAN) | `--local` 없이 실행(기본 LAN, IP 자동 감지) 또는 `--allow-host=<host>` 로 고정 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 관리자 실행 (`--remove` 로 원복) |
 | `start_offline.bat` 가 브라우저를 안 엶 | frontend 빌드 미완료 / `.next` 누락 | `setup_offline.bat` 재실행 (`npm run build` 까지) |
@@ -506,6 +511,50 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 | 단계 6 (closed_network) | `f43ae04` | `phase-6-app-env-production.md` |
 | 단계 7 (--allow-host) | `7a6879e` | `phase-7-lan-mode.md` |
 | 단계 9 (docstring) | `2e69b4b` | `phase-9-docstring.md` |
+
+---
+
+## 16. 1.4.0 신규 기능 운영 안내
+
+### 16.1 Document·Civil·NSA 본문 same-origin 프록시 (외부접속 해결)
+
+1.4.0 이전에는 Document·Civil 본문을 브라우저가 `http://localhost:18437` 로 직접 호출했습니다. 외부 PC 에서 접속하면 `localhost` 가 방문자 자신의 PC 를 가리켜 **Failed to fetch** 가 발생했습니다.
+
+1.4.0 부터 본문 요청은 Next.js 서버의 same-origin 프록시(`/api/frontend/collections/...`)를 경유합니다. 브라우저는 항상 페이지와 같은 호스트에 요청하고, Next.js 서버가 서버 측 loopback 으로 백엔드에 전달합니다.
+
+- **별도 환경 변수·LAN 재설정 없이** 외부 PC 에서도 문서 본문이 열립니다.
+- 뉴스레터 본문이 이미 동일한 same-origin 프록시 방식으로 동작하고 있었으므로, Document·Civil·NSA 도 같은 패턴으로 통일된 것입니다.
+
+### 16.2 Civil 다중 카탈로그
+
+`_database\civil_aircraft\` 에 HTML 파일을 여러 개 넣으면 Document 와 동일한 폴더 트리 목록 UI 로 표시됩니다.
+
+```
+_database\
+  civil_aircraft\
+    상용기\
+      B737.html
+      A320.html
+    군용기\
+      F15.html
+```
+
+- 하위 폴더로 분류하면 폴더 트리로 구분됩니다.
+- 목록은 기본 접힌 상태로 시작하며, 상단 드롭다운 또는 "목록 펼치기" 버튼으로 열 수 있습니다.
+
+### 16.3 NSA 탭
+
+대시보드에 NSA 카드가 추가되었습니다. `/nsa` 페이지에 접속하면 비밀번호 입력 화면이 먼저 나타납니다.
+
+- **기본 비밀번호**: `0000`
+- 정답 입력 후에만 `_database\nsa\` 의 문서 목록과 본문이 로드됩니다 (입력 전에는 네트워크 요청 없음).
+- 구성·UI 는 Document 와 동일합니다.
+
+> **중요 — 보안 한계**: NSA 비밀번호는 클라이언트 번들에 포함된 **가벼운 가림막**이며 실제 인증이 아닙니다. 백엔드는 폐쇄망 내 무인증으로 동작합니다. **기밀·개인정보 등 민감 자료를 `_database\nsa\` 에 보관하지 마십시오.** 가림막의 목적은 화면 접근 편의 분리에 한정됩니다.
+
+### 16.4 Ladder(사다리타기) 게임
+
+대시보드에 Ladder 카드가 추가되었습니다. `/games/ladder` 에서 참가자와 상품을 입력하면 랜덤 사다리로 배정 결과를 표시합니다. 순수 프론트엔드로 동작하며 백엔드 연동이 없습니다.
 
 ---
 

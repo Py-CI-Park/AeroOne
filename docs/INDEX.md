@@ -101,8 +101,11 @@
 | 출력 폴더 자동 동기화 | `backend/app/modules/newsletter/services/newsletter_autosync_service.py` + `backend/app/modules/newsletter/api/public.py` (`auto_sync_newsletters` 의존성) | 공개 읽기 요청 시 `_database/newsletter` 시그니처(파일명+크기+mtime) 변화를 감지해 변경 시에만 `sync()`. 수동 Sync 엔드포인트(`api/imports.py`)도 베이스라인 시그니처를 갱신해 직후 읽기가 관리자 메타데이터 편집을 덮어쓰지 않게 함 |
 | LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
 | 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일. 대시보드에 민간항공기 규격 카탈로그 카드(활성)도 포함 |
-| 민간항공기 규격 보고서 | `backend/app/modules/reports/api/public.py` (`GET /api/v1/reports/civil-aircraft/content/html`, `HtmlRenderService` 재사용) + `frontend/app/reports/civil-aircraft/page.tsx` + `frontend/components/reports/civil-aircraft-report.tsx` | `_database/civil_aircraft` 의 단일 HTML 보고서를 달력 없이 HtmlViewer 로 렌더. sanitize·CSP·sandbox iframe 은 뉴스레터와 동일 |
-| 문서 보관소 | `backend/app/modules/documents/api/public.py` (`GET /api/v1/documents/list` `_discover_documents` rglob, `GET /api/v1/documents/content/html?path=` path-guard + `HtmlRenderService` 재사용) + `frontend/app/documents/page.tsx` + `frontend/components/documents/documents-workspace.tsx`(재귀 폴더 트리) | `_database/document` 의 HTML 을 하위 폴더 포함 재귀 수집해 좌측 접을 수 있는 폴더 트리로 목록화, 선택 1개를 우측 HtmlViewer(sandbox iframe)로 렌더. `_debug.html` 제외, `(folder,name)` 정렬, 디렉토리 이탈 400. `document_root` 기본값 보유라 .env 호환 |
+| 민간항공기 규격 카탈로그 | `backend/app/modules/collections/api/public.py` (`GET /api/v1/collections/civil/list`, `GET /api/v1/collections/civil/content/html?path=`) + `frontend/app/reports/civil-aircraft/page.tsx` + `frontend/components/documents/documents-workspace.tsx`(collection="civil") | `_database/civil_aircraft` 의 여러 HTML 을 Document 와 동일한 폴더 트리 목록 UI 로 표시(기본 접힘). 1.4.0 에서 단일 보고서에서 다중 카탈로그 목록으로 전환. 단일보고서 엔드포인트(`/api/v1/reports/civil-aircraft/content/html`)는 1릴리즈 deprecated 유지 |
+| 문서 보관소 | `backend/app/modules/collections/api/public.py` (`GET /api/v1/collections/document/list`, `GET /api/v1/collections/document/content/html?path=`) + `frontend/app/documents/page.tsx` + `frontend/components/documents/documents-workspace.tsx`(재귀 폴더 트리) | `_database/document` 의 HTML 을 하위 폴더 포함 재귀 수집해 좌측 접을 수 있는 폴더 트리로 목록화(기본 접힘), 선택 1개를 우측 HtmlViewer(sandbox iframe)로 렌더. `_debug.html` 제외, `(folder,name)` 정렬, 디렉토리 이탈 400 |
+| 컬렉션 same-origin 프록시 | `frontend/app/api/frontend/collections/[...segments]/route.ts` | 브라우저가 `/api/frontend/collections/<collection>/...` 로 요청하면 Next.js 서버가 `SERVER_API_BASE_URL`(loopback) 경유로 백엔드에 전달. 외부 PC 에서 document·civil·nsa 본문이 "failed to fetch" 로 실패하던 문제를 구조적으로 해결(1.4.0). 첫 세그먼트 화이트리스트(document·civil·nsa) 검증. 뉴스레터 프록시와 동일 패턴 |
+| NSA 탭 | `frontend/app/nsa/page.tsx` + `frontend/components/collections/collection-password-gate.tsx` + `_database/nsa/`(문서 보관 폴더) | 대시보드 카드 → /nsa. 비밀번호(기본 0000) 입력 전에는 목록·본문 요청 없음. 정답 입력 후 `fetchCollectionList('nsa')` 호출해 DocumentsWorkspace 에 prop 주입. **가벼운 가림막이며 실 인증 아님** — 백엔드 무인증, 민감 자료 보관 금지 |
+| Ladder(사다리타기) | `frontend/app/games/ladder/page.tsx` + `frontend/components/games/ladder-game.tsx` | 대시보드 카드 → /games/ladder. 참가자·상품 입력 후 랜덤 사다리로 배정 결과 표시. 순수 프론트엔드, 백엔드 없음 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 | 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
 
@@ -110,7 +113,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 104건 PASS (문서 보관소 모듈 도입 기준, backend pytest). 프론트엔드 Vitest 는 90건 PASS (33 파일).
+총 120건 PASS (backend pytest, 컬렉션 모듈 포함). 프론트엔드 Vitest 는 120건 PASS (37 파일) — 1.4.0 에서 컬렉션 프록시·NSA·Ladder·Civil 다중 카탈로그 테스트가 추가됨. 최신 카운트는 README.md §검증 참고.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -145,8 +148,9 @@
 | `dist/` | 패키징 산출물 (`AeroOne-offline-*.zip`) | NO |
 | `offline_installers/*` | 폐쇄망 인스톨러 (Python EXE / Node MSI) | NO (단 `README.md` 만 예외) |
 | `_database/newsletter/` | 뉴스레터 발행 원본 HTML/PDF (`newsletter_YYYYMMDD.html`) | NO (정책상 비공개) |
-| `_database/civil_aircraft/` | 민간항공기 규격 정적 HTML 보고서 | NO (정책상 비공개) |
+| `_database/civil_aircraft/` | 민간항공기 규격 HTML 카탈로그 (여러 HTML 가능, 목록 UI 로 표시) | NO (정책상 비공개) |
 | `_database/document/` | 문서 보관소 HTML (하위 폴더로 분류 가능) | NO (정책상 비공개) |
+| `_database/nsa/` | NSA 탭 문서 보관소 (비밀번호 가림막 후 표시, 민감 자료 보관 금지) | NO (정책상 비공개) |
 | `storage/` | 운영 storage (썸네일·markdown·첨부) | NO |
 | `backend/data/aeroone.db` | 운영 DB | NO |
 

@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { HtmlViewer } from '@/components/newsletter/html-viewer';
 import { Icon } from '@/components/ui/icons';
 import { ScrollToTop } from '@/components/ui/scroll-to-top';
-import { fetchDocumentContent } from '@/lib/api';
+import { fetchCollectionContent } from '@/lib/api';
 import type { DocumentListItem } from '@/lib/types';
 
 // 폴더 경로("a/b/c")를 중첩 트리로 묶는다. 루트 문서(folder="")는 트리 최상단에 둔다.
@@ -30,7 +30,7 @@ function buildTree(documents: DocumentListItem[]): TreeNode {
   return root;
 }
 
-// 기본은 모든 폴더 펼침 — 운영자가 넣은 문서가 처음부터 한눈에 보이게 한다(이후 접기 가능).
+// 모든 폴더 경로를 모은다 — defaultFoldersOpen=true 일 때만 초기 펼침 집합으로 쓰인다(기본은 접힘).
 function collectFolderPaths(documents: DocumentListItem[]): string[] {
   const paths = new Set<string>();
   for (const doc of documents) {
@@ -155,13 +155,29 @@ function buildSelectGroups(documents: DocumentListItem[]): [string, DocumentList
   return Array.from(map.entries());
 }
 
-export function DocumentsWorkspace({ documents }: { documents: DocumentListItem[] }) {
+type DocumentsWorkspaceProps = {
+  documents: DocumentListItem[];
+  collection?: 'document' | 'civil' | 'nsa';
+  defaultSidebarOpen?: boolean;
+  defaultFoldersOpen?: boolean;
+  emptyHint?: React.ReactNode;
+};
+
+export function DocumentsWorkspace({
+  documents,
+  collection = 'document',
+  defaultSidebarOpen = false,
+  defaultFoldersOpen = false,
+  emptyHint,
+}: DocumentsWorkspaceProps) {
   const tree = useMemo(() => buildTree(documents), [documents]);
   const selectGroups = useMemo(() => buildSelectGroups(documents), [documents]);
-  const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set(collectFolderPaths(documents)));
+  const [openFolders, setOpenFolders] = useState<Set<string>>(() =>
+    defaultFoldersOpen ? new Set(collectFolderPaths(documents)) : new Set(),
+  );
   const [selected, setSelected] = useState<DocumentListItem | null>(documents[0] ?? null);
   // 좌측 목록을 접어 뷰어가 전체 폭을 쓰게 한다. 접으면 상단 셀렉트로 문서를 고른다(위치 위로 이동).
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(defaultSidebarOpen);
   const [html, setHtml] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -173,7 +189,7 @@ export function DocumentsWorkspace({ documents }: { documents: DocumentListItem[
     let cancelled = false;
     setLoading(true);
     setError('');
-    fetchDocumentContent(selected.path)
+    fetchCollectionContent(collection, selected.path)
       .then((payload) => {
         if (!cancelled) {
           setHtml(payload.content_html);
@@ -193,7 +209,7 @@ export function DocumentsWorkspace({ documents }: { documents: DocumentListItem[
     return () => {
       cancelled = true;
     };
-  }, [selected]);
+  }, [selected, collection]);
 
   function toggleFolder(path: string) {
     setOpenFolders((prev) => {

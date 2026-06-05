@@ -15,6 +15,18 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.4.0',
+    date: '2026-06-05',
+    items: [
+      '외부 PC 에서 Document·Civil·NSA 본문이 "failed to fetch" 로 안 열리던 문제 수정 — 본문을 same-origin 프록시(/api/frontend/collections)로 제공하도록 변경해 브라우저가 localhost 를 직접 호출하지 않습니다. 별도 환경 변수·LAN 재설정 없이 외부 PC 에서도 문서 본문이 열립니다.',
+      'Civil(민간 항공기) 탭이 단일 보고서에서 다중 카탈로그 목록 UI 로 전환 — _database/civil_aircraft 에 여러 HTML 을 넣으면 Document 와 같은 폴더 트리 목록으로 표시되며, 목록은 기본 접힌 상태로 시작합니다.',
+      'Document 목록이 기본 접힌 상태로 시작 — 진입 시 바로 전체 폭 뷰어가 표시되고, 상단 드롭다운 또는 "목록 펼치기" 버튼으로 목록을 열 수 있습니다.',
+      '새 NSA 탭 추가(대시보드 카드 → /nsa) — 비밀번호(0000) 입력 후에만 문서 목록과 본문이 표시되는 가벼운 가림막입니다. 구성은 Document 와 동일하며, 문서는 _database/nsa 폴더에 넣습니다. (주의: 클라이언트 가림막이며 실 인증이 아닙니다. 민감 자료 보관에 적합하지 않습니다.)',
+      '새 Ladder(사다리타기) 탭 추가(대시보드 카드 → /games/ladder) — 참가자와 상품을 입력하면 랜덤 사다리로 배정 결과를 보여주는 커피 내기용 미니 게임입니다.',
+      '뉴스레터 달력을 접으면 슬림 바로 축소 — 달력을 닫으면 설명 텍스트와 날짜 그리드가 사라지고 "달력 펼치기" 버튼만 있는 작은 바로 줄어들어 뷰어 공간이 넓어집니다.',
+    ],
+  },
+  {
     version: '1.3.2',
     date: '2026-06-05',
     items: [
