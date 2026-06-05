@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 import { HtmlViewer, expandNewsletterArticles } from '@/components/newsletter/html-viewer';
 
@@ -10,7 +10,40 @@ it('renders sandboxed iframe that allows scripts for trusted newsletter content'
   // 콘텐츠는 운영자 자체 파이프라인 산출물(신뢰 가능)이라 sandbox 에 허용.
   expect(iframe).toHaveAttribute('sandbox', 'allow-same-origin allow-scripts');
   expect(iframe.getAttribute('sandbox')).toContain('allow-scripts');
+  // content(기본) 모드: 바깥 페이지가 스크롤하므로 iframe 자체 스크롤은 끈다.
   expect(iframe).toHaveAttribute('scrolling', 'no');
+  // 토글 미요청 시 토글 버튼은 없다(뉴스레터 읽기 화면 외형 불변).
+  expect(screen.queryByTestId('html-viewer-fit-toggle')).toBeNull();
+});
+
+it('viewport fit gives the iframe its own scroll (no scrolling=no) so a doc TOC stays fixed', () => {
+  // 문서/카탈로그/NSA 는 자체 목차(position:fixed/sticky, 100vh)를 가진 HTML 이라
+  // iframe 에 자체 viewport(내부 스크롤)가 있어야 단독 실행처럼 목차가 고정된다.
+  render(<HtmlViewer title="doc" html="<h1>hi</h1>" fit="viewport" showFitToggle />);
+  const iframe = screen.getByTitle('doc');
+  // viewport 모드: scrolling="no" 가 아니어야 내부 스크롤이 생긴다.
+  expect(iframe.getAttribute('scrolling')).toBeNull();
+  expect(iframe.getAttribute('style') ?? '').toContain('calc(100vh');
+});
+
+it('fit toggle switches between viewport(목차 고정) and content(전체 높이)', () => {
+  render(<HtmlViewer title="doc" html="<h1>hi</h1>" fit="viewport" showFitToggle />);
+  const toggle = screen.getByTestId('html-viewer-fit-toggle');
+  const iframe = screen.getByTitle('doc');
+
+  // 시작은 viewport — 버튼은 content 로 가는 라벨을 보여준다.
+  expect(toggle).toHaveTextContent('전체 높이로 보기');
+  expect(iframe.getAttribute('scrolling')).toBeNull();
+
+  // content 로 전환 → 콘텐츠 높이 + scrolling="no".
+  fireEvent.click(toggle);
+  expect(toggle).toHaveTextContent('창 높이로 보기');
+  expect(screen.getByTitle('doc')).toHaveAttribute('scrolling', 'no');
+
+  // 다시 viewport 로 전환.
+  fireEvent.click(toggle);
+  expect(toggle).toHaveTextContent('전체 높이로 보기');
+  expect(screen.getByTitle('doc').getAttribute('scrolling')).toBeNull();
 });
 
 function buildArticleDoc(): Document {

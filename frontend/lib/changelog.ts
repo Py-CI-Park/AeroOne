@@ -15,6 +15,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.4.1',
+    date: '2026-06-05',
+    items: [
+      'Document·Civil·NSA 문서 뷰어에서 문서 자체 목차(TOC)가 고정되도록 수정 — 단독 실행 HTML 처럼 좌측 목차는 화면에 고정된 채 본문만 스크롤됩니다. 뷰어 우상단의 "창 높이로 보기(목차 고정) / 전체 높이로 보기" 토글로 문서별로 전환할 수 있습니다. (뉴스레터 보기 방식은 그대로입니다.)',
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-06-05',
     items: [

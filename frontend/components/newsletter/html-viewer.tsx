@@ -31,9 +31,29 @@ function measureContentHeight(doc: Document): number {
   );
 }
 
-export function HtmlViewer({ title, html }: { title: string; html: string }) {
+export type HtmlViewerFit = 'content' | 'viewport';
+
+// fit 모드 두 가지.
+// - 'content'(뉴스레터 기본): iframe 높이를 콘텐츠 전체에 맞추고 scrolling="no" →
+//   바깥 페이지가 스크롤. 기사 아코디언/lazy 이미지 높이 보정이 함께 동작한다.
+// - 'viewport'(문서·카탈로그·NSA 기본): iframe 을 "창 높이"로 고정하고 내부
+//   스크롤을 켠다. 그러면 문서가 단독 실행될 때처럼 자체 viewport 가 생겨
+//   목차의 position:fixed/sticky, height:100vh, 내부 overflow 스크롤이 그대로
+//   동작한다(콘텐츠 높이 동기화는 하지 않는다 — 자체 viewport 가 핵심이므로).
+export function HtmlViewer({
+  title,
+  html,
+  fit = 'content',
+  showFitToggle = false,
+}: {
+  title: string;
+  html: string;
+  fit?: HtmlViewerFit;
+  showFitToggle?: boolean;
+}) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState(1800);
+  const [mode, setMode] = useState<HtmlViewerFit>(fit);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const mutationObserverRef = useRef<MutationObserver | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -83,6 +103,15 @@ export function HtmlViewer({ title, html }: { title: string; html: string }) {
         img.addEventListener('error', syncHeight);
       }
     });
+  }
+
+  function stopTracking() {
+    resizeObserverRef.current?.disconnect();
+    mutationObserverRef.current?.disconnect();
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
   }
 
   function refresh() {
@@ -136,17 +165,33 @@ export function HtmlViewer({ title, html }: { title: string; html: string }) {
     }, 300);
   }
 
+  // 콘텐츠 로드 직후 + 모드 전환 시 처리. content 모드만 높이 동기화/추적을 켜고,
+  // viewport 모드는 자체 스크롤에 맡기므로 추적을 끈다(기사 펼침/이미지 준비는
+  // 두 모드 모두 1회 적용 — 문서엔 보통 no-op 이라 무해).
+  function applyMode() {
+    expandArticles();
+    prepareImages();
+    if (mode === 'content') {
+      syncHeight();
+      startTracking();
+    } else {
+      stopTracking();
+    }
+  }
+
+  // 사용자가 토글로 모드를 바꾸면 onLoad 가 다시 안 뜨므로 여기서 반영한다.
   useEffect(() => {
-    return () => {
-      resizeObserverRef.current?.disconnect();
-      mutationObserverRef.current?.disconnect();
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
-    };
+    applyMode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  useEffect(() => {
+    return () => stopTracking();
   }, []);
 
-  return (
+  const isViewport = mode === 'viewport';
+
+  const iframe = (
     <iframe
       ref={iframeRef}
       title={title}
@@ -157,14 +202,36 @@ export function HtmlViewer({ title, html }: { title: string; html: string }) {
       // 를 허용한다. 폐쇄망에서 외부 폰트/CDN 은 차단되지만 본문 주입 JS 는
       // 페이지 내 데이터만 쓰므로 정상 동작한다.
       sandbox="allow-same-origin allow-scripts"
-      scrolling="no"
+      // content 모드는 바깥 페이지가 스크롤하므로 iframe 자체 스크롤을 끈다.
+      // viewport 모드는 iframe 이 자체 viewport 로 내부 스크롤해야 하므로 끄지 않는다.
+      scrolling={isViewport ? undefined : 'no'}
       srcDoc={html}
-      onLoad={() => {
-        refresh();
-        startTracking();
-      }}
-      style={{ height }}
+      onLoad={applyMode}
+      // content: 측정한 콘텐츠 전체 높이. viewport: 창 높이로 고정(내부 스크롤).
+      style={isViewport ? { height: 'calc(100vh - 200px)', minHeight: 480 } : { height }}
       className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     />
+  );
+
+  if (!showFitToggle) {
+    return iframe;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          data-testid="html-viewer-fit-toggle"
+          aria-pressed={isViewport}
+          onClick={() => setMode((current) => (current === 'viewport' ? 'content' : 'viewport'))}
+          className="inline-flex items-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
+          title={isViewport ? '문서 전체를 한 페이지로 펼쳐 봅니다' : '창 높이에 맞춰 문서 자체 스크롤(목차 고정)로 봅니다'}
+        >
+          {isViewport ? '전체 높이로 보기' : '창 높이로 보기 (목차 고정)'}
+        </button>
+      </div>
+      {iframe}
+    </div>
   );
 }

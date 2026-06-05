@@ -306,7 +306,7 @@ export function DocumentsWorkspace({
               문서를 불러오는 중…
             </div>
           ) : selected ? (
-            <HtmlViewer title={selected.name} html={html} />
+            <HtmlViewer title={selected.name} html={html} fit="viewport" showFitToggle />
           ) : null}
           <ScrollToTop />
         </section>

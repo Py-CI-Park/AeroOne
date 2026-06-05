@@ -113,7 +113,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 120건 PASS (backend pytest, 컬렉션 모듈 포함). 프론트엔드 Vitest 는 120건 PASS (37 파일) — 1.4.0 에서 컬렉션 프록시·NSA·Ladder·Civil 다중 카탈로그 테스트가 추가됨. 최신 카운트는 README.md §검증 참고.
+총 120건 PASS (backend pytest, 컬렉션 모듈 포함). 프론트엔드 Vitest 는 122건 PASS (37 파일) — 1.4.0 에서 컬렉션 프록시·NSA·Ladder·Civil 다중 카탈로그, 1.4.1 에서 문서 뷰어 fit 모드(목차 고정) 테스트가 추가됨. 최신 카운트는 README.md §검증 참고.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
