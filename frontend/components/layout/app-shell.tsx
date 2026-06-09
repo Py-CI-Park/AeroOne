@@ -45,7 +45,7 @@ export function AppShell({
     >
       <header
         data-testid="app-shell-header"
-        className="flex h-[60px] flex-shrink-0 items-center gap-6 border-b border-line-subtle bg-surface-raised px-8"
+        className="sticky top-0 z-[50] flex h-[60px] flex-shrink-0 items-center gap-6 border-b border-line-subtle bg-surface-raised px-8"
       >
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2 text-ink-1">

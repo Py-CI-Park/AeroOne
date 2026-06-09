@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Icon } from '@/components/ui/icons';
 
 // Newsletter_AI 산출 HTML 의 기사 카드는 [data-article] 아코디언으로 렌더되며,
 // 기본값은 data-open 미설정(= .article-body { display:none } 으로 접힘)이다.
@@ -54,12 +55,71 @@ export function HtmlViewer({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState(1800);
   const [mode, setMode] = useState<HtmlViewerFit>(fit);
+  const [showHelp, setShowHelp] = useState(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const mutationObserverRef = useRef<MutationObserver | null>(null);
   const timerRef = useRef<number | null>(null);
 
+  const heightRef = useRef(height);
+  const handleScrollRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    heightRef.current = height;
+    if (handleScrollRef.current) {
+      handleScrollRef.current();
+    }
+  }, [height]);
+
   function getDoc(): Document | null {
     return iframeRef.current?.contentWindow?.document ?? null;
+  }
+
+  // iframe 내부의 해시(목차) 링크 클릭 이벤트를 감지하여 적절한 스크롤 효과를 줍니다.
+  function setupAnchorLinks() {
+    const doc = getDoc();
+    if (!doc || !doc.body) {
+      return;
+    }
+
+    if (doc.body.hasAttribute('data-aeroone-anchors-bound')) {
+      return;
+    }
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+      if (!anchor) return;
+
+      const href = anchor.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const targetId = decodeURIComponent(href.substring(1));
+        const targetEl = doc.getElementById(targetId);
+        if (targetEl) {
+          if (mode === 'content') {
+            const iframeEl = iframeRef.current;
+            if (iframeEl) {
+              const iframeRect = iframeEl.getBoundingClientRect();
+              const targetRect = targetEl.getBoundingClientRect();
+              // 부모 창 기준 절대 y 좌표 계산
+              const absoluteTop = window.scrollY + iframeRect.top + targetRect.top;
+              // sticky 헤더(60px) + 여유(10px) = 70px 오프셋 차감
+              const offset = 70;
+              window.scrollTo({
+                top: absoluteTop - offset,
+                behavior: 'smooth',
+              });
+            }
+          } else {
+            // viewport 모드: iframe 내부 스크롤바 이동
+            targetEl.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      }
+    };
+
+    doc.body.addEventListener('click', handleClick);
+    doc.body.setAttribute('data-aeroone-anchors-bound', '1');
   }
 
   // 높이를 측정값으로 맞춘다(증가뿐 아니라 사용자가 기사를 접어 줄어든 경우도 반영).
@@ -117,6 +177,7 @@ export function HtmlViewer({
   function refresh() {
     expandArticles();
     prepareImages();
+    setupAnchorLinks();
     syncHeight();
   }
 
@@ -165,12 +226,25 @@ export function HtmlViewer({
     }, 300);
   }
 
+  function handleOpenNewWindow() {
+    const newWindow = window.open('about:blank', '_blank');
+    if (!newWindow) {
+      alert('팝업 차단이 설정되어 있습니다. 브라우저의 팝업 차단을 해제하고 다시 시도해주세요.');
+      return;
+    }
+    const newDoc = newWindow.document;
+    newDoc.open();
+    newDoc.write(html);
+    newDoc.close();
+  }
+
   // 콘텐츠 로드 직후 + 모드 전환 시 처리. content 모드만 높이 동기화/추적을 켜고,
   // viewport 모드는 자체 스크롤에 맡기므로 추적을 끈다(기사 펼침/이미지 준비는
   // 두 모드 모두 1회 적용 — 문서엔 보통 no-op 이라 무해).
   function applyMode() {
     expandArticles();
     prepareImages();
+    setupAnchorLinks();
     if (mode === 'content') {
       syncHeight();
       startTracking();
@@ -183,6 +257,113 @@ export function HtmlViewer({
   useEffect(() => {
     applyMode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  // content 모드(전체 높이)에서도 목차가 화면에 고정되어 따라오도록 스크롤 동기화 처리를 수행합니다.
+  useEffect(() => {
+    if (mode !== 'content') {
+      const doc = getDoc();
+      const sidebar = doc?.querySelector('.sidebar, #sidebar, [class*="sidebar"]') as HTMLElement | null;
+      if (sidebar) {
+        sidebar.style.position = '';
+        sidebar.style.transform = '';
+        sidebar.style.willChange = '';
+      }
+      handleScrollRef.current = null;
+      return;
+    }
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+
+      window.requestAnimationFrame(() => {
+        const doc = getDoc();
+        const iframeEl = iframeRef.current;
+        if (!doc || !iframeEl) {
+          ticking = false;
+          return;
+        }
+
+        const sidebar = doc.querySelector('.sidebar, #sidebar, [class*="sidebar"]') as HTMLElement | null;
+        if (!sidebar) {
+          ticking = false;
+          return;
+        }
+
+        // 모바일 화면 크기(768px 이하)인 경우에는 스타일 조작을 하지 않고 원본 레이아웃(static 등)을 유지합니다.
+        const isMobile = doc.defaultView ? doc.defaultView.innerWidth <= 768 : false;
+        if (isMobile) {
+          sidebar.style.position = '';
+          sidebar.style.transform = '';
+          sidebar.style.willChange = '';
+          ticking = false;
+          return;
+        }
+
+        // 데스크톱 뷰에서 iframe의 position:fixed는 content(전체높이) 모드 시 화면 밖으로 밀리게 되므로
+        // absolute로 강제 변환하며, will-change를 적용하여 GPU 렌더링 레이어 격리를 유도합니다.
+        if (sidebar.style.position !== 'absolute') {
+          sidebar.style.position = 'absolute';
+        }
+        if (sidebar.style.willChange !== 'transform') {
+          sidebar.style.willChange = 'transform';
+        }
+
+        const scrollY = window.scrollY;
+        const iframeRect = iframeEl.getBoundingClientRect();
+        const iframeAbsoluteTop = scrollY + iframeRect.top;
+
+        // 부모 창 고정 헤더 높이 60px 아래에 목차가 붙도록 설정
+        const headerHeight = 60;
+        const stickyTop = Math.max(0, scrollY + headerHeight - iframeAbsoluteTop);
+
+        // DOM 리플로우(offsetHeight 호출)를 유발하지 않도록, 브라우저 뷰포트 높이와 상태값 heightRef.current로 제한치를 계산합니다.
+        // 이로써 스크롤 시 목차의 덜덜 떨림 및 깜빡거림, 사라짐 버그를 원천 방어합니다.
+        const sidebarHeight = window.innerHeight;
+        const iframeHeight = heightRef.current; 
+        const maxStickyTop = Math.max(0, iframeHeight - sidebarHeight - 30);
+        const finalStickyTop = Math.min(stickyTop, maxStickyTop);
+
+        // 하드웨어 3D 가속(translate3d)을 활용하여 스크롤 주사율(60fps)과 완벽하게 동기화하고 깜빡임을 차단합니다.
+        sidebar.style.transform = `translate3d(0, ${finalStickyTop}px, 0)`;
+        
+        ticking = false;
+      });
+    };
+
+    handleScrollRef.current = handleScroll;
+    // 초기 렌더 및 모드 진입 직후 위치 지정을 위해 즉시 한 번 호출합니다.
+    handleScroll();
+
+    window.addEventListener('scroll', handleScroll);
+    const interval = setInterval(handleScroll, 500); // 폰트 로드나 레이아웃 변경 대응을 위한 안전망
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearInterval(interval);
+      const doc = getDoc();
+      const sidebar = doc?.querySelector('.sidebar, #sidebar, [class*="sidebar"]') as HTMLElement | null;
+      if (sidebar) {
+        sidebar.style.position = '';
+        sidebar.style.transform = '';
+        sidebar.style.willChange = '';
+      }
+      handleScrollRef.current = null;
+    };
+  }, [mode]);
+
+  // viewport 모드(창 높이 고정)일 때 부모 창의 스크롤바를 강제 비활성화하여 이중 스크롤바를 완벽히 제거합니다.
+  // 이로 인해 HTML 문서 자체의 fixed 목차와 내부 스크롤이 단독 브라우저 실행과 100% 동일하게 작동합니다.
+  useEffect(() => {
+    if (mode !== 'viewport') return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
   }, [mode]);
 
   useEffect(() => {
@@ -208,29 +389,76 @@ export function HtmlViewer({
       srcDoc={html}
       onLoad={applyMode}
       // content: 측정한 콘텐츠 전체 높이. viewport: 창 높이로 고정(내부 스크롤).
-      style={isViewport ? { height: 'calc(100vh - 200px)', minHeight: 480 } : { height }}
+      style={isViewport ? { height: 'calc(100vh - 160px)', minHeight: 480 } : { height }}
       className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     />
   );
 
-  if (!showFitToggle) {
-    return iframe;
-  }
-
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
         <button
           type="button"
-          data-testid="html-viewer-fit-toggle"
-          aria-pressed={isViewport}
-          onClick={() => setMode((current) => (current === 'viewport' ? 'content' : 'viewport'))}
-          className="inline-flex items-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
-          title={isViewport ? '문서 전체를 한 페이지로 펼쳐 봅니다' : '창 높이에 맞춰 문서 자체 스크롤(목차 고정)로 봅니다'}
+          onClick={() => setShowHelp((prev) => !prev)}
+          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
+            showHelp
+              ? 'border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 hover:text-blue-900 dark:border-blue-800 dark:bg-blue-950/45 dark:text-blue-200'
+              : 'border-line-subtle bg-surface-raised text-ink-2 hover:bg-surface-sunken hover:text-ink-1'
+          }`}
+          title="문서 뷰어 조작 방법에 대한 설명을 봅니다"
         >
-          {isViewport ? '전체 높이로 보기' : '창 높이로 보기 (목차 고정)'}
+          <Icon.doc size={13} />
+          {showHelp ? '설명 닫기' : '설명 보기'}
         </button>
+        <button
+          type="button"
+          onClick={handleOpenNewWindow}
+          className="inline-flex items-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
+          title="문서를 새 창에서 원본 크기 그대로 엽니다"
+        >
+          <Icon.external size={13} />
+          새 창으로 열기
+        </button>
+        {showFitToggle ? (
+          <button
+            type="button"
+            data-testid="html-viewer-fit-toggle"
+            aria-pressed={isViewport}
+            onClick={() => setMode((current) => (current === 'viewport' ? 'content' : 'viewport'))}
+            className="inline-flex items-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
+            title={isViewport ? '문서 전체를 한 페이지로 펼쳐 봅니다' : '창 높이에 맞춰 문서 자체 스크롤(목차 고정)로 봅니다'}
+          >
+            {isViewport ? '전체 높이로 보기' : '창 높이로 보기 (목차 고정)'}
+          </button>
+        ) : null}
       </div>
+
+      {showHelp && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 text-sm text-blue-900 shadow-sm transition-all dark:border-blue-900/30 dark:bg-blue-950/20 dark:text-blue-200">
+          <h4 className="mb-2 font-bold flex items-center gap-1.5 text-blue-800 dark:text-blue-300">
+            💡 AeroOne 문서 뷰어 조작 가이드
+          </h4>
+          <ul className="space-y-1.5 list-disc list-inside text-xs leading-relaxed text-ink-2">
+            <li>
+              <span className="font-semibold text-blue-800 dark:text-blue-300">설명 보기</span>: 
+              뷰어 조작 가이드를 켜고 끕니다.
+            </li>
+            <li>
+              <span className="font-semibold text-blue-800 dark:text-blue-300">새 창으로 열기</span>: 
+              문서 원본을 새 탭에서 온전히 로딩합니다. 브라우저 전체 화면에서 원본 그대로 목차 고정을 감상할 수 있습니다.
+            </li>
+            <li>
+              <span className="font-semibold text-blue-800 dark:text-blue-300">전체 높이로 보기</span>: 
+              문서 본문을 접지 않고 페이지 전체 크기로 길게 펼칩니다. 부모 창을 스크롤할 때 목차가 부드럽게 고정되어 따라다닙니다.
+            </li>
+            <li>
+              <span className="font-semibold text-blue-800 dark:text-blue-300">창 높이로 보기 (목차 고정)</span>: 
+              문서 뷰어의 세로 길이를 브라우저 화면 높이에 고정하고 이중 스크롤바를 숨겨, 뷰어 내에서 단독 스크롤하며 목차가 네이티브로 고정되도록 동작합니다.
+            </li>
+          </ul>
+        </div>
+      )}
+
       {iframe}
     </div>
   );
