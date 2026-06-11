@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.4.2-1f6feb)
+![version](https://img.shields.io/badge/version-1.4.3-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -70,7 +70,7 @@
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (120 passed), frontend Vitest + Testing Library (122 passed, 37 파일), Windows 실행 스모크 |
+| 검증 | backend pytest + httpx (128 passed), frontend Vitest + Testing Library (137 passed, 37 파일), Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 
 ---
@@ -283,7 +283,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.4.2 기준 backend `pytest tests` 결과 **120 passed** (실패 0), frontend Vitest **122 passed** (37 파일). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10/11/12 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.4.3 기준 backend `pytest tests` 결과 **128 passed** (실패 0), frontend Vitest **137 passed** (37 파일). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10/11/12 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

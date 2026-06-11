@@ -15,8 +15,8 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.4.2',
-    date: '2026-06-09',
+    version: '1.4.3',
+    date: '2026-06-10',
     items: [
       'HTML 문서 뷰어의 목차 고정성 문제를 보강하고, 문서 보기 도움말·새 창 보기 안내를 추가했습니다. 대시보드 헤더는 작은 화면에서도 가로 스크롤이 생기지 않도록 정리했습니다.',
       'Document·Civil·NSA 문서 화면에 파일명/폴더 검색, 최근 열람 문서 복원, 다운로드 시작 안내를 추가했습니다.',

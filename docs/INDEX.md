@@ -113,7 +113,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 120건 PASS (backend pytest, 컬렉션 모듈 포함). 프론트엔드 Vitest 는 122건 PASS (37 파일) — 1.4.0 에서 컬렉션 프록시·NSA·Ladder·Civil 다중 카탈로그, 1.4.1 에서 문서 뷰어 fit 모드(목차 고정) 테스트가 추가됨. 최신 카운트는 README.md §검증 참고.
+총 128건 PASS (backend pytest, 컬렉션 모듈 포함). 프론트엔드 Vitest 는 137건 PASS (37 파일) — 1.4.0 에서 컬렉션 프록시·NSA·Ladder·Civil 다중 카탈로그, 1.4.1 에서 문서 뷰어 fit 모드(목차 고정), 1.4.3 에서 문서 검색·최근 열람·다운로드·NSA 재잠금·대시보드 그룹 테스트가 추가됨. 최신 카운트는 README.md §검증 참고.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -128,10 +128,10 @@
 | `backend/tests/unit/read_tracking/test_read_event_repository.py` | 6 | record_read 30분 디바운스 upsert / 별도 IP 별도 행 / summarize / purge |
 | `backend/tests/integration/test_read_tracking_api.py` | 7 | 공개 비콘 200·404(행 미생성) / 관리자 read-events 401·200 / purge 401·403(무CSRF)·삭제 |
 | `backend/tests/integration/test_reports_api.py` | 3 | 민간 항공기 보고서 200·sanitize·CSP / 404 / `_debug` 제외 |
-| `backend/tests/integration/test_documents_api.py` | 5 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / 404 / 디렉토리 이탈 400 |
-| 그 외 unit / integration | 28 | 인증 API, 뉴스레터 public/admin/imports/content API, seed 등 |
+| `backend/tests/integration/test_documents_api.py` | 8 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / HTML 다운로드 / 404 / 디렉토리 이탈 400 |
+| 그 외 unit / integration | 33 | 인증 API, 뉴스레터 public/admin/imports/content API, 컬렉션 다운로드, seed 등 |
 
-프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 2), `home-page.test.tsx`(보고서 카드 1). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기·사이드바 접기·상단 셀렉트 전환 6), `home-page.test.tsx`(Document 카드·`3 active · 2 coming soon` 카운트).
+프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 3), `home-page.test.tsx`(보고서 카드·대시보드 그룹 2). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기·사이드바 접기·상단 셀렉트 전환·검색·최근 열람·다운로드 안내 12), `home-page.test.tsx`(Document 카드·`5 active · 2 coming soon` 카운트). NSA 가림막 재잠금, 사다리 당첨 항목 보존, 뉴스레터 날짜 aria-label 도 각 컴포넌트 테스트에 포함됨.
 
 회귀 1건이라도 발생하면 §3의 단계 보고서 7종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
