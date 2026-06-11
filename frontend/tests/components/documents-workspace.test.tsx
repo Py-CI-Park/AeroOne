@@ -31,6 +31,7 @@ beforeEach(() => {
   fetchCollectionContentMock.mockImplementation((collection: string, path: string) =>
     Promise.resolve({ asset_type: 'html', content_html: `<p>${path}</p>` }),
   );
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -52,6 +53,62 @@ test('default render: sidebar collapsed — tree hidden, select visible', async 
   const viewer = await screen.findByTestId('doc-html');
   expect(viewer).toHaveTextContent('<p>회사소개.html</p>');
   expect(viewer).toHaveAttribute('data-title', '회사소개');
+});
+
+test('renders download links for the selected document and tree items', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));
+
+  expect(screen.getByTestId('documents-selected-download')).toHaveAttribute(
+    'href',
+    '/api/frontend/collections/document/download/html?path=%ED%9A%8C%EC%82%AC%EC%86%8C%EA%B0%9C.html',
+  );
+
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  fireEvent.click(screen.getByTestId('doc-folder-항공'));
+
+  expect(screen.getByTestId('doc-download-항공/상용기.html')).toHaveAttribute(
+    'href',
+    '/api/frontend/collections/document/download/html?path=%ED%95%AD%EA%B3%B5%2F%EC%83%81%EC%9A%A9%EA%B8%B0.html',
+  );
+});
+
+test('filters documents by file name or folder and shows result count', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));
+
+  fireEvent.change(screen.getByTestId('documents-search'), { target: { value: '엔진' } });
+
+  expect(screen.getByTestId('documents-search-count')).toHaveTextContent('1/3개 표시');
+  expect(screen.getByRole('option', { name: '엔진' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: '회사소개' })).not.toBeInTheDocument();
+});
+
+test('restores the recent document for the collection and updates it on selection', async () => {
+  window.localStorage.setItem('aeroone.collection.document.recentDocument', '항공/엔진.html');
+
+  render(<DocumentsWorkspace documents={DOCS} />);
+
+  await waitFor(() =>
+    expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '항공/엔진.html'),
+  );
+
+  fireEvent.change(screen.getByTestId('documents-select'), { target: { value: '회사소개.html' } });
+
+  await waitFor(() =>
+    expect(window.localStorage.getItem('aeroone.collection.document.recentDocument')).toBe('회사소개.html'),
+  );
+});
+
+test('selected download announces the file being downloaded', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));
+
+  const downloadLink = screen.getByTestId('documents-selected-download');
+  downloadLink.addEventListener('click', (event) => event.preventDefault());
+  fireEvent.click(downloadLink);
+
+  expect(screen.getByTestId('documents-download-notice')).toHaveTextContent('회사소개 다운로드를 시작했습니다.');
 });
 
 test('clicking sidebar toggle shows the tree; folders are collapsed by default', async () => {

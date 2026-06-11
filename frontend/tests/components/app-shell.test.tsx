@@ -30,6 +30,7 @@ test('renders the default shell with light data-theme and a theme selector', () 
   expect(screen.queryByRole('link', { name: '관리자' })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '검색' })).not.toBeInTheDocument();
 });
 
 test('can opt out of the theme selector', () => {
@@ -95,6 +96,22 @@ test('top nav renders exactly 3 links: Dashboard, Newsletter, Document — and n
   expect(within(nav).queryByRole('link', { name: /NSA/i })).not.toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /Ladder/i })).not.toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /Civil/i })).not.toBeInTheDocument();
+});
+
+test('uses a wrapping header/nav layout so narrow dashboard screens do not overflow', () => {
+  render(
+    <AppShell title="Responsive Shell">
+      <p>content</p>
+    </AppShell>,
+  );
+
+  const header = screen.getByTestId('app-shell-header');
+  const nav = screen.getByRole('navigation');
+
+  expect(header).toHaveClass('flex-wrap');
+  expect(header).toHaveClass('sm:flex-nowrap');
+  expect(nav).toHaveClass('w-full');
+  expect(nav).toHaveClass('overflow-x-auto');
 });
 
 test('renders compact theme selector after dashboard link when a path is provided', () => {

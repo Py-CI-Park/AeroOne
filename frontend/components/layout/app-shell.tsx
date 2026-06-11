@@ -45,9 +45,9 @@ export function AppShell({
     >
       <header
         data-testid="app-shell-header"
-        className="sticky top-0 z-[50] flex h-[60px] flex-shrink-0 items-center gap-6 border-b border-line-subtle bg-surface-raised px-8"
+        className="sticky top-0 z-[50] flex min-h-[60px] flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-subtle bg-surface-raised px-4 py-3 sm:h-[60px] sm:flex-nowrap sm:gap-6 sm:px-8 sm:py-0"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Link href="/" className="flex items-center gap-2 text-ink-1">
             <span className="text-accent">
               <Icon.logo size={20} />
@@ -57,7 +57,7 @@ export function AppShell({
           <VersionBadge />
         </div>
 
-        <nav className="ml-4 flex gap-1" aria-label="주요 메뉴">
+        <nav className="order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:ml-4 sm:w-auto sm:overflow-visible" aria-label="주요 메뉴">
           {NAV_ITEMS.map((item) => {
             const isActive = active === item.id;
             return (
@@ -89,14 +89,6 @@ export function AppShell({
         ) : null}
 
         <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            title="검색"
-            aria-label="검색"
-            className="inline-flex h-[30px] w-[34px] items-center justify-center rounded border border-line-subtle text-ink-2 transition-colors hover:bg-surface-sunken"
-          >
-            <Icon.search size={13} />
-          </button>
           {showThemeSelector ? <NewsletterThemeSelector theme={theme} currentPath={themePath} /> : null}
         </div>
       </header>

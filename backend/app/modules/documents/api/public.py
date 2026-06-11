@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import FileResponse
 
 from app.core.config import Settings
 from app.modules.auth.dependencies import get_settings
@@ -37,3 +38,18 @@ def get_document_html(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid document path') from exc
     response.headers['Content-Security-Policy'] = HTML_CSP
     return {'asset_type': 'html', 'content_html': content_html}
+
+
+@router.get('/download/html')
+def download_document_html(
+    path: str = Query(..., description='_database/document 기준 상대 경로(.html)'),
+    settings: Settings = Depends(get_settings),
+):
+    # 레거시 /documents 경로도 컬렉션 다운로드와 동일하게 원본 HTML 첨부 다운로드를 지원한다.
+    try:
+        file_path = service.resolve_download_path(settings.document_root_path, path, settings.managed_storage_root)
+    except CollectionItemError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Document not found') from exc
+    except StorageError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid document path') from exc
+    return FileResponse(file_path, media_type='text/html; charset=utf-8', filename=file_path.name)

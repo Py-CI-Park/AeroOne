@@ -43,11 +43,11 @@ it('starts collapsed and expands the light calendar on click', () => {
   expect(screen.getByRole('button', { name: '다음 달' })).toBeInTheDocument();
   expect(screen.getByText('2026년 3월')).toBeInTheDocument();
   expect(screen.getByTestId('newsletter-calendar-grid')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /26/ })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: '2026-03-26 뉴스레터 열기' })).toHaveAttribute(
     'href',
     '/newsletters?slug=newsletter-20260326&theme=light',
   );
-  expect(screen.getByRole('link', { name: /25/ })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '2026-03-25 뉴스레터 열기' })).toBeInTheDocument();
 });
 
 it('can render the calendar panel with dark theme classes', () => {
@@ -71,7 +71,7 @@ it('can render the calendar panel with dark theme classes', () => {
   // Expand and check dark-theme link
   fireEvent.click(screen.getByRole('button', { name: '달력 펼치기' }));
 
-  expect(screen.getByRole('link', { name: /26/ })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: '2026-03-26 뉴스레터 열기' })).toHaveAttribute(
     'href',
     '/newsletters?slug=newsletter-20260326&theme=dark',
   );

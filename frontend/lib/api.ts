@@ -125,6 +125,12 @@ export async function fetchCollectionContent(
   return (await response.json()) as { asset_type: 'html'; content_html: string };
 }
 
+export function getCollectionDownloadPath(collection: string, path: string): string {
+  // 브라우저가 same-origin 프록시를 통해 원본 HTML 을 첨부 다운로드하게 하는 URL.
+  // collection 값은 프록시 라우트/백엔드 whitelist(document/civil/nsa)가 최종 검증한다.
+  return `/api/frontend/collections/${encodeURIComponent(collection)}/download/html?path=${encodeURIComponent(path)}`;
+}
+
 export async function fetchCollectionList(collection: string): Promise<{ documents: DocumentListItem[] }> {
   // 컬렉션 목록 — NSA 언락 후 클라이언트에서 same-origin 프록시 경유로 받는다.
   const response = await fetch(`/api/frontend/collections/${collection}/list`, { cache: 'no-store' });

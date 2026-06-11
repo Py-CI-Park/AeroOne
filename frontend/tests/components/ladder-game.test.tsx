@@ -129,6 +129,18 @@ describe('LadderGame component', () => {
     expect(screen.getByText(/참가자를 한 명 이상 입력하세요/)).toBeInTheDocument();
   });
 
+  it('preserves custom prize lines when participant count changes', () => {
+    render(<LadderGame />);
+
+    const participantArea = screen.getByLabelText(/참가자/);
+    const prizeArea = screen.getByLabelText(/당첨 항목/) as HTMLTextAreaElement;
+
+    fireEvent.change(prizeArea, { target: { value: '아메리카노\n라떼\n꽝\n꽝' } });
+    fireEvent.change(participantArea, { target: { value: 'Alice\nBob\nCarol\nDave\nEve' } });
+
+    expect(prizeArea.value).toBe('아메리카노\n라떼\n꽝\n꽝\n꽝');
+  });
+
   it('reset button hides the result', () => {
     render(<LadderGame />);
 

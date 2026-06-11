@@ -111,3 +111,48 @@ def test_collection_content_404_for_non_html_or_debug(client, test_paths, path) 
     )
 
     assert response.status_code == 404
+
+@pytest.mark.parametrize(
+    ('collection', 'root_key'),
+    [('document', 'document_root'), ('civil', 'civil_aircraft_root'), ('nsa', 'nsa_root')],
+)
+def test_collection_download_returns_original_html_attachment(client, test_paths, collection, root_key) -> None:
+    (test_paths[root_key] / '항공').mkdir(parents=True)
+    (test_paths[root_key] / '항공' / '상용기_스펙.html').write_text(
+        '<html><body><script>window.__raw=1</script><p>원본</p></body></html>',
+        encoding='utf-8',
+    )
+
+    response = client.get(
+        f'/api/v1/collections/{collection}/download/html',
+        params={'path': '항공/상용기_스펙.html'},
+    )
+
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('text/html')
+    assert 'attachment' in response.headers['content-disposition']
+    assert 'filename*=' in response.headers['content-disposition']
+    assert 'window.__raw=1' in response.text
+
+
+@pytest.mark.parametrize('collection', ['document', 'civil', 'nsa'])
+def test_collection_download_rejects_path_traversal(client, collection) -> None:
+    response = client.get(
+        f'/api/v1/collections/{collection}/download/html',
+        params={'path': '../../secret.html'},
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize('path', ['notes.txt', 'draft_debug.html'])
+def test_collection_download_404_for_non_html_or_debug(client, test_paths, path) -> None:
+    (test_paths['document_root'] / 'notes.txt').write_text('plain', encoding='utf-8')
+    (test_paths['document_root'] / 'draft_debug.html').write_text('<html>debug</html>', encoding='utf-8')
+
+    response = client.get(
+        '/api/v1/collections/document/download/html',
+        params={'path': path},
+    )
+
+    assert response.status_code == 404

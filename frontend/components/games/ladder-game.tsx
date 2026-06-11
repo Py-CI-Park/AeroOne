@@ -64,6 +64,14 @@ function buildDefaultPrizes(count: number): string[] {
   return Array.from({ length: count }, (_, i) => (i === 0 ? '커피' : '꽝'));
 }
 
+function resizePrizes(existing: string[], count: number): string[] {
+  if (count <= 0) {
+    return [];
+  }
+  const defaults = buildDefaultPrizes(count);
+  return Array.from({ length: count }, (_, index) => existing[index] ?? defaults[index] ?? '꽝');
+}
+
 function parseLines(text: string): string[] {
   return text
     .split('\n')
@@ -318,9 +326,10 @@ export function LadderGame() {
     setParticipantText(val);
     setResult(null);
     setError(null);
-    // Auto-resize prizes to match participant count
+    // 참가자 수가 바뀌어도 사용자가 직접 적은 당첨 항목은 최대한 보존하고 부족분만 기본값으로 채운다.
     const count = parseLines(val).length;
-    setPrizeText(count > 0 ? buildDefaultPrizes(count).join('\n') : '');
+    const currentPrizes = parseLines(prizeText);
+    setPrizeText(resizePrizes(currentPrizes, count).join('\n'));
   }
 
   function handlePrizeChange(val: string) {

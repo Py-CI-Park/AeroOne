@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-import { HtmlViewer, expandNewsletterArticles } from '@/components/newsletter/html-viewer';
+import { HtmlViewer, expandNewsletterArticles, resolveSameDocumentHashTarget } from '@/components/newsletter/html-viewer';
 
 it('renders sandboxed iframe that allows scripts for trusted newsletter content', () => {
   render(<HtmlViewer title="sample" html="<h1>hello</h1>" />);
@@ -25,6 +25,26 @@ it('viewport fit gives the iframe its own scroll (no scrolling=no) so a doc TOC 
   expect(iframe.getAttribute('scrolling')).toBeNull();
   expect(iframe.getAttribute('style') ?? '').toContain('calc(100vh');
 });
+it('viewport fit does not lock the parent page scroll', async () => {
+  const originalOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'auto';
+
+  render(<HtmlViewer title="doc" html="<h1>hi</h1>" fit="viewport" showFitToggle />);
+
+  await waitFor(() => expect(screen.getByTitle('doc')).toBeInTheDocument());
+  expect(document.body.style.overflow).toBe('auto');
+
+  document.body.style.overflow = originalOverflow;
+});
+
+it('resolves same-page hash links including absolute app URLs', () => {
+  expect(resolveSameDocumentHashTarget('#summary', 'http://localhost:29501/nsa')).toBe('summary');
+  expect(resolveSameDocumentHashTarget('/nsa#summary', 'http://localhost:29501/nsa')).toBe('summary');
+  expect(resolveSameDocumentHashTarget('http://localhost:29501/nsa#summary', 'http://localhost:29501/nsa')).toBe('summary');
+  expect(resolveSameDocumentHashTarget('/documents#summary', 'http://localhost:29501/nsa')).toBeNull();
+  expect(resolveSameDocumentHashTarget('https://example.com/nsa#summary', 'http://localhost:29501/nsa')).toBeNull();
+});
+
 
 it('fit toggle switches between viewport(목차 고정) and content(전체 높이)', () => {
   render(<HtmlViewer title="doc" html="<h1>hi</h1>" fit="viewport" showFitToggle />);
@@ -44,6 +64,25 @@ it('fit toggle switches between viewport(목차 고정) and content(전체 높�
   fireEvent.click(toggle);
   expect(toggle).toHaveTextContent('전체 높이로 보기');
   expect(screen.getByTitle('doc').getAttribute('scrolling')).toBeNull();
+});
+
+it('opens the raw HTML in a blob URL instead of navigating to the gated app route', () => {
+  const originalCreateObjectURL = window.URL.createObjectURL;
+  const originalRevokeObjectURL = window.URL.revokeObjectURL;
+  const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+  const createObjectURLMock = vi.fn(() => 'blob:http://localhost:29501/raw-html');
+  const revokeObjectURLMock = vi.fn();
+  Object.defineProperty(window.URL, 'createObjectURL', { configurable: true, value: createObjectURLMock });
+  Object.defineProperty(window.URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURLMock });
+
+  render(<HtmlViewer title="doc" html="<h1>raw</h1>" />);
+  fireEvent.click(screen.getByRole('button', { name: '새 창으로 열기' }));
+
+  expect(createObjectURLMock).toHaveBeenCalled();
+  expect(openSpy).toHaveBeenCalledWith('blob:http://localhost:29501/raw-html', '_blank');
+
+  Object.defineProperty(window.URL, 'createObjectURL', { configurable: true, value: originalCreateObjectURL });
+  Object.defineProperty(window.URL, 'revokeObjectURL', { configurable: true, value: originalRevokeObjectURL });
 });
 
 function buildArticleDoc(): Document {

@@ -17,6 +17,36 @@ export function expandNewsletterArticles(doc: Document): number {
   return articles.length;
 }
 
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+export function resolveSameDocumentHashTarget(href: string | null, currentHref: string): string | null {
+  if (!href) {
+    return null;
+  }
+  if (href.startsWith('#')) {
+    const target = safeDecodeURIComponent(href.substring(1));
+    return target || null;
+  }
+  try {
+    const url = new URL(href, currentHref);
+    const current = new URL(currentHref);
+    if (!url.hash || url.origin !== current.origin || url.pathname !== current.pathname) {
+      return null;
+    }
+    const target = safeDecodeURIComponent(url.hash.substring(1));
+    return target || null;
+  } catch {
+    return null;
+  }
+}
+
+
 // scrolling="no" iframe 의 높이를 콘텐츠 전체 높이에 맞춘다. 본문이 JS 로 늦게
 // 주입되고 이미지·폰트 로드로 레이아웃이 더 커지므로 측정 시점에 따라 값이
 // 달라진다. body/documentElement 의 scroll/offset 높이 최댓값을 쓰고 최소 1800.
@@ -91,30 +121,34 @@ export function HtmlViewer({
       if (!anchor) return;
 
       const href = anchor.getAttribute('href');
-      if (href && href.startsWith('#')) {
-        e.preventDefault();
-        const targetId = decodeURIComponent(href.substring(1));
-        const targetEl = doc.getElementById(targetId);
-        if (targetEl) {
-          if (mode === 'content') {
-            const iframeEl = iframeRef.current;
-            if (iframeEl) {
-              const iframeRect = iframeEl.getBoundingClientRect();
-              const targetRect = targetEl.getBoundingClientRect();
-              // 부모 창 기준 절대 y 좌표 계산
-              const absoluteTop = window.scrollY + iframeRect.top + targetRect.top;
-              // sticky 헤더(60px) + 여유(10px) = 70px 오프셋 차감
-              const offset = 70;
-              window.scrollTo({
-                top: absoluteTop - offset,
-                behavior: 'smooth',
-              });
-            }
-          } else {
-            // viewport 모드: iframe 내부 스크롤바 이동
-            targetEl.scrollIntoView({ behavior: 'smooth' });
-          }
+      const targetId = resolveSameDocumentHashTarget(href, window.location.href);
+      if (!targetId) {
+        return;
+      }
+
+      const targetEl = doc.getElementById(targetId);
+      if (!targetEl) {
+        return;
+      }
+
+      e.preventDefault();
+      if (mode === 'content') {
+        const iframeEl = iframeRef.current;
+        if (iframeEl) {
+          const iframeRect = iframeEl.getBoundingClientRect();
+          const targetRect = targetEl.getBoundingClientRect();
+          // 부모 창 기준 절대 y 좌표 계산
+          const absoluteTop = window.scrollY + iframeRect.top + targetRect.top;
+          // sticky 헤더(60px) + 여유(10px) = 70px 오프셋 차감
+          const offset = 70;
+          window.scrollTo({
+            top: absoluteTop - offset,
+            behavior: 'smooth',
+          });
         }
+      } else {
+        // viewport 모드: iframe 내부 스크롤바 이동
+        targetEl.scrollIntoView({ behavior: 'smooth' });
       }
     };
 
@@ -227,15 +261,15 @@ export function HtmlViewer({
   }
 
   function handleOpenNewWindow() {
-    const newWindow = window.open('about:blank', '_blank');
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const objectUrl = window.URL.createObjectURL(blob);
+    const newWindow = window.open(objectUrl, '_blank');
     if (!newWindow) {
+      window.URL.revokeObjectURL(objectUrl);
       alert('팝업 차단이 설정되어 있습니다. 브라우저의 팝업 차단을 해제하고 다시 시도해주세요.');
       return;
     }
-    const newDoc = newWindow.document;
-    newDoc.open();
-    newDoc.write(html);
-    newDoc.close();
+    window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
   }
 
   // 콘텐츠 로드 직후 + 모드 전환 시 처리. content 모드만 높이 동기화/추적을 켜고,
@@ -355,17 +389,6 @@ export function HtmlViewer({
     };
   }, [mode]);
 
-  // viewport 모드(창 높이 고정)일 때 부모 창의 스크롤바를 강제 비활성화하여 이중 스크롤바를 완벽히 제거합니다.
-  // 이로 인해 HTML 문서 자체의 fixed 목차와 내부 스크롤이 단독 브라우저 실행과 100% 동일하게 작동합니다.
-  useEffect(() => {
-    if (mode !== 'viewport') return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
-  }, [mode]);
-
   useEffect(() => {
     return () => stopTracking();
   }, []);
@@ -396,11 +419,11 @@ export function HtmlViewer({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex justify-end gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
         <button
           type="button"
           onClick={() => setShowHelp((prev) => !prev)}
-          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
+          className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
             showHelp
               ? 'border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 hover:text-blue-900 dark:border-blue-800 dark:bg-blue-950/45 dark:text-blue-200'
               : 'border-line-subtle bg-surface-raised text-ink-2 hover:bg-surface-sunken hover:text-ink-1'
@@ -413,7 +436,7 @@ export function HtmlViewer({
         <button
           type="button"
           onClick={handleOpenNewWindow}
-          className="inline-flex items-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
           title="문서를 새 창에서 원본 크기 그대로 엽니다"
         >
           <Icon.external size={13} />
@@ -425,7 +448,7 @@ export function HtmlViewer({
             data-testid="html-viewer-fit-toggle"
             aria-pressed={isViewport}
             onClick={() => setMode((current) => (current === 'viewport' ? 'content' : 'viewport'))}
-            className="inline-flex items-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
+            className="col-span-2 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1 sm:col-span-1"
             title={isViewport ? '문서 전체를 한 페이지로 펼쳐 봅니다' : '창 높이에 맞춰 문서 자체 스크롤(목차 고정)로 봅니다'}
           >
             {isViewport ? '전체 높이로 보기' : '창 높이로 보기 (목차 고정)'}
@@ -435,8 +458,8 @@ export function HtmlViewer({
 
       {showHelp && (
         <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 text-sm text-blue-900 shadow-sm transition-all dark:border-blue-900/30 dark:bg-blue-950/20 dark:text-blue-200">
-          <h4 className="mb-2 font-bold flex items-center gap-1.5 text-blue-800 dark:text-blue-300">
-            💡 AeroOne 문서 뷰어 조작 가이드
+          <h4 className="mb-2 flex items-center gap-1.5 font-bold text-blue-800 dark:text-blue-300">
+            AeroOne 문서 뷰어 조작 가이드
           </h4>
           <ul className="space-y-1.5 list-disc list-inside text-xs leading-relaxed text-ink-2">
             <li>

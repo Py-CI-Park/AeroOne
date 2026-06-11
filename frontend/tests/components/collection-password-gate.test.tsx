@@ -24,6 +24,10 @@ const DOCS = [
   { path: 'secret-b.html', name: 'Secret B', folder: '' },
 ];
 
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   fetchCollectionListMock.mockReset();
@@ -35,6 +39,12 @@ test('initial render shows password form and fetchCollectionList is NOT called',
   expect(screen.getByRole('button', { name: '확인' })).toBeInTheDocument();
   expect(screen.getByLabelText('비밀번호')).toBeInTheDocument();
   expect(fetchCollectionListMock.mock.calls.length).toBe(0);
+});
+
+test('focuses the NSA password input immediately on the locked screen', () => {
+  render(<CollectionPasswordGate collection="nsa" />);
+
+  expect(screen.getByLabelText('비밀번호')).toHaveFocus();
 });
 
 test('wrong code shows error and fetchCollectionList is still NOT called', () => {
@@ -62,4 +72,31 @@ test('correct code 0000 unlocks: fetchCollectionList called with "nsa" and works
 
   const stub = await screen.findByTestId('documents-workspace-stub');
   expect(stub).toHaveTextContent('secret-a.html,secret-b.html');
+});
+
+test('stored unlock keeps NSA usable after reload or hash navigation', async () => {
+  fetchCollectionListMock.mockResolvedValue({ documents: DOCS });
+  window.localStorage.setItem('aeroone.collection.nsa.unlocked', '1');
+
+  render(<CollectionPasswordGate collection="nsa" />);
+
+  await waitFor(() =>
+    expect(fetchCollectionListMock).toHaveBeenCalledWith('nsa'),
+  );
+  expect(screen.queryByLabelText('비밀번호')).not.toBeInTheDocument();
+  expect(await screen.findByTestId('documents-workspace-stub')).toHaveTextContent('secret-a.html');
+});
+
+test('unlocked NSA shows status and can be locked again', async () => {
+  fetchCollectionListMock.mockResolvedValue({ documents: DOCS });
+  window.localStorage.setItem('aeroone.collection.nsa.unlocked', '1');
+
+  render(<CollectionPasswordGate collection="nsa" />);
+
+  expect(await screen.findByText('NSA 잠금 해제됨')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId('collection-gate-lock'));
+
+  expect(screen.getByLabelText('비밀번호')).toBeInTheDocument();
+  expect(window.localStorage.getItem('aeroone.collection.nsa.unlocked')).toBeNull();
 });

@@ -52,3 +52,14 @@ class HtmlCollectionService:
         if not resolved.is_file():
             raise CollectionItemError('Document not found')
         return HtmlRenderService(storage).render(path)
+
+    def resolve_download_path(self, root: Path, path: str, managed_storage_root: Path) -> Path:
+        # 다운로드도 렌더와 동일한 allowlist(.html, _debug 제외)와 path-guard 를 거친다.
+        # 반환값은 원본 HTML 파일 경로이며, 라우터가 FileResponse 로 첨부 전송한다.
+        if not path.lower().endswith('.html') or path.endswith('_debug.html'):
+            raise CollectionItemError('Document not found')
+        storage = StorageService(root, managed_storage_root)
+        resolved = storage.resolve_external_relative_path(path)
+        if not resolved.is_file():
+            raise CollectionItemError('Document not found')
+        return resolved

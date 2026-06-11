@@ -147,6 +147,7 @@ export function NewsletterDateCalendar({
               }
 
               const isSelected = cell.entry.slug === selectedSlug;
+              const linkLabel = `${cell.entry.date} 뉴스레터 열기`;
 
               return (
                 <Link
@@ -158,6 +159,7 @@ export function NewsletterDateCalendar({
                       : 'bg-accent-soft text-accent hover:bg-surface-sunken'
                   }`}
                   title={`${cell.entry.title} (${cell.entry.source_type.toUpperCase()})`}
+                  aria-label={linkLabel}
                 >
                   {cell.day}
                 </Link>

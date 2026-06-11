@@ -77,6 +77,8 @@ export default async function HomePage({
   // 카운트는 MODULES 에서 파생 — 카드를 늘려도 상단 요약이 자동으로 맞는다.
   const activeCount = MODULES.filter((module) => module.active).length;
   const comingCount = MODULES.length - activeCount;
+  const activeModules = MODULES.filter((module) => module.active);
+  const comingModules = MODULES.filter((module) => !module.active);
 
   return (
     <AppShell
@@ -86,17 +88,40 @@ export default async function HomePage({
       active="dashboard"
       titleMeta={`${activeCount} active · ${comingCount} coming soon`}
     >
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {MODULES.map((module) => (
-          <ServiceCard
-            key={module.id}
-            title={module.title}
-            description={'description' in module ? module.description : undefined}
-            href={module.href}
-            badge={module.badge}
-            active={module.active}
-          />
-        ))}
+      <section className="flex flex-col gap-8">
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">Active modules</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {activeModules.map((module) => (
+              <ServiceCard
+                key={module.id}
+                title={module.title}
+                description={'description' in module ? module.description : undefined}
+                href={module.href}
+                badge={module.badge}
+                active={module.active}
+              />
+            ))}
+          </div>
+        </div>
+
+        {comingModules.length > 0 ? (
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">Coming soon</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {comingModules.map((module) => (
+                <ServiceCard
+                  key={module.id}
+                  title={module.title}
+                  description={'description' in module ? module.description : undefined}
+                  href={module.href}
+                  badge={module.badge}
+                  active={module.active}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
     </AppShell>
   );

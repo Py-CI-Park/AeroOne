@@ -149,3 +149,26 @@ test('GET forwards content-type header from upstream to client response', async 
   expect(response.headers.get('content-type')).toBe('application/json');
   expect(response.headers.get('x-internal-only')).toBeNull();
 });
+
+test('GET forwards download headers from upstream to client response', async () => {
+  const upstreamResponse = new Response('<html>download</html>', {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'content-disposition': "attachment; filename*=utf-8''doc.html",
+    },
+  });
+  vi.spyOn(global, 'fetch').mockResolvedValue(upstreamResponse);
+
+  const request = createRouteRequest(
+    'http://localhost/api/frontend/collections/document/download/html?path=doc.html',
+  );
+
+  const response = await GET(request, {
+    params: Promise.resolve({ segments: ['document', 'download', 'html'] }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  expect(response.headers.get('content-disposition')).toBe("attachment; filename*=utf-8''doc.html");
+});

@@ -57,6 +57,19 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(screen.getByText('5 active · 2 coming soon')).toBeInTheDocument();
 });
 
+test('groups active dashboard cards before coming soon modules', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const activeHeading = screen.getByRole('heading', { name: 'Active modules' });
+  const comingHeading = screen.getByRole('heading', { name: 'Coming soon' });
+  const nsaLink = screen.getByRole('link', { name: /NSA/i });
+  const announcement = screen.getByRole('heading', { name: 'Announcement' });
+
+  expect(activeHeading.compareDocumentPosition(comingHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(nsaLink.compareDocumentPosition(comingHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(comingHeading.compareDocumentPosition(announcement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
 test('adds an active NSA card linking to /nsa', async () => {
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
