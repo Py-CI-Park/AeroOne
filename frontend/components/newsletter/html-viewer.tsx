@@ -45,6 +45,108 @@ export function resolveSameDocumentHashTarget(href: string | null, currentHref: 
     return null;
   }
 }
+export function isElementFromDocument(target: EventTarget | null, doc: Document): target is Element {
+  const elementCtor = doc.defaultView?.Element;
+  return Boolean(elementCtor && target instanceof elementCtor);
+}
+
+export function normalizeSameDocumentHashLinks(doc: Document, currentHref: string): number {
+  let normalized = 0;
+  doc.querySelectorAll<HTMLAnchorElement>('a[href]').forEach((anchor) => {
+    const targetId = resolveSameDocumentHashTarget(anchor.getAttribute('href'), currentHref);
+    if (!targetId || !doc.getElementById(targetId)) {
+      return;
+    }
+    anchor.removeAttribute('target');
+    const rel = anchor.getAttribute('rel');
+    if (rel === 'noopener noreferrer') {
+      anchor.removeAttribute('rel');
+    }
+    normalized += 1;
+  });
+  return normalized;
+}
+
+export function normalizeHtmlForStandaloneWindow(html: string): string {
+  if (typeof DOMParser === 'undefined') {
+    return html;
+  }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  normalizeSameDocumentHashLinks(doc, doc.location?.href ?? 'about:blank');
+  return `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`;
+}
+const VIEWER_FIT_STYLE_ID = 'aeroone-viewer-fit-style';
+const VIEWER_FIT_STYLE = `
+body[data-aeroone-viewer-fit="content"] {
+  overflow-x: hidden !important;
+}
+
+body[data-aeroone-viewer-fit="content"] .main,
+body[data-aeroone-viewer-fit="content"] .main-inner {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+}
+
+body[data-aeroone-viewer-fit="content"] table {
+  display: block !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  white-space: normal !important;
+}
+
+@media (max-width: 1180px) {
+  body[data-aeroone-viewer-fit="content"] .sidebar,
+  body[data-aeroone-viewer-fit="content"] #sidebar,
+  body[data-aeroone-viewer-fit="content"] [class*="sidebar"] {
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 280px !important;
+    overflow-y: auto !important;
+  }
+
+  body[data-aeroone-viewer-fit="content"] .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  body[data-aeroone-viewer-fit="content"] .main-inner {
+    padding-left: clamp(16px, 4vw, 34px) !important;
+    padding-right: clamp(16px, 4vw, 34px) !important;
+  }
+
+  body[data-aeroone-viewer-fit="content"] .printbtn {
+    position: absolute !important;
+    right: 16px !important;
+  }
+}
+`;
+
+
+export function applyViewerFitStyles(doc: Document, fit: HtmlViewerFit): void {
+  if (!doc.body || !doc.head) {
+    return;
+  }
+
+  if (doc.body.getAttribute('data-aeroone-viewer-fit') !== fit) {
+    doc.body.setAttribute('data-aeroone-viewer-fit', fit);
+  }
+
+  let style = doc.getElementById(VIEWER_FIT_STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = doc.createElement('style');
+    style.id = VIEWER_FIT_STYLE_ID;
+    doc.head.appendChild(style);
+  }
+
+  if (style.textContent !== VIEWER_FIT_STYLE) {
+    style.textContent = VIEWER_FIT_STYLE;
+  }
+}
+
+
 
 
 // scrolling="no" iframe 의 높이를 콘텐츠 전체 높이에 맞춘다. 본문이 JS 로 늦게
@@ -76,11 +178,17 @@ export function HtmlViewer({
   html,
   fit = 'content',
   showFitToggle = false,
+  downloadHref,
+  downloadLabel = 'HTML 다운로드',
+  onDownload,
 }: {
   title: string;
   html: string;
   fit?: HtmlViewerFit;
   showFitToggle?: boolean;
+  downloadHref?: string;
+  downloadLabel?: string;
+  onDownload?: () => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState(1800);
@@ -99,7 +207,6 @@ export function HtmlViewer({
       handleScrollRef.current();
     }
   }, [height]);
-
   function getDoc(): Document | null {
     return iframeRef.current?.contentWindow?.document ?? null;
   }
@@ -111,12 +218,15 @@ export function HtmlViewer({
       return;
     }
 
+    normalizeSameDocumentHashLinks(doc, window.location.href);
+
     if (doc.body.hasAttribute('data-aeroone-anchors-bound')) {
       return;
     }
 
     const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
+      if (!isElementFromDocument(target, doc)) return;
       const anchor = target.closest('a');
       if (!anchor) return;
 
@@ -132,13 +242,17 @@ export function HtmlViewer({
       }
 
       e.preventDefault();
-      if (mode === 'content') {
+      e.stopPropagation();
+
+      const isContentMode = iframeRef.current?.getAttribute('scrolling') === 'no';
+      if (isContentMode) {
         const iframeEl = iframeRef.current;
         if (iframeEl) {
           const iframeRect = iframeEl.getBoundingClientRect();
           const targetRect = targetEl.getBoundingClientRect();
+          const innerScrollY = iframeEl.contentWindow?.scrollY ?? 0;
           // 부모 창 기준 절대 y 좌표 계산
-          const absoluteTop = window.scrollY + iframeRect.top + targetRect.top;
+          const absoluteTop = window.scrollY + iframeRect.top + targetRect.top + innerScrollY;
           // sticky 헤더(60px) + 여유(10px) = 70px 오프셋 차감
           const offset = 70;
           window.scrollTo({
@@ -147,13 +261,50 @@ export function HtmlViewer({
           });
         }
       } else {
-        // viewport 모드: iframe 내부 스크롤바 이동
-        targetEl.scrollIntoView({ behavior: 'smooth' });
+        const iframeWindow = iframeRef.current?.contentWindow;
+        if (iframeWindow) {
+          const targetRect = targetEl.getBoundingClientRect();
+          iframeWindow.scrollTo({
+            top: iframeWindow.scrollY + targetRect.top - 12,
+            behavior: 'smooth',
+          });
+        } else {
+          targetEl.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     };
 
-    doc.body.addEventListener('click', handleClick);
+    doc.addEventListener('click', handleClick, true);
     doc.body.setAttribute('data-aeroone-anchors-bound', '1');
+  }
+
+  function setupContentModeWheelScroll() {
+    const doc = getDoc();
+    if (!doc?.body) {
+      return;
+    }
+
+    if (doc.body.hasAttribute('data-aeroone-wheel-bound')) {
+      return;
+    }
+
+    const handleWheel = (e: WheelEvent) => {
+      if (iframeRef.current?.getAttribute('scrolling') !== 'no') {
+        return;
+      }
+      if (e.deltaX === 0 && e.deltaY === 0) {
+        return;
+      }
+      e.preventDefault();
+      window.scrollBy({
+        left: e.deltaX,
+        top: e.deltaY,
+        behavior: 'auto',
+      });
+    };
+
+    doc.addEventListener('wheel', handleWheel, { passive: false });
+    doc.body.setAttribute('data-aeroone-wheel-bound', '1');
   }
 
   // 높이를 측정값으로 맞춘다(증가뿐 아니라 사용자가 기사를 접어 줄어든 경우도 반영).
@@ -211,6 +362,11 @@ export function HtmlViewer({
   function refresh() {
     expandArticles();
     prepareImages();
+    const doc = getDoc();
+    if (doc) {
+      applyViewerFitStyles(doc, mode);
+    }
+    setupContentModeWheelScroll();
     setupAnchorLinks();
     syncHeight();
   }
@@ -261,7 +417,7 @@ export function HtmlViewer({
   }
 
   function handleOpenNewWindow() {
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const blob = new Blob([normalizeHtmlForStandaloneWindow(html)], { type: 'text/html;charset=utf-8' });
     const objectUrl = window.URL.createObjectURL(blob);
     const newWindow = window.open(objectUrl, '_blank');
     if (!newWindow) {
@@ -278,7 +434,12 @@ export function HtmlViewer({
   function applyMode() {
     expandArticles();
     prepareImages();
+    const doc = getDoc();
+    if (doc) {
+      applyViewerFitStyles(doc, mode);
+    }
     setupAnchorLinks();
+    setupContentModeWheelScroll();
     if (mode === 'content') {
       syncHeight();
       startTracking();
@@ -407,13 +568,13 @@ export function HtmlViewer({
       // 페이지 내 데이터만 쓰므로 정상 동작한다.
       sandbox="allow-same-origin allow-scripts"
       // content 모드는 바깥 페이지가 스크롤하므로 iframe 자체 스크롤을 끈다.
-      // viewport 모드는 iframe 이 자체 viewport 로 내부 스크롤해야 하므로 끄지 않는다.
-      scrolling={isViewport ? undefined : 'no'}
+      // viewport 모드는 iframe 이 자체 viewport 로 내부 스크롤해야 하므로 명시적으로 켠다.
+      scrolling={isViewport ? 'yes' : 'no'}
       srcDoc={html}
       onLoad={applyMode}
       // content: 측정한 콘텐츠 전체 높이. viewport: 창 높이로 고정(내부 스크롤).
       style={isViewport ? { height: 'calc(100vh - 160px)', minHeight: 480 } : { height }}
-      className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      className={`w-full ${isViewport ? 'overflow-auto' : 'overflow-hidden'} rounded-2xl border border-slate-200 bg-white shadow-sm`}
     />
   );
 
@@ -453,6 +614,19 @@ export function HtmlViewer({
           >
             {isViewport ? '전체 높이로 보기' : '창 높이로 보기 (목차 고정)'}
           </button>
+        ) : null}
+        {downloadHref ? (
+          <a
+            href={downloadHref}
+            download
+            data-testid="html-viewer-download"
+            onClick={onDownload}
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
+            title={`${title} HTML 다운로드`}
+            aria-label={`${title} HTML 다운로드`}
+          >
+            {downloadLabel}
+          </a>
         ) : null}
       </div>
 

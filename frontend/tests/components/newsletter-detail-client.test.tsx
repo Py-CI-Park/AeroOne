@@ -78,6 +78,11 @@ test('renders html preview when html is selected', () => {
 
   expect(screen.getByTitle(baseNewsletter.title)).toHaveAttribute('srcdoc', '<h1>hello</h1>');
   expect(screen.queryByTestId('newsletter-pdf-fallback')).not.toBeInTheDocument();
+  expect(screen.getByTestId('html-viewer-download')).toHaveAttribute(
+    'href',
+    '/api/frontend/newsletters/1/download/html',
+  );
+  expect(screen.getByTestId('html-viewer-download')).toHaveTextContent('HTML 다운로드');
 });
 
 test('renders fetched markdown preview when markdown is selected', async () => {
