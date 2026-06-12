@@ -374,20 +374,7 @@ export function DocumentsWorkspace({
           </select>
         ) : null}
 
-        {selected ? (
-          <a
-            href={selectedDownloadHref}
-            download
-            data-testid="documents-selected-download"
-            onClick={() => selected && handleDownload(selected)}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
-            title={`${selected.name} HTML 다운로드`}
-            aria-label={`${selected.name} HTML 다운로드`}
-          >
-            <Icon.download size={13} />
-            <span className="truncate">HTML 다운로드 · {selected.name}</span>
-          </a>
-        ) : null}
+
 
         <span className="text-xs text-ink-3" data-testid="documents-search-count">
           {filteredDocuments.length}/{documents.length}개 표시
@@ -447,7 +434,14 @@ export function DocumentsWorkspace({
               문서를 불러오는 중…
             </div>
           ) : selected ? (
-            <HtmlViewer title={selected.name} html={html} fit="viewport" showFitToggle />
+            <HtmlViewer
+              title={selected.name}
+              html={html}
+              fit="viewport"
+              showFitToggle
+              downloadHref={selectedDownloadHref}
+              onDownload={() => handleDownload(selected)}
+            />
           ) : null}
           <ScrollToTop />
         </section>

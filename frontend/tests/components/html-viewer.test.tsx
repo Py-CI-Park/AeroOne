@@ -1,7 +1,15 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-import { HtmlViewer, expandNewsletterArticles, resolveSameDocumentHashTarget } from '@/components/newsletter/html-viewer';
+import {
+  HtmlViewer,
+  applyViewerFitStyles,
+  expandNewsletterArticles,
+  isElementFromDocument,
+  normalizeHtmlForStandaloneWindow,
+  normalizeSameDocumentHashLinks,
+  resolveSameDocumentHashTarget,
+} from '@/components/newsletter/html-viewer';
 
 it('renders sandboxed iframe that allows scripts for trusted newsletter content', () => {
   render(<HtmlViewer title="sample" html="<h1>hello</h1>" />);
@@ -21,8 +29,8 @@ it('viewport fit gives the iframe its own scroll (no scrolling=no) so a doc TOC 
   // iframe 에 자체 viewport(내부 스크롤)가 있어야 단독 실행처럼 목차가 고정된다.
   render(<HtmlViewer title="doc" html="<h1>hi</h1>" fit="viewport" showFitToggle />);
   const iframe = screen.getByTitle('doc');
-  // viewport 모드: scrolling="no" 가 아니어야 내부 스크롤이 생긴다.
-  expect(iframe.getAttribute('scrolling')).toBeNull();
+  // viewport 모드: 내부 스크롤이 생기도록 scrolling 을 명시적으로 켠다.
+  expect(iframe).toHaveAttribute('scrolling', 'yes');
   expect(iframe.getAttribute('style') ?? '').toContain('calc(100vh');
 });
 it('viewport fit does not lock the parent page scroll', async () => {
@@ -45,6 +53,68 @@ it('resolves same-page hash links including absolute app URLs', () => {
   expect(resolveSameDocumentHashTarget('https://example.com/nsa#summary', 'http://localhost:29501/nsa')).toBeNull();
 });
 
+it('recognizes iframe-document elements as valid click targets', () => {
+  const iframe = document.createElement('iframe');
+  document.body.appendChild(iframe);
+  const iframeDoc = iframe.contentDocument;
+  if (!iframeDoc) {
+    throw new Error('iframe document unavailable');
+  }
+  iframeDoc.body.innerHTML = '<a href="#summary">Summary</a>';
+
+  const iframeAnchor = iframeDoc.querySelector('a');
+  expect(isElementFromDocument(iframeAnchor, iframeDoc)).toBe(true);
+  expect(iframeAnchor instanceof Element).toBe(false);
+
+  iframe.remove();
+});
+
+it('keeps same-document hash links in-place instead of target blank', () => {
+  const doc = new DOMParser().parseFromString(
+    `
+    <a href="#summary" target="_blank" rel="noopener noreferrer">Summary</a>
+    <h2 id="summary">Summary</h2>
+    <a href="https://example.com" target="_blank" rel="noopener noreferrer">External</a>
+  `,
+    'text/html',
+  );
+
+  const anchors = doc.querySelectorAll('a');
+
+  expect(normalizeSameDocumentHashLinks(doc, 'http://localhost:29501/documents')).toBe(1);
+  expect(anchors[0].getAttribute('target')).toBeNull();
+  expect(anchors[0].getAttribute('rel')).toBeNull();
+  expect(anchors[1].getAttribute('target')).toBe('_blank');
+});
+
+it('normalizes raw HTML opened in a standalone blob window', () => {
+  const normalized = normalizeHtmlForStandaloneWindow(
+    '<html><body><a href="#toc" target="_blank" rel="noopener noreferrer">TOC</a><h2 id="toc">TOC</h2></body></html>',
+  );
+
+  expect(normalized).toContain('href="#toc"');
+  expect(normalized).not.toContain('target="_blank"');
+  expect(normalized).not.toContain('noopener noreferrer');
+});
+it('injects responsive content-fit CSS to avoid sidebar and table width overlap', () => {
+  const doc = document.implementation.createHTMLDocument('doc');
+  doc.body.innerHTML = `
+    <nav class="sidebar"></nav>
+    <div class="main"><div class="main-inner"><table><tbody><tr><td>wide</td></tr></tbody></table></div></div>
+  `;
+
+  applyViewerFitStyles(doc, 'content');
+
+  const style = doc.getElementById('aeroone-viewer-fit-style');
+  expect(doc.body.getAttribute('data-aeroone-viewer-fit')).toBe('content');
+  expect(style?.textContent).toContain('@media (max-width: 1180px)');
+  expect(style?.textContent).toContain('margin-left: 0 !important');
+  expect(style?.textContent).toContain('overflow-x: auto !important');
+
+  applyViewerFitStyles(doc, 'viewport');
+  expect(doc.body.getAttribute('data-aeroone-viewer-fit')).toBe('viewport');
+});
+
 
 it('fit toggle switches between viewport(목차 고정) and content(전체 높이)', () => {
   render(<HtmlViewer title="doc" html="<h1>hi</h1>" fit="viewport" showFitToggle />);
@@ -53,7 +123,7 @@ it('fit toggle switches between viewport(목차 고정) and content(전체 높�
 
   // 시작은 viewport — 버튼은 content 로 가는 라벨을 보여준다.
   expect(toggle).toHaveTextContent('전체 높이로 보기');
-  expect(iframe.getAttribute('scrolling')).toBeNull();
+  expect(iframe).toHaveAttribute('scrolling', 'yes');
 
   // content 로 전환 → 콘텐츠 높이 + scrolling="no".
   fireEvent.click(toggle);
@@ -63,7 +133,27 @@ it('fit toggle switches between viewport(목차 고정) and content(전체 높�
   // 다시 viewport 로 전환.
   fireEvent.click(toggle);
   expect(toggle).toHaveTextContent('전체 높이로 보기');
-  expect(screen.getByTitle('doc').getAttribute('scrolling')).toBeNull();
+  expect(screen.getByTitle('doc')).toHaveAttribute('scrolling', 'yes');
+});
+it('renders optional HTML download next to the fit toggle with text only', () => {
+  render(
+    <HtmlViewer
+      title="doc"
+      html="<h1>hi</h1>"
+      fit="viewport"
+      showFitToggle
+      downloadHref="/api/frontend/collections/document/download/html?path=doc.html"
+    />,
+  );
+
+  const controls = screen.getByTestId('html-viewer-fit-toggle').parentElement;
+  const download = screen.getByTestId('html-viewer-download');
+
+  expect(download).toHaveAttribute('href', '/api/frontend/collections/document/download/html?path=doc.html');
+  expect(download).toHaveTextContent('HTML 다운로드');
+  expect(download.querySelector('svg')).toBeNull();
+  expect(controls?.children[2]).toBe(screen.getByTestId('html-viewer-fit-toggle'));
+  expect(controls?.children[3]).toBe(download);
 });
 
 it('opens the raw HTML in a blob URL instead of navigating to the gated app route', () => {

@@ -19,7 +19,8 @@ def test_render_keeps_scripts_but_strips_external_resources(settings) -> None:
         '<body><script>render()</script>'
         '<img src="https://cdn.example.com/a.png">'
         '<img src="data:image/png;base64,AAAA">'
-        '<a href="https://example.com">link</a></body></html>'
+        '<a href="https://example.com">link</a>'
+        '<a href="#summary">summary</a><h2 id="summary">Summary</h2></body></html>'
     )
 
     assert '<script' in cleaned  # 인라인 스크립트 보존
@@ -28,6 +29,8 @@ def test_render_keeps_scripts_but_strips_external_resources(settings) -> None:
     assert 'cdn.example.com' not in cleaned  # 외부 img src 제거
     assert 'data:image/png' in cleaned  # data: 리소스 보존
     assert 'noopener noreferrer' in cleaned  # 외부 <a> 는 보존 + 새 탭
+    assert 'href="#summary"' in cleaned
+    assert '<a href="#summary" target="_blank"' not in cleaned  # 내부 목차는 새 탭 금지
 
 
 def test_sanitize_html_still_strips_scripts_for_markdown_path(settings) -> None:
@@ -37,6 +40,8 @@ def test_sanitize_html_still_strips_scripts_for_markdown_path(settings) -> None:
     cleaned = service.sanitize_html(
         '<div><script>alert(1)</script>'
         '<a href="https://example.com">link</a>'
+        '<a href="#summary" target="_blank" rel="noopener noreferrer">summary</a>'
+        '<h2 id="summary">Summary</h2>'
         '<img src="image.png"/></div>'
     )
 
@@ -44,3 +49,5 @@ def test_sanitize_html_still_strips_scripts_for_markdown_path(settings) -> None:
     assert '<script' not in cleaned
     assert 'src="image.png"' not in cleaned
     assert 'noopener noreferrer' in cleaned
+    assert 'href="#summary"' in cleaned
+    assert '<a href="#summary" target="_blank"' not in cleaned

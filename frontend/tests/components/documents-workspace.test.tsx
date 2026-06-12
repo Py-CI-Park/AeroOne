@@ -14,8 +14,21 @@ vi.mock('@/lib/api', async () => {
 
 // HtmlViewer 는 iframe + observer 라 단위 테스트에서는 단순 div 로 대체(선택 본문 주입만 확인).
 vi.mock('@/components/newsletter/html-viewer', () => ({
-  HtmlViewer: ({ title, html }: { title: string; html: string }) => (
+  HtmlViewer: ({
+    title,
+    html,
+    downloadHref,
+    onDownload,
+  }: {
+    title: string;
+    html: string;
+    downloadHref?: string;
+    onDownload?: () => void;
+  }) => (
     <div data-testid="doc-html" data-title={title}>
+      <a href={downloadHref} download data-testid="html-viewer-download" onClick={onDownload}>
+        HTML 다운로드
+      </a>
       {html}
     </div>
   ),
@@ -55,14 +68,16 @@ test('default render: sidebar collapsed — tree hidden, select visible', async 
   expect(viewer).toHaveAttribute('data-title', '회사소개');
 });
 
-test('renders download links for the selected document and tree items', async () => {
+test('renders download links for the viewer and tree items', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
   await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));
 
-  expect(screen.getByTestId('documents-selected-download')).toHaveAttribute(
+  expect(screen.queryByTestId('documents-selected-download')).not.toBeInTheDocument();
+  expect(screen.getByTestId('html-viewer-download')).toHaveAttribute(
     'href',
     '/api/frontend/collections/document/download/html?path=%ED%9A%8C%EC%82%AC%EC%86%8C%EA%B0%9C.html',
   );
+  expect(screen.getByTestId('html-viewer-download')).toHaveTextContent('HTML 다운로드');
 
   fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
   fireEvent.click(screen.getByTestId('doc-folder-항공'));
@@ -100,11 +115,11 @@ test('restores the recent document for the collection and updates it on selectio
   );
 });
 
-test('selected download announces the file being downloaded', async () => {
+test('viewer download announces the file being downloaded', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
   await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));
 
-  const downloadLink = screen.getByTestId('documents-selected-download');
+  const downloadLink = screen.getByTestId('html-viewer-download');
   downloadLink.addEventListener('click', (event) => event.preventDefault());
   fireEvent.click(downloadLink);
 

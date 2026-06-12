@@ -148,7 +148,13 @@ export function NewsletterDetailClient({
     if (assetPreviewState === 'error') {
       return <AssetPreviewError assetLabel="HTML" />;
     }
-    return <HtmlViewer title={newsletter.title} html={contentHtml} />;
+    return (
+      <HtmlViewer
+        title={newsletter.title}
+        html={contentHtml}
+        downloadHref={getNewsletterProxyPath(currentAsset.download_url)}
+      />
+    );
   }
 
   if (selectedAsset === 'markdown') {

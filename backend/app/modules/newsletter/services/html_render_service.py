@@ -36,11 +36,15 @@ class HtmlRenderService:
             if src.startswith(('http://', 'https://', '//')):
                 del tag.attrs['src']
         # 외부 <a> 링크는 사용자 클릭으로만 이동하므로 보존하되 새 탭 + noopener.
+        # 같은 문서 내부 목차(#...)는 현재 iframe/새 창 안에서 스크롤해야 하므로 target 을 붙이지 않는다.
         for anchor in soup.find_all('a', href=True):
             href = anchor.get('href', '')
-            if href.startswith(('http://', 'https://', 'mailto:', '#')):
+            if href.startswith(('http://', 'https://', 'mailto:')):
                 anchor['target'] = '_blank'
                 anchor['rel'] = 'noopener noreferrer'
+            elif href.startswith('#'):
+                anchor.attrs.pop('target', None)
+                anchor.attrs.pop('rel', None)
         return str(soup)
 
     def sanitize_html(self, html: str) -> str:
@@ -53,9 +57,12 @@ class HtmlRenderService:
                     del tag.attrs[attr]
             if tag.name == 'a' and tag.get('href'):
                 href = tag.get('href', '')
-                if href.startswith(('http://', 'https://', 'mailto:', '#')):
+                if href.startswith(('http://', 'https://', 'mailto:')):
                     tag['target'] = '_blank'
                     tag['rel'] = 'noopener noreferrer'
+                elif href.startswith('#'):
+                    tag.attrs.pop('target', None)
+                    tag.attrs.pop('rel', None)
                 else:
                     del tag.attrs['href']
             elif tag.has_attr('src'):
