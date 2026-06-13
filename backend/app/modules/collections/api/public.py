@@ -8,12 +8,20 @@ from fastapi.responses import FileResponse
 from app.core.config import Settings
 from app.modules.auth.dependencies import get_settings
 from app.modules.collections.service import CollectionItemError, HtmlCollectionService
+from app.modules.collections.search_service import (
+    ALL_SEARCH_COLLECTIONS,
+    DEFAULT_SEARCH_COLLECTIONS,
+    CollectionSearchRoot,
+    CollectionSearchUnavailable,
+    HtmlCollectionSearchService,
+)
 from app.modules.newsletter.services.html_render_service import HTML_CSP
 from app.modules.shared.storage.service import StorageError
 
 router = APIRouter()
 
 service = HtmlCollectionService()
+search_service = HtmlCollectionSearchService(service)
 
 
 def _resolve_collection_root(collection: str, settings: Settings) -> Path:
@@ -28,6 +36,46 @@ def _resolve_collection_root(collection: str, settings: Settings) -> Path:
     if root is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Unknown collection')
     return root
+
+
+def _parse_search_collections(raw: str | None) -> list[str]:
+    requested = DEFAULT_SEARCH_COLLECTIONS if raw is None else tuple(
+        collection.strip() for collection in raw.split(',') if collection.strip()
+    )
+    unknown = [collection for collection in requested if collection not in ALL_SEARCH_COLLECTIONS]
+    if unknown:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Unknown collection')
+    return list(dict.fromkeys(requested))
+
+
+@router.get('/search')
+def search_collections(
+    q: str = Query('', description='검색어'),
+    collections: str | None = Query(None, description='쉼표로 구분한 검색 컬렉션. 기본 document,civil'),
+    limit: int = Query(20, ge=1, le=100),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, object]:
+    # 빠른 본문 검색은 컬렉션 계층의 책임이다. 기본 global scope 는 document,civil 이며
+    # NSA 는 /nsa unlock 이후 명시 scope 로만 요청하게 한다.
+    requested_collections = _parse_search_collections(collections)
+    roots = [
+        CollectionSearchRoot(collection=collection, root=_resolve_collection_root(collection, settings))
+        for collection in requested_collections
+    ]
+    try:
+        results = search_service.search(roots, q, settings.managed_storage_root, limit=limit)
+    except CollectionSearchUnavailable as exc:
+        return {
+            'results': [],
+            'degraded': True,
+            'reason': str(exc),
+            'collections': requested_collections,
+        }
+    return {
+        'results': [result.as_dict() for result in results],
+        'degraded': False,
+        'collections': requested_collections,
+    }
 
 
 @router.get('/{collection}/list')

@@ -156,3 +156,80 @@ def test_collection_download_404_for_non_html_or_debug(client, test_paths, path)
     )
 
     assert response.status_code == 404
+
+
+def test_collection_search_defaults_to_document_and_civil_and_returns_navigation(client, test_paths) -> None:
+    (test_paths['document_root'] / '항공').mkdir(parents=True)
+    (test_paths['document_root'] / '항공' / '정비.html').write_text(
+        '<html><body><h1>정비 문서</h1><p>UNIQUEAIRFRAME 점검 절차</p></body></html>',
+        encoding='utf-8',
+    )
+    (test_paths['civil_aircraft_root'] / '민항.html').write_text(
+        '<html><body>UNIQUEAIRFRAME 민항 카탈로그</body></html>',
+        encoding='utf-8',
+    )
+    (test_paths['nsa_root'] / '기밀.html').write_text(
+        '<html><body>UNIQUEAIRFRAME NSA 문서</body></html>',
+        encoding='utf-8',
+    )
+
+    response = client.get('/api/v1/collections/search', params={'q': 'UNIQUEAIRFRAME'})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['degraded'] is False
+    assert payload['collections'] == ['document', 'civil']
+    result_paths = {(item['collection'], item['path']) for item in payload['results']}
+    assert ('document', '항공/정비.html') in result_paths
+    assert ('civil', '민항.html') in result_paths
+    assert not any(item['collection'] == 'nsa' for item in payload['results'])
+    document_result = next(item for item in payload['results'] if item['collection'] == 'document')
+    assert document_result['navigation_url'] == '/documents?path=%ED%95%AD%EA%B3%B5%2F%EC%A0%95%EB%B9%84.html'
+    assert 'UNIQUEAIRFRAME' in document_result['snippet']
+
+
+def test_collection_search_explicit_nsa_scope_returns_nsa_navigation(client, test_paths) -> None:
+    (test_paths['nsa_root'] / '분석.html').write_text(
+        '<html><body>NsaOnlyToken 분석 내용</body></html>',
+        encoding='utf-8',
+    )
+
+    response = client.get(
+        '/api/v1/collections/search',
+        params={'q': 'NsaOnlyToken', 'collections': 'nsa'},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['collections'] == ['nsa']
+    assert payload['results'][0]['collection'] == 'nsa'
+    assert payload['results'][0]['navigation_url'] == '/nsa?path=%EB%B6%84%EC%84%9D.html'
+
+
+def test_collection_search_preserves_collection_policy(client, test_paths) -> None:
+    (test_paths['document_root'] / 'shown.html').write_text(
+        '<html><body>PolicyVisibleToken</body></html>',
+        encoding='utf-8',
+    )
+    (test_paths['document_root'] / 'hidden_debug.html').write_text(
+        '<html><body>PolicyHiddenToken</body></html>',
+        encoding='utf-8',
+    )
+    (test_paths['document_root'] / 'plain.txt').write_text('PolicyHiddenToken', encoding='utf-8')
+
+    visible = client.get('/api/v1/collections/search', params={'q': 'PolicyVisibleToken'})
+    hidden = client.get('/api/v1/collections/search', params={'q': 'PolicyHiddenToken'})
+
+    assert visible.status_code == 200
+    assert visible.json()['results'][0]['path'] == 'shown.html'
+    assert hidden.status_code == 200
+    assert hidden.json()['results'] == []
+
+
+def test_collection_search_rejects_unknown_collection(client) -> None:
+    response = client.get(
+        '/api/v1/collections/search',
+        params={'q': 'anything', 'collections': 'document,secrets'},
+    )
+
+    assert response.status_code == 404

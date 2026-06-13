@@ -8,6 +8,7 @@ from sqlalchemy import text
 from app.core.config import Settings, ensure_runtime_directories, get_settings
 from app.db.session import Database, get_engine
 from app.modules.auth.api import router as auth_router
+from app.modules.ai.api.public import router as ai_router
 from app.modules.newsletter.api.admin import router as admin_router
 from app.modules.newsletter.api.imports import router as imports_router
 from app.modules.newsletter.api.public import router as public_router
@@ -69,6 +70,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(documents_router, prefix='/api/v1/documents')
     # HTML 컬렉션 공유 라우터 — document/civil/nsa 화이트리스트로 목록/본문을 한 자리에서 제공.
     app.include_router(collections_router, prefix='/api/v1/collections')
+    # 폐쇄망 Ollama AI — 브라우저는 same-origin 프록시만 호출하고, 백엔드가 Ollama 와 통신한다.
+    app.include_router(ai_router, prefix='/api/v1/ai')
     return app
 
 
