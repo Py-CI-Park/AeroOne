@@ -70,7 +70,7 @@
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (128 passed), frontend Vitest + Testing Library (137 passed, 37 파일), Windows 실행 스모크 |
+| 검증 | backend pytest + httpx (137 passed), frontend Vitest + Testing Library (153 passed, 39 파일), Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 
 ---
@@ -232,9 +232,12 @@ AeroOne/
 | `STORAGE_ROOT` | 앱 storage 루트 | 정적 노출은 `thumbnails` 하위만 |
 | `CORS_ORIGINS` | 프런트 origin 화이트리스트 | `http://localhost:29501` (LAN 모드면 두 origin) |
 | `NEXT_PUBLIC_API_BASE_URL` | 브라우저가 호출할 backend 베이스 | loopback 시 `http://localhost:18437`, LAN 모드 시 `http://<host>:18437` |
-| `SERVER_API_BASE_URL` | Next.js SSR 이 호출할 backend 베이스 | 항상 loopback (`http://localhost:18437`) |
+| `SERVER_API_BASE_URL` | Next.js SSR 이 호출할 backend 베이스 | 항상 IPv4 loopback (`http://127.0.0.1:18437`) |
 | `LAN_HOST` | (옵션) `setup_offline.bat --allow-host` 가 .env 에 남기는 메타 | LAN 모드 운영 중인 호스트 표시용 |
 | `AEROONE_ALLOW_HOST` | LAN 모드 호스트 (옵션 인자 대신 환경 변수로 지정) | `setup_offline.bat` / `start_offline.bat` 모두 인식 |
+| `AI_FEATURES_ENABLED` | 대시보드 AI 기능 on/off | `true` (`setup.bat` / `setup_offline.bat`) |
+| `OLLAMA_BASE_URL` | 백엔드가 호출할 Ollama API | 기본 `http://127.0.0.1:11434`; 다른 폐쇄망 PC면 `http://<ollama-ip>:11434` |
+| `OLLAMA_DEFAULT_MODEL` | AI 채팅 기본 모델 | `gemma4:12b` |
 
 ---
 
@@ -283,7 +286,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.4.4 기준 backend `pytest tests` 결과 **128 passed** (실패 0), frontend Vitest **142 passed** (37 파일). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10/11/12 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.5.0 개발 기준 backend `pytest tests` 결과 **137 passed** (실패 0), frontend Vitest **153 passed** (39 파일), `tsc --noEmit` exit 0, `next build` 성공. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

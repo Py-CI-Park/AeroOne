@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 4건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 8종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 9종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -78,6 +78,14 @@
 - 코드: `backend/app/modules/collections/`, `backend/app/core/config.py`(`nsa_root`), `frontend/lib/collection-proxy.ts`, `frontend/app/api/frontend/collections/`, `frontend/components/collections/`, `frontend/components/games/`, `frontend/app/{nsa,games/ladder}/`, `frontend/app/reports/civil-aircraft/`
 - 회귀 방지: `backend/tests/integration/test_collections_api.py`, `frontend/tests/app/api/frontend/collections-route.test.ts`, `api.test.ts`(C1 가드), `collection-password-gate.test.tsx`, `ladder-game.test.tsx`, 갱신된 `documents-workspace`/`civil-aircraft-report-page`/`home-page`/`app-shell`/`newsletter-date-calendar` 테스트
 
+
+### 단계 14 — 폐쇄망 Ollama AI 채팅 + HTML 본문 검색
+
+- 파일: [`phase-14-ollama-ai-search.md`](phase-14-ollama-ai-search.md)
+- 분류: minor (`1.5.0`) — AI 채팅 + 컬렉션 본문 검색.
+- 무엇: 대시보드 `AI` 카드에서 `gemma4:12b` 와 채팅하고, `_database` HTML 본문을 SQLite FTS5 로 검색해 `/documents?path=...`, `/reports/civil-aircraft?path=...`, `/nsa?path=...` 로 바로 연다. 브라우저 직접 Ollama 호출 금지, backend-only Ollama, same-origin AI proxy, NSA unlock 전 비노출을 지킨다.
+- 코드: `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/`, `frontend/components/ai/`, `frontend/app/api/frontend/ai/`
+- 회귀 방지: `backend/tests/integration/test_ai_api.py`, 갱신된 `test_collections_api.py`, `ai-chat-workspace.test.tsx`, `ai-route.test.ts`, 갱신된 home/collection/DocumentsWorkspace 테스트
 ---
 
 ## 보고서가 다루지 않는 자리

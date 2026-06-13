@@ -259,6 +259,7 @@ def test_setup_executes_full_flow_in_stub_repo(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert (repo_root / "backend" / ".env").exists()
     assert (repo_root / "frontend" / ".env.local").exists()
+    frontend_env = (repo_root / "frontend" / ".env.local").read_text(encoding="utf-8")
     backend_env = (repo_root / "backend" / ".env").read_text(encoding="utf-8")
     assert "JWT_SECRET_KEY=change-me" not in backend_env
     assert "ADMIN_PASSWORD=change-me" not in backend_env
@@ -267,9 +268,16 @@ def test_setup_executes_full_flow_in_stub_repo(tmp_path: Path) -> None:
     assert (repo_root / "_database" / "newsletter").is_dir()
     assert (repo_root / "_database" / "civil_aircraft").is_dir()
     assert (repo_root / "_database" / "document").is_dir()
+    assert (repo_root / "_database" / "nsa").is_dir()
     assert "/_database/newsletter" in backend_env
     assert "CIVIL_AIRCRAFT_ROOT=" in backend_env and "/_database/civil_aircraft" in backend_env
     assert "DOCUMENT_ROOT=" in backend_env and "/_database/document" in backend_env
+    assert "NSA_ROOT=" in backend_env and "/_database/nsa" in backend_env
+    assert "AI_FEATURES_ENABLED=true" in backend_env
+    assert "OLLAMA_BASE_URL=http://127.0.0.1:11434" in backend_env
+    assert "OLLAMA_DEFAULT_MODEL=gemma4:12b" in backend_env
+    assert "SERVER_API_BASE_URL=http://127.0.0.1:18437" in backend_env
+    assert "SERVER_API_BASE_URL=http://127.0.0.1:18437" in frontend_env
 
     log_lines = log_file.read_text(encoding="utf-8").splitlines()
     assert any(line.startswith("pip.bat install -r requirements-dev.txt") for line in log_lines)
@@ -374,6 +382,9 @@ def test_start_frontend_dev_preserves_caches_without_clean(tmp_path: Path) -> No
         line.startswith("npm.cmd run dev")
         for line in log_file.read_text(encoding="utf-8").splitlines()
     )
+    contents = (scripts_dir := repo_root / "scripts" / "start_frontend_dev.cmd").read_text(encoding="utf-8")
+    assert 'set "NEXT_PUBLIC_API_BASE_URL=http://localhost:18437"' in contents
+    assert 'set "SERVER_API_BASE_URL=http://127.0.0.1:18437"' in contents
 
 
 def test_start_frontend_dev_clears_caches_with_clean(tmp_path: Path) -> None:
@@ -618,6 +629,7 @@ def test_start_frontend_offline_script_supports_allow_host_branch() -> None:
     assert "if defined AEROONE_ALLOW_HOST" in contents
     assert "next.cmd start -H 0.0.0.0 -p 29501" in contents
     assert "next.cmd start -H 127.0.0.1 -p 29501" in contents
+    assert 'set "SERVER_API_BASE_URL=http://127.0.0.1:18437"' in contents
 
 
 def test_start_frontend_offline_recovers_node_when_not_on_path() -> None:

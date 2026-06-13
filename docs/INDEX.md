@@ -45,7 +45,7 @@
 
 ## 3. 단계별 변경 보고서 (`docs/reports/`)
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 3건(읽음추적·민간 항공기 보고서·문서 보관소)의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색)의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
 
 | 단계 | 보고서 | 핵심 결과 | commit |
 |---|---|---|---|
@@ -56,6 +56,8 @@
 | 단계 10 | [`reports/phase-10-read-tracking.md`](reports/phase-10-read-tracking.md) | IP 기반 읽음추적(열람 횟수) 모듈 — minor 1.1.0 | `2ec9016` |
 | 단계 11 | [`reports/phase-11-civil-aircraft-report.md`](reports/phase-11-civil-aircraft-report.md) | 민간 항공기 보고서 모듈 + 콘텐츠 폴더 `_database` 재편 — minor 1.2.0 | `9898203` |
 | 단계 12 | [`reports/phase-12-document-module.md`](reports/phase-12-document-module.md) | 문서(Document) 보관소 모듈 — `_database/document` HTML 을 폴더 트리로 열람 — minor 1.3.0 | `1.3.0-dev` |
+| 단계 13 | [`reports/phase-13-collections-proxy-and-features.md`](reports/phase-13-collections-proxy-and-features.md) | 컬렉션 same-origin 프록시 + Civil/NSA 목록화 + 사다리 게임 — minor 1.4.0 | `1.4.0-dev` |
+| 단계 14 | [`reports/phase-14-ollama-ai-search.md`](reports/phase-14-ollama-ai-search.md) | 폐쇄망 Ollama AI 채팅 + HTML 본문 검색 — minor 1.5.0 | `1.5.0-dev` |
 
 ---
 
@@ -106,6 +108,7 @@
 | 컬렉션 same-origin 프록시 | `frontend/app/api/frontend/collections/[...segments]/route.ts` | 브라우저가 `/api/frontend/collections/<collection>/...` 로 요청하면 Next.js 서버가 `SERVER_API_BASE_URL`(loopback) 경유로 백엔드에 전달. 외부 PC 에서 document·civil·nsa 본문이 "failed to fetch" 로 실패하던 문제를 구조적으로 해결(1.4.0). 첫 세그먼트 화이트리스트(document·civil·nsa) 검증. 뉴스레터 프록시와 동일 패턴 |
 | NSA 탭 | `frontend/app/nsa/page.tsx` + `frontend/components/collections/collection-password-gate.tsx` + `_database/nsa/`(문서 보관 폴더) | 대시보드 카드 → /nsa. 비밀번호(기본 0000) 입력 전에는 목록·본문 요청 없음. 정답 입력 후 `fetchCollectionList('nsa')` 호출해 DocumentsWorkspace 에 prop 주입. **가벼운 가림막이며 실 인증 아님** — 백엔드 무인증, 민감 자료 보관 금지 |
 | Ladder(사다리타기) | `frontend/app/games/ladder/page.tsx` + `frontend/components/games/ladder-game.tsx` | 대시보드 카드 → /games/ladder. 참가자·상품 입력 후 랜덤 사다리로 배정 결과 표시. 순수 프론트엔드, 백엔드 없음 |
+| Ollama AI / 본문 검색 | `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/page.tsx`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/` | 대시보드 AI 카드 → `/ai`. 브라우저는 same-origin AI 프록시만 호출하고 백엔드가 `OLLAMA_BASE_URL` 의 `gemma4:12b` 와 통신. `_database` HTML 본문 검색은 collections/shared SQLite FTS5 가 소유하며 기본 scope 는 `document,civil`, NSA 는 unlock 이후에만 포함 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 | 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
 
@@ -113,7 +116,7 @@
 
 ## 7. 회귀 테스트 위치
 
-총 128건 PASS (backend pytest, 컬렉션 모듈 포함). 프론트엔드 Vitest 는 137건 PASS (37 파일) — 1.4.0 에서 컬렉션 프록시·NSA·Ladder·Civil 다중 카탈로그, 1.4.1 에서 문서 뷰어 fit 모드(목차 고정), 1.4.3 에서 문서 검색·최근 열람·다운로드·NSA 재잠금·대시보드 그룹 테스트가 추가됨. 최신 카운트는 README.md §검증 참고.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.5.0 에서 backend AI/search 테스트, frontend AI chat/proxy/search/deep-link 테스트, batch AI env 테스트가 추가됨. 현 기준 backend 137 passed, frontend Vitest 153 passed(39 파일), `tsc --noEmit`/`next build` 성공.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
@@ -129,9 +132,10 @@
 | `backend/tests/integration/test_read_tracking_api.py` | 7 | 공개 비콘 200·404(행 미생성) / 관리자 read-events 401·200 / purge 401·403(무CSRF)·삭제 |
 | `backend/tests/integration/test_reports_api.py` | 3 | 민간 항공기 보고서 200·sanitize·CSP / 404 / `_debug` 제외 |
 | `backend/tests/integration/test_documents_api.py` | 8 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / HTML 다운로드 / 404 / 디렉토리 이탈 400 |
+| `backend/tests/integration/test_ai_api.py` | 5 | AI status/chat, 기본 document/civil scope, 명시 NSA scope, FTS unavailable degrade, unknown collection validation |
 | 그 외 unit / integration | 33 | 인증 API, 뉴스레터 public/admin/imports/content API, 컬렉션 다운로드, seed 등 |
 
-프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 3), `home-page.test.tsx`(보고서 카드·대시보드 그룹 2). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기·사이드바 접기·상단 셀렉트 전환·검색·최근 열람·다운로드 안내 12), `home-page.test.tsx`(Document 카드·`5 active · 2 coming soon` 카운트). NSA 가림막 재잠금, 사다리 당첨 항목 보존, 뉴스레터 날짜 aria-label 도 각 컴포넌트 테스트에 포함됨.
+프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 3), `home-page.test.tsx`(보고서 카드·대시보드 그룹). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기·사이드바 접기·상단 셀렉트 전환·검색·최근 열람·다운로드 안내·initialPath). AI: `frontend/tests/components/ai-chat-workspace.test.tsx`(상태·대기 UI·검색 결과 링크·citation), `frontend/tests/app/api/frontend/ai-route.test.ts`(same-origin AI proxy). NSA 가림막 재잠금, 사다리 당첨 항목 보존, 뉴스레터 날짜 aria-label 도 각 컴포넌트 테스트에 포함됨.
 
 회귀 1건이라도 발생하면 §3의 단계 보고서 7종을 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 

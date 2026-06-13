@@ -27,6 +27,7 @@
 14. [AI 에이전트 사용 지침](#14-ai-에이전트-사용-지침)
 15. [참조 문서 색인](#15-참조-문서-색인)
 16. [1.4.0 신규 기능 운영 안내](#16-140-신규-기능-운영-안내)
+17. [1.5.0 Ollama AI·본문 검색 운영 안내](#17-150-ollama-ai본문-검색-운영-안내)
 
 ---
 
@@ -195,7 +196,7 @@ start_offline.bat --local
 | 자동 오픈 URL | `http://localhost:29501/` |
 | `CORS_ORIGINS` | `http://localhost:29501` |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:18437` |
-| `SERVER_API_BASE_URL` | `http://localhost:18437` |
+| `SERVER_API_BASE_URL` | `http://127.0.0.1:18437` |
 
 같은 PC 의 브라우저에서만 접속 가능. 외부 노출 없음, 가장 안전.
 
@@ -230,7 +231,7 @@ start_offline.bat
 | 자동 오픈 URL | `http://localhost:29501/` | `http://<host>:29501/` |
 | `CORS_ORIGINS` | `http://localhost:29501` | `http://localhost:29501,http://<host>:29501` |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:18437` | `http://<host>:18437` |
-| `SERVER_API_BASE_URL` | `http://localhost:18437` | `http://localhost:18437` (Next.js SSR 은 같은 PC 자기 자신을 호출하므로 loopback 유지) |
+| `SERVER_API_BASE_URL` | `http://127.0.0.1:18437` | `http://127.0.0.1:18437` (Next.js SSR 은 같은 PC 자기 자신을 IPv4 loopback 으로 호출) |
 
 ### 7.3 LAN 모드 운영 주의사항
 
@@ -556,6 +557,46 @@ _database\
 
 대시보드에 Ladder 카드가 추가되었습니다. `/games/ladder` 에서 참가자와 상품을 입력하면 랜덤 사다리로 배정 결과를 표시합니다. 순수 프론트엔드로 동작하며 백엔드 연동이 없습니다.
 
+## 17. 1.5.0 Ollama AI·본문 검색 운영 안내
+
+### 17.1 대시보드 AI 채팅
+
+대시보드의 `AI` 카드에서 `/ai` 로 이동하면 폐쇄망 Ollama 기본 모델(`gemma4:12b`)과 대화할 수 있습니다. 답변 생성 중에는 "응답 생성 중" 대기 표시가 나오며, pending 중에는 중복 전송을 막습니다.
+
+브라우저는 Ollama 포트(`11434`)를 직접 호출하지 않습니다. `/api/frontend/ai/*` same-origin route 를 호출하고, FastAPI 백엔드가 `OLLAMA_BASE_URL` 로 Ollama 에 요청합니다.
+
+### 17.2 Ollama 설정
+
+`setup.bat` / `setup_offline.bat` 는 다음 기본값을 `backend\.env` 에 기록합니다.
+
+```env
+AI_FEATURES_ENABLED=true
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_DEFAULT_MODEL=gemma4:12b
+```
+
+Ollama 가 AeroOne 과 같은 PC 에 있으면 기본값을 그대로 둡니다. Ollama 가 폐쇄망 내 다른 PC 에 있다면 `OLLAMA_BASE_URL=http://<ollama-ip>:11434` 로 바꾼 뒤 backend 를 재시작합니다. 프런트엔드 `.env.local` 에 Ollama URL 을 넣지 마십시오.
+
+### 17.3 HTML 본문 검색과 파일 바로가기
+
+`/ai` 의 "HTML 본문 검색"은 `_database\document\` 와 `_database\civil_aircraft\` 의 HTML 본문을 SQLite FTS5 로 검색합니다. 검색 결과는 바로 열기 링크를 포함합니다.
+
+| 컬렉션 | 바로가기 |
+|---|---|
+| Document | `/documents?path=<상대 HTML 경로>` |
+| Civil | `/reports/civil-aircraft?path=<상대 HTML 경로>` |
+| NSA | `/nsa?path=<상대 HTML 경로>` |
+
+NSA 는 기존 가림막을 유지합니다. Dashboard/global 검색에는 기본적으로 NSA 결과가 포함되지 않으며, `/nsa` unlock 이후에만 NSA 문서가 로드됩니다.
+
+### 17.4 장애 시 동작
+
+| 상태 | 화면 동작 |
+|---|---|
+| Ollama 미실행 / 연결 실패 | AI 영역에 연결 불가 안내. Document/Civil/NSA 열람은 계속 동작 |
+| `gemma4:12b` 미설치 | 모델 없음 안내 |
+| 응답 지연 / timeout | 대기 표시 후 오류와 재시도 가능 상태 |
+| FTS5 미지원 | 검색 degraded 안내. 앱 부팅은 실패하지 않음 |
 ---
 
 ## 부록 — 빠른 명령 모음
