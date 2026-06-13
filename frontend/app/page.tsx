@@ -57,6 +57,14 @@ const MODULES = [
     active: true,
   },
   {
+    id: 'ai',
+    title: 'AI',
+    description: 'Chat with gemma4:12b and search closed-network HTML documents.',
+    href: '/ai',
+    badge: 'Active',
+    active: true,
+  },
+  {
     id: 'ladder',
     title: 'Ladder',
     description: 'Coffee-bet ladder game (사다리타기).',

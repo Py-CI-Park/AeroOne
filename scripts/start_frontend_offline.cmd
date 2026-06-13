@@ -17,6 +17,9 @@ REM standard install dir so node resolves. Harmless when node is already found.
 if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
 if exist "%LOCALAPPDATA%\Programs\nodejs\node.exe" set "PATH=%LOCALAPPDATA%\Programs\nodejs;%PATH%"
 
+REM Parent shell variables can leak from Docker/CI sessions and override generated .env.local.
+REM Keep Next.js server-side proxy traffic on this machine's IPv4 loopback.
+set "SERVER_API_BASE_URL=http://127.0.0.1:18437"
 if defined AEROONE_ALLOW_HOST (
   call .\node_modules\.bin\next.cmd start -H 0.0.0.0 -p 29501
 ) else (

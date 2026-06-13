@@ -22,5 +22,9 @@ if defined CLEAR_CACHE (
   )
 )
 
+REM Parent shell variables can leak from Docker/CI sessions and override .env.local.
+REM Force the local Windows launcher to use the local backend endpoints.
+set "NEXT_PUBLIC_API_BASE_URL=http://localhost:18437"
+set "SERVER_API_BASE_URL=http://127.0.0.1:18437"
 call npm run dev
 exit /b %errorlevel%

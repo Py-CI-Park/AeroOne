@@ -53,8 +53,8 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(reportLink).toHaveTextContent('Active');
   expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
 
-  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·Ladder 추가로 활성 5개 / coming 2개.
-  expect(screen.getByText('5 active · 2 coming soon')).toBeInTheDocument();
+  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·AI·Ladder 추가로 활성 6개 / coming 2개.
+  expect(screen.getByText('6 active · 2 coming soon')).toBeInTheDocument();
 });
 
 test('groups active dashboard cards before coming soon modules', async () => {
@@ -102,6 +102,17 @@ test('adds an active Document card linking to the documents page', async () => {
   expect(documentLink).toHaveAttribute('href', '/documents');
   expect(documentLink).toHaveTextContent('Active');
   expect(within(documentLink).getByTestId('service-card-description')).toHaveTextContent(/HTML documents organized in folders/i);
+});
+
+test('adds an active AI card linking to /ai', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const aiLink = within(main).getByRole('link', { name: /Chat with gemma4:12b/i });
+
+  expect(aiLink).toHaveAttribute('href', '/ai');
+  expect(aiLink).toHaveTextContent('Active');
+  expect(within(aiLink).getByTestId('service-card-description')).toHaveTextContent(/search closed-network HTML documents/i);
 });
 
 test('home page uses dark theme from cookie', async () => {

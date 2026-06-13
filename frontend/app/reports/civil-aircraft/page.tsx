@@ -14,6 +14,7 @@ const REPORT_PATH = '/reports/civil-aircraft';
 
 type SearchParams = {
   theme?: string;
+  path?: string;
 };
 
 export default async function CivilAircraftReportPage({
@@ -47,7 +48,7 @@ export default async function CivilAircraftReportPage({
       titleMeta={documents.length > 0 ? `${documents.length} catalogs` : undefined}
     >
       {documents.length > 0 ? (
-        <DocumentsWorkspace documents={documents} collection="civil" />
+        <DocumentsWorkspace documents={documents} collection="civil" initialPath={params.path} />
       ) : (
         <div className="rounded-lg border border-dashed border-line bg-surface-raised p-8 text-sm text-ink-2">
           표시할 카탈로그가 없습니다.

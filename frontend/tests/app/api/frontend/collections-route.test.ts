@@ -65,6 +65,29 @@ test('GET proxies collection content with search forwarded verbatim (pre-encoded
   expect(response.headers.get('content-type')).toBe('application/json; charset=utf-8');
 });
 
+test('GET proxies collection search route without requiring a collection segment', async () => {
+  const upstreamResponse = new Response('{"results":[],"degraded":false,"collections":["document","civil"]}', {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(upstreamResponse);
+
+  const request = createRouteRequest(
+    'http://localhost/api/frontend/collections/search?q=UNIQUE&collections=document%2Ccivil',
+  );
+
+  const response = await GET(request, {
+    params: Promise.resolve({ segments: ['search'] }),
+  });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://collection-backend.test/api/v1/collections/search?q=UNIQUE&collections=document%2Ccivil',
+    expect.objectContaining({ method: 'GET', cache: 'no-store' }),
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toBe('application/json');
+});
+
 test('GET traversal segment: slash inside a segment is encoded (%2F), keeping segments isolated', async () => {
   // The real traversal/SSRF injection vector is a slash embedded inside a single segment,
   // e.g. segment = "document/../../etc/passwd". encodeURIComponent encodes '/' as '%2F',

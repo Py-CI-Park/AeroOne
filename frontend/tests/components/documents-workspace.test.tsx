@@ -115,6 +115,17 @@ test('restores the recent document for the collection and updates it on selectio
   );
 });
 
+test('initialPath takes priority over recent document and selects linked file', async () => {
+  window.localStorage.setItem('aeroone.collection.document.recentDocument', '항공/엔진.html');
+
+  render(<DocumentsWorkspace documents={DOCS} initialPath="항공/상용기.html" />);
+
+  await waitFor(() =>
+    expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '항공/상용기.html'),
+  );
+  expect(screen.getByTestId('documents-select')).toHaveValue('항공/상용기.html');
+});
+
 test('viewer download announces the file being downloaded', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);
   await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalledWith('document', '회사소개.html'));

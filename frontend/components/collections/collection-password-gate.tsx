@@ -16,6 +16,7 @@ type CollectionPasswordGateProps = {
   collection: string;
   title?: string;
   code?: string;
+  initialPath?: string;
 };
 
 const unlockedStorageKey = (collection: string) => `aeroone.collection.${collection}.unlocked`;
@@ -24,6 +25,7 @@ export function CollectionPasswordGate({
   collection,
   title,
   code = '0000',
+  initialPath,
 }: CollectionPasswordGateProps) {
   const [unlocked, setUnlocked] = useState(false);
   const [input, setInput] = useState('');
@@ -193,6 +195,7 @@ export function CollectionPasswordGate({
       <DocumentsWorkspace
         documents={documents}
         collection={collection as 'document' | 'civil' | 'nsa'}
+        initialPath={initialPath}
       />
     );
   }

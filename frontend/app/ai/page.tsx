@@ -1,20 +1,19 @@
 import React from 'react';
 
+import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
 import { AppShell } from '@/components/layout/app-shell';
-import { CollectionPasswordGate } from '@/components/collections/collection-password-gate';
 import { getAppTheme } from '@/lib/server-theme';
 
 export const dynamic = 'force-dynamic';
 
-const PAGE_TITLE = 'NSA';
-const PAGE_PATH = '/nsa';
+const PAGE_TITLE = 'AI';
+const PAGE_PATH = '/ai';
 
 type SearchParams = {
   theme?: string;
-  path?: string;
 };
 
-export default async function NsaPage({
+export default async function AiPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -30,8 +29,9 @@ export default async function NsaPage({
       showThemeSelector
       themePath={PAGE_PATH}
       active="none"
+      titleMeta="gemma4:12b"
     >
-      <CollectionPasswordGate collection="nsa" title="NSA" initialPath={params.path} />
+      <AiChatWorkspace />
     </AppShell>
   );
 }

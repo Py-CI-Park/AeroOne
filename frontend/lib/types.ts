@@ -102,3 +102,43 @@ export interface DocumentListItem {
   name: string;
   folder: string;
 }
+
+export interface CollectionSearchResult {
+  collection: 'document' | 'civil' | 'nsa';
+  path: string;
+  name: string;
+  folder: string;
+  snippet: string;
+  navigation_url: string;
+  score: number;
+}
+
+export interface CollectionSearchResponse {
+  results: CollectionSearchResult[];
+  degraded: boolean;
+  reason?: string;
+  collections: Array<'document' | 'civil' | 'nsa'>;
+}
+
+export interface AiChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiCitation extends CollectionSearchResult {}
+
+export interface AiStatusResponse {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  reachable: boolean;
+  model_available: boolean;
+  status: 'ok' | 'disabled' | 'unavailable' | 'model_missing';
+  detail?: string | null;
+}
+
+export interface AiChatResponse {
+  model: string;
+  message: AiChatMessage;
+  citations: AiCitation[];
+}

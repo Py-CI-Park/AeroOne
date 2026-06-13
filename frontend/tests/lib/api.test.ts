@@ -1,9 +1,11 @@
 import { vi } from 'vitest';
 
 import {
+  fetchAiStatus,
   fetchCollectionContent,
   fetchCollectionList,
   fetchDocumentContent,
+  getServerApiBase,
   fetchLatestNewsletter,
   getNewsletterProxyPath,
   getPublicNewsletters,
@@ -26,7 +28,7 @@ test('requests newsletters list from backend api', async () => {
   await getPublicNewsletters();
 
   expect(fetchMock).toHaveBeenCalledWith(
-    'http://localhost:18437/api/v1/newsletters',
+    `${getServerApiBase()}/api/v1/newsletters`,
     expect.objectContaining({ cache: 'no-store' }),
   );
   expect(infoMock).toHaveBeenCalledWith(
@@ -46,13 +48,28 @@ test('requests latest newsletter from backend api with logging', async () => {
   await fetchLatestNewsletter();
 
   expect(fetchMock).toHaveBeenCalledWith(
-    'http://localhost:18437/api/v1/newsletters/latest',
+    `${getServerApiBase()}/api/v1/newsletters/latest`,
     expect.objectContaining({ cache: 'no-store' }),
   );
   expect(infoMock).toHaveBeenNthCalledWith(
     1,
     '[FRONTEND][FETCH] newsletters.latest -> /api/v1/newsletters/latest',
   );
+});
+
+test('fetchAiStatus accepts degraded JSON payloads from same-origin proxy', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 502,
+    text: async () => '{"status":"unavailable","enabled":true,"base_url":"","model":"gemma4:12b","reachable":false,"model_available":false,"detail":"AI backend unavailable"}',
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  const status = await fetchAiStatus();
+
+  expect(fetchMock).toHaveBeenCalledWith('/api/frontend/ai/status', { cache: 'no-store' });
+  expect(status.status).toBe('unavailable');
+  expect(status.detail).toBe('AI backend unavailable');
 });
 
 test('builds frontend newsletter proxy paths from backend asset urls', () => {

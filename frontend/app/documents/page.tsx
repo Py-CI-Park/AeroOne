@@ -13,6 +13,7 @@ const PAGE_PATH = '/documents';
 
 type SearchParams = {
   theme?: string;
+  path?: string;
 };
 
 export default async function DocumentsPage({
@@ -43,7 +44,7 @@ export default async function DocumentsPage({
       titleMeta={documents.length > 0 ? `${documents.length} documents` : undefined}
     >
       {documents.length > 0 ? (
-        <DocumentsWorkspace documents={documents} />
+        <DocumentsWorkspace documents={documents} initialPath={params.path} />
       ) : (
         <div className="rounded-lg border border-dashed border-line bg-surface-raised p-8 text-sm text-ink-2">
           표시할 문서가 없습니다.

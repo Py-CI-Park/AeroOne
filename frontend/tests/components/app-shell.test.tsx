@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { AppShell } from '@/components/layout/app-shell';
 
@@ -31,6 +32,34 @@ test('renders the default shell with light data-theme and a theme selector', () 
   expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '검색' })).not.toBeInTheDocument();
+});
+
+test('opens the usage manual popup from the header', async () => {
+  const user = userEvent.setup();
+
+  render(
+    <AppShell title="Manual Shell">
+      <p>content</p>
+    </AppShell>,
+  );
+
+  const manualButton = screen.getByRole('button', { name: '사용법' });
+  const themeToggle = screen.getByRole('link', { name: '다크 테마로 전환' });
+  expect(manualButton.compareDocumentPosition(themeToggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  await user.click(manualButton);
+
+  expect(screen.getByRole('dialog', { name: '전체 기능 사용법' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'AI' })).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'AI' }));
+
+  expect(screen.getByRole('heading', { name: 'Ollama AI 채팅과 본문 검색' })).toBeInTheDocument();
+  expect(screen.getByText(/gemma4:12b/)).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: '닫기' }));
+
+  expect(screen.queryByRole('dialog', { name: '전체 기능 사용법' })).not.toBeInTheDocument();
 });
 
 test('can opt out of the theme selector', () => {
