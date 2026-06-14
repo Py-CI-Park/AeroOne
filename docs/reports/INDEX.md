@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색)의 의도·합의안·구현·검증을 단일 commit 단위로 묶어 둔 보고서 9종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 11종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -86,6 +86,24 @@
 - 무엇: 대시보드 `AI` 카드에서 `gemma4:12b` 와 채팅하고, `_database` HTML 본문을 SQLite FTS5 로 검색해 `/documents?path=...`, `/reports/civil-aircraft?path=...`, `/nsa?path=...` 로 바로 연다. 브라우저 직접 Ollama 호출 금지, backend-only Ollama, same-origin AI proxy, NSA unlock 전 비노출을 지킨다.
 - 코드: `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/`, `frontend/components/ai/`, `frontend/app/api/frontend/ai/`
 - 회귀 방지: `backend/tests/integration/test_ai_api.py`, 갱신된 `test_collections_api.py`, `ai-chat-workspace.test.tsx`, `ai-route.test.ts`, 갱신된 home/collection/DocumentsWorkspace 테스트
+
+### 단계 15 — Open WebUI 참조 기능 연구
+
+- 파일: [`phase-15-openwebui-reference-research.md`](phase-15-openwebui-reference-research.md)
+- 분류: research / next minor 후보 (`1.5.x` 또는 `1.6.0`) — 채팅 기록·관리자 AI 설정·계정/권한·지식베이스 참조 연구.
+- 무엇: `D:\Chanil_Park\Project\Programming\open-webui` 의 채팅 GUI, 대화 기록, 관리자 메뉴, 계정/RBAC, RAG/Knowledge, 평가/분석 기능을 분석하고 AeroOne 폐쇄망 문서 시스템에 반영할 우선순위와 제외 범위를 정리.
+- 후속 후보: AI 대화 저장/목록, 관리자 AI 설정, 문서 근거 프리셋, citation 패널, 사용량/피드백 로그.
+---
+
+### 단계 16 — AI 대화 영속화 + 문서 근거 연결 강화 (1.5 2차 증분)
+
+- 파일: [`phase-16-ai-conversation-and-document-grounding.md`](phase-16-ai-conversation-and-document-grounding.md)
+- 합의 계획: `.gjc/plans/ralplan/2026-06-13-0254-bd02/pending-approval.md` (Architect CLEAR/APPROVE, Critic OKAY) / 실행 원장 `.gjc/ultragoal/` (G001–G008)
+- 무엇: `/ai` 대화 영속화(3테이블+Alembic 20260613_0003, 세션쿠키 단독 스코프), 3분할 UI+대화목록, copy/regenerate/stop, 검색결과 선택 후 질문(selected_refs, collections 위임), citation 우측 패널(새 탭+sandboxed 미리보기), 근거 범위 토글(nsa-gated), 보고서 검토 프롬프트 preset.
+- 코드: `backend/app/modules/ai/{models,repositories,schemas,service}.py`, `api/public.py`, `collections/search_service.py(load_refs)`, `app/db/session.py(PRAGMA foreign_keys=ON)`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/*`
+- 회귀 방지: backend 162 passed(test_ai_migration/test_ai_conversations/test_ai_chat_refs 신규), frontend 176 passed/46 files(ai-conversations/-controls/-selected-refs/-citation-panel/-scope/-presets 신규)
+- 비범위: 계정 신원 2단계, nsa 백엔드 게이트, vector RAG, 서버측 streaming/취소, 공유/export
+
 ---
 
 ## 보고서가 다루지 않는 자리
