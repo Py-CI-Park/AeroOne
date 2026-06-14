@@ -50,12 +50,12 @@ test('opens the usage manual popup from the header', async () => {
   await user.click(manualButton);
 
   expect(screen.getByRole('dialog', { name: '전체 기능 사용법' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'AI' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'AeroAI' })).toBeInTheDocument();
 
-  await user.click(screen.getByRole('button', { name: 'AI' }));
+  await user.click(screen.getByRole('button', { name: 'AeroAI' }));
 
-  expect(screen.getByRole('heading', { name: 'Ollama AI 채팅과 본문 검색' })).toBeInTheDocument();
-  expect(screen.getByText(/gemma4:12b/)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'AeroAI 채팅과 문서 근거' })).toBeInTheDocument();
+  expect(screen.getByText(/사내 폐쇄망 AI/)).toBeInTheDocument();
 
   await user.click(screen.getByRole('button', { name: '닫기' }));
 

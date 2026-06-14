@@ -35,12 +35,12 @@ const MANUAL_SECTIONS = [
   },
   {
     id: 'ai',
-    label: 'AI',
-    title: 'Ollama AI 채팅과 본문 검색',
+    label: 'AeroAI',
+    title: 'AeroAI 채팅과 문서 근거',
     rows: [
-      ['AI 채팅', '대시보드 AI 카드에서 gemma4:12b 와 대화합니다. 응답 생성 중에는 대기 표시가 나옵니다.'],
-      ['문서 근거 답변', '문서 검색 결과를 답변 근거로 사용을 체크하면 document/civil 검색 결과를 함께 보냅니다.'],
-      ['HTML 본문 검색', 'AI 화면 오른쪽 검색창에서 _database/document, _database/civil_aircraft 본문을 검색하고 결과 링크로 바로 이동합니다.'],
+      ['AeroAI 채팅', '대시보드 AeroAI 카드에서 사내 폐쇄망 AI 와 대화합니다. 대화는 저장되어 좌측 목록에서 다시 열 수 있고, 응답 생성 중에는 대기 표시가 나옵니다.'],
+      ['문서 근거 답변', '검색 결과를 체크해 그 문서만 답변 근거로 보내거나, 근거 범위(Document/Civil/NSA)를 토글할 수 있습니다. 답변 근거는 우측 패널에서 새 탭/미리보기로 확인합니다.'],
+      ['HTML 본문 검색', 'AeroAI 화면 오른쪽 검색창에서 _database/document, _database/civil_aircraft 본문을 검색하고 결과 링크로 바로 이동합니다.'],
     ],
   },
   {

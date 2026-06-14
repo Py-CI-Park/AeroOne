@@ -6,7 +6,7 @@ import { getAppTheme } from '@/lib/server-theme';
 
 export const dynamic = 'force-dynamic';
 
-const PAGE_TITLE = 'AI';
+const PAGE_TITLE = 'AeroAI';
 const PAGE_PATH = '/ai';
 
 type SearchParams = {
@@ -29,7 +29,7 @@ export default async function AiPage({
       showThemeSelector
       themePath={PAGE_PATH}
       active="none"
-      titleMeta="gemma4:12b"
+      titleMeta="사내 폐쇄망 AI"
     >
       <AiChatWorkspace />
     </AppShell>

@@ -50,11 +50,11 @@ test('shows Ollama model status and sends chat with waiting indicator', async ()
 
   render(<AiChatWorkspace />);
 
-  expect(await screen.findByTestId('ai-status')).toHaveTextContent('gemma4:12b 준비됨');
+  expect(await screen.findByTestId('ai-status')).toHaveTextContent('AeroAI 준비됨');
   fireEvent.change(screen.getByTestId('ai-chat-input'), { target: { value: '안녕' } });
   fireEvent.click(screen.getByRole('button', { name: '보내기' }));
 
-  expect(screen.getByTestId('ai-pending')).toHaveTextContent('gemma4:12b 응답 생성 중');
+  expect(screen.getByTestId('ai-pending')).toHaveTextContent('AeroAI 응답 생성 중');
   expect(screen.getByRole('button', { name: '응답 대기 중' })).toBeDisabled();
 
   resolveChat({ model: 'gemma4:12b', message: { role: 'assistant', content: '반갑습니다' }, citations: [] });

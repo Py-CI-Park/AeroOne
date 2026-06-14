@@ -23,18 +23,20 @@ import type {
 const DEFAULT_STATUS: AiStatusResponse = {
   enabled: true,
   base_url: '',
-  model: 'gemma4:12b',
+  model: '',
   reachable: false,
   model_available: false,
   status: 'unavailable',
   detail: '상태를 확인하는 중입니다.',
 };
 
+const AI_DISPLAY_NAME = 'AeroAI';
+
 function statusLabel(status: AiStatusResponse): string {
-  if (status.status === 'ok') return `${status.model} 준비됨`;
+  if (status.status === 'ok') return `${AI_DISPLAY_NAME} 준비됨`;
   if (status.status === 'disabled') return 'AI 기능 비활성화';
-  if (status.status === 'model_missing') return `${status.model} 모델 없음`;
-  return 'Ollama 연결 불가';
+  if (status.status === 'model_missing') return 'AI 모델을 사용할 수 없습니다';
+  return 'AI 서버 연결 불가';
 }
 
 function citationKey(citation: AiCitation | CollectionSearchResult): string {
@@ -377,8 +379,8 @@ export function AiChatWorkspace() {
       <section className="rounded-2xl border border-line-subtle bg-surface-raised p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-ink-1">AI Chat</h2>
-            <p className="text-sm text-ink-3">OpenWebUI / ollama run 처럼 gemma4:12b 와 대화합니다.</p>
+            <h2 className="text-lg font-semibold text-ink-1">AeroAI</h2>
+            <p className="text-sm text-ink-3">사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트입니다.</p>
           </div>
           <div data-testid="ai-status" className="rounded-full bg-surface-sunken px-3 py-1 text-xs text-ink-2">
             {statusLabel(status)}
@@ -388,7 +390,7 @@ export function AiChatWorkspace() {
         {statusError ? <p className="mb-3 rounded bg-warn-soft px-3 py-2 text-sm text-warn">{statusError}</p> : null}
         {status.status !== 'ok' ? (
           <p data-testid="ai-degraded" className="mb-3 rounded bg-warn-soft px-3 py-2 text-sm text-warn">
-            {status.detail ?? 'Ollama 상태를 확인하세요.'}
+            {status.status === 'model_missing' ? 'AI 모델을 사용할 수 없습니다. 관리자에게 문의하세요.' : 'AI 기능을 일시적으로 사용할 수 없습니다. 관리자에게 문의하세요.'}
           </p>
         ) : null}
 
@@ -417,7 +419,7 @@ export function AiChatWorkspace() {
           ))}
           {pending ? (
             <div data-testid="ai-pending" className="mr-8 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-2">
-              gemma4:12b 응답 생성 중… 잠시 기다려 주세요.
+              AeroAI 응답 생성 중… 잠시 기다려 주세요.
             </div>
           ) : null}
         </div>
@@ -442,7 +444,7 @@ export function AiChatWorkspace() {
             data-testid="ai-chat-input"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="gemma4:12b 에게 질문하세요"
+            placeholder="AeroAI 에게 질문하세요"
             className="min-h-24 rounded border border-line-subtle bg-surface-elevated px-3 py-2 text-base text-ink-1 placeholder:text-ink-3"
           />
           <div data-testid="ai-scope" className="flex flex-wrap items-center gap-3 text-xs text-ink-2">
