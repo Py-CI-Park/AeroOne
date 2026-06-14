@@ -79,6 +79,57 @@ class HtmlCollectionSearchService:
         finally:
             connection.close()
 
+    def load_refs(
+        self,
+        refs: list[tuple[str, str]],
+        roots: dict[str, Path],
+        managed_storage_root: Path,
+        snippet_chars: int = 600,
+    ) -> list[CollectionSearchResult]:
+        """사용자가 명시 선택한 (collection, path) 참조의 본문을 컬렉션 정책으로 로드한다.
+
+        목록/검색/다운로드와 동일하게 ``resolve_download_path`` (path-guard, .html,
+        _debug 제외)를 강제 경유한다. AI service 가 자체 경로 해석/본문 추출을 하지
+        않도록 컬렉션 인프라에 위임한다. 잘못된/traversal/미허용 컬렉션 참조는 조용히
+        건너뛴다(silent drop). nsa 는 기존 검색과 동일 정책(현상유지)으로 별도 차단하지
+        않는다.
+        """
+
+        results: list[CollectionSearchResult] = []
+        seen: set[tuple[str, str]] = set()
+        for collection, path in refs:
+            key = (collection, path)
+            if key in seen:
+                continue
+            seen.add(key)
+            root = roots.get(collection)
+            if root is None:
+                continue
+            try:
+                file_path = self.collection_service.resolve_download_path(root, path, managed_storage_root)
+            except (CollectionItemError, StorageError):
+                continue
+            try:
+                html = file_path.read_text(encoding='utf-8', errors='ignore')
+            except OSError:
+                continue
+            text = self._html_to_text(html)
+            name = Path(path).name
+            folder = str(Path(path).parent).replace('\\', '/')
+            folder = '' if folder in {'.', ''} else folder
+            results.append(
+                CollectionSearchResult(
+                    collection=collection,
+                    path=path,
+                    name=name,
+                    folder=folder,
+                    snippet=text[:snippet_chars],
+                    navigation_url=self._navigation_url(collection, path),
+                    score=0.0,
+                )
+            )
+        return results
+
     def _create_fts_table(self, connection: sqlite3.Connection) -> None:
         try:
             connection.execute(

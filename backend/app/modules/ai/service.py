@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 from urllib import error, request
 
@@ -151,9 +152,19 @@ class AiChatService:
         roots: list[CollectionSearchRoot],
         use_search: bool,
         limit: int,
+        selected_refs: list[tuple[str, str]] | None = None,
+        roots_by_collection: dict[str, Path] | None = None,
     ) -> tuple[str, list[CollectionSearchResult]]:
         citations: list[CollectionSearchResult] = []
-        if use_search:
+        if selected_refs:
+            # 사용자가 명시 선택한 문서만 근거로 사용한다(검색보다 우선). 본문 로드는
+            # collections 인프라(load_refs)에 위임해 path-guard 정책을 그대로 따른다.
+            citations = self.search_service.load_refs(
+                selected_refs,
+                roots_by_collection or {},
+                self.settings.managed_storage_root,
+            )
+        elif use_search:
             query = self._last_user_message(messages)
             try:
                 citations = self.search_service.search(roots, query, self.settings.managed_storage_root, limit=limit)

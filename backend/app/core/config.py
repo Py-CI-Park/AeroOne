@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     ollama_connect_timeout_seconds: float = 5.0
     ollama_read_timeout_seconds: float = 120.0
     ai_max_context_chars: int = 12000
+    ai_persistence_enabled: bool = False
 
     @property
     def project_root(self) -> Path:

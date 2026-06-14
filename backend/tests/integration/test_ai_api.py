@@ -27,7 +27,7 @@ def test_ai_status_reports_model_available(client, monkeypatch) -> None:
 def test_ai_chat_uses_default_document_civil_scope_and_returns_citations(client, monkeypatch) -> None:
     captured = {}
 
-    def fake_chat(self, messages, roots, use_search, limit):
+    def fake_chat(self, messages, roots, use_search, limit, **kwargs):
         captured['collections'] = [root.collection for root in roots]
         captured['use_search'] = use_search
         captured['limit'] = limit
@@ -65,7 +65,7 @@ def test_ai_chat_uses_default_document_civil_scope_and_returns_citations(client,
 def test_ai_chat_allows_explicit_nsa_scope_for_unlocked_flow(client, monkeypatch) -> None:
     captured = {}
 
-    def fake_chat(self, messages, roots, use_search, limit):
+    def fake_chat(self, messages, roots, use_search, limit, **kwargs):
         captured['collections'] = [root.collection for root in roots]
         return 'nsa answer', []
 
