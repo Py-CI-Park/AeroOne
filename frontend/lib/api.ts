@@ -1,6 +1,9 @@
 import type {
   AiChatMessage,
   AiChatResponse,
+  AiConversationDetail,
+  AiConversationListResponse,
+  AiConversationSummary,
   AiStatusResponse,
   AssetType,
   AuthResponse,
@@ -193,18 +196,65 @@ export async function sendAiChat(payload: {
   use_search?: boolean;
   collections?: Array<'document' | 'civil' | 'nsa'>;
   limit?: number;
-}): Promise<AiChatResponse> {
+  conversation_id?: number | null;
+  temporary?: boolean;
+  selected_refs?: Array<{ collection: 'document' | 'civil' | 'nsa'; path: string }>;
+}, options?: { signal?: AbortSignal }): Promise<AiChatResponse> {
   const response = await fetch('/api/frontend/ai/chat', {
     method: 'POST',
     cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    signal: options?.signal,
   });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || `AI request failed: ${response.status}`);
   }
   return (await response.json()) as AiChatResponse;
+}
+
+export async function listAiConversations(includeArchived = false): Promise<AiConversationListResponse> {
+  const query = includeArchived ? '?include_archived=true' : '';
+  const response = await fetch(`/api/frontend/ai/conversations${query}`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load conversations: ${response.status}`);
+  }
+  return (await response.json()) as AiConversationListResponse;
+}
+
+export async function getAiConversation(id: number): Promise<AiConversationDetail> {
+  const response = await fetch(`/api/frontend/ai/conversations/${id}`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load conversation: ${response.status}`);
+  }
+  return (await response.json()) as AiConversationDetail;
+}
+
+export async function updateAiConversation(
+  id: number,
+  patch: { title?: string; is_pinned?: boolean; is_archived?: boolean },
+): Promise<AiConversationSummary> {
+  const response = await fetch(`/api/frontend/ai/conversations/${id}`, {
+    method: 'PATCH',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to update conversation: ${response.status}`);
+  }
+  return (await response.json()) as AiConversationSummary;
+}
+
+export async function deleteAiConversation(id: number): Promise<void> {
+  const response = await fetch(`/api/frontend/ai/conversations/${id}`, {
+    method: 'DELETE',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete conversation: ${response.status}`);
+  }
 }
 
 export async function fetchDocumentContent(path: string): Promise<{ asset_type: 'html'; content_html: string }> {

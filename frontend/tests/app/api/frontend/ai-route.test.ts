@@ -15,7 +15,15 @@ import { POST as POST_CHAT } from '@/app/api/frontend/ai/chat/route';
 function createPostRequest(body: unknown) {
   return {
     text: () => Promise.resolve(JSON.stringify(body)),
-  } as NextRequest;
+    headers: { get: () => null },
+  } as unknown as NextRequest;
+}
+
+function createGetRequest() {
+  return {
+    headers: { get: () => null },
+    nextUrl: { searchParams: new URLSearchParams() },
+  } as unknown as NextRequest;
 }
 
 afterEach(() => {
@@ -28,7 +36,7 @@ test('status proxy calls backend AI status without exposing Ollama URL', async (
     new Response('{"status":"ok"}', { status: 200, headers: { 'content-type': 'application/json' } }),
   );
 
-  const response = await GET_STATUS();
+  const response = await GET_STATUS(createGetRequest());
 
   expect(fetchMock).toHaveBeenCalledWith(
     'http://127.0.0.1:18437/api/v1/ai/status',
@@ -41,7 +49,7 @@ test('status proxy returns degraded JSON with 200 when backend is unreachable', 
   vi.spyOn(global, 'fetch').mockRejectedValue(new Error('connect refused'));
   vi.spyOn(console, 'error').mockImplementation(() => {});
 
-  const response = await GET_STATUS();
+  const response = await GET_STATUS(createGetRequest());
 
   expect(response.status).toBe(200);
   await expect(response.json()).resolves.toMatchObject({
@@ -58,7 +66,7 @@ test('status proxy falls back to configured backend when local backend is unreac
     );
   vi.spyOn(console, 'error').mockImplementation(() => {});
 
-  const response = await GET_STATUS();
+  const response = await GET_STATUS(createGetRequest());
 
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,

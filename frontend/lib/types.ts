@@ -141,4 +141,32 @@ export interface AiChatResponse {
   model: string;
   message: AiChatMessage;
   citations: AiCitation[];
+  conversation_id?: number | null;
+  persisted?: boolean;
+}
+
+export interface AiConversationSummary {
+  id: number;
+  title: string;
+  is_pinned: boolean;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiMessageOut {
+  id: number;
+  role: string;
+  content: string;
+  seq: number;
+  created_at: string;
+  citations: AiCitation[];
+}
+
+export interface AiConversationDetail extends AiConversationSummary {
+  messages: AiMessageOut[];
+}
+
+export interface AiConversationListResponse {
+  conversations: AiConversationSummary[];
 }

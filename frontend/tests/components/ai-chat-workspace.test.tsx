@@ -111,6 +111,6 @@ test('chat with document context shows citation links', async () => {
   fireEvent.click(screen.getByRole('button', { name: '보내기' }));
 
   const citation = await screen.findByRole('link', { name: /civil · catalog/ });
-  await waitFor(() => expect(sendAiChatMock).toHaveBeenCalledWith(expect.objectContaining({ use_search: true, collections: ['document', 'civil'] })));
+  await waitFor(() => expect(sendAiChatMock).toHaveBeenCalledWith(expect.objectContaining({ use_search: true, collections: ['document', 'civil'] }), expect.anything()));
   expect(citation).toHaveAttribute('href', '/reports/civil-aircraft?path=catalog.html');
 });
