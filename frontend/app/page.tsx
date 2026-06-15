@@ -1,5 +1,6 @@
 import { AppShell } from '@/components/layout/app-shell';
 import { ServiceCard } from '@/components/dashboard/service-card';
+import { NotebookLinkCard } from '@/components/dashboard/notebook-link-card';
 import { getAppTheme } from '@/lib/server-theme';
 
 type SearchParams = {
@@ -70,6 +71,17 @@ const MODULES = [
     section: 'AeroAI',
   },
   {
+    id: 'open-notebook',
+    title: 'Notebook',
+    description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).',
+    // href 는 NotebookLinkCard 가 window.location.hostname 으로 직접 생성하므로 비워 둔다(external 분기에서 module.href 미사용).
+    href: '',
+    badge: 'Active',
+    active: true,
+    section: 'AeroAI',
+    external: true,
+  },
+  {
     id: 'ladder',
     title: 'Ladder',
     description: 'Coffee-bet ladder game (사다리타기).',
@@ -112,16 +124,25 @@ export default async function HomePage({
             <div key={sectionName}>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">{sectionName}</h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {sectionModules.map((module) => (
-                  <ServiceCard
-                    key={module.id}
-                    title={module.title}
-                    description={'description' in module ? module.description : undefined}
-                    href={module.href}
-                    badge={module.badge}
-                    active={module.active}
-                  />
-                ))}
+                {sectionModules.map((module) =>
+                  'external' in module && module.external ? (
+                    <NotebookLinkCard
+                      key={module.id}
+                      title={module.title}
+                      description={'description' in module ? module.description : undefined}
+                      badge={module.badge}
+                    />
+                  ) : (
+                    <ServiceCard
+                      key={module.id}
+                      title={module.title}
+                      description={'description' in module ? module.description : undefined}
+                      href={module.href}
+                      badge={module.badge}
+                      active={module.active}
+                    />
+                  ),
+                )}
               </div>
             </div>
           );

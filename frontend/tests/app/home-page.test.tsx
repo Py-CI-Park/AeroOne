@@ -53,8 +53,8 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(reportLink).toHaveTextContent('Active');
   expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
 
-  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·AI·Ladder 추가로 활성 6개 / coming 2개.
-  expect(screen.getByText('6 active · 2 coming soon')).toBeInTheDocument();
+  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·AI·Ladder·Notebook 추가로 활성 7개 / coming 2개.
+  expect(screen.getByText('7 active · 2 coming soon')).toBeInTheDocument();
 });
 
 test('groups active dashboard cards into ordered sections before coming soon', async () => {
@@ -119,6 +119,20 @@ test('adds an active AeroAI card linking to /ai', async () => {
   expect(aiLink).toHaveAttribute('href', '/ai');
   expect(aiLink).toHaveTextContent('Active');
   expect(within(aiLink).getByTestId('service-card-description')).toHaveTextContent(/문서를 근거로 답하는 AI 어시스턴트/);
+});
+
+test('adds an external Notebook card opening the co-deploy app on port 8502 in a new tab', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const notebookLink = within(main).getByRole('link', { name: /Notebook/i });
+
+  // 별도 폐쇄망 앱이라 같은 호스트의 :8502 로 새 탭 이동(외부 절대 URL).
+  expect(notebookLink).toHaveAttribute('target', '_blank');
+  expect(notebookLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  expect(notebookLink.getAttribute('href')).toMatch(/^http:\/\/[^/]+:8502$/);
+  expect(notebookLink).toHaveTextContent('Active');
+  expect(within(notebookLink).getByTestId('service-card-description')).toHaveTextContent(/NotebookLM 대안/);
 });
 
 test('home page uses dark theme from cookie', async () => {

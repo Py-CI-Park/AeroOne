@@ -13,6 +13,7 @@ export function ServiceCard({
   icon,
   active = true,
   count,
+  external = false,
 }: {
   title: string;
   description?: string;
@@ -21,6 +22,7 @@ export function ServiceCard({
   icon?: string;
   active?: boolean;
   count?: number;
+  external?: boolean;
 }) {
   const body = (
     <>
@@ -81,6 +83,14 @@ export function ServiceCard({
       <div className={className} aria-disabled>
         {body}
       </div>
+    );
+  }
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {body}
+      </a>
     );
   }
 
