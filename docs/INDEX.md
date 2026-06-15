@@ -35,11 +35,13 @@
 
 | 문서 | 역할 | 길이 |
 |---|---|---|
-| [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | **폐쇄망 운영 종합 가이드** (15장 + 부록, 9단계 진행 체크리스트) — 입구 추천 | 514줄 |
+| [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | **폐쇄망 운영 종합 가이드** (18장 + 부록, 9단계 진행 체크리스트, Open Notebook co-deploy §18) — 입구 추천 | 666줄 |
+| [`runbook/closed-network-install-manual.md`](runbook/closed-network-install-manual.md) | **폐쇄망 상세 설치·사용 매뉴얼** — AeroOne + Open Notebook + Ollama, 운영자 단계별(반입물→설치→기동→확인→트러블슈팅). 패키지 동봉 | 중간 |
 | [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 13장) | 315줄 |
 | [`runbook/local-dev.md`](runbook/local-dev.md) | 개발자 로컬 실행 가이드 (worktree 주의 포함) | 92줄 |
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
+| [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
 
 ---
 
@@ -81,6 +83,7 @@
 | [`AGENTS.md`](../AGENTS.md) | 한국어 커밋 규칙, Lore trailer, PR 규칙. AI 에이전트 진입점. |
 | [`CLAUDE.md`](../CLAUDE.md) | Claude Code 전용 추가 규칙 |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 커밋·PR 형식, 코드 컨벤션, 검증 절차, 보안 변경 절차 |
+| [`closed-network-oss-adoption-process.md`](closed-network-oss-adoption-process.md) | 폐쇄망 오픈소스 도입 **재사용 프로세스 플레이북** (co-deploy·vendoring·airgap 번들·자동 프로비저닝·검증 게이트·동기화). 향후 외부 OSS 도입 표준 |
 
 ---
 
