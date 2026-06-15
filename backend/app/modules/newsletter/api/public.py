@@ -13,9 +13,16 @@ from app.modules.newsletter.services.markdown_render_service import MarkdownRend
 from app.modules.newsletter.services.newsletter_autosync_service import NewsletterAutoSyncService
 from app.modules.newsletter.services.newsletter_service import NewsletterService
 from app.modules.newsletter.services.pdf_delivery_service import PdfDeliveryService
-from app.modules.shared.storage.service import StorageService
+from app.modules.shared.storage.service import StorageError, StorageService
 
 router = APIRouter()
+MISSING_ASSET_DETAIL = 'Newsletter asset file is missing from the import/storage directory'
+
+
+def raise_missing_asset() -> None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MISSING_ASSET_DETAIL)
+
+
 
 
 def get_storage_service(settings: Settings = Depends(get_settings)) -> StorageService:
@@ -62,13 +69,20 @@ def get_newsletter_content(newsletter_id: int, asset_type: AssetType, response: 
     asset = next((asset for asset in newsletter.assets if asset.asset_type == asset_type), None)
     if asset is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Asset not found')
-    if asset_type == AssetType.PDF:
-        path = PdfDeliveryService(storage_service).resolve_pdf_path(asset.file_path)
-        return FileResponse(path, media_type='application/pdf', filename=path.name)
-    response.headers['Content-Security-Policy'] = HTML_CSP
-    if asset_type == AssetType.HTML:
-        return {'asset_type': asset_type, 'content_html': HtmlRenderService(storage_service).render(asset.file_path)}
-    return {'asset_type': asset_type, 'content_html': MarkdownRenderService(storage_service, HtmlRenderService(storage_service)).render(asset.file_path)}
+    try:
+        if asset_type == AssetType.PDF:
+            path = PdfDeliveryService(storage_service).resolve_pdf_path(asset.file_path)
+            if not path.exists():
+                raise_missing_asset()
+            return FileResponse(path, media_type='application/pdf', filename=path.name)
+        response.headers['Content-Security-Policy'] = HTML_CSP
+        if asset_type == AssetType.HTML:
+            return {'asset_type': asset_type, 'content_html': HtmlRenderService(storage_service).render(asset.file_path)}
+        return {'asset_type': asset_type, 'content_html': MarkdownRenderService(storage_service, HtmlRenderService(storage_service)).render(asset.file_path)}
+    except FileNotFoundError:
+        raise_missing_asset()
+    except StorageError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get('/{newsletter_id}/download/{asset_type}')
@@ -77,13 +91,18 @@ def download_newsletter_asset(newsletter_id: int, asset_type: AssetType, service
     asset = next((asset for asset in newsletter.assets if asset.asset_type == asset_type), None)
     if asset is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Asset not found')
-    if asset_type == AssetType.MARKDOWN:
-        path = storage_service.resolve_managed_relative_path(asset.file_path)
-        media_type = 'text/markdown; charset=utf-8'
-    elif asset_type == AssetType.PDF:
-        path = storage_service.resolve_external_relative_path(asset.file_path)
-        media_type = 'application/pdf'
-    else:
-        path = storage_service.resolve_external_relative_path(asset.file_path)
-        media_type = 'text/html; charset=utf-8'
-    return FileResponse(path, media_type=media_type, filename=path.name)
+    try:
+        if asset_type == AssetType.MARKDOWN:
+            path = storage_service.resolve_managed_relative_path(asset.file_path)
+            media_type = 'text/markdown; charset=utf-8'
+        elif asset_type == AssetType.PDF:
+            path = storage_service.resolve_external_relative_path(asset.file_path)
+            media_type = 'application/pdf'
+        else:
+            path = storage_service.resolve_external_relative_path(asset.file_path)
+            media_type = 'text/html; charset=utf-8'
+        if not path.exists():
+            raise_missing_asset()
+        return FileResponse(path, media_type=media_type, filename=path.name)
+    except StorageError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

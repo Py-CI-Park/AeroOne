@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui/icons';
 import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import { VersionBadge } from '@/components/layout/version-badge';
+import { HelpManualButton } from '@/components/layout/help-manual-button';
 import type { NewsletterTheme } from '@/lib/theme';
 
 type ActiveNav = 'dashboard' | 'newsletters' | 'documents' | 'none';
@@ -89,6 +90,7 @@ export function AppShell({
         ) : null}
 
         <div className="ml-auto flex items-center gap-2">
+          <HelpManualButton />
           {showThemeSelector ? <NewsletterThemeSelector theme={theme} currentPath={themePath} /> : null}
         </div>
       </header>

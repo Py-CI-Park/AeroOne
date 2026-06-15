@@ -136,18 +136,22 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo NEWSLETTER_IMPORT_ROOT_CONTAINER=%ROOT_FWD%/_database/newsletter
 >>"%BACKEND_ENV%" echo CIVIL_AIRCRAFT_ROOT=%ROOT_FWD%/_database/civil_aircraft
 >>"%BACKEND_ENV%" echo DOCUMENT_ROOT=%ROOT_FWD%/_database/document
+>>"%BACKEND_ENV%" echo NSA_ROOT=%ROOT_FWD%/_database/nsa
 >>"%BACKEND_ENV%" echo STORAGE_ROOT=%ROOT_FWD%/storage
 >>"%BACKEND_ENV%" echo THUMBNAILS_DIR_NAME=thumbnails
 >>"%BACKEND_ENV%" echo ATTACHMENTS_DIR_NAME=attachments
 >>"%BACKEND_ENV%" echo MARKDOWN_DIR_NAME=markdown
 >>"%BACKEND_ENV%" echo CORS_ORIGINS=%EFFECTIVE_CORS%
 >>"%BACKEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=%EFFECTIVE_BACKEND_BASE%
->>"%BACKEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
+>>"%BACKEND_ENV%" echo SERVER_API_BASE_URL=http://127.0.0.1:18437
+>>"%BACKEND_ENV%" echo AI_FEATURES_ENABLED=true
+>>"%BACKEND_ENV%" echo OLLAMA_BASE_URL=http://127.0.0.1:11434
+>>"%BACKEND_ENV%" echo OLLAMA_DEFAULT_MODEL=gemma4:12b
 if defined ALLOW_HOST >>"%BACKEND_ENV%" echo LAN_HOST=%ALLOW_HOST%
 
 if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
 >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=%EFFECTIVE_BACKEND_BASE%
->>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
+>>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://127.0.0.1:18437
 >>"%FRONTEND_ENV%" echo NEXT_PUBLIC_CSRF_COOKIE_NAME=csrf_token
 
 if not exist "%BACKEND_VENV%\Scripts\python.exe" (
@@ -158,6 +162,7 @@ if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
 if not exist "%ROOT%\_database\newsletter" mkdir "%ROOT%\_database\newsletter"
 if not exist "%ROOT%\_database\civil_aircraft" mkdir "%ROOT%\_database\civil_aircraft"
 if not exist "%ROOT%\_database\document" mkdir "%ROOT%\_database\document"
+if not exist "%ROOT%\_database\nsa" mkdir "%ROOT%\_database\nsa"
 
 call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
 pushd "%BACKEND_DIR%"
@@ -202,6 +207,7 @@ echo [DATA] _database/newsletter 폴더에 newsletter_YYYYMMDD.html 원본을 �
 echo        관리자 페이지의 Import / Sync 버튼으로 동기화하세요.
 echo [DATA] _database/document 폴더에 HTML 문서를 넣으면 Document 탭에서 바로 보입니다
 echo        ^(하위 폴더로 분류하면 폴더 트리로 구분, 재시작 불필요^).
+echo [DATA] _database/nsa 폴더의 HTML 은 NSA 탭 잠금 해제 뒤 표시됩니다.
 echo ==================================================
 goto :success
 

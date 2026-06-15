@@ -116,7 +116,8 @@ C:\Users\<유저명>\AeroOne\
 | 자동 오픈 URL | `http://localhost:29501/` | `http://<host>:29501/` |
 | `backend\.env` `CORS_ORIGINS` | `http://localhost:29501` | `http://localhost:29501,http://<host>:29501` |
 | `backend\.env` `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:18437` | `http://<host>:18437` |
-| `backend\.env` `SERVER_API_BASE_URL` | `http://localhost:18437` | `http://localhost:18437` (Next.js SSR 은 같은 PC 자기 자신을 호출) |
+| `backend\.env` `SERVER_API_BASE_URL` | `http://127.0.0.1:18437` | `http://127.0.0.1:18437` (Next.js SSR 은 같은 PC 자기 자신을 IPv4 loopback 으로 호출) |
+| `backend\.env` `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | `http://127.0.0.1:11434` 기본. Ollama 가 다른 폐쇄망 PC 에 있으면 `http://<ollama-ip>:11434` 로 수동 변경 |
 
 ### 5.3 LAN 모드 사용법 (`--allow-host`)
 

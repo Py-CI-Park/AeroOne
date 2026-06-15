@@ -11,6 +11,7 @@ const PAGE_PATH = '/nsa';
 
 type SearchParams = {
   theme?: string;
+  path?: string;
 };
 
 export default async function NsaPage({
@@ -30,7 +31,7 @@ export default async function NsaPage({
       themePath={PAGE_PATH}
       active="none"
     >
-      <CollectionPasswordGate collection="nsa" title="NSA" />
+      <CollectionPasswordGate collection="nsa" title="NSA" initialPath={params.path} />
     </AppShell>
   );
 }

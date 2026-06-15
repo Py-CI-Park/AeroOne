@@ -56,7 +56,14 @@ function recentDocumentKey(collection: string): string {
 function resolveInitialSelected(
   documents: DocumentListItem[],
   collection: 'document' | 'civil' | 'nsa',
+  initialPath?: string,
 ): DocumentListItem | null {
+  if (initialPath) {
+    const linkedDoc = documents.find((doc) => doc.path === initialPath);
+    if (linkedDoc) {
+      return linkedDoc;
+    }
+  }
   if (typeof window !== 'undefined') {
     try {
       const recentPath = window.localStorage.getItem(recentDocumentKey(collection));
@@ -214,6 +221,7 @@ type DocumentsWorkspaceProps = {
   defaultSidebarOpen?: boolean;
   defaultFoldersOpen?: boolean;
   emptyHint?: React.ReactNode;
+  initialPath?: string;
 };
 
 export function DocumentsWorkspace({
@@ -222,9 +230,10 @@ export function DocumentsWorkspace({
   defaultSidebarOpen = false,
   defaultFoldersOpen = false,
   emptyHint,
+  initialPath,
 }: DocumentsWorkspaceProps) {
   const [selected, setSelected] = useState<DocumentListItem | null>(() =>
-    resolveInitialSelected(documents, collection),
+    resolveInitialSelected(documents, collection, initialPath),
   );
   const [searchTerm, setSearchTerm] = useState('');
   const normalizedSearch = normalizeSearch(searchTerm);
@@ -278,14 +287,19 @@ export function DocumentsWorkspace({
   }, [selected, collection]);
 
   useEffect(() => {
+    const initialDoc = resolveInitialSelected(documents, collection, initialPath);
     if (!selected && documents.length > 0) {
-      setSelected(resolveInitialSelected(documents, collection));
+      setSelected(initialDoc);
+      return;
+    }
+    if (initialPath && selected?.path !== initialPath && initialDoc?.path === initialPath) {
+      setSelected(initialDoc);
       return;
     }
     if (selected && !documents.some((doc) => doc.path === selected.path)) {
-      setSelected(resolveInitialSelected(documents, collection));
+      setSelected(initialDoc);
     }
-  }, [documents, selected, collection]);
+  }, [documents, selected, collection, initialPath]);
 
   function toggleFolder(path: string) {
     setOpenFolders((prev) => {

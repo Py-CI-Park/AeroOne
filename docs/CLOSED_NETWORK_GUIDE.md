@@ -27,6 +27,8 @@
 14. [AI 에이전트 사용 지침](#14-ai-에이전트-사용-지침)
 15. [참조 문서 색인](#15-참조-문서-색인)
 16. [1.4.0 신규 기능 운영 안내](#16-140-신규-기능-운영-안내)
+17. [1.5.0 Ollama AI·본문 검색 운영 안내](#17-150-ollama-ai본문-검색-운영-안내)
+18. [Open Notebook co-deploy (1.5+)](#18-open-notebook-co-deploy-15)
 
 ---
 
@@ -195,7 +197,7 @@ start_offline.bat --local
 | 자동 오픈 URL | `http://localhost:29501/` |
 | `CORS_ORIGINS` | `http://localhost:29501` |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:18437` |
-| `SERVER_API_BASE_URL` | `http://localhost:18437` |
+| `SERVER_API_BASE_URL` | `http://127.0.0.1:18437` |
 
 같은 PC 의 브라우저에서만 접속 가능. 외부 노출 없음, 가장 안전.
 
@@ -230,7 +232,7 @@ start_offline.bat
 | 자동 오픈 URL | `http://localhost:29501/` | `http://<host>:29501/` |
 | `CORS_ORIGINS` | `http://localhost:29501` | `http://localhost:29501,http://<host>:29501` |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:18437` | `http://<host>:18437` |
-| `SERVER_API_BASE_URL` | `http://localhost:18437` | `http://localhost:18437` (Next.js SSR 은 같은 PC 자기 자신을 호출하므로 loopback 유지) |
+| `SERVER_API_BASE_URL` | `http://127.0.0.1:18437` | `http://127.0.0.1:18437` (Next.js SSR 은 같은 PC 자기 자신을 IPv4 loopback 으로 호출) |
 
 ### 7.3 LAN 모드 운영 주의사항
 
@@ -555,6 +557,112 @@ _database\
 ### 16.4 Ladder(사다리타기) 게임
 
 대시보드에 Ladder 카드가 추가되었습니다. `/games/ladder` 에서 참가자와 상품을 입력하면 랜덤 사다리로 배정 결과를 표시합니다. 순수 프론트엔드로 동작하며 백엔드 연동이 없습니다.
+
+## 17. 1.5.0 Ollama AI·본문 검색 운영 안내
+
+### 17.1 대시보드 AI 채팅
+
+대시보드의 `AI` 카드에서 `/ai` 로 이동하면 폐쇄망 Ollama 기본 모델(`gemma4:12b`)과 대화할 수 있습니다. 답변 생성 중에는 "응답 생성 중" 대기 표시가 나오며, pending 중에는 중복 전송을 막습니다.
+
+브라우저는 Ollama 포트(`11434`)를 직접 호출하지 않습니다. `/api/frontend/ai/*` same-origin route 를 호출하고, FastAPI 백엔드가 `OLLAMA_BASE_URL` 로 Ollama 에 요청합니다.
+
+### 17.2 Ollama 설정
+
+`setup.bat` / `setup_offline.bat` 는 다음 기본값을 `backend\.env` 에 기록합니다.
+
+```env
+AI_FEATURES_ENABLED=true
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_DEFAULT_MODEL=gemma4:12b
+```
+
+Ollama 가 AeroOne 과 같은 PC 에 있으면 기본값을 그대로 둡니다. Ollama 가 폐쇄망 내 다른 PC 에 있다면 `OLLAMA_BASE_URL=http://<ollama-ip>:11434` 로 바꾼 뒤 backend 를 재시작합니다. 프런트엔드 `.env.local` 에 Ollama URL 을 넣지 마십시오.
+
+### 17.3 HTML 본문 검색과 파일 바로가기
+
+`/ai` 의 "HTML 본문 검색"은 `_database\document\` 와 `_database\civil_aircraft\` 의 HTML 본문을 SQLite FTS5 로 검색합니다. 검색 결과는 바로 열기 링크를 포함합니다.
+
+| 컬렉션 | 바로가기 |
+|---|---|
+| Document | `/documents?path=<상대 HTML 경로>` |
+| Civil | `/reports/civil-aircraft?path=<상대 HTML 경로>` |
+| NSA | `/nsa?path=<상대 HTML 경로>` |
+
+NSA 는 기존 가림막을 유지합니다. Dashboard/global 검색에는 기본적으로 NSA 결과가 포함되지 않으며, `/nsa` unlock 이후에만 NSA 문서가 로드됩니다.
+
+### 17.4 장애 시 동작
+
+| 상태 | 화면 동작 |
+|---|---|
+| Ollama 미실행 / 연결 실패 | AI 영역에 연결 불가 안내. Document/Civil/NSA 열람은 계속 동작 |
+| `gemma4:12b` 미설치 | 모델 없음 안내 |
+| 응답 지연 / timeout | 대기 표시 후 오류와 재시도 가능 상태 |
+| FTS5 미지원 | 검색 degraded 안내. 앱 부팅은 실패하지 않음 |
+---
+
+## 18. Open Notebook co-deploy (1.5+)
+
+AeroOne 옆에 **Open Notebook**(NotebookLM 대안, MIT)을 **별도 프로세스 군으로 나란히(co-deploy)** 배치해 함께 운영할 수 있습니다. 코드 병합 없이 동거하며 결합점은 둘 — 대시보드 AeroAI 섹션의 **Notebook 카드**(→ `http://<host>:8502` 새 탭)와 **공유 Ollama 엔드포인트**(`127.0.0.1:11434`)뿐입니다. 두 스택은 DB(AeroOne SQLite vs ON SurrealDB)·세션·포트를 공유하지 않습니다.
+
+세부 절차(vendoring·adapter 동결·모델 provisioning·동시성 예산·동기화·운영자 게이트)는 단일 진실 원천 런북 [`docs/runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) 에 있습니다. 본 절은 운영 요약입니다.
+
+### 18.1 분리 번들 · 5 포트
+
+| 스택 | 빌드 | 설치 | 기동 | 포트 |
+|---|---|---|---|---|
+| AeroOne | `offline_package.bat` (ZIP 에 vendor 트리 제외) | `setup_offline.bat` | `start_offline.bat` | 18437 / 29501 |
+| Open Notebook | `airgap\1-online-package.bat` (자체 번들) | `2-airgap-install.bat` | `3-run.bat` | 8000 / 5055 / 8502 |
+
+두 산출물은 **각자 빌드·반입**합니다. AeroOne ZIP 은 vendored open-notebook 트리를 포함하지 않습니다(`offline_package.bat` 의 `/XD vendor` 가산; §6 보호 제외목록은 무변경).
+
+### 18.2 공동 기동 — `scripts\run_all.bat`
+
+같은 폐쇄망 PC 에 두 번들을 나란히 풀고 staggered 로 기동합니다 — AeroOne 먼저 → backend `:18437` health 200 확인 → 그 다음 Open Notebook. 한쪽(Open Notebook 번들)이 없으면 명확히 알리고 AeroOne 단독으로 둡니다(폴백).
+
+```cmd
+:: 두 번들이 나란히 있을 때 (기본: ..\AeroOne-bundle)
+scripts\run_all.bat
+scripts\run_all.bat --on-bundle D:\AeroOne-bundle    :: 번들 경로 지정
+scripts\run_all.bat --dry-run                         :: 5포트 preflight + 기동 계획만
+scripts\stop_all.bat                                  :: 역순 종료
+
+:: 공유 Ollama 모델 (인터넷 PC 에서 pull → blob 반입 → 폐쇄망 적재)
+ollama pull gemma4:12b
+ollama pull nomic-embed-text
+```
+
+### 18.3 공유 Ollama 동시성 (요약)
+
+3 소비자(AeroAI chat + ON chat + ON embedding) 공유 — **최소 24GB RAM**, `OLLAMA_MAX_LOADED_MODELS=2` / `OLLAMA_NUM_PARALLEL=1` / `OLLAMA_KEEP_ALIVE=30m`, staggered boot, health 임계(AeroOne ≤30s / ON ≤90s). 자세한 표·degraded mode 는 런북 §3.
+
+### 18.4 운영자 게이트 (라이브 검증)
+
+submodule 핀 + fork 브랜치 push(OP-1), 폐쇄망 4프로세스 e2e 스모크(OP-2), 24GB 공유 Ollama 실측(OP-3) 은 물리 폐쇄망/외부 인프라가 필요한 **운영자 수행 항목**입니다. 런북 §6 의 체크리스트를 따릅니다.
+
+### 18.5 신원·세션 비대칭 (보안 주의)
+
+두 스택의 신원 체계는 **분리**되어 있고 보호 수준이 다릅니다 — 통합 SSO 는 명시적 후속(비범위).
+
+| 스택 | 신원·접근 통제 | LAN 노출 시 위험 |
+|---|---|---|
+| AeroOne | `/admin/*` 는 `admin_session` 쿠키 게이트(관리자 인증). 공개 열람은 의도적 무인증 | 관리 기능은 쿠키로 보호 |
+| Open Notebook | **자체 인증 없음** — `:8502`(및 `:5055`/`:8000`)에 도달하는 누구나 노트북·소스 열람/조작 가능 | LAN 의 모든 PC 가 무인증 도달 가능 |
+
+완화: `scripts\allow_lan_firewall.cmd --with-notebook` 가 ON 포트(8000/5055/8502)에 `remoteip=LocalSubnet` 인바운드 규칙만 추가해 **로컬 서브넷 밖(외부망) 도달을 차단**합니다(기존 AeroOne LocalSubnet 규칙은 무변경). ON 을 LAN 에 여는 것은 무인증 노출을 동반하므로 `--with-notebook` 는 **옵트인**이며, 단일 PC 사용 시에는 방화벽 규칙 자체가 불필요합니다.
+
+### 18.6 AeroAI vs Open Notebook — 언제 무엇을 (포지셔닝 SoT)
+
+두 AI 표면의 역할 경계 단일 진실 원천입니다(다른 문서는 이 절을 참조, 중복 금지).
+
+| | **AeroAI** (`/ai`, AeroOne 내장) | **Open Notebook** (`:8502`, 별도 앱) |
+|---|---|---|
+| 쓰임새 | 사내 폐쇄망 문서를 **근거로 답하는** RAG 챗(인용·근거연결) | 소스 수집·정리·요약, 노트북 구성, 벡터 검색, (옵션)팟캐스트 |
+| 데이터 | AeroOne SQLite + collections(Document/Civil/NSA) | 자체 SurrealDB(노트북·업로드·벡터) |
+| 신원 | AeroOne 세션(공개 열람 무인증, 관리자 쿠키) | 자체 무인증(§18.5) |
+| 공유 | Ollama `gemma4:12b` chat | Ollama `gemma4:12b` chat + `nomic-embed-text` embedding |
+| 선택 기준 | "사내 문서에 근거한 빠른 질의응답" | "여러 소스를 모아 정리·벡터 탐색·산출물 생성" |
+
+요약 — **AeroAI = 근거 기반 질의응답, Open Notebook = 소스 정리·지식 워크스페이스.** 둘은 같은 Ollama 를 공유하지만 DB·신원·포트는 분리됩니다.
 
 ---
 

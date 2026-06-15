@@ -62,20 +62,24 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo NEWSLETTER_IMPORT_ROOT_CONTAINER=%ROOT_FWD%/_database/newsletter
 >>"%BACKEND_ENV%" echo CIVIL_AIRCRAFT_ROOT=%ROOT_FWD%/_database/civil_aircraft
 >>"%BACKEND_ENV%" echo DOCUMENT_ROOT=%ROOT_FWD%/_database/document
+>>"%BACKEND_ENV%" echo NSA_ROOT=%ROOT_FWD%/_database/nsa
 >>"%BACKEND_ENV%" echo STORAGE_ROOT=%ROOT_FWD%/storage
 >>"%BACKEND_ENV%" echo THUMBNAILS_DIR_NAME=thumbnails
 >>"%BACKEND_ENV%" echo ATTACHMENTS_DIR_NAME=attachments
 >>"%BACKEND_ENV%" echo MARKDOWN_DIR_NAME=markdown
 >>"%BACKEND_ENV%" echo CORS_ORIGINS=http://localhost:29501
 >>"%BACKEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
->>"%BACKEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
+>>"%BACKEND_ENV%" echo SERVER_API_BASE_URL=http://127.0.0.1:18437
+>>"%BACKEND_ENV%" echo AI_FEATURES_ENABLED=true
+>>"%BACKEND_ENV%" echo OLLAMA_BASE_URL=http://127.0.0.1:11434
+>>"%BACKEND_ENV%" echo OLLAMA_DEFAULT_MODEL=gemma4:12b
 echo [OK] backend .env 작성 완료
 
 set "CURRENT_STEP=WRITE_FRONTEND_ENV"
 echo [3/7][CONFIG] frontend .env.local 작성
 if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
 >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=http://localhost:18437
->>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://localhost:18437
+>>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://127.0.0.1:18437
 >>"%FRONTEND_ENV%" echo NEXT_PUBLIC_CSRF_COOKIE_NAME=csrf_token
 echo [OK] frontend .env.local 작성 완료
 
@@ -92,6 +96,7 @@ if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
 if not exist "%ROOT%\_database\newsletter" mkdir "%ROOT%\_database\newsletter"
 if not exist "%ROOT%\_database\civil_aircraft" mkdir "%ROOT%\_database\civil_aircraft"
 if not exist "%ROOT%\_database\document" mkdir "%ROOT%\_database\document"
+if not exist "%ROOT%\_database\nsa" mkdir "%ROOT%\_database\nsa"
 
 set "CURRENT_STEP=BACKEND_SETUP"
 echo [5/7][BACKEND] 의존성 설치 / DB 준비 / seed

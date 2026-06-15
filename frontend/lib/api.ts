@@ -1,7 +1,14 @@
 import type {
+  AiChatMessage,
+  AiChatResponse,
+  AiConversationDetail,
+  AiConversationListResponse,
+  AiConversationSummary,
+  AiStatusResponse,
   AssetType,
   AuthResponse,
   Category,
+  CollectionSearchResponse,
   DocumentListItem,
   NewsletterCalendarEntry,
   NewsletterDetail,
@@ -148,6 +155,106 @@ export async function fetchCollectionListServer(collection: string): Promise<{ d
     baseUrl: getServerApiBase(),
     path: `/api/v1/collections/${collection}/list`,
   });
+}
+
+export async function fetchCollectionSearch(params: {
+  q: string;
+  collections?: Array<'document' | 'civil' | 'nsa'>;
+  limit?: number;
+}): Promise<CollectionSearchResponse> {
+  const query = new URLSearchParams();
+  query.set('q', params.q);
+  if (params.collections?.length) {
+    query.set('collections', params.collections.join(','));
+  }
+  if (params.limit != null) {
+    query.set('limit', String(params.limit));
+  }
+  const response = await fetch(`/api/frontend/collections/search?${query.toString()}`, { cache: 'no-store' });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to search collections: ${response.status}`);
+  }
+  return (await response.json()) as CollectionSearchResponse;
+}
+
+export async function fetchAiStatus(): Promise<AiStatusResponse> {
+  const response = await fetch('/api/frontend/ai/status', { cache: 'no-store' });
+  if (!response.ok) {
+    const text = await response.text();
+    try {
+      return JSON.parse(text) as AiStatusResponse;
+    } catch {
+      throw new Error(text || `Failed to load AI status: ${response.status}`);
+    }
+  }
+  return (await response.json()) as AiStatusResponse;
+}
+
+export async function sendAiChat(payload: {
+  messages: AiChatMessage[];
+  use_search?: boolean;
+  collections?: Array<'document' | 'civil' | 'nsa'>;
+  limit?: number;
+  conversation_id?: number | null;
+  temporary?: boolean;
+  selected_refs?: Array<{ collection: 'document' | 'civil' | 'nsa'; path: string }>;
+}, options?: { signal?: AbortSignal }): Promise<AiChatResponse> {
+  const response = await fetch('/api/frontend/ai/chat', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: options?.signal,
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `AI request failed: ${response.status}`);
+  }
+  return (await response.json()) as AiChatResponse;
+}
+
+export async function listAiConversations(includeArchived = false): Promise<AiConversationListResponse> {
+  const query = includeArchived ? '?include_archived=true' : '';
+  const response = await fetch(`/api/frontend/ai/conversations${query}`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load conversations: ${response.status}`);
+  }
+  return (await response.json()) as AiConversationListResponse;
+}
+
+export async function getAiConversation(id: number): Promise<AiConversationDetail> {
+  const response = await fetch(`/api/frontend/ai/conversations/${id}`, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load conversation: ${response.status}`);
+  }
+  return (await response.json()) as AiConversationDetail;
+}
+
+export async function updateAiConversation(
+  id: number,
+  patch: { title?: string; is_pinned?: boolean; is_archived?: boolean },
+): Promise<AiConversationSummary> {
+  const response = await fetch(`/api/frontend/ai/conversations/${id}`, {
+    method: 'PATCH',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to update conversation: ${response.status}`);
+  }
+  return (await response.json()) as AiConversationSummary;
+}
+
+export async function deleteAiConversation(id: number): Promise<void> {
+  const response = await fetch(`/api/frontend/ai/conversations/${id}`, {
+    method: 'DELETE',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete conversation: ${response.status}`);
+  }
 }
 
 export async function fetchDocumentContent(path: string): Promise<{ asset_type: 'html'; content_html: string }> {

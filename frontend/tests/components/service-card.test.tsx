@@ -52,3 +52,37 @@ it('still renders a service dashboard card with an icon when provided', () => {
   expect(screen.getByTestId('service-card-icon')).toHaveTextContent('문서');
   expect(screen.getByText('활성 서비스')).toBeInTheDocument();
 });
+
+it('renders an external active card as a new-tab anchor instead of a next/link', () => {
+  render(
+    <ServiceCard
+      title="Notebook"
+      description="외부 앱"
+      href="http://host.example:8502"
+      badge="Active"
+      external
+    />,
+  );
+
+  const card = screen.getByRole('link', { name: /Notebook/i });
+
+  expect(card.tagName).toBe('A');
+  expect(card).toHaveAttribute('href', 'http://host.example:8502');
+  expect(card).toHaveAttribute('target', '_blank');
+  expect(card).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+it('renders an internal card as a next/link without new-tab attributes', () => {
+  render(
+    <ServiceCard
+      title="문서"
+      href="/documents"
+      badge="Active"
+    />,
+  );
+
+  const card = screen.getByRole('link', { name: /문서/i });
+
+  expect(card).toHaveAttribute('href', '/documents');
+  expect(card).not.toHaveAttribute('target');
+});

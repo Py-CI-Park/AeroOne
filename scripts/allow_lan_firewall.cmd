@@ -11,6 +11,14 @@ set "BACKEND_PORT=18437"
 set "FRONTEND_PORT=29501"
 set "RULE_BACKEND=AeroOne Backend %BACKEND_PORT%"
 set "RULE_FRONTEND=AeroOne Frontend %FRONTEND_PORT%"
+REM Open Notebook co-deploy 포트(인증 없음 — LocalSubnet 스코프로 외부망 차단). --with-notebook 로만 가산.
+set "ON_DB_PORT=8000"
+set "ON_API_PORT=5055"
+set "ON_FE_PORT=8502"
+set "RULE_ON_DB=Open Notebook SurrealDB %ON_DB_PORT%"
+set "RULE_ON_API=Open Notebook API %ON_API_PORT%"
+set "RULE_ON_FE=Open Notebook Frontend %ON_FE_PORT%"
+set "WITH_NOTEBOOK="
 set "ACTION=add"
 
 if /I "%~1"=="--help" goto :help
@@ -18,6 +26,9 @@ if /I "%~1"=="-h" goto :help
 if /I "%~1"=="/?" goto :help
 if /I "%~1"=="--remove" set "ACTION=remove"
 if /I "%~1"=="/remove" set "ACTION=remove"
+if /I "%~2"=="--remove" set "ACTION=remove"
+if /I "%~1"=="--with-notebook" set "WITH_NOTEBOOK=1"
+if /I "%~2"=="--with-notebook" set "WITH_NOTEBOOK=1"
 
 REM netsh advfirewall 은 관리자 권한이 필요하다. net session 으로 권한을 확인한다.
 net session >nul 2>&1
@@ -34,6 +45,17 @@ netsh advfirewall firewall add rule name="%RULE_BACKEND%" dir=in action=allow pr
 if errorlevel 1 goto :fail
 netsh advfirewall firewall add rule name="%RULE_FRONTEND%" dir=in action=allow protocol=TCP localport=%FRONTEND_PORT% profile=any remoteip=LocalSubnet
 if errorlevel 1 goto :fail
+if defined WITH_NOTEBOOK (
+  echo [INFO ] Adding Open Notebook inbound rules ^(8000/5055/8502, remoteip=LocalSubnet^).
+  netsh advfirewall firewall add rule name="%RULE_ON_DB%" dir=in action=allow protocol=TCP localport=%ON_DB_PORT% profile=any remoteip=LocalSubnet
+  if errorlevel 1 goto :fail
+  netsh advfirewall firewall add rule name="%RULE_ON_API%" dir=in action=allow protocol=TCP localport=%ON_API_PORT% profile=any remoteip=LocalSubnet
+  if errorlevel 1 goto :fail
+  netsh advfirewall firewall add rule name="%RULE_ON_FE%" dir=in action=allow protocol=TCP localport=%ON_FE_PORT% profile=any remoteip=LocalSubnet
+  if errorlevel 1 goto :fail
+  echo [OK   ] Open Notebook LAN inbound allowed for %ON_DB_PORT% / %ON_API_PORT% / %ON_FE_PORT%.
+  echo [WARN ] Open Notebook has NO authentication; LocalSubnet scope limits reach to this LAN only, not external.
+)
 echo [OK   ] LAN inbound allowed for %BACKEND_PORT% / %FRONTEND_PORT%.
 echo [OK   ] Other PCs on the same subnet can now reach http://^<this-PC-IP^>:%FRONTEND_PORT%/
 echo [INFO ] To revert: scripts\allow_lan_firewall.cmd --remove
@@ -43,7 +65,10 @@ exit /b 0
 echo [INFO ] Removing AeroOne inbound firewall rules.
 netsh advfirewall firewall delete rule name="%RULE_BACKEND%" >nul 2>&1
 netsh advfirewall firewall delete rule name="%RULE_FRONTEND%" >nul 2>&1
-echo [OK   ] Removed AeroOne inbound rules ^(if they existed^).
+netsh advfirewall firewall delete rule name="%RULE_ON_DB%" >nul 2>&1
+netsh advfirewall firewall delete rule name="%RULE_ON_API%" >nul 2>&1
+netsh advfirewall firewall delete rule name="%RULE_ON_FE%" >nul 2>&1
+echo [OK   ] Removed AeroOne ^(+ Open Notebook^) inbound rules ^(if they existed^).
 exit /b 0
 
 :fail
@@ -52,13 +77,14 @@ echo [INFO  ] Re-run as Administrator and verify Windows Firewall is available.
 exit /b 1
 
 :help
-echo Usage: allow_lan_firewall.cmd [--remove] [--help]
+echo Usage: allow_lan_firewall.cmd [--with-notebook] [--remove] [--help]
 echo.
 echo Adds Windows Firewall inbound allow rules so other PCs on the same closed LAN can
 echo reach the AeroOne backend ^(%BACKEND_PORT%^) and frontend ^(%FRONTEND_PORT%^).
 echo Scope: profile=any, remoteip=LocalSubnet ^(local subnet only; not exposed beyond LAN^).
 echo Must be run as Administrator. Pair with: start_offline.bat --allow-host=^<IP^>.
 echo.
-echo   --remove   Delete the two AeroOne inbound rules created by this script.
+echo   --with-notebook  Also add Open Notebook ports ^(8000/5055/8502^) — unauthenticated, LocalSubnet only.
+echo   --remove   Delete the AeroOne ^(and Open Notebook^) inbound rules created by this script.
 echo   --help     Show this help.
 exit /b 0

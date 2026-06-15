@@ -30,7 +30,7 @@ export async function GET(
 ) {
   const { segments } = await context.params;
 
-  if (!isAllowedCollection(segments[0])) {
+  if (segments[0] !== 'search' && !isAllowedCollection(segments[0])) {
     return new NextResponse('Unknown collection', { status: 404 });
   }
 

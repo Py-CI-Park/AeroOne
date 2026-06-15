@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     markdown_dir_name: str = 'markdown'
     csrf_cookie_name: str = 'csrf_token'
     cors_origins: str = 'http://localhost:29501'
+    ai_features_enabled: bool = True
+    ollama_base_url: str = 'http://127.0.0.1:11434'
+    ollama_default_model: str = 'gemma4:12b'
+    ollama_connect_timeout_seconds: float = 5.0
+    ollama_read_timeout_seconds: float = 120.0
+    ai_max_context_chars: int = 12000
+    ai_persistence_enabled: bool = False
 
     @property
     def project_root(self) -> Path:

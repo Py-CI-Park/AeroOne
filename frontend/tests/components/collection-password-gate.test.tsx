@@ -14,8 +14,8 @@ vi.mock('@/lib/api', async () => {
 
 // DocumentsWorkspace 는 fetch effect + iframe 이라, 게이트 테스트에서는 단순 stub 으로 대체.
 vi.mock('@/components/documents/documents-workspace', () => ({
-  DocumentsWorkspace: ({ documents }: { documents: { path: string }[] }) => (
-    <div data-testid="documents-workspace-stub">{documents.map((d) => d.path).join(',')}</div>
+  DocumentsWorkspace: ({ documents, initialPath }: { documents: { path: string }[]; initialPath?: string }) => (
+    <div data-testid="documents-workspace-stub" data-initial-path={initialPath ?? ''}>{documents.map((d) => d.path).join(',')}</div>
   ),
 }));
 
@@ -72,6 +72,21 @@ test('correct code 0000 unlocks: fetchCollectionList called with "nsa" and works
 
   const stub = await screen.findByTestId('documents-workspace-stub');
   expect(stub).toHaveTextContent('secret-a.html,secret-b.html');
+});
+
+test('initialPath is hidden while locked and forwarded only after unlock', async () => {
+  fetchCollectionListMock.mockResolvedValue({ documents: DOCS });
+
+  render(<CollectionPasswordGate collection="nsa" initialPath="secret-b.html" />);
+
+  expect(screen.queryByText('secret-b.html')).not.toBeInTheDocument();
+  expect(fetchCollectionListMock).not.toHaveBeenCalled();
+
+  fireEvent.change(screen.getByLabelText('비밀번호'), { target: { value: '0000' } });
+  fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+  const stub = await screen.findByTestId('documents-workspace-stub');
+  expect(stub).toHaveAttribute('data-initial-path', 'secret-b.html');
 });
 
 test('stored unlock keeps NSA usable after reload or hash navigation', async () => {

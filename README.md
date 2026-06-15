@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.4.4-1f6feb)
+![version](https://img.shields.io/badge/version-1.5.0-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -64,14 +64,17 @@
 | 영역 | 내용 |
 |---|---|
 | 사용자 화면 | 대시보드 모듈 카드(뉴스레터·민간항공기 보고서·문서 보관소 등), 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, 민간항공기 규격 카탈로그(/reports/civil-aircraft, 달력 없음), 문서 보관소(/documents, `_database/document` HTML 을 폴더 트리로 열람), `[data-theme]` 라이트·다크 테마 토글 |
+| AeroAI 어시스턴트 (1.5) | 대시보드 AeroAI 섹션의 `/ai` — 사내 폐쇄망 문서(Document/Civil/NSA)를 **근거로 답하는** RAG 챗. 대화 영속화·인용(citation) 근거연결·3분할 워크스페이스·프롬프트 프리셋. backend-only Ollama(`gemma4:12b`), same-origin 프록시 |
+| Open Notebook 동거 배포 (1.5) | NotebookLM 대안(MIT)을 **코드 병합 없이 나란히(co-deploy)** — 대시보드 Notebook 카드 → `:8502`. 분리 번들(airgap) + 공유 Ollama + 무인 자동 프로비저닝(모델 자동등록). 상세: [`docs/runbook/closed-network-install-manual.md`](docs/runbook/closed-network-install-manual.md) |
 | 콘텐츠 분기 | HTML(sandbox iframe + sanitize + CSP), PDF(direct delivery), Markdown(서버 렌더) |
 | 관리자 화면 | 로그인, 메타데이터 CRUD, 카테고리·태그 관리, 썸네일 업로드, `_database/newsletter` import / sync |
 | 인증 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰, 단일 시드 관리자 |
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (128 passed), frontend Vitest + Testing Library (137 passed, 37 파일), Windows 실행 스모크 |
+| 검증 | backend pytest + httpx (162 passed), frontend Vitest + Testing Library (179 passed, 46 파일), `tsc --noEmit` exit 0, `next build` 성공, Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
+| 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
 ---
 
@@ -232,9 +235,12 @@ AeroOne/
 | `STORAGE_ROOT` | 앱 storage 루트 | 정적 노출은 `thumbnails` 하위만 |
 | `CORS_ORIGINS` | 프런트 origin 화이트리스트 | `http://localhost:29501` (LAN 모드면 두 origin) |
 | `NEXT_PUBLIC_API_BASE_URL` | 브라우저가 호출할 backend 베이스 | loopback 시 `http://localhost:18437`, LAN 모드 시 `http://<host>:18437` |
-| `SERVER_API_BASE_URL` | Next.js SSR 이 호출할 backend 베이스 | 항상 loopback (`http://localhost:18437`) |
+| `SERVER_API_BASE_URL` | Next.js SSR 이 호출할 backend 베이스 | 항상 IPv4 loopback (`http://127.0.0.1:18437`) |
 | `LAN_HOST` | (옵션) `setup_offline.bat --allow-host` 가 .env 에 남기는 메타 | LAN 모드 운영 중인 호스트 표시용 |
 | `AEROONE_ALLOW_HOST` | LAN 모드 호스트 (옵션 인자 대신 환경 변수로 지정) | `setup_offline.bat` / `start_offline.bat` 모두 인식 |
+| `AI_FEATURES_ENABLED` | 대시보드 AI 기능 on/off | `true` (`setup.bat` / `setup_offline.bat`) |
+| `OLLAMA_BASE_URL` | 백엔드가 호출할 Ollama API | 기본 `http://127.0.0.1:11434`; 다른 폐쇄망 PC면 `http://<ollama-ip>:11434` |
+| `OLLAMA_DEFAULT_MODEL` | AI 채팅 기본 모델 | `gemma4:12b` |
 
 ---
 
@@ -283,7 +289,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.4.4 기준 backend `pytest tests` 결과 **128 passed** (실패 0), frontend Vitest **142 passed** (37 파일). 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계 6/7/8/9/10/11/12 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.5.0 기준 backend `pytest tests` 결과 **162 passed** (실패 0), frontend Vitest **179 passed** (46 파일), `tsc --noEmit` exit 0, `next build` 성공. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 
@@ -304,7 +310,10 @@ npm run build
 
 | 분류 | 위치 |
 |---|---|
-| 폐쇄망 운영 종합 가이드 | [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) (15장 + 부록) |
+| 폐쇄망 운영 종합 가이드 | [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) (18장 + 부록, Open Notebook co-deploy §18) |
+| **폐쇄망 상세 설치·사용 매뉴얼 (AeroOne + Open Notebook)** | [`docs/runbook/closed-network-install-manual.md`](docs/runbook/closed-network-install-manual.md) |
+| Open Notebook 동거 배포 런북 | [`docs/runbook/open-notebook-airgap.md`](docs/runbook/open-notebook-airgap.md) |
+| 폐쇄망 오픈소스 도입 프로세스 (재사용 플레이북) | [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 | 폐쇄망 실행 런북 | [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md) (가장 깊은 세부) |
 | 로컬 개발 런북 | [`docs/runbook/local-dev.md`](docs/runbook/local-dev.md) |
 | 관리자 인증 정책 | [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md) |

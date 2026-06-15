@@ -53,19 +53,25 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(reportLink).toHaveTextContent('Active');
   expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
 
-  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·Ladder 추가로 활성 5개 / coming 2개.
-  expect(screen.getByText('5 active · 2 coming soon')).toBeInTheDocument();
+  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·AI·Ladder·Notebook 추가로 활성 7개 / coming 2개.
+  expect(screen.getByText('7 active · 2 coming soon')).toBeInTheDocument();
 });
 
-test('groups active dashboard cards before coming soon modules', async () => {
+test('groups active dashboard cards into ordered sections before coming soon', async () => {
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
-  const activeHeading = screen.getByRole('heading', { name: 'Active modules' });
+  // 섹션 제목과 카드 제목이 같은 이름(heading)이라 첫 번째(섹션 헤더)를 집는다.
+  const newsletterSection = screen.getAllByRole('heading', { name: 'Newsletter' })[0];
+  const documentSection = screen.getAllByRole('heading', { name: 'Document' })[0];
+  const aeroAiSection = screen.getAllByRole('heading', { name: 'AeroAI' })[0];
   const comingHeading = screen.getByRole('heading', { name: 'Coming soon' });
   const nsaLink = screen.getByRole('link', { name: /NSA/i });
   const announcement = screen.getByRole('heading', { name: 'Announcement' });
 
-  expect(activeHeading.compareDocumentPosition(comingHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  // 섹션 순서: Newsletter → Document → AeroAI, 그리고 활성 섹션은 Coming soon 앞에 온다.
+  expect(newsletterSection.compareDocumentPosition(documentSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(documentSection.compareDocumentPosition(aeroAiSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(aeroAiSection.compareDocumentPosition(comingHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(nsaLink.compareDocumentPosition(comingHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(comingHeading.compareDocumentPosition(announcement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
@@ -102,6 +108,31 @@ test('adds an active Document card linking to the documents page', async () => {
   expect(documentLink).toHaveAttribute('href', '/documents');
   expect(documentLink).toHaveTextContent('Active');
   expect(within(documentLink).getByTestId('service-card-description')).toHaveTextContent(/HTML documents organized in folders/i);
+});
+
+test('adds an active AeroAI card linking to /ai', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const aiLink = within(main).getByRole('link', { name: /AeroAI/i });
+
+  expect(aiLink).toHaveAttribute('href', '/ai');
+  expect(aiLink).toHaveTextContent('Active');
+  expect(within(aiLink).getByTestId('service-card-description')).toHaveTextContent(/문서를 근거로 답하는 AI 어시스턴트/);
+});
+
+test('adds an external Notebook card opening the co-deploy app on port 8502 in a new tab', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const notebookLink = within(main).getByRole('link', { name: /Notebook/i });
+
+  // 별도 폐쇄망 앱이라 같은 호스트의 :8502 로 새 탭 이동(외부 절대 URL).
+  expect(notebookLink).toHaveAttribute('target', '_blank');
+  expect(notebookLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  expect(notebookLink.getAttribute('href')).toMatch(/^http:\/\/[^/]+:8502$/);
+  expect(notebookLink).toHaveTextContent('Active');
+  expect(within(notebookLink).getByTestId('service-card-description')).toHaveTextContent(/NotebookLM 대안/);
 });
 
 test('home page uses dark theme from cookie', async () => {

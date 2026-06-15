@@ -1,5 +1,6 @@
 import { AppShell } from '@/components/layout/app-shell';
 import { ServiceCard } from '@/components/dashboard/service-card';
+import { NotebookLinkCard } from '@/components/dashboard/notebook-link-card';
 import { getAppTheme } from '@/lib/server-theme';
 
 type SearchParams = {
@@ -13,6 +14,7 @@ const MODULES = [
     href: '/newsletters',
     badge: 'Active',
     active: true,
+    section: 'Newsletter',
   },
   {
     id: 'civil-aircraft',
@@ -21,6 +23,7 @@ const MODULES = [
     href: '/reports/civil-aircraft',
     badge: 'Active',
     active: true,
+    section: 'Document',
   },
   {
     id: 'announcement',
@@ -47,6 +50,7 @@ const MODULES = [
     href: '/documents',
     badge: 'Active',
     active: true,
+    section: 'Document',
   },
   {
     id: 'nsa',
@@ -55,6 +59,27 @@ const MODULES = [
     href: '/nsa',
     badge: 'Active',
     active: true,
+    section: 'Document',
+  },
+  {
+    id: 'ai',
+    title: 'AeroAI',
+    description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.',
+    href: '/ai',
+    badge: 'Active',
+    active: true,
+    section: 'AeroAI',
+  },
+  {
+    id: 'open-notebook',
+    title: 'Notebook',
+    description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).',
+    // href 는 NotebookLinkCard 가 window.location.hostname 으로 직접 생성하므로 비워 둔다(external 분기에서 module.href 미사용).
+    href: '',
+    badge: 'Active',
+    active: true,
+    section: 'AeroAI',
+    external: true,
   },
   {
     id: 'ladder',
@@ -63,8 +88,11 @@ const MODULES = [
     href: '/games/ladder',
     badge: 'Active',
     active: true,
+    section: 'etc',
   },
 ] as const;
+
+const ACTIVE_SECTION_ORDER = ['Newsletter', 'Document', 'AeroAI', 'etc'] as const;
 
 export default async function HomePage({
   searchParams,
@@ -89,21 +117,36 @@ export default async function HomePage({
       titleMeta={`${activeCount} active · ${comingCount} coming soon`}
     >
       <section className="flex flex-col gap-8">
-        <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">Active modules</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {activeModules.map((module) => (
-              <ServiceCard
-                key={module.id}
-                title={module.title}
-                description={'description' in module ? module.description : undefined}
-                href={module.href}
-                badge={module.badge}
-                active={module.active}
-              />
-            ))}
-          </div>
-        </div>
+        {ACTIVE_SECTION_ORDER.map((sectionName) => {
+          const sectionModules = activeModules.filter((module) => module.section === sectionName);
+          if (sectionModules.length === 0) return null;
+          return (
+            <div key={sectionName}>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">{sectionName}</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {sectionModules.map((module) =>
+                  'external' in module && module.external ? (
+                    <NotebookLinkCard
+                      key={module.id}
+                      title={module.title}
+                      description={'description' in module ? module.description : undefined}
+                      badge={module.badge}
+                    />
+                  ) : (
+                    <ServiceCard
+                      key={module.id}
+                      title={module.title}
+                      description={'description' in module ? module.description : undefined}
+                      href={module.href}
+                      badge={module.badge}
+                      active={module.active}
+                    />
+                  ),
+                )}
+              </div>
+            </div>
+          );
+        })}
 
         {comingModules.length > 0 ? (
           <div>
