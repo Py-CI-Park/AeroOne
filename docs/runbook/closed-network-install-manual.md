@@ -105,8 +105,9 @@ cd D:\AeroOne-bundle && 3-run.bat   :: + stop.bat 로 정지
 
 ## 6. 확인 (정상 동작 체크리스트)
 
-- [ ] `http://localhost:29501/` 대시보드 로드, AeroAI 섹션에 **Notebook 카드** 보임 (상단 요약 `7 active`).
+- [ ] `http://localhost:29501/` 대시보드 로드, AeroAI 섹션에 **Notebook 카드** 보임 (상단 요약 `8 active`).
 - [ ] AeroAI: `/ai` 에서 사내 문서 근거 챗 응답(인용 표시).
+- [ ] Viewer: 대시보드 Document 섹션 **Viewer 카드** → `/viewer` 에서 로컬 `.md`/`.html` 열기·편집·미리보기·다운로드 동작.
 - [ ] Notebook 카드 클릭 → `http://localhost:8502/` Open Notebook 로드(연결 오류 없음).
 - [ ] Open Notebook **Settings → Models**: Chat = `gemma4:12b`, Embedding = `nomic-embed-text` 자동 할당 확인.
 - [ ] 노트북 생성 → 소스 추가 → Ask/벡터 검색 동작.
