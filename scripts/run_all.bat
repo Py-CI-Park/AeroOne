@@ -54,7 +54,7 @@ call :probe_port %ON_FE_PORT%    "Open Notebook Frontend"  warn
 
 REM 2) AeroOne 기동 (extra args 는 start_offline.bat 으로 통과)
 echo [RUN-ALL] starting AeroOne...
-call "%ROOT%\start_offline.bat"%PASSTHRU%
+call "%ROOT%\start_offline.bat" --no-pause%PASSTHRU%
 if errorlevel 1 (
   echo [RUN-ALL][ERROR] AeroOne failed to start. aborting before Open Notebook.
   goto :abort
@@ -99,7 +99,7 @@ call :probe_port %FRONTEND_PORT% "AeroOne frontend"       warn
 call :probe_port %ON_DB_PORT%    "Open Notebook SurrealDB" warn
 call :probe_port %ON_API_PORT%   "Open Notebook API"       warn
 call :probe_port %ON_FE_PORT%    "Open Notebook Frontend"  warn
-echo [DRY-RUN] would call "%ROOT%\start_offline.bat"%PASSTHRU%
+echo [DRY-RUN] would call "%ROOT%\start_offline.bat" --no-pause%PASSTHRU%
 echo [DRY-RUN] would wait backend health http://127.0.0.1:%BACKEND_PORT%/api/v1/health ^(max 30s^)
 if exist "%ON_RUN%" (
   echo [DRY-RUN] would call "%ON_RUN%"
