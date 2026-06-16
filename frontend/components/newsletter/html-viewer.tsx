@@ -166,6 +166,12 @@ function measureContentHeight(doc: Document): number {
 
 export type HtmlViewerFit = 'content' | 'viewport';
 
+// content-fit 높이 동기화 튜닝 상수.
+// - HEIGHT_TOLERANCE_PX: 이 픽셀 이하의 미세 변화는 setHeight 를 건너뛴다(리플로우/churn 방지).
+// - POLL_STABLE_LIMIT: 폴링에서 이 횟수만큼 연속으로 허용오차 이내면 콘텐츠가 안정된 것으로 보고 타이머를 멈춘다.
+export const HEIGHT_TOLERANCE_PX = 8;
+export const POLL_STABLE_LIMIT = 5;
+
 // fit 모드 두 가지.
 // - 'content'(뉴스레터 기본): iframe 높이를 콘텐츠 전체에 맞추고 scrolling="no" →
 //   바깥 페이지가 스크롤. 기사 아코디언/lazy 이미지 높이 보정이 함께 동작한다.
@@ -200,6 +206,8 @@ export function HtmlViewer({
 
   const heightRef = useRef(height);
   const handleScrollRef = useRef<(() => void) | null>(null);
+  // 폴링이 연속으로 허용오차 이내(안정)였던 횟수. POLL_STABLE_LIMIT 도달 시 폴링 조기 종료.
+  const stableCountRef = useRef(0);
 
   useEffect(() => {
     heightRef.current = height;
@@ -308,12 +316,32 @@ export function HtmlViewer({
   }
 
   // 높이를 측정값으로 맞춘다(증가뿐 아니라 사용자가 기사를 접어 줄어든 경우도 반영).
+  // D1-A: (1) 허용오차(HEIGHT_TOLERANCE_PX) 이하의 미세 변화는 setHeight 를 건너뛴다 →
+  //   매 측정마다 바깥 페이지 리플로우가 발생해 스크롤이 위로 튀던 churn 을 막는다.
+  // (2) 실제 높이 변경 시에도 쓰기 직전 window.scrollY 를 잡아두고, DOM 높이가 반영되는
+  //   다음 애니메이션 프레임에서 복원해 읽던 위치가 맨 위로 점프하지 않게 한다.
+  // (3) 연속으로 허용오차 이내면 stableCountRef 를 올려 폴링 조기 종료(startTracking)에 쓴다.
   function syncHeight() {
     const doc = getDoc();
     if (!doc) {
       return;
     }
-    setHeight(measureContentHeight(doc));
+    const next = measureContentHeight(doc);
+    if (Math.abs(next - heightRef.current) <= HEIGHT_TOLERANCE_PX) {
+      stableCountRef.current += 1;
+      return;
+    }
+    stableCountRef.current = 0;
+    const prevScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    const prevScrollX = typeof window !== 'undefined' ? window.scrollX : 0;
+    setHeight(next);
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        // 높이 반영으로 바깥 페이지가 맨 위로 튀어도 직전 스크롤 위치로 되돌린다.
+        // 동일 위치면 브라우저상 no-op 이라 무해하다.
+        window.scrollTo(prevScrollX, prevScrollY);
+      });
+    }
   }
 
   // 기사 본문이 JS 로 비동기 주입되므로 같은 문서(allow-same-origin)에서 펼친다.
@@ -401,15 +429,21 @@ export function HtmlViewer({
     fonts?.ready?.then(() => syncHeight()).catch(() => undefined);
 
     // Observer 가 못 잡는 틈(폰트 리플로우 등)을 메우는 안전망 폴링.
-    // 12초(40 * 300ms)까지 재측정하고 멈춘다.
+    // 12초(40 * 300ms)까지 재측정하되, D1-A: 연속 POLL_STABLE_LIMIT 회 허용오차 이내로
+    // 측정되면(콘텐츠 안정) 폴링을 조기 종료한다. ResizeObserver/MutationObserver/이미지
+    // load 핸들러는 계속 살아있어 lazy 이미지 등 실제 후속 성장은 여전히 높이를 다시 맞춘다.
     let runs = 0;
+    stableCountRef.current = 0;
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
     }
     timerRef.current = window.setInterval(() => {
       refresh();
       runs += 1;
-      if (runs >= 40 && timerRef.current) {
+      if (
+        (runs >= 40 || stableCountRef.current >= POLL_STABLE_LIMIT) &&
+        timerRef.current
+      ) {
         window.clearInterval(timerRef.current);
         timerRef.current = null;
       }

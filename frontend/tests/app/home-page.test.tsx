@@ -53,8 +53,8 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(reportLink).toHaveTextContent('Active');
   expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
 
-  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·AI·Ladder·Notebook 추가로 활성 7개 / coming 2개.
-  expect(screen.getByText('7 active · 2 coming soon')).toBeInTheDocument();
+  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·AI·Ladder·Notebook·Viewer 추가로 활성 8개 / coming 2개.
+  expect(screen.getByText('8 active · 2 coming soon')).toBeInTheDocument();
 });
 
 test('groups active dashboard cards into ordered sections before coming soon', async () => {
@@ -108,6 +108,17 @@ test('adds an active Document card linking to the documents page', async () => {
   expect(documentLink).toHaveAttribute('href', '/documents');
   expect(documentLink).toHaveTextContent('Active');
   expect(within(documentLink).getByTestId('service-card-description')).toHaveTextContent(/HTML documents organized in folders/i);
+});
+
+test('adds an active Viewer card linking to /viewer', async () => {
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const viewerLink = within(main).getByRole('link', { name: /Viewer/i });
+
+  expect(viewerLink).toHaveAttribute('href', '/viewer');
+  expect(viewerLink).toHaveTextContent('Active');
+  expect(within(viewerLink).getByTestId('service-card-description')).toHaveTextContent(/로컬 Markdown·HTML 파일을 열어/);
 });
 
 test('adds an active AeroAI card linking to /ai', async () => {

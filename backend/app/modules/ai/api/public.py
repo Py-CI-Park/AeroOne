@@ -19,7 +19,7 @@ from app.modules.ai.schemas import (
     AiMessageOut,
     AiStatusResponse,
 )
-from app.modules.ai.service import AiChatService, OllamaModelMissing, OllamaUnavailable
+from app.modules.ai.service import AiChatService, OllamaEmptyResponse, OllamaModelMissing, OllamaUnavailable
 from app.modules.ai import models as ai_models  # noqa: F401  (create_all 등록용 import 체인)
 from app.modules.ai.repositories import AiConversationRepository
 from app.modules.ai.models import AiConversation
@@ -166,6 +166,9 @@ def chat_with_ai(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except OllamaUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except OllamaEmptyResponse as exc:
+        # 연결 다운(503)이 아니라 모델이 빈 응답을 준 경우 — 502 Bad Gateway 로 구분.
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     citation_dicts = [result.as_dict() for result in citations]
     conversation_id: int | None = None

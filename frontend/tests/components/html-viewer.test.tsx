@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 import {
   HtmlViewer,
@@ -233,4 +233,114 @@ it('only expands newly rendered articles on later passes', () => {
 
   expect(opened).toBe(1);
   expect(late.getAttribute('data-open')).toBe('true');
+});
+
+// --- D1-A: content-fit 높이 동기화(스크롤 점프 방지 / 폴링 조기 종료) ---
+
+function getContentDoc(iframe: HTMLIFrameElement): Document {
+  const doc = iframe.contentDocument ?? iframe.contentWindow?.document ?? null;
+  if (!doc) {
+    throw new Error('iframe document unavailable');
+  }
+  return doc;
+}
+
+// jsdom 은 실제 레이아웃이 없어 scrollHeight 가 0 이다. measureContentHeight 가
+// 읽는 body/documentElement 의 scroll/offset 높이를 직접 정의해 측정값을 제어한다.
+function setMeasuredHeight(iframe: HTMLIFrameElement, px: number) {
+  const doc = getContentDoc(iframe);
+  for (const el of [doc.documentElement, doc.body]) {
+    if (!el) continue;
+    Object.defineProperty(el, 'scrollHeight', { configurable: true, value: px });
+    Object.defineProperty(el, 'offsetHeight', { configurable: true, value: px });
+  }
+}
+
+it('content-fit skips the height write when the measured delta is within tolerance (no churn, no scroll yank)', () => {
+  const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  render(<HtmlViewer title="news" html="<h1>hi</h1>" />);
+  const iframe = screen.getByTitle('news') as HTMLIFrameElement;
+
+  // 초기 높이 상태 1800px. 측정값을 1805 로 둬도 1800 기준 5px 차(허용오차 8 이내).
+  setMeasuredHeight(iframe, 1805);
+  act(() => {
+    fireEvent.load(iframe);
+  });
+
+  // setHeight 가 호출되지 않아 높이는 1800 그대로이고, 스크롤 보정도 일어나지 않는다.
+  expect(iframe.getAttribute('style') ?? '').toContain('height: 1800px');
+  expect(scrollToSpy).not.toHaveBeenCalled();
+
+  scrollToSpy.mockRestore();
+});
+
+it('content-fit preserves window.scrollY across a real height write (restores after the reflow)', () => {
+  const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  // syncHeight 의 requestAnimationFrame 콜백을 동기로 실행시켜 복원 호출을 검증한다.
+  const rafSpy = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementation((cb: FrameRequestCallback) => {
+      cb(0);
+      return 1;
+    });
+
+  render(<HtmlViewer title="news" html="<h1>hi</h1>" />);
+  const iframe = screen.getByTitle('news') as HTMLIFrameElement;
+
+  // 사용자가 640px 스크롤한 상태에서 콘텐츠 높이가 실제로 크게 늘어난다.
+  Object.defineProperty(window, 'scrollY', { configurable: true, value: 640 });
+  Object.defineProperty(window, 'scrollX', { configurable: true, value: 0 });
+  setMeasuredHeight(iframe, 5200);
+  act(() => {
+    fireEvent.load(iframe);
+  });
+
+  // 높이 쓰기 직전 위치(0, 640)로 되돌린다 → 바깥 페이지가 맨 위로 튀지 않는다.
+  expect(scrollToSpy).toHaveBeenCalledWith(0, 640);
+
+  rafSpy.mockRestore();
+  scrollToSpy.mockRestore();
+});
+
+it('content-fit poll early-exits after stable measurements settle (timer cleared)', () => {
+  // 실제 타이머/페이크 타이머의 teardown 레이스를 피하려고 setInterval/clearInterval 을
+  // 직접 스텁한다. 300ms 추적 폴링 콜백을 손으로 호출해 조기 종료(clearInterval)를 검증.
+  const realSetInterval = window.setInterval;
+  const realClearInterval = window.clearInterval;
+  const trackingCbs: Array<{ id: number; cb: () => void }> = [];
+  let nextId = 1;
+  const clearIntervalMock = vi.fn();
+  // @ts-expect-error 테스트 스텁
+  window.setInterval = (cb: () => void, delay?: number) => {
+    const id = nextId++;
+    if (delay === 300) {
+      trackingCbs.push({ id, cb });
+    }
+    return id;
+  };
+  window.clearInterval = clearIntervalMock;
+
+  try {
+    render(<HtmlViewer title="news" html="<h1>hi</h1>" />);
+    const iframe = screen.getByTitle('news') as HTMLIFrameElement;
+    act(() => {
+      fireEvent.load(iframe);
+    });
+
+    expect(trackingCbs.length).toBeGreaterThan(0);
+    // 활성 폴링은 가장 최근에 생성된 300ms 인터벌이다(timerRef.current).
+    const tracking = trackingCbs[trackingCbs.length - 1];
+
+    // jsdom 측정값은 항상 1800(안정)이라 연속 허용오차 이내 → POLL_STABLE_LIMIT 회 후 종료.
+    act(() => {
+      for (let i = 0; i < 6; i += 1) {
+        tracking.cb();
+      }
+    });
+
+    expect(clearIntervalMock).toHaveBeenCalledWith(tracking.id);
+  } finally {
+    window.setInterval = realSetInterval;
+    window.clearInterval = realClearInterval;
+  }
 });

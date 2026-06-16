@@ -7,12 +7,15 @@ set "DRY_RUN="
 set "OPEN_BROWSER="
 set "LOCAL_ONLY="
 set "ALLOW_HOST=%AEROONE_ALLOW_HOST%"
+REM 비대화형(run_all 등)에서 pause 가 흐름을 막지 않도록 --no-pause / AEROONE_NO_PAUSE 지원.
+set "NO_PAUSE=%AEROONE_NO_PAUSE%"
 
 :parse_args
 if "%~1"=="" goto :parse_done
 if /I "%~1"=="--dry-run" (set "DRY_RUN=1" & shift & goto :parse_args)
 if /I "%~1"=="--open-browser" (set "OPEN_BROWSER=1" & shift & goto :parse_args)
 if /I "%~1"=="--local" (set "LOCAL_ONLY=1" & shift & goto :parse_args)
+if /I "%~1"=="--no-pause" (set "NO_PAUSE=1" & shift & goto :parse_args)
 if /I "%~1"=="--help" goto :help
 if /I "%~1"=="--allow-host" (shift & goto :capture_host)
 echo %~1 | findstr /B /I /C:"--allow-host=" >nul
@@ -101,7 +104,7 @@ start "AeroOne Frontend Offline" cmd /k "title AeroOne Frontend Offline && chcp 
 call "%SCRIPTS_DIR%\open_browser.cmd" "%FRONTEND_URL%" %BACKEND_PORT% %FRONTEND_PORT% %BACKEND_TIMEOUT% %FRONTEND_TIMEOUT%
 if errorlevel 1 (
   echo [FAILED] browser open aborted because backend/frontend readiness was not reached.
-  pause
+  if not defined NO_PAUSE pause
   exit /b 1
 )
 
@@ -121,13 +124,13 @@ set "PORT_PROBE_EXIT=!errorlevel!"
 if "!PORT_PROBE_EXIT!"=="1" (
   echo [ERROR] %~2 port %~1 is already in use.
   echo [INFO ] Release the port and rerun start_offline.bat.
-  pause
+  if not defined NO_PAUSE pause
   exit /b 1
 )
 if not "!PORT_PROBE_EXIT!"=="0" (
   echo [ERROR] Preflight port probe failed for %~2 port %~1.
   echo [INFO ] Verify that PowerShell is available and rerun start_offline.bat.
-  pause
+  if not defined NO_PAUSE pause
   exit /b 1
 )
 exit /b 0
@@ -144,7 +147,7 @@ echo [INFO ] LAN IPv4 = !ALLOW_HOST! ^(serving on 0.0.0.0^)
 goto :eof
 
 :help
-echo Usage: start_offline.bat [--dry-run] [--open-browser] [--local] [--allow-host=^<host^>]
+echo Usage: start_offline.bat [--dry-run] [--open-browser] [--local] [--allow-host=^<host^>] [--no-pause]
 echo.
 echo Starts the offline-installed backend and frontend in production mode.
 echo By default it serves on the LAN: this PC's LAN IPv4 is auto-detected and both
@@ -156,4 +159,6 @@ echo --allow-host=^<host^>  Force a specific LAN host/IP instead of auto-detecti
 echo                     Example: --allow-host=192.168.1.10
 echo --allow-host=auto   Explicitly auto-detect this PC's LAN IPv4 ^(same as default^).
 echo                     Environment fallback: AEROONE_ALLOW_HOST.
+echo --no-pause          Never wait on a pause prompt (non-interactive). Used by scripts\run_all.bat.
+echo                     Environment fallback: AEROONE_NO_PAUSE.
 exit /b 0

@@ -18,6 +18,7 @@ from app.modules.documents.api.public import router as documents_router
 from app.modules.read_tracking.api.admin import router as read_events_admin_router
 from app.modules.read_tracking.api.public import router as read_beacon_router
 from app.modules.reports.api.public import router as reports_router
+from app.modules.render.api import router as render_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -72,6 +73,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(collections_router, prefix='/api/v1/collections')
     # 폐쇄망 Ollama AI — 브라우저는 same-origin 프록시만 호출하고, 백엔드가 Ollama 와 통신한다.
     app.include_router(ai_router, prefix='/api/v1/ai')
+    # stateless 렌더 — 원본 텍스트(markdown/html)를 서버 sanitize HTML 로 변환한다. 저장소/경로 접근 없음.
+    app.include_router(render_router, prefix='/api/v1/render')
     return app
 
 

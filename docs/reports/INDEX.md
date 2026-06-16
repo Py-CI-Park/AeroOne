@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 11종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 12종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -103,6 +103,16 @@
 - 코드: `backend/app/modules/ai/{models,repositories,schemas,service}.py`, `api/public.py`, `collections/search_service.py(load_refs)`, `app/db/session.py(PRAGMA foreign_keys=ON)`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/*`
 - 회귀 방지: backend 162 passed(test_ai_migration/test_ai_conversations/test_ai_chat_refs 신규), frontend 176 passed/46 files(ai-conversations/-controls/-selected-refs/-citation-panel/-scope/-presets 신규)
 - 비범위: 계정 신원 2단계, nsa 백엔드 게이트, vector RAG, 서버측 streaming/취소, 공유/export
+
+### 단계 17 — Markdown/HTML 뷰어-에디터 + 런처·AeroAI·HTML 스크롤 수정 (1.6 증분)
+
+- 파일: [`phase-17-viewer-editor-and-launcher-ai-fixes.md`](phase-17-viewer-editor-and-launcher-ai-fixes.md)
+- 분류: minor (`1.6.0`) — 신규 `render` 모듈 + `/viewer` 페이지 + 운영 결함 3종 수정. 합의 계획 `.gjc/plans/ralplan/2026-06-13-0254-bd02/pending-approval.md`(deliberate, Architect pass2 CLEAR/APPROVE, Critic OKAY) / 실행 원장 `.gjc/ultragoal/`(G001–G005)
+- 무엇: 런처 행 de-hang(`start_offline.bat --no-pause` + `run_all.bat` 전달), AeroAI "죄송" 무응답 수정(과잉제약 프롬프트 개정 + `_strip_think_blocks` + `OllamaEmptyResponse` 502), HTML 뷰어 content-mode 스크롤 보존(scrollY 복원+threshold+poll, `showFitToggle`), 무상태 `POST /api/v1/render`(md/html 세니타이즈, path 미사용), Markdown/HTML 뷰어-에디터 `/viewer`(File API 로드+편집+빈 샌드박스 iframe 미리보기+Blob 다운로드) + 대시보드 Viewer 카드(active 8).
+- 코드: `start_offline.bat`, `scripts/run_all.bat`, `backend/app/modules/ai/{service.py,api/public.py}`, `backend/app/modules/render/`, `backend/app/modules/newsletter/services/html_render_service.py(sanitize_html_fragment)`, `backend/app/main.py`, `frontend/components/newsletter/{html-viewer,newsletter-detail-client}.tsx`, `frontend/components/viewer/viewer-editor.tsx`, `frontend/app/{viewer,api/frontend/render}/`, `frontend/app/page.tsx`
+- 회귀 방지: backend 171 passed(test_ai_api +3, test_render_api +6), frontend 188 passed/47 files(html-viewer +3, viewer-editor +5, home-page +1)
+- 비범위: 서버측 파일 쓰기, 렌더 프록시 4xx/5xx fall-through, PDF/이미지 뷰어 확장
+
 
 ---
 

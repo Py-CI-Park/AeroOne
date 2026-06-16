@@ -62,6 +62,15 @@ const MODULES = [
     section: 'Document',
   },
   {
+    id: 'viewer',
+    title: 'Viewer',
+    description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).',
+    href: '/viewer',
+    badge: 'Active',
+    active: true,
+    section: 'Document',
+  },
+  {
     id: 'ai',
     title: 'AeroAI',
     description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.',

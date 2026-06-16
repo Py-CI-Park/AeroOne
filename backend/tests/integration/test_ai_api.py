@@ -119,3 +119,59 @@ def test_ai_chat_rejects_unknown_collection(client) -> None:
 
     # Pydantic literal validation rejects before route collection resolution.
     assert response.status_code == 422
+
+
+def test_ai_chat_empty_model_response_maps_to_502(client, monkeypatch) -> None:
+    # 모델이 빈/추론-only 응답을 준 경우는 연결 다운(503)과 구분해 502 로 떨어진다.
+    from app.modules.ai.service import OllamaEmptyResponse
+
+    def fake_chat(self, messages, roots, use_search, limit, **kwargs):
+        raise OllamaEmptyResponse('Ollama returned an empty answer (no content after reasoning).')
+
+    monkeypatch.setattr('app.modules.ai.service.AiChatService.chat', fake_chat)
+    response = client.post(
+        '/api/v1/ai/chat',
+        json={'messages': [{'role': 'user', 'content': '안녕'}], 'use_search': False},
+    )
+    assert response.status_code == 502
+    assert 'empty' in response.json()['detail'].lower()
+
+
+def test_ai_chat_connection_down_maps_to_503_distinct_from_empty(client, monkeypatch) -> None:
+    from app.modules.ai.service import OllamaUnavailable
+
+    def fake_chat(self, messages, roots, use_search, limit, **kwargs):
+        raise OllamaUnavailable('connection refused')
+
+    monkeypatch.setattr('app.modules.ai.service.AiChatService.chat', fake_chat)
+    response = client.post(
+        '/api/v1/ai/chat',
+        json={'messages': [{'role': 'user', 'content': '안녕'}], 'use_search': False},
+    )
+    assert response.status_code == 503
+
+
+def test_ollama_client_strips_think_block_and_guards_empty(settings, monkeypatch) -> None:
+    import pytest
+
+    from app.modules.ai.schemas import AiChatMessage
+    from app.modules.ai.service import OllamaClient, OllamaEmptyResponse
+
+    ollama = OllamaClient(settings)
+
+    # think:false 를 무시하고 <think> 블록이 본문에 섞여 와도 실제 답변만 반환한다.
+    monkeypatch.setattr(
+        ollama,
+        '_json_request',
+        lambda *a, **k: {'message': {'content': '<think>추론 과정</think>\n실제 답변입니다'}},
+    )
+    assert ollama.chat([AiChatMessage(role='user', content='질문')]) == '실제 답변입니다'
+
+    # 추론-only(본문이 think 뿐) → 빈 답변 → OllamaEmptyResponse(연결 오류 아님).
+    monkeypatch.setattr(
+        ollama,
+        '_json_request',
+        lambda *a, **k: {'message': {'content': '<think>추론만 있고 답변 없음</think>'}},
+    )
+    with pytest.raises(OllamaEmptyResponse):
+        ollama.chat([AiChatMessage(role='user', content='질문')])

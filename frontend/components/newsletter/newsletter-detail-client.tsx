@@ -152,6 +152,7 @@ export function NewsletterDetailClient({
       <HtmlViewer
         title={newsletter.title}
         html={contentHtml}
+        showFitToggle
         downloadHref={getNewsletterProxyPath(currentAsset.download_url)}
       />
     );
