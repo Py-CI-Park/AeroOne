@@ -27,7 +27,8 @@ goto :real_run
 :dry_run_emit
 echo [DRY-RUN] create %REPO_STAGE%
 echo [DRY-RUN] robocopy repository into stage
-echo [DRY-RUN]   /XD adds: vendor ^(Open Notebook co-deploy 트리는 AeroOne ZIP 에서 제외 — 기존 보호 제외목록은 무변경^)
+echo [DRY-RUN]   /XD adds: .gjc artifacts vendor ^(workflow state + QA artifacts + Open Notebook co-deploy 트리는 AeroOne ZIP 에서 제외 — 기존 보호 제외목록은 무변경^)
+echo [DRY-RUN]   /XF adds: .ug-* ^(Ultragoal checkpoint scratch files 제외^)
 echo [DRY-RUN] py -3.12 -m pip download -r backend\requirements-dev.txt -d %WHEEL_DIR%
 echo [DRY-RUN] npm install in frontend if needed
 echo [DRY-RUN] robocopy frontend\node_modules into staged frontend\node_modules
@@ -42,7 +43,7 @@ mkdir "%REPO_STAGE%" || exit /b 1
 mkdir "%WHEEL_DIR%" || exit /b 1
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 
-robocopy "%ROOT%" "%REPO_STAGE%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD .git .omx .omc .worktrees .venv .python_packages dist backend\.venv frontend\node_modules frontend\.next backend\data offline_installers vendor >nul
+robocopy "%ROOT%" "%REPO_STAGE%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD .git .gjc .omx .omc .worktrees .venv .python_packages dist artifacts backend\.venv frontend\node_modules frontend\.next backend\data offline_installers vendor /XF .ug-* >nul
 if errorlevel 8 exit /b 1
 
 if not exist "%ROOT%\frontend\node_modules" (

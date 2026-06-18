@@ -4,11 +4,15 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import {
   HtmlViewer,
   applyViewerFitStyles,
+  applyContentModeSidebarScrollStyles,
   expandNewsletterArticles,
   isElementFromDocument,
   normalizeHtmlForStandaloneWindow,
   normalizeSameDocumentHashLinks,
+  clampWindowScrollTop,
+  getScrollableWheelAncestor,
   resolveSameDocumentHashTarget,
+  VIEWPORT_IFRAME_STYLE,
 } from '@/components/newsletter/html-viewer';
 
 it('renders sandboxed iframe that allows scripts for trusted newsletter content', () => {
@@ -31,7 +35,8 @@ it('viewport fit gives the iframe its own scroll (no scrolling=no) so a doc TOC 
   const iframe = screen.getByTitle('doc');
   // viewport 모드: 내부 스크롤이 생기도록 scrolling 을 명시적으로 켠다.
   expect(iframe).toHaveAttribute('scrolling', 'yes');
-  expect(iframe.getAttribute('style') ?? '').toContain('calc(100vh');
+  expect(iframe.getAttribute('style') ?? '').toContain('calc(100dvh - 96px)');
+  expect(VIEWPORT_IFRAME_STYLE.minHeight).toBeGreaterThanOrEqual(640);
 });
 it('viewport fit does not lock the parent page scroll', async () => {
   const originalOverflow = document.body.style.overflow;
@@ -110,11 +115,59 @@ it('injects responsive content-fit CSS to avoid sidebar and table width overlap'
   expect(style?.textContent).toContain('@media (max-width: 1180px)');
   expect(style?.textContent).toContain('margin-left: 0 !important');
   expect(style?.textContent).toContain('overflow-x: auto !important');
+  expect(style?.textContent).toContain('max-height: var(--aeroone-viewer-sidebar-max-height, 720px) !important');
+  expect(style?.textContent).toContain('overflow-y: auto !important');
+  expect(style?.textContent).toContain('overscroll-behavior: contain !important');
 
   applyViewerFitStyles(doc, 'viewport');
   expect(doc.body.getAttribute('data-aeroone-viewer-fit')).toBe('viewport');
 });
 
+it('pins content-mode sidebar scroll height to the parent viewport, not iframe 100vh', () => {
+  const sidebar = document.createElement('aside');
+
+  expect(applyContentModeSidebarScrollStyles(sidebar, 900)).toBe('816px');
+  expect(sidebar.style.maxHeight).toBe('816px');
+  expect(sidebar.style.overflowY).toBe('auto');
+  expect(sidebar.style.getPropertyValue('overscroll-behavior')).toBe('contain');
+  expect(sidebar.style.getPropertyValue('scrollbar-gutter')).toBe('stable');
+
+  expect(applyContentModeSidebarScrollStyles(sidebar, 260)).toBe('240px');
+});
+
+it('detects iframe descendants that can consume vertical or horizontal wheel input', () => {
+  const doc = document.implementation.createHTMLDocument('doc');
+  doc.body.innerHTML = `
+    <aside class="sidebar" style="overflow-y: auto"><button id="toc">TOC</button></aside>
+    <div class="table-wrap" style="overflow-x: auto"><button id="cell">Cell</button></div>
+  `;
+  const sidebar = doc.querySelector('.sidebar') as HTMLElement;
+  const tocButton = doc.getElementById('toc')!;
+  Object.defineProperty(sidebar, 'scrollTop', { configurable: true, value: 10 });
+  Object.defineProperty(sidebar, 'clientHeight', { configurable: true, value: 100 });
+  Object.defineProperty(sidebar, 'scrollHeight', { configurable: true, value: 300 });
+
+  const tableWrap = doc.querySelector('.table-wrap') as HTMLElement;
+  const tableButton = doc.getElementById('cell')!;
+  Object.defineProperty(tableWrap, 'scrollLeft', { configurable: true, value: 0 });
+  Object.defineProperty(tableWrap, 'clientWidth', { configurable: true, value: 100 });
+  Object.defineProperty(tableWrap, 'scrollWidth', { configurable: true, value: 300 });
+
+  expect(getScrollableWheelAncestor(tocButton, doc, 0, -30)).toBe(sidebar);
+  expect(getScrollableWheelAncestor(tableButton, doc, 24, 0)).toBe(tableWrap);
+  expect(getScrollableWheelAncestor(tableButton, doc, 0, 24, true)).toBe(tableWrap);
+  expect(getScrollableWheelAncestor(doc.body, doc, 0, 30)).toBeNull();
+});
+
+it('clamps parent hash-scroll targets to the document bounds', () => {
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+  Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 2000 });
+  Object.defineProperty(document.body, 'scrollHeight', { configurable: true, value: 1800 });
+
+  expect(clampWindowScrollTop(-50)).toBe(0);
+  expect(clampWindowScrollTop(1200)).toBe(1200);
+  expect(clampWindowScrollTop(5000)).toBe(1400);
+});
 
 it('fit toggle switches between viewport(목차 고정) and content(전체 높이)', () => {
   render(<HtmlViewer title="doc" html="<h1>hi</h1>" fit="viewport" showFitToggle />);

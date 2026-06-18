@@ -2,8 +2,8 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 commit: `bb94269` (offline_package.bat 결함 수정 직후)
-- 작성일: 2026-05-07
+- 기준 버전: `1.6.2` 릴리즈 예정 (`1.6.1 폐쇄망 smoke 결함 보강`)
+- 갱신일: 2026-06-18
 
 ---
 
@@ -35,9 +35,9 @@
 
 | 문서 | 역할 | 길이 |
 |---|---|---|
-| [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | **폐쇄망 운영 종합 가이드** (18장 + 부록, 9단계 진행 체크리스트, Open Notebook co-deploy §18) — 입구 추천 | 666줄 |
+| [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | **폐쇄망 운영 종합 가이드** (18장 + 부록, 9단계 진행 체크리스트, Open Notebook co-deploy §18) — 입구 추천 | 698줄 |
 | [`runbook/closed-network-install-manual.md`](runbook/closed-network-install-manual.md) | **폐쇄망 상세 설치·사용 매뉴얼** — AeroOne + Open Notebook + Ollama, 운영자 단계별(반입물→설치→기동→확인→트러블슈팅). 패키지 동봉 | 중간 |
-| [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 13장) | 315줄 |
+| [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 13장) | 375줄 |
 | [`runbook/local-dev.md`](runbook/local-dev.md) | 개발자 로컬 실행 가이드 (worktree 주의 포함) | 92줄 |
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
@@ -47,7 +47,7 @@
 
 ## 3. 단계별 변경 보고서 (`docs/reports/`)
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색)의 의도와 합의안. 각 보고서는 변경 commit 과 1:1 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
+폐쇄망 운영 보강 4단계 + 기능 모듈/운영 패치 단계(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색·Open Notebook 연구/동거 배포·AI 대화 영속화·뷰어·폐쇄망 smoke 패치)의 의도와 합의안. 각 보고서는 변경 commit 또는 릴리즈 패치와 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
 
 | 단계 | 보고서 | 핵심 결과 | commit |
 |---|---|---|---|
@@ -60,6 +60,10 @@
 | 단계 12 | [`reports/phase-12-document-module.md`](reports/phase-12-document-module.md) | 문서(Document) 보관소 모듈 — `_database/document` HTML 을 폴더 트리로 열람 — minor 1.3.0 | `1.3.0-dev` |
 | 단계 13 | [`reports/phase-13-collections-proxy-and-features.md`](reports/phase-13-collections-proxy-and-features.md) | 컬렉션 same-origin 프록시 + Civil/NSA 목록화 + 사다리 게임 — minor 1.4.0 | `1.4.0-dev` |
 | 단계 14 | [`reports/phase-14-ollama-ai-search.md`](reports/phase-14-ollama-ai-search.md) | 폐쇄망 Ollama AI 채팅 + HTML 본문 검색 — minor 1.5.0 | `1.5.0-dev` |
+| 단계 15 | [`reports/phase-15-openwebui-reference-research.md`](reports/phase-15-openwebui-reference-research.md) | Open WebUI 참조 기능 연구 — 대화/관리/RAG 후보 정리 | research |
+| 단계 16 | [`reports/phase-16-ai-conversation-and-document-grounding.md`](reports/phase-16-ai-conversation-and-document-grounding.md) | AI 대화 영속화 + 문서 근거 연결 강화 — 1.5 2차 증분 | `1.5.0-dev` |
+| 단계 17 | [`reports/phase-17-viewer-editor-and-launcher-ai-fixes.md`](reports/phase-17-viewer-editor-and-launcher-ai-fixes.md) | Viewer 탭 + 런처/AeroAI/HTML 스크롤 수정 — minor 1.6.0 | `1.6.0-dev` |
+| 단계 18 | [`reports/phase-18-closed-network-smoke-fixes.md`](reports/phase-18-closed-network-smoke-fixes.md) | 1.6.1 폐쇄망 smoke 결함 보강 — patch 1.6.2 | `1.6.2` |
 
 ---
 
@@ -99,7 +103,7 @@
 | 부팅 검증 호출 | `backend/app/main.py:18` | startup 시 1회 호출 |
 | DB 분기 (배치용) | `backend/scripts/ensure_db_state.py` | 종료 코드 0/1/2/3, docstring 에 의미 직접 기재 |
 | 폐쇄망 LAN 옵션 / 기본 바인딩 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | **1.0.22+ 기본 = LAN**: 옵션 없으면 `ALLOW_HOST=auto` → `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(미감지 시 loopback 폴백, 0.0.0.0 바인딩). `--local` 로 loopback 전용, `--allow-host=<IP>` 로 호스트 고정, `AEROONE_ALLOW_HOST` env 도 인식 |
-| 패키징 제외 목록 | `offline_package.bat:34` | robocopy `/XD` 인자 |
+| 패키징 제외 목록 | `offline_package.bat:46` | robocopy `/XD` + `/XF` 인자. `.git`, `.gjc`, `.omc`, `.worktrees`, venv/build/cache/vendor/artifacts 트리와 `.ug-*` scratch 파일은 ZIP 에 넣지 않음 |
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
 | 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트(`frontend/app/theme/route.ts`)가 쿠키 설정 후 **상대 경로**로 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>`. **1.1.1**: `/theme` 리다이렉트는 `request.url` 의 origin 대신 origin 없는 상대 Location 을 쓴다 — LAN 모드(`next start -H 0.0.0.0`)에서 origin 이 `http://0.0.0.0:29501` 로 잡혀 브라우저가 접속 불가 주소로 튕기던 테마 토글 연결 종료 버그를 회피 |
 | 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |
@@ -111,7 +115,7 @@
 | 컬렉션 same-origin 프록시 | `frontend/app/api/frontend/collections/[...segments]/route.ts` | 브라우저가 `/api/frontend/collections/<collection>/...` 로 요청하면 Next.js 서버가 `SERVER_API_BASE_URL`(loopback) 경유로 백엔드에 전달. 외부 PC 에서 document·civil·nsa 본문이 "failed to fetch" 로 실패하던 문제를 구조적으로 해결(1.4.0). 첫 세그먼트 화이트리스트(document·civil·nsa) 검증. 뉴스레터 프록시와 동일 패턴 |
 | NSA 탭 | `frontend/app/nsa/page.tsx` + `frontend/components/collections/collection-password-gate.tsx` + `_database/nsa/`(문서 보관 폴더) | 대시보드 카드 → /nsa. 비밀번호(기본 0000) 입력 전에는 목록·본문 요청 없음. 정답 입력 후 `fetchCollectionList('nsa')` 호출해 DocumentsWorkspace 에 prop 주입. **가벼운 가림막이며 실 인증 아님** — 백엔드 무인증, 민감 자료 보관 금지 |
 | Ladder(사다리타기) | `frontend/app/games/ladder/page.tsx` + `frontend/components/games/ladder-game.tsx` | 대시보드 카드 → /games/ladder. 참가자·상품 입력 후 랜덤 사다리로 배정 결과 표시. 순수 프론트엔드, 백엔드 없음 |
-| Ollama AI / 본문 검색 | `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/page.tsx`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/` | 대시보드 AI 카드 → `/ai`. 브라우저는 same-origin AI 프록시만 호출하고 백엔드가 `OLLAMA_BASE_URL` 의 `gemma4:12b` 와 통신. `_database` HTML 본문 검색은 collections/shared SQLite FTS5 가 소유하며 기본 scope 는 `document,civil`, NSA 는 unlock 이후에만 포함 |
+| Ollama AI / 본문 검색 | `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/page.tsx`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/` | 대시보드 AI 카드 → `/ai`. 브라우저는 same-origin AI 프록시만 호출하고 백엔드가 `OLLAMA_BASE_URL` 의 `gemma4:12b` 와 통신. reasoning-only 빈 응답은 1회 재시도 후 계속 비면 502 로 구분. `_database` HTML 본문 검색은 collections/shared SQLite FTS5 가 소유하며 기본 scope 는 `document,civil`, NSA 는 unlock 이후에만 포함 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 | 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
 
@@ -119,13 +123,13 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.5.0 에서 backend AI/search 테스트, frontend AI chat/proxy/search/deep-link 테스트, batch AI env 테스트가 추가됨. 현 기준 backend 137 passed, frontend Vitest 153 passed(39 파일), `tsc --noEmit`/`next build` 성공.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.6.2 기준 backend 175 passed, frontend Vitest 193 passed(47 파일), `tsc --noEmit`/`next build` 성공.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
 | `backend/tests/unit/test_config.py` | 10 | `closed_network` / `production` / `development` / `test` 모드 + `secure_cookies` |
 | `backend/tests/unit/test_ensure_db_state.py` | 7 | 종료 코드 0/1/2/3 + 부모 디렉토리 자동 생성 |
-| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 28 | setup.bat / start.bat / start_offline.bat 의 dry-run / 실행 / 기본 LAN / `--local` / `--allow-host` / `--allow-host=auto` |
+| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 31 | setup.bat / start.bat / start_offline.bat / run_all.bat / offline_package.bat 의 dry-run / 실행 / 기본 LAN / `--local` / `--allow-host` / `--allow-host=auto` / Open Notebook readiness / packaging 제외 목록 |
 | `backend/tests/unit/shared/test_windows_frontend_cmd_scripts.py` | 2 | frontend 런처 본문 가드 |
 | `backend/tests/unit/shared/test_lan_firewall_cmd_script.py` | 2 | LAN 방화벽 헬퍼 cmd 본문 가드 (포트 / 스코프 profile=any / `--remove` / help) |
 | `backend/tests/unit/shared/test_detect_lan_ip_ps1_script.py` | 1 | `--allow-host=auto` LAN IP 자동 감지 스크립트 본문 가드 |
@@ -135,8 +139,8 @@
 | `backend/tests/integration/test_read_tracking_api.py` | 7 | 공개 비콘 200·404(행 미생성) / 관리자 read-events 401·200 / purge 401·403(무CSRF)·삭제 |
 | `backend/tests/integration/test_reports_api.py` | 3 | 민간 항공기 보고서 200·sanitize·CSP / 404 / `_debug` 제외 |
 | `backend/tests/integration/test_documents_api.py` | 8 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / HTML 다운로드 / 404 / 디렉토리 이탈 400 |
-| `backend/tests/integration/test_ai_api.py` | 5 | AI status/chat, 기본 document/civil scope, 명시 NSA scope, FTS unavailable degrade, unknown collection validation |
-| 그 외 unit / integration | 33 | 인증 API, 뉴스레터 public/admin/imports/content API, 컬렉션 다운로드, seed 등 |
+| `backend/tests/integration/test_ai_api.py` | 9 | AI status/chat, 기본 document/civil scope, 명시 NSA scope, FTS unavailable degrade, unknown collection validation, Ollama 빈 답변 재시도 |
+| 그 외 unit / integration | 85 | 인증 API, 뉴스레터 public/admin/imports/content API, 컬렉션 다운로드, seed 등 |
 
 프론트엔드 Vitest 신규: `frontend/tests/components/read-beacon.test.tsx`(sessionStorage 중복가드 2), `read-events-list.test.tsx`(집계·loopback 배너·빈상태 3), `frontend/tests/lib/record-read.test.ts`(비콘 URL 1). 민간 항공기 보고서: `frontend/tests/app/civil-aircraft-report-page.test.tsx`(렌더·달력 부재·폴백 3), `home-page.test.tsx`(보고서 카드·대시보드 그룹). 문서 보관소: `frontend/tests/app/documents-page.test.tsx`(워크스페이스·빈상태·실패 폴백 3), `frontend/tests/components/documents-workspace.test.tsx`(트리·자동선택·선택교체·폴더접기·사이드바 접기·상단 셀렉트 전환·검색·최근 열람·다운로드 안내·initialPath). AI: `frontend/tests/components/ai-chat-workspace.test.tsx`(상태·대기 UI·검색 결과 링크·citation), `frontend/tests/app/api/frontend/ai-route.test.ts`(same-origin AI proxy). NSA 가림막 재잠금, 사다리 당첨 항목 보존, 뉴스레터 날짜 aria-label 도 각 컴포넌트 테스트에 포함됨.
 

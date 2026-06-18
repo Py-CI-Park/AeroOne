@@ -670,3 +670,48 @@ def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     assert "-FrontendPort 29501" in invocation
     assert "-BackendTimeoutSeconds 20" in invocation
     assert "-FrontendTimeoutSeconds 60" in invocation
+
+def test_run_all_dry_run_waits_for_open_notebook_readiness() -> None:
+    result = _run_cmd(
+        REPO_ROOT,
+        r"scripts\run_all.bat",
+        "--dry-run",
+        "--on-bundle",
+        str(REPO_ROOT.parent / "AeroOne-bundle"),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("would wait backend health" in line for line in lines)
+    assert any("would wait Open Notebook API health" in line for line in lines)
+    assert any("would wait Open Notebook frontend" in line for line in lines)
+    assert any("would inspect Open Notebook runtime config" in line for line in lines)
+    assert any('would call "' in line and "3-run.bat" in line for line in lines)
+
+
+def test_run_all_passes_network_mode_to_open_notebook_bundle() -> None:
+    result = _run_cmd(
+        REPO_ROOT,
+        r"scripts\run_all.bat",
+        "--dry-run",
+        "--on-bundle",
+        str(REPO_ROOT.parent / "AeroOne-bundle"),
+        "--local",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'would call "' in result.stdout
+    assert '3-run.bat" --local' in result.stdout
+
+
+def test_offline_package_excludes_workflow_state_from_zip_stage() -> None:
+    result = _run_cmd(REPO_ROOT, "offline_package.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "/XD adds: .gjc artifacts vendor" in result.stdout
+    assert "/XF adds: .ug-*" in result.stdout
+
+    script = (REPO_ROOT / "offline_package.bat").read_text(encoding="utf-8")
+    assert "/XD .git .gjc .omx .omc .worktrees" in script
+    assert " dist artifacts backend\\.venv" in script
+    assert "/XF .ug-*" in script

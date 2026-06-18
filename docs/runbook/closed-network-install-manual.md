@@ -76,7 +76,7 @@ cd D:\AeroOne-bundle
 ```
 `2-airgap-install.bat` 이 자동으로:
 - Python venv 를 번들 캐시에서 **오프라인 재구성**,
-- `app\.env` 를 **자동 생성** — 랜덤 암호화 키, `OLLAMA_BASE_URL=http://127.0.0.1:11434`, `CORS_ORIGINS`(localhost/127.0.0.1/감지된 LAN IP 의 `:8502`).
+- `app\.env` 를 **자동 생성** — 랜덤 암호화 키, `OLLAMA_BASE_URL=http://127.0.0.1:11434`, `API_HOST=0.0.0.0`, `CORS_ORIGINS`(localhost/127.0.0.1/감지된 LAN IP 의 `:8502`). 기존 `.env` 가 있으면 encryption key 보존을 위해 덮어쓰지 않으며, `3-run.bat` 가 실행 시 네트워크 키를 child process 환경변수로 보정합니다.
 
 > **Ollama 가 다른 PC에 있을 때만**: `2-airgap-install.bat --ollama-host <그-PC-IP>` 로 설치하고, 그 PC의 Ollama 가 `0.0.0.0` 으로 바인딩돼 있어야 합니다(환경변수 `OLLAMA_HOST=0.0.0.0`). 같은 PC면 기본값(127.0.0.1)이 가장 안정적입니다.
 
@@ -89,26 +89,29 @@ cd D:\AeroOne-bundle
 cd D:\AeroOne
 scripts\run_all.bat
 ```
-- 동작: AeroOne 먼저 기동 → backend `:18437` health 확인 → Open Notebook 기동(SurrealDB→API→Worker→Frontend) → **모델 자동 등록**(`gemma4:12b` chat / `nomic-embed-text` embedding + default 할당).
+- 동작: AeroOne 먼저 기동 → backend `:18437` health 확인 → Open Notebook 기동(SurrealDB→API→Worker→Frontend) → ON API `:5055/health`, Frontend `:8502`, runtime `/config` 확인 → **모델 자동 등록**(`gemma4:12b` chat / `nomic-embed-text` embedding + default 할당).
 - ON 번들이 `..\AeroOne-bundle` 가 아니면: `scripts\run_all.bat --on-bundle D:\경로\AeroOne-bundle`
+- 단일 PC 전용으로 묶어 띄울 때: `scripts\run_all.bat --local` (AeroOne 과 Open Notebook 양쪽 모두 loopback 전용)
 - 정지: `scripts\stop_all.bat`
 
 ### 5.2 개별 기동 (한쪽만 쓰거나 디버깅 시)
 ```cmd
 :: AeroOne 만
 cd D:\AeroOne && start_offline.bat
-:: Open Notebook 만
-cd D:\AeroOne-bundle && 3-run.bat   :: + stop.bat 로 정지
+:: Open Notebook 만 (기본 LAN 자동 감지, API_URL/CORS 자동 보정)
+cd D:\AeroOne-bundle && 3-run.bat
+:: Open Notebook 을 이 PC에서만 열 때
+cd D:\AeroOne-bundle && 3-run.bat --local
 ```
 
 ---
 
 ## 6. 확인 (정상 동작 체크리스트)
 
-- [ ] `http://localhost:29501/` 대시보드 로드, AeroAI 섹션에 **Notebook 카드** 보임 (상단 요약 `8 active`).
+- [ ] `http://<host>:29501/` 대시보드 로드(단일 PC `--local` 은 `http://localhost:29501/`), AeroAI 섹션에 **Notebook 카드** 보임 (상단 요약 `8 active`).
 - [ ] AeroAI: `/ai` 에서 사내 문서 근거 챗 응답(인용 표시).
 - [ ] Viewer: 대시보드 Document 섹션 **Viewer 카드** → `/viewer` 에서 로컬 `.md`/`.html` 열기·편집·미리보기·다운로드 동작.
-- [ ] Notebook 카드 클릭 → `http://localhost:8502/` Open Notebook 로드(연결 오류 없음).
+- [ ] Notebook 카드 클릭 → 같은 호스트의 `:8502` Open Notebook 로드(예: `http://<host>:8502/`, 연결 오류 없음).
 - [ ] Open Notebook **Settings → Models**: Chat = `gemma4:12b`, Embedding = `nomic-embed-text` 자동 할당 확인.
 - [ ] 노트북 생성 → 소스 추가 → Ask/벡터 검색 동작.
 - [ ] (LAN 다중 PC) 관리자 권한으로 `scripts\allow_lan_firewall.cmd --with-notebook` 실행 후 다른 PC에서 `http://<this-PC-IP>:29501/` · `:8502` 접속.
@@ -132,7 +135,7 @@ cd D:\AeroOne-bundle && 3-run.bat   :: + stop.bat 로 정지
 | 증상 | 원인 | 조치 |
 |---|---|---|
 | Notebook 카드 클릭 시 `:8502` 연결 안 됨 | Open Notebook 미기동 | `scripts\run_all.bat` 또는 `D:\AeroOne-bundle\3-run.bat` 실행 |
-| ON 화면 "Unable to Connect to API Server" | API(:5055) 부팅 전 / CORS | 잠시 후 새로고침. 지속되면 `app\.env` 의 `CORS_ORIGINS` 에 접속 호스트(`http://<host>:8502`)가 있는지 확인 |
+| ON 화면 "Unable to Connect to API Server" | API(:5055) 부팅 전 / API_URL·API_HOST·CORS 불일치 | `3-run.bat` 최신 adapter 로 재실행하고 출력의 `api bind`, `API_URL`, `CORS` 를 확인. `scripts\run_all.bat` 는 `/config` 까지 읽은 뒤 READY 를 표시합니다. 지속되면 `3-run.bat --local` 로 단일 PC 경로를 확인하거나 `--allow-host <IP>` 로 호스트를 고정하세요. |
 | ON 챗/임베딩 실패 | Ollama 에 모델 미적재 | `ollama list` 로 `gemma4:12b`·`nomic-embed-text` 확인(§2) |
 | AeroAI 연결 불가 | Ollama 미실행 | Ollama 서비스 확인(`:11434`). Document/문서 열람은 Ollama 없이도 동작 |
 | 대시보드가 옛 화면(카드 없음) | 브라우저 캐시 | `Ctrl+Shift+R` 강제 새로고침 |

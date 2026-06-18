@@ -14,6 +14,18 @@ import {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
+
+test('trims whitespace from configured backend api bases', async () => {
+  vi.resetModules();
+  vi.stubEnv('SERVER_API_BASE_URL', ' http://127.0.0.1:18437 \r\n');
+  vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', ' http://127.0.0.1:18437/ \n');
+
+  const api = await import('@/lib/api');
+
+  expect(api.getServerApiBase()).toBe('http://127.0.0.1:18437');
+  expect(api.getBrowserApiBase()).toBe('http://127.0.0.1:18437');
 });
 
 test('requests newsletters list from backend api', async () => {
