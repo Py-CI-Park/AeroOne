@@ -175,3 +175,23 @@ def test_ollama_client_strips_think_block_and_guards_empty(settings, monkeypatch
     )
     with pytest.raises(OllamaEmptyResponse):
         ollama.chat([AiChatMessage(role='user', content='질문')])
+
+
+def test_ollama_client_retries_once_when_first_answer_is_reasoning_only(settings, monkeypatch) -> None:
+    from app.modules.ai.schemas import AiChatMessage
+    from app.modules.ai.service import OllamaClient
+
+    ollama = OllamaClient(settings)
+    calls = []
+
+    def fake_json_request(method, path, body, timeout):
+        calls.append(body)
+        if len(calls) == 1:
+            return {'message': {'content': '<think>추론만 있음</think>'}}
+        return {'message': {'content': '최종 답변입니다'}}
+
+    monkeypatch.setattr(ollama, '_json_request', fake_json_request)
+
+    assert ollama.chat([AiChatMessage(role='user', content='질문')]) == '최종 답변입니다'
+    assert len(calls) == 2
+    assert '최종 답변만 작성' in calls[1]['messages'][0]['content']

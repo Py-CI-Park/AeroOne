@@ -15,6 +15,17 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.6.2',
+    date: '2026-06-18',
+    items: [
+      '폐쇄망 1.6.1 테스트에서 확인된 HTML 문서 뷰어 높이·스크롤 문제를 보강했습니다 — 창 높이 보기의 iframe 을 더 크게 잡고, 전체 높이 보기에서도 목차·표·문서 트리가 독립적으로 스크롤됩니다.',
+      '문서 목록 호출 시 환경 변수의 줄바꿈/공백 때문에 백엔드 URL 파싱이 실패하던 경로를 방어해, Document 화면이 정상적으로 목록을 불러옵니다.',
+      'AeroAI 가 Ollama reasoning-only 빈 응답을 받으면 한 번 더 최종 답변을 요청하고, Ollama 연결 실패·모델 누락·빈 응답을 더 명확한 상태로 구분합니다.',
+      'AeroOne + Open Notebook 통합 실행(run_all)이 Open Notebook API/Frontend/runtime config readiness 를 확인한 뒤 READY 를 표시하고, `--local`/`--allow-host` 를 Open Notebook 런처에도 전달하도록 바꿨습니다.',
+      'Open Notebook airgap 런처의 LAN API_URL·CORS·비대화형 대기 흐름을 정리했습니다.',
+    ],
+  },
+  {
     version: '1.6.1',
     date: '2026-06-16',
     items: [

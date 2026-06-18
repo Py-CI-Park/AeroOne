@@ -29,6 +29,11 @@ class OllamaEmptyResponse(OllamaError):
 
 
 _THINK_BLOCK_RE = re.compile(r'<\s*think(?:ing)?\s*>.*?<\s*/\s*think(?:ing)?\s*>', re.DOTALL | re.IGNORECASE)
+_EMPTY_ANSWER_RETRY_INSTRUCTION = (
+    '이전 응답은 추론 태그를 제거한 뒤 최종 답변이 비었습니다. '
+    '추론 과정이나 <think> 태그를 쓰지 말고, 사용자가 볼 수 있는 짧은 한국어 최종 답변만 작성하세요.'
+)
+
 
 
 def _strip_think_blocks(text: str) -> str:
@@ -81,6 +86,21 @@ class OllamaClient:
         if not self.settings.ai_features_enabled:
             raise OllamaUnavailable('AI features are disabled')
         ollama_messages = [message.model_dump() for message in self._messages_with_context(messages, citations or [])]
+        answer = self._request_chat_answer(ollama_messages)
+        if answer:
+            return answer
+
+        retry_messages = self._with_empty_answer_retry_instruction(ollama_messages)
+        retry_answer = self._request_chat_answer(retry_messages)
+        if retry_answer:
+            return retry_answer
+
+        raise OllamaEmptyResponse(
+            f'Ollama returned an empty answer after retry '
+            f'(reason=empty_after_reasoning, base_url={self.base_url}, model={self.model}).',
+        )
+
+    def _request_chat_answer(self, ollama_messages: list[dict[str, Any]]) -> str:
         payload = self._json_request(
             'POST',
             '/api/chat',
@@ -99,13 +119,22 @@ class OllamaClient:
         message = payload.get('message') if isinstance(payload, dict) else None
         content = message.get('content') if isinstance(message, dict) else None
         if not isinstance(content, str):
-            raise OllamaUnavailable('Ollama returned an invalid chat response')
+            raise OllamaUnavailable(
+                f'Ollama returned an invalid chat response '
+                f'(reason=invalid_response, base_url={self.base_url}, model={self.model})',
+            )
         # gemma 등 thinking 모델이 think:false 를 무시하고 <think> 블록을 본문에 섞는 경우 방어적으로 제거.
-        answer = _strip_think_blocks(content).strip()
-        if not answer:
-            # 연결 다운(OllamaUnavailable)이 아니라 모델이 빈/추론-only 응답을 준 경우 — 별도 오류로 구분.
-            raise OllamaEmptyResponse('Ollama returned an empty answer (no content after reasoning).')
-        return answer
+        return _strip_think_blocks(content).strip()
+
+    @staticmethod
+    def _with_empty_answer_retry_instruction(ollama_messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        retry_messages = [dict(message) for message in ollama_messages]
+        for message in retry_messages:
+            if message.get('role') == 'system':
+                content = message.get('content')
+                message['content'] = f'{content}\n\n{_EMPTY_ANSWER_RETRY_INSTRUCTION}' if isinstance(content, str) else _EMPTY_ANSWER_RETRY_INSTRUCTION
+                return retry_messages
+        return [{'role': 'system', 'content': _EMPTY_ANSWER_RETRY_INSTRUCTION}, *retry_messages]
 
     def _messages_with_context(
         self,
@@ -152,10 +181,18 @@ class OllamaClient:
                 return json.loads(response.read().decode('utf-8'))
         except error.HTTPError as exc:
             if exc.code == 404:
-                raise OllamaModelMissing(f'Model {self.model} is not available') from exc
-            raise OllamaUnavailable(f'Ollama HTTP error {exc.code}') from exc
+                raise OllamaModelMissing(
+                    f'Model {self.model} is not available '
+                    f'(reason=model_missing, base_url={self.base_url}, model={self.model})',
+                ) from exc
+            raise OllamaUnavailable(
+                f'Ollama HTTP error {exc.code} '
+                f'(reason=http_error, base_url={self.base_url}, model={self.model})',
+            ) from exc
         except Exception as exc:
-            raise OllamaUnavailable(str(exc)) from exc
+            raise OllamaUnavailable(
+                f'{exc} (reason=request_failed, base_url={self.base_url}, model={self.model})',
+            ) from exc
 
 
 class AiChatService:

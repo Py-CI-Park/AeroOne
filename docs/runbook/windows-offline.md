@@ -13,8 +13,9 @@
 | `offline_package.bat` | 온라인 PC | 현재 리포 + Python wheelhouse + frontend node_modules + 동봉 인스톨러를 ZIP 으로 패키징 |
 | `setup_offline.bat` | 폐쇄망 PC | Python/Node 사전 점검, `.env` 재작성, 오프라인 pip install, DB, frontend production 빌드 |
 | `start_offline.bat` | 폐쇄망 PC | 운영 모드 실행 (`next start` + uvicorn). 1.0.22+ 기본은 LAN(`0.0.0.0`, IP 자동 감지), 이 PC 전용은 `--local` |
+| `scripts\run_all.bat` | 폐쇄망/개발 PC | AeroOne + Open Notebook co-deploy 실행. AeroOne backend health, Open Notebook API/Frontend/`/config` 준비를 순서대로 확인한 뒤 READY 처리 |
 
-각 배치 파일 모두 `--dry-run` 과 `--no-pause` 옵션을 지원합니다.
+주요 배치 파일은 `--dry-run` 을 지원하며, `start_offline.bat` 계열은 `--no-pause` 로 자동화 실행에 붙일 수 있습니다. `scripts\run_all.bat` 은 `--local` / `--allow-host` 를 AeroOne 과 Open Notebook adapter 양쪽에 전달합니다.
 
 ---
 
@@ -32,11 +33,12 @@ offline_package.bat    ─┘──→ ZIP 복사 ──→  압축 해제
 
 1. 온라인 PC 에서 `setup.bat` 으로 의존성과 DB 시드 완료
 2. 필요 시 `start.bat` 으로 동작 검증
-3. `offline_package.bat` 으로 ZIP 생성 (`dist\AeroOne-offline-YYYYMMDD-HHMMSS.zip`)
+3. `offline_package.bat` 으로 ZIP 생성 (`dist\AeroOne-offline-X.Y.Z-YYYYMMDD-HHMMSS.zip`)
 4. ZIP 을 USB / 사내 파일서버 등 허용된 경로로 전달
 5. 폐쇄망 PC 에서 압축 해제 (권장 위치는 §4 참고)
 6. `setup_offline.bat` 실행 — 사전 점검 통과 후 자동 설치 진행
 7. `start_offline.bat` 실행 — 두 포트 준비 시 브라우저 자동 오픈
+   - Open Notebook 을 함께 띄우는 co-deploy 검증은 `scripts\run_all.bat --on-bundle ..\AeroOne-bundle` 를 사용합니다.
 8. 신규 발행 시 `_database\newsletter\` 에 파일 추가 후 관리자 페이지의 Import / Sync 버튼 클릭
 
 ---
@@ -156,6 +158,23 @@ scripts\allow_lan_firewall.cmd --remove
 ```
 
 > LAN 모드에서 자기 PC 로 접속할 때도 반드시 `http://<host>:29501/` 로 들어가세요. `http://localhost:29501/` 로 들어가면 페이지 호스트(`localhost`) 와 API 호스트(`<host>`) 가 달라 쿠키가 격리되어 로그인이 동작하지 않습니다. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하면 항상 같은 호스트로 통일됩니다.
+
+### 5.4 AeroOne + Open Notebook co-deploy (`scripts\run_all.bat`)
+
+Open Notebook 번들이 같은 PC에 준비되어 있으면 `scripts\run_all.bat` 로 두 스택을 한 번에 띄웁니다. 이 스크립트는 AeroOne 을 먼저 시작하고 backend health(`:18437`) 가 HTTP 200인지 확인한 뒤, Open Notebook `3-run.bat` 를 호출하고 API health(`:5055/health`), frontend(`:8502`), frontend runtime config(`/config`) 를 차례로 확인합니다. Open Notebook bundle 이 없으면 기존처럼 명확한 경고 후 AeroOne 단독 실행으로 유지됩니다.
+
+```cmd
+:: 단일 PC loopback
+scripts\run_all.bat --on-bundle ..\AeroOne-bundle --local
+
+:: LAN 고정 호스트
+scripts\run_all.bat --on-bundle ..\AeroOne-bundle --allow-host=192.168.1.10
+
+:: readiness 계획만 확인
+scripts\run_all.bat --dry-run --on-bundle ..\AeroOne-bundle --local
+```
+
+`--local` 과 `--allow-host` 는 AeroOne 과 Open Notebook adapter 에 함께 전달됩니다. Open Notebook 화면의 `Unable to connect to API server` 는 Ollama 모델 문제와 구분해야 합니다. 먼저 `:5055/health`, `:8502/config` 의 API URL, CORS/바인딩 모드를 확인하고, Ollama down/model missing 은 그 다음 AI 기능 실패 원인으로 분리해 봅니다.
 
 ---
 
@@ -321,7 +340,7 @@ curl -i -X POST -H "Content-Type: application/json" ^
 | 포트 충돌 (`port 18437/29501 is already in use`) | 다른 프로세스가 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료, 또는 `.env` 의 포트 변경 (CORS_ORIGINS, NEXT_PUBLIC_API_BASE_URL 도 함께 수정) |
 | 페이지 로딩 후 `Failed to fetch` (뉴스레터·관리자) | 페이지 호스트와 API 호스트가 다름 (`127.0.0.1` vs `localhost` 쿠키 격리) | 브라우저 주소를 `http://localhost:29501/...` 로 통일 |
 | Document·Civil·NSA 본문이 외부 PC 에서 `Failed to fetch` | 1.4.0 이전 버전 — 클라이언트가 `localhost:18437` 직접 호출 | **1.4.0 이상에서 자동 해결** (same-origin 프록시 경유). 구버전이면 ZIP 을 1.4.0 으로 재배포 |
-| LAN 내 다른 PC 에서 접근 불가 | `127.0.0.1` 바인딩 (기본) 또는 Windows 방화벽 인바운드 차단 | `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 로 LAN 모드 전환 후, 이 PC 에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 실행해 18437/29501 인바운드를 허용 (`--remove` 로 원복). 자세한 동작은 §5.3 참고. |
+| LAN 내 다른 PC 에서 접근 불가 | `--local` 로 실행했거나 Windows 방화벽 인바운드 차단 (1.0.22+ 기본은 LAN) | `--local` 없이 실행하거나 `setup_offline.bat --allow-host=<host>` → `start_offline.bat --allow-host=<host>` 로 LAN 호스트를 고정한 뒤, 이 PC에서 `scripts\allow_lan_firewall.cmd` 를 관리자 권한으로 실행해 18437/29501 인바운드를 허용 (`--remove` 로 원복). 자세한 동작은 §5.3 참고. |
 | LAN 모드에서 같은 PC 로 접속했는데 로그인 후 화면이 빈 채로 멈춤 | `localhost` ↔ `<host>` 쿠키 격리 | 페이지 주소를 `http://<host>:29501/` 로 통일. `start_offline.bat --allow-host=<host>` 가 자동 오픈하는 URL 을 그대로 사용하세요. |
 | 관리자 화면에 `Failed to fetch` | 로그인 후 admin_session 쿠키 미적용 | 로그인 직후 페이지 새로고침. 그래도 실패하면 `backend\.env` 의 `ADMIN_SESSION_COOKIE_NAME`/`CSRF_COOKIE_NAME` 과 `frontend\.env.local` 의 `NEXT_PUBLIC_CSRF_COOKIE_NAME` 이 일치하는지 확인 |
 | `start_offline.bat` 가 브라우저를 열지 않음 | frontend 빌드 미완료 또는 `.next` 누락 | `setup_offline.bat` 를 다시 실행해 `npm run build` 까지 완료 |

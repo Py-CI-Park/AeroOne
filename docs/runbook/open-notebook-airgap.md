@@ -72,9 +72,9 @@ ollama pull nomic-embed-text
 
 ON 번들의 adapter 스크립트가 **무인 자동 설정**합니다 — Models UI 수동 입력 불필요.
 
-- **`2-airgap-install.bat`** → `write_env.ps1` 가 `app\.env` 를 자동 생성: 랜덤 암호화 키, `OLLAMA_BASE_URL=http://127.0.0.1:11434`(같은 PC 기준; 원격 Ollama 는 `2-airgap-install.bat --ollama-host <ip>` + 그 PC Ollama `0.0.0.0` 바인딩), `CORS_ORIGINS`(localhost/127.0.0.1/감지된 LAN IP 의 `:8502` — `credentials=True` 라 `*` 불가하므로 명시 오리진).
-- **`3-run.bat`** → API health 200 후 `provision_models.ps1` 가 ON API 로 `gemma4:12b`(chat/transformation/tools/large-context) + `nomic-embed-text`(embedding) 를 등록하고 default 할당까지 자동 설정(멱등 — 이미 있으면 보존).
-- `3-run.bat` 는 상속된 `CORS_ORIGINS`/`OLLAMA_BASE_URL` OS 환경변수를 비워 `.env` 값이 항상 우선하도록 한다(동거한 AeroOne 이 같은 변수를 누출해도 안전 — `uv --env-file` 은 기존 OS 변수를 덮어쓰지 않기 때문).
+- **`2-airgap-install.bat`** → `write_env.ps1` 가 `app\.env` 를 자동 생성: 랜덤 암호화 키, `OLLAMA_BASE_URL=http://127.0.0.1:11434`(같은 PC 기준; 원격 Ollama 는 `2-airgap-install.bat --ollama-host <ip>` + 그 PC Ollama `0.0.0.0` 바인딩), `API_HOST=0.0.0.0`, `CORS_ORIGINS`(localhost/127.0.0.1/감지된 LAN IP 의 `:8502` — `credentials=True` 라 `*` 불가하므로 명시 오리진).
+- **`3-run.bat`** → 기본은 LAN IPv4 자동 감지 후 API/Frontend 를 `0.0.0.0` 으로 띄우고, `--local` 은 loopback 전용, `--allow-host <ip>`/`--allow-host=<ip>` 는 호스트를 고정합니다. API health 200 과 Frontend `:8502` 도달을 확인한 뒤 READY 를 표시하고, `provision_models.ps1` 가 ON API 로 `gemma4:12b`(chat/transformation/tools/large-context) + `nomic-embed-text`(embedding) 를 등록하고 default 할당까지 자동 설정합니다(멱등 — 이미 있으면 보존).
+- `3-run.bat` 는 상속된 `CORS_ORIGINS`/`OLLAMA_BASE_URL`/`API_URL` OS 환경변수를 비우고, child process 에 `API_HOST`·`CORS_ORIGINS`·`API_URL`·`INTERNAL_API_URL` 을 명시 전달합니다. 기존 `app\.env` 가 loopback-only 여도 실행 시 네트워크 키가 보정되며, encryption key 는 덮어쓰지 않습니다.
 
 > **전제**: 위 §2.1~§2.2 로 `gemma4:12b` + `nomic-embed-text` 가 폐쇄망 Ollama 에 적재돼 있어야 자동 등록된 모델이 실제 추론·임베딩에 성공합니다(Ollama blob 반입은 두 모델 공통 절차).
 > AeroAI 측은 별도 등록 불필요 — `backend/.env` 의 `OLLAMA_BASE_URL` / `OLLAMA_DEFAULT_MODEL` 가 곧장 사용됩니다.
@@ -102,7 +102,7 @@ ON 번들의 adapter 스크립트가 **무인 자동 설정**합니다 — Model
 
 ### 3.3 staggered boot + health 임계 (수용기준)
 
-`scripts\run_all.bat` 가 순서를 강제합니다 — **AeroOne 먼저 → backend `:18437` health 200 확인 → 그 다음 Open Notebook**(SurrealDB→API→Worker→Frontend). 동시 cold-load 로 12B 가 중복 적재/직렬화되는 사태를 막습니다.
+`scripts\run_all.bat` 가 순서를 강제합니다 — **AeroOne 먼저 → backend `:18437` health 200 확인 → 그 다음 Open Notebook → ON API `:5055/health` + Frontend `:8502` + runtime `/config` 확인 후 READY**. 동시 cold-load 로 12B 가 중복 적재/직렬화되는 사태와, Open Notebook launcher process 만 뜨고 API 가 아직 준비되지 않았는데 READY 로 오인하는 상황을 막습니다.
 
 | 스택/프로세스 | health 도달 임계 |
 |---|---|
@@ -110,6 +110,7 @@ ON 번들의 adapter 스크립트가 **무인 자동 설정**합니다 — Model
 | AeroOne frontend `:29501` | ≤ 30s |
 | Open Notebook API `:5055/health` (+ "Migrations completed") | ≤ 90s (첫 12B 적재 포함) |
 | Open Notebook Frontend `:8502` ("Ready") | ≤ 90s |
+| Open Notebook runtime config `:8502/config` | ≤ 10s (Frontend ready 이후, browser API URL 진단) |
 
 ### 3.4 degraded mode
 
@@ -142,7 +143,7 @@ scripts\check_open_notebook_core_diff.cmd <new-tag>
 :: 4) 인터넷 PC airgap 번들 재빌드 (lockfile/uv-cache 재시드)
 cd vendor\open-notebook\airgap && 1-online-package.bat
 
-:: 5) 폐쇄망 e2e 스모크(OP-2) + AeroOne 162/176 통과 전까지 핀 미승격 (게이트)
+:: 5) 폐쇄망 e2e 스모크(OP-2) + AeroOne backend 175 / frontend 193 통과 전까지 핀 미승격 (게이트)
 
 :: 6) 통과하면 submodule 핀을 새 fork 브랜치 커밋으로 승급 (한국어 커밋 + Lore trailer)
 git add vendor\open-notebook && git commit
@@ -166,7 +167,7 @@ git add vendor\open-notebook && git commit
 - [ ] `aeroone/airgap` rebase 후 `airgap/` + adapter 파일 보존(존재 + 기능 동작), bare checkout 미사용.
 - [ ] `check_open_notebook_core_diff.cmd <new-tag>` == exit 0 (core diff 0).
 - [ ] airgap 번들 재빌드 성공(lockfile/uv-cache 재시드, `uv sync --frozen --offline` 일치).
-- [ ] 폐쇄망 e2e 스모크(OP-2) + AeroOne backend 162 / frontend 176 통과.
+- [ ] 폐쇄망 e2e 스모크(OP-2) + AeroOne backend 175 / frontend 193 통과.
 - [ ] 위 전부 통과 후에만 submodule 핀 승급(한국어 커밋 + Lore trailer).
 
 ---

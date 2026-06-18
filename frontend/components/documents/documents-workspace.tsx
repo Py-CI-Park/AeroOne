@@ -416,7 +416,7 @@ export function DocumentsWorkspace({
             <nav
               data-testid="documents-tree"
               aria-label="문서 목록"
-              className="rounded-2xl border border-line-subtle bg-surface-raised p-2"
+              className="max-h-[calc(100dvh-190px)] overflow-y-auto overscroll-contain rounded-2xl border border-line-subtle bg-surface-raised p-2"
             >
               <FolderTree
                 node={tree}

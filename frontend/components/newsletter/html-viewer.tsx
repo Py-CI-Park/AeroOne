@@ -77,6 +77,12 @@ export function normalizeHtmlForStandaloneWindow(html: string): string {
   return `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`;
 }
 const VIEWER_FIT_STYLE_ID = 'aeroone-viewer-fit-style';
+export const VIEWPORT_IFRAME_STYLE: React.CSSProperties = {
+  height: 'calc(100dvh - 96px)',
+  minHeight: 680,
+};
+export const CONTENT_MODE_SIDEBAR_MIN_HEIGHT = 240;
+export const CONTENT_MODE_SIDEBAR_VERTICAL_OFFSET = 84;
 const VIEWER_FIT_STYLE = `
 body[data-aeroone-viewer-fit="content"] {
   overflow-x: hidden !important;
@@ -93,6 +99,16 @@ body[data-aeroone-viewer-fit="content"] table {
   max-width: 100% !important;
   overflow-x: auto !important;
   white-space: normal !important;
+}
+
+body[data-aeroone-viewer-fit="content"] .sidebar,
+body[data-aeroone-viewer-fit="content"] #sidebar,
+body[data-aeroone-viewer-fit="content"] [class*="sidebar"] {
+  box-sizing: border-box !important;
+  max-height: var(--aeroone-viewer-sidebar-max-height, 720px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
 }
 
 @media (max-width: 1180px) {
@@ -123,6 +139,24 @@ body[data-aeroone-viewer-fit="content"] table {
   }
 }
 `;
+export function applyContentModeSidebarScrollStyles(sidebar: HTMLElement, viewportHeight: number): string {
+  const maxHeight = `${Math.max(
+    CONTENT_MODE_SIDEBAR_MIN_HEIGHT,
+    viewportHeight - CONTENT_MODE_SIDEBAR_VERTICAL_OFFSET,
+  )}px`;
+  sidebar.style.maxHeight = maxHeight;
+  sidebar.style.overflowY = 'auto';
+  sidebar.style.setProperty('overscroll-behavior', 'contain');
+  sidebar.style.setProperty('scrollbar-gutter', 'stable');
+  return maxHeight;
+}
+
+function clearContentModeSidebarScrollStyles(sidebar: HTMLElement): void {
+  sidebar.style.maxHeight = '';
+  sidebar.style.overflowY = '';
+  sidebar.style.removeProperty('overscroll-behavior');
+  sidebar.style.removeProperty('scrollbar-gutter');
+}
 
 
 export function applyViewerFitStyles(doc: Document, fit: HtmlViewerFit): void {
@@ -162,6 +196,74 @@ function measureContentHeight(doc: Document): number {
     root?.offsetHeight ?? 0,
     1800,
   );
+}
+
+export function getScrollableWheelAncestor(
+  target: EventTarget | null,
+  doc: Document,
+  deltaX: number,
+  deltaY: number,
+  shiftKey = false,
+): Element | null {
+  const initialElement =
+    isElementFromDocument(target, doc) || (target instanceof Element && target.ownerDocument === doc)
+      ? target
+      : null;
+  if (!initialElement) {
+    return null;
+  }
+
+  const effectiveDeltaX = shiftKey && deltaX === 0 ? deltaY : deltaX;
+  let element: Element | null = initialElement;
+  while (element && element !== doc.body && element !== doc.documentElement) {
+    if (canElementConsumeWheel(element, doc, effectiveDeltaX, deltaY)) {
+      return element;
+    }
+    element = element.parentElement;
+  }
+
+  return null;
+}
+
+function canElementConsumeWheel(element: Element, doc: Document, deltaX: number, deltaY: number): boolean {
+  const view = doc.defaultView;
+  const style = view?.getComputedStyle(element);
+  const htmlElement = element as HTMLElement;
+  const overflowX = style?.overflowX || htmlElement.style.overflowX || htmlElement.style.overflow || '';
+  const overflowY = style?.overflowY || htmlElement.style.overflowY || htmlElement.style.overflow || '';
+  const scrollableX = overflowX === 'auto' || overflowX === 'scroll' || overflowX === 'overlay';
+  const scrollableY = overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay';
+  const canScrollDown = htmlElement.scrollTop + htmlElement.clientHeight < htmlElement.scrollHeight - 1;
+  const canScrollUp = htmlElement.scrollTop > 0;
+  const canScrollRight = htmlElement.scrollLeft + htmlElement.clientWidth < htmlElement.scrollWidth - 1;
+  const canScrollLeft = htmlElement.scrollLeft > 0;
+
+  if (deltaY > 0 && scrollableY && canScrollDown) {
+    return true;
+  }
+  if (deltaY < 0 && scrollableY && canScrollUp) {
+    return true;
+  }
+  if (deltaX > 0 && scrollableX && canScrollRight) {
+    return true;
+  }
+  if (deltaX < 0 && scrollableX && canScrollLeft) {
+    return true;
+  }
+
+  return false;
+}
+
+export function clampWindowScrollTop(top: number): number {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return Math.max(0, top);
+  }
+  const root = document.documentElement;
+  const body = document.body;
+  const scrollHeight = Math.max(root?.scrollHeight ?? 0, body?.scrollHeight ?? 0);
+  const maxTop = scrollHeight > window.innerHeight ? scrollHeight - window.innerHeight : 0;
+  const nonNegativeTop = Math.max(0, top);
+  return maxTop > 0 ? Math.min(nonNegativeTop, maxTop) : nonNegativeTop;
 }
 
 export type HtmlViewerFit = 'content' | 'viewport';
@@ -263,8 +365,9 @@ export function HtmlViewer({
           const absoluteTop = window.scrollY + iframeRect.top + targetRect.top + innerScrollY;
           // sticky 헤더(60px) + 여유(10px) = 70px 오프셋 차감
           const offset = 70;
+          const requestedTop = absoluteTop - offset;
           window.scrollTo({
-            top: absoluteTop - offset,
+            top: clampWindowScrollTop(requestedTop),
             behavior: 'smooth',
           });
         }
@@ -301,6 +404,9 @@ export function HtmlViewer({
         return;
       }
       if (e.deltaX === 0 && e.deltaY === 0) {
+        return;
+      }
+      if (getScrollableWheelAncestor(e.target, doc, e.deltaX, e.deltaY, e.shiftKey)) {
         return;
       }
       e.preventDefault();
@@ -497,6 +603,7 @@ export function HtmlViewer({
         sidebar.style.position = '';
         sidebar.style.transform = '';
         sidebar.style.willChange = '';
+        clearContentModeSidebarScrollStyles(sidebar);
       }
       handleScrollRef.current = null;
       return;
@@ -528,6 +635,7 @@ export function HtmlViewer({
           sidebar.style.position = '';
           sidebar.style.transform = '';
           sidebar.style.willChange = '';
+          clearContentModeSidebarScrollStyles(sidebar);
           ticking = false;
           return;
         }
@@ -540,6 +648,8 @@ export function HtmlViewer({
         if (sidebar.style.willChange !== 'transform') {
           sidebar.style.willChange = 'transform';
         }
+        const sidebarMaxHeight = applyContentModeSidebarScrollStyles(sidebar, window.innerHeight);
+        doc.documentElement.style.setProperty('--aeroone-viewer-sidebar-max-height', sidebarMaxHeight);
 
         const scrollY = window.scrollY;
         const iframeRect = iframeEl.getBoundingClientRect();
@@ -579,6 +689,7 @@ export function HtmlViewer({
         sidebar.style.position = '';
         sidebar.style.transform = '';
         sidebar.style.willChange = '';
+        clearContentModeSidebarScrollStyles(sidebar);
       }
       handleScrollRef.current = null;
     };
@@ -607,7 +718,7 @@ export function HtmlViewer({
       srcDoc={html}
       onLoad={applyMode}
       // content: 측정한 콘텐츠 전체 높이. viewport: 창 높이로 고정(내부 스크롤).
-      style={isViewport ? { height: 'calc(100vh - 160px)', minHeight: 480 } : { height }}
+      style={isViewport ? VIEWPORT_IFRAME_STYLE : { height }}
       className={`w-full ${isViewport ? 'overflow-auto' : 'overflow-hidden'} rounded-2xl border border-slate-200 bg-white shadow-sm`}
     />
   );

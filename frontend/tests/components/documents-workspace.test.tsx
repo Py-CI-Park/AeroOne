@@ -153,6 +153,17 @@ test('clicking sidebar toggle shows the tree; folders are collapsed by default',
   // 루트 문서는 폴더 없이 바로 보인다.
   expect(screen.getByTestId('doc-item-회사소개.html')).toBeInTheDocument();
 });
+test('expanded sidebar tree is bounded and independently scrollable', async () => {
+  render(<DocumentsWorkspace documents={DOCS} />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
+  const tree = screen.getByTestId('documents-tree');
+
+  expect(tree.className).toContain('max-h-[calc(100dvh-190px)]');
+  expect(tree.className).toContain('overflow-y-auto');
+  expect(tree.className).toContain('overscroll-contain');
+});
 
 test('expanding a folder reveals its documents', async () => {
   render(<DocumentsWorkspace documents={DOCS} />);

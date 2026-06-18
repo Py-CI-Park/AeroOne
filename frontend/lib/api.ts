@@ -23,11 +23,11 @@ const SERVER_BASE = process.env.SERVER_API_BASE_URL ?? process.env.NEXT_PUBLIC_A
 const BROWSER_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:18437';
 
 export function getServerApiBase() {
-  return SERVER_BASE.replace(/\/$/, '');
+  return SERVER_BASE.trim().replace(/\/$/, '');
 }
 
 export function getBrowserApiBase() {
-  return BROWSER_BASE.replace(/\/$/, '');
+  return BROWSER_BASE.trim().replace(/\/$/, '');
 }
 
 export function getNewsletterProxyPath(path: string) {

@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 12종 입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -112,6 +112,14 @@
 - 코드: `start_offline.bat`, `scripts/run_all.bat`, `backend/app/modules/ai/{service.py,api/public.py}`, `backend/app/modules/render/`, `backend/app/modules/newsletter/services/html_render_service.py(sanitize_html_fragment)`, `backend/app/main.py`, `frontend/components/newsletter/{html-viewer,newsletter-detail-client}.tsx`, `frontend/components/viewer/viewer-editor.tsx`, `frontend/app/{viewer,api/frontend/render}/`, `frontend/app/page.tsx`
 - 회귀 방지: backend 171 passed(test_ai_api +3, test_render_api +6), frontend 188 passed/47 files(html-viewer +3, viewer-editor +5, home-page +1)
 - 비범위: 서버측 파일 쓰기, 렌더 프록시 4xx/5xx fall-through, PDF/이미지 뷰어 확장
+
+### 단계 18 — 1.6.1 폐쇄망 smoke 수정 (1.6.2 패치)
+
+- 파일: [`phase-18-closed-network-smoke-fixes.md`](phase-18-closed-network-smoke-fixes.md)
+- 분류: patch (`1.6.2`) — 폐쇄망 실사용 테스트에서 확인된 뷰어 크기/스크롤, AeroAI 빈 응답, `run_all.bat` READY 오판, Open Notebook API 연결 실패 보강.
+- 무엇: HTML 뷰어 viewport 높이 확대와 full-height scroll ownership 보정, 환경 변수 공백/줄바꿈 API URL 방어, AeroAI reasoning-only 빈 응답 1회 재시도, `run_all.bat` 의 ON API/Frontend/runtime config readiness 확인 및 `--local`/`--allow-host` ON 전달, Open Notebook airgap adapter 의 LAN `API_URL`/`CORS`/비대화형 대기 정리.
+- 코드: `frontend/components/newsletter/html-viewer.tsx`, `frontend/components/documents/documents-workspace.tsx`, `frontend/lib/api.ts`, `backend/app/modules/ai/service.py`, `scripts/run_all.bat`, `offline_package.bat`, `../open-notebook/airgap/{3-run.bat,write_env.ps1}`
+- 회귀 방지: `frontend/tests/components/{html-viewer,documents-workspace,version-badge}.test.tsx`, `backend/tests/integration/test_ai_api.py`, `backend/tests/unit/shared/test_windows_batch_scripts.py`
 
 
 ---
