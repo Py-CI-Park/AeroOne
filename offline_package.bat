@@ -43,7 +43,7 @@ mkdir "%REPO_STAGE%" || exit /b 1
 mkdir "%WHEEL_DIR%" || exit /b 1
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 
-robocopy "%ROOT%" "%REPO_STAGE%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD .git .gjc .omx .omc .worktrees .venv .python_packages dist artifacts backend\.venv frontend\node_modules frontend\.next backend\data offline_installers vendor /XF .ug-* >nul
+robocopy "%ROOT%" "%REPO_STAGE%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD .git .gjc .omx .omc .worktrees .venv .python_packages node_modules dist artifacts backend\.venv frontend\node_modules frontend\.next backend\data offline_installers vendor /XF .ug-* >nul
 if errorlevel 8 exit /b 1
 
 if not exist "%ROOT%\frontend\node_modules" (

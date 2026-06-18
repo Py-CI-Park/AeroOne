@@ -713,5 +713,5 @@ def test_offline_package_excludes_workflow_state_from_zip_stage() -> None:
 
     script = (REPO_ROOT / "offline_package.bat").read_text(encoding="utf-8")
     assert "/XD .git .gjc .omx .omc .worktrees" in script
-    assert " dist artifacts backend\\.venv" in script
+    assert " .venv .python_packages node_modules dist artifacts backend\\.venv" in script
     assert "/XF .ug-*" in script

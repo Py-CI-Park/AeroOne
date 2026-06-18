@@ -27,7 +27,7 @@
 | G001 | 문서 뷰어 viewport 높이를 `calc(100dvh - 96px)` + `minHeight 680` 으로 확대. 전체 높이 보기에서는 목차/sidebar 의 max-height 를 부모 브라우저 viewport 기준으로 계산하고, 목차·표 같은 scrollable descendant 가 wheel 을 먼저 소비하도록 처리. 해시 이동은 부모 문서 경계로 clamp. Document 트리도 독립 스크롤. | `frontend/components/newsletter/html-viewer.tsx`, `frontend/components/documents/documents-workspace.tsx`, 관련 Vitest |
 | G002 | Ollama 성공 응답이 `<think>` 제거 후 빈 답이면 한 번만 최종 답변을 재요청. 그래도 빈 답이면 `OllamaEmptyResponse` 로 502 계열을 유지하고, base_url/model/reason 을 안전하게 노출. | `backend/app/modules/ai/service.py`, `backend/tests/integration/test_ai_api.py` |
 | G003 | `scripts/run_all.bat` 가 AeroOne backend health 후 Open Notebook API `:5055/health`, Frontend `:8502`, runtime `/config` 를 확인해야 READY 를 표시. `--local`/`--allow-host` 는 Open Notebook launcher 로도 전달. Open Notebook airgap `3-run.bat` 는 LAN 기본, loopback opt-out, `API_HOST`/`API_URL`/`CORS_ORIGINS` child env 명시, HTTP 200 readiness, 비대화형 대기, `--allow-host=<ip>` 를 지원한다. Sibling fork 반영 commit: `Py-CI-Park/open-notebook@3b283b2`. | `scripts/run_all.bat`, `../open-notebook/airgap/3-run.bat`, `../open-notebook/airgap/write_env.ps1`, 배치 테스트/문서 |
-| G004 | 버전 표기와 운영 문서/보고서/검증 통계를 1.6.2 기준으로 갱신하고, 릴리즈 ZIP 에 GJC workflow state 와 QA artifact/scratch 파일이 섞이지 않도록 `.gjc`, `artifacts`, `.ug-*` 를 packaging 제외 목록에 추가한 뒤 전체 테스트·브라우저 smoke·Open Notebook smoke 를 수행. | `README.md`, `frontend/lib/changelog.ts`, `offline_package.bat`, `docs/*` |
+| G004 | 버전 표기와 운영 문서/보고서/검증 통계를 1.6.2 기준으로 갱신하고, 릴리즈 ZIP 에 GJC workflow state 와 QA artifact/scratch 파일이 섞이지 않도록 기존 `node_modules` 등 보호 제외목록을 유지하면서 `.gjc`, `artifacts`, `.ug-*` 를 packaging 제외 목록에 추가한 뒤 전체 테스트·브라우저 smoke·Open Notebook smoke 를 수행. | `README.md`, `frontend/lib/changelog.ts`, `offline_package.bat`, `docs/*` |
 
 ---
 
@@ -54,7 +54,7 @@
 | Open Notebook adapter dry-run | `D:\\AeroOne-bundle\\3-run.bat --dry-run --allow-host=10.0.0.5` | API/Frontend `0.0.0.0`, `API_URL=http://10.0.0.5:5055`, CORS origin 출력 |
 | Document 브라우저 smoke | `http://127.0.0.1:29501/documents` | 문서 3건 로드, URL parse/fetch failure 없음, viewport iframe 약 804px, 전체 높이 모드 TOC max-height 816px |
 | Open Notebook 브라우저 smoke | `http://127.0.0.1:8502/notebooks` + `/config` | `Unable to Connect to API Server` 없음, `/config` 의 `apiUrl=http://127.0.0.1:5055`, API health 200 |
-| 패키징 dry-run | `offline_package.bat --dry-run` | `/XD adds: .gjc artifacts vendor`, `/XF adds: .ug-*` 출력으로 GJC workflow state, QA artifacts, Open Notebook co-deploy 트리 제외 확인 |
+| 패키징 dry-run | `offline_package.bat --dry-run` | `/XD adds: .gjc artifacts vendor`, `/XF adds: .ug-*` 출력 및 script guard로 `node_modules` 포함 기존 보호 제외목록 보존 확인 |
 | 최종 문서 freshness review | `agent://83-DocsFreshnessFinal` | `CLEAR/CLEAR/CLEAR`, `APPROVE`, stale count/ZIP/LAN-default pattern blocker 0 |
 
 브라우저 증거는 `.gjc/ultragoal/artifacts/G001/documents-current-smoke.png` 및 `.gjc/ultragoal/artifacts/G003/open-notebook-page-smoke.png` 에 보존했다.
@@ -72,4 +72,4 @@
 
 ## 6. AGENTS.md §6 위험신호 점검
 
-`APP_ENV` Literal, `validate_runtime_security`, `setup_offline.bat` 기본 LAN 바인딩, `start_offline.bat` `--local` opt-out, `scripts/allow_lan_firewall.cmd` LocalSubnet scope, `backend/scripts/ensure_db_state.py` 종료 코드는 미접촉이다. `offline_package.bat` 제외 목록은 기존 보호 항목을 제거하지 않고 `.gjc`, `artifacts`, `.ug-*` 만 추가해 릴리즈 ZIP 에 workflow/QA state 가 섞이지 않도록 했다. 변경은 viewer, AI 진단, 통합 런처 readiness, Open Notebook airgap adapter, 릴리즈 패키징 위생으로 한정된다.
+`APP_ENV` Literal, `validate_runtime_security`, `setup_offline.bat` 기본 LAN 바인딩, `start_offline.bat` `--local` opt-out, `scripts/allow_lan_firewall.cmd` LocalSubnet scope, `backend/scripts/ensure_db_state.py` 종료 코드는 미접촉이다. `offline_package.bat` 제외 목록은 기존 보호 항목(`node_modules` 등)을 제거하지 않고 `.gjc`, `artifacts`, `.ug-*` 만 추가해 릴리즈 ZIP 에 workflow/QA state 가 섞이지 않도록 했다. 변경은 viewer, AI 진단, 통합 런처 readiness, Open Notebook airgap adapter, 릴리즈 패키징 위생으로 한정된다.
