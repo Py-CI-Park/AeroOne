@@ -103,7 +103,7 @@
 | 부팅 검증 호출 | `backend/app/main.py:18` | startup 시 1회 호출 |
 | DB 분기 (배치용) | `backend/scripts/ensure_db_state.py` | 종료 코드 0/1/2/3, docstring 에 의미 직접 기재 |
 | 폐쇄망 LAN 옵션 / 기본 바인딩 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | **1.0.22+ 기본 = LAN**: 옵션 없으면 `ALLOW_HOST=auto` → `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(미감지 시 loopback 폴백, 0.0.0.0 바인딩). `--local` 로 loopback 전용, `--allow-host=<IP>` 로 호스트 고정, `AEROONE_ALLOW_HOST` env 도 인식 |
-| 패키징 제외 목록 | `offline_package.bat:46` | robocopy `/XD` + `/XF` 인자. `.git`, `.gjc`, `.omc`, `.worktrees`, venv/node_modules/build/cache/vendor/artifacts 트리와 `.ug-*` scratch 파일은 ZIP 에 넣지 않음 |
+| 패키징 제외 목록 | `offline_package.bat:46` | robocopy `/XD` + `/XF` 인자. `.git` 디렉터리/파일, `.gjc`, `.omc`, `.worktrees`, venv/node_modules/build/cache/vendor/artifacts 트리와 `.ug-*` scratch 파일은 ZIP 에 넣지 않음 |
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
 | 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트(`frontend/app/theme/route.ts`)가 쿠키 설정 후 **상대 경로**로 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>`. **1.1.1**: `/theme` 리다이렉트는 `request.url` 의 origin 대신 origin 없는 상대 Location 을 쓴다 — LAN 모드(`next start -H 0.0.0.0`)에서 origin 이 `http://0.0.0.0:29501` 로 잡혀 브라우저가 접속 불가 주소로 튕기던 테마 토글 연결 종료 버그를 회피 |
 | 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |

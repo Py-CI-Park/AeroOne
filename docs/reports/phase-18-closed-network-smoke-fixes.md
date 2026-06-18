@@ -54,7 +54,7 @@
 | Open Notebook adapter dry-run | `D:\\AeroOne-bundle\\3-run.bat --dry-run --allow-host=10.0.0.5` | API/Frontend `0.0.0.0`, `API_URL=http://10.0.0.5:5055`, CORS origin 출력 |
 | Document 브라우저 smoke | `http://127.0.0.1:29501/documents` | 문서 3건 로드, URL parse/fetch failure 없음, viewport iframe 약 804px, 전체 높이 모드 TOC max-height 816px |
 | Open Notebook 브라우저 smoke | `http://127.0.0.1:8502/notebooks` + `/config` | `Unable to Connect to API Server` 없음, `/config` 의 `apiUrl=http://127.0.0.1:5055`, API health 200 |
-| 패키징 dry-run | `offline_package.bat --dry-run` | `/XD adds: .gjc artifacts vendor`, `/XF adds: .ug-*` 출력 및 script guard로 `node_modules` 포함 기존 보호 제외목록 보존 확인 |
+| 패키징 dry-run | `offline_package.bat --dry-run` | `/XD adds: .gjc artifacts vendor`, `/XF adds: .git .ug-*` 출력 및 script guard로 `.git` 파일·`node_modules` 포함 보호 제외목록 보존 확인 |
 | 최종 문서 freshness review | `agent://83-DocsFreshnessFinal` | `CLEAR/CLEAR/CLEAR`, `APPROVE`, stale count/ZIP/LAN-default pattern blocker 0 |
 
 브라우저 증거는 `.gjc/ultragoal/artifacts/G001/documents-current-smoke.png` 및 `.gjc/ultragoal/artifacts/G003/open-notebook-page-smoke.png` 에 보존했다.
@@ -72,4 +72,4 @@
 
 ## 6. AGENTS.md §6 위험신호 점검
 
-`APP_ENV` Literal, `validate_runtime_security`, `setup_offline.bat` 기본 LAN 바인딩, `start_offline.bat` `--local` opt-out, `scripts/allow_lan_firewall.cmd` LocalSubnet scope, `backend/scripts/ensure_db_state.py` 종료 코드는 미접촉이다. `offline_package.bat` 제외 목록은 기존 보호 항목(`node_modules` 등)을 제거하지 않고 `.gjc`, `artifacts`, `.ug-*` 만 추가해 릴리즈 ZIP 에 workflow/QA state 가 섞이지 않도록 했다. 변경은 viewer, AI 진단, 통합 런처 readiness, Open Notebook airgap adapter, 릴리즈 패키징 위생으로 한정된다.
+`APP_ENV` Literal, `validate_runtime_security`, `setup_offline.bat` 기본 LAN 바인딩, `start_offline.bat` `--local` opt-out, `scripts/allow_lan_firewall.cmd` LocalSubnet scope, `backend/scripts/ensure_db_state.py` 종료 코드는 미접촉이다. `offline_package.bat` 제외 목록은 기존 보호 항목(`.git`, `node_modules` 등)을 제거하지 않고 `.gjc`, `artifacts`, `.ug-*` 만 추가해 릴리즈 ZIP 에 workflow/QA state 가 섞이지 않도록 했다. 변경은 viewer, AI 진단, 통합 런처 readiness, Open Notebook airgap adapter, 릴리즈 패키징 위생으로 한정된다.
