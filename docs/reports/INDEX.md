@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -120,6 +120,15 @@
 - 무엇: HTML 뷰어 viewport 높이 확대와 full-height scroll ownership 보정, 환경 변수 공백/줄바꿈 API URL 방어, AeroAI reasoning-only 빈 응답 1회 재시도, `run_all.bat` 의 ON API/Frontend/runtime config readiness 확인 및 `--local`/`--allow-host` ON 전달, Open Notebook airgap adapter 의 LAN `API_URL`/`CORS`/비대화형 대기 정리.
 - 코드: `frontend/components/newsletter/html-viewer.tsx`, `frontend/components/documents/documents-workspace.tsx`, `frontend/lib/api.ts`, `backend/app/modules/ai/service.py`, `scripts/run_all.bat`, `offline_package.bat`, `../open-notebook/airgap/{3-run.bat,write_env.ps1}`
 - 회귀 방지: `frontend/tests/components/{html-viewer,documents-workspace,version-badge}.test.tsx`, `backend/tests/integration/test_ai_api.py`, `backend/tests/unit/shared/test_windows_batch_scripts.py`
+
+### 단계 19 — AeroAI/Viewer UX 강화 + Open Notebook 동거 릴리즈 (1.7.0)
+
+- 파일: [`phase-19-aeroai-viewer-ux-release.md`](phase-19-aeroai-viewer-ux-release.md)
+- 분류: minor (`1.7.0`) — 기존 AeroAI/Viewer 표면의 사용자 기능 강화와 Open Notebook co-deploy 릴리즈 절차 정리.
+- 무엇: AeroAI 모니터 높이 3분할 레이아웃, 안전한 Markdown 답변 렌더링 + 원문 복사, HTML 본문 검색 결과 새 탭 열기와 navigation URL 방어, 인용 미리보기 전체 보기, Viewer 미리보기 집중/전체화면, Open Notebook 8502/5055/모델 설정/주요 메뉴 스모크.
+- 코드: `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/components/viewer/viewer-editor.tsx`, `frontend/components/layout/help-manual-button.tsx`, `frontend/lib/changelog.ts`
+- 문서: `README.md`, `docs/INDEX.md`, `docs/CLOSED_NETWORK_GUIDE.md`, `docs/runbook/closed-network-install-manual.md`, `docs/runbook/open-notebook-airgap.md`
+- 회귀 방지: `frontend/tests/components/{ai-chat-workspace,ai-chat-controls,ai-citation-panel,ai-scope,viewer-editor}.test.tsx`, full frontend Vitest 203 passed, backend pytest 175 passed, `scripts\run_all.bat --dry-run --on-bundle ..\AeroOne-bundle --local`, 브라우저 AeroAI/Viewer/Open Notebook smoke.
 
 
 ---

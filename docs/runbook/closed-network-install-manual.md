@@ -19,13 +19,13 @@
 
 ---
 
-## 1. 인터넷 PC에서 반입물 모으기 (4가지)
+## 1. 인터넷 PC에서 반입물 모으기 (릴리즈 1.7.0 기준 4가지)
 
 USB 등 **단방향 허용 매체**로 폐쇄망 PC에 복사할 4가지:
 
-1. **AeroOne 오프라인 ZIP** — 인터넷 PC 저장소 루트에서 `offline_package.bat` 실행 → `dist\AeroOne-offline-<버전>-<스탬프>.zip`
+1. **AeroOne 오프라인 ZIP** — GitHub Release `1.7.0` 의 `AeroOne-offline-1.7.0-YYYYMMDD-HHMMSS.zip` asset 을 받거나, 인터넷 PC 저장소 루트에서 `offline_package.bat` 실행 → `dist\AeroOne-offline-1.7.0-<스탬프>.zip`
    - 소스·wheelhouse·`node_modules`·prebuilt `.next`·옵션 인스톨러 포함. (vendored open-notebook 트리는 의도적으로 제외)
-2. **Open Notebook 번들 ZIP** — open-notebook 저장소에서 `airgap\1-online-package.bat` 실행 → `dist\AeroOne-bundle.zip`
+2. **Open Notebook 번들 ZIP** — 같은 Release 의 `AeroOne-bundle.zip` asset 을 받거나, open-notebook 저장소에서 `airgap\1-online-package.bat` 실행 → `dist\AeroOne-bundle.zip`
    - 자체 Python/uv/Node/SurrealDB/ffmpeg + prebuilt frontend + 자동 프로비저닝 스크립트 포함(자기완결).
 3. **Ollama 설치파일** — 폐쇄망 PC에 Ollama가 없으면 `OllamaSetup.exe` (https://ollama.com/download). 있으면 생략.
 4. **Ollama 모델 blob** — 인터넷 PC에서 미리 받은 모델 파일:
@@ -109,11 +109,11 @@ cd D:\AeroOne-bundle && 3-run.bat --local
 ## 6. 확인 (정상 동작 체크리스트)
 
 - [ ] `http://<host>:29501/` 대시보드 로드(단일 PC `--local` 은 `http://localhost:29501/`), AeroAI 섹션에 **Notebook 카드** 보임 (상단 요약 `8 active`).
-- [ ] AeroAI: `/ai` 에서 사내 문서 근거 챗 응답(인용 표시).
-- [ ] Viewer: 대시보드 Document 섹션 **Viewer 카드** → `/viewer` 에서 로컬 `.md`/`.html` 열기·편집·미리보기·다운로드 동작.
+- [ ] AeroAI: `/ai` 에서 사내 문서 근거 챗 응답(인용 표시), Markdown 답변 렌더링, 원문 복사, HTML 본문 검색 결과 새 탭 열기, 오른쪽 검색 패널 내부 스크롤 확인.
+- [ ] Viewer: 대시보드 Document 섹션 **Viewer 카드** → `/viewer` 에서 로컬 `.md`/`.html` 열기·편집·미리보기·다운로드, **미리보기 집중**, **전체화면 미리보기** 동작.
 - [ ] Notebook 카드 클릭 → 같은 호스트의 `:8502` Open Notebook 로드(예: `http://<host>:8502/`, 연결 오류 없음).
 - [ ] Open Notebook **Settings → Models**: Chat = `gemma4:12b`, Embedding = `nomic-embed-text` 자동 할당 확인.
-- [ ] 노트북 생성 → 소스 추가 → Ask/벡터 검색 동작.
+- [ ] Open Notebook 주요 메뉴(Sources / Notebooks / Ask and Search / Podcasts / Models / Transformations / Settings / Advanced) 로딩 확인.
 - [ ] (LAN 다중 PC) 관리자 권한으로 `scripts\allow_lan_firewall.cmd --with-notebook` 실행 후 다른 PC에서 `http://<this-PC-IP>:29501/` · `:8502` 접속.
 
 ---

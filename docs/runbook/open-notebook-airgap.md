@@ -143,7 +143,7 @@ scripts\check_open_notebook_core_diff.cmd <new-tag>
 :: 4) 인터넷 PC airgap 번들 재빌드 (lockfile/uv-cache 재시드)
 cd vendor\open-notebook\airgap && 1-online-package.bat
 
-:: 5) 폐쇄망 e2e 스모크(OP-2) + AeroOne backend 175 / frontend 193 통과 전까지 핀 미승격 (게이트)
+:: 5) 폐쇄망 e2e 스모크(OP-2) + AeroOne backend 175 / frontend 203 통과 전까지 핀 미승격 (게이트)
 
 :: 6) 통과하면 submodule 핀을 새 fork 브랜치 커밋으로 승급 (한국어 커밋 + Lore trailer)
 git add vendor\open-notebook && git commit
@@ -167,7 +167,7 @@ git add vendor\open-notebook && git commit
 - [ ] `aeroone/airgap` rebase 후 `airgap/` + adapter 파일 보존(존재 + 기능 동작), bare checkout 미사용.
 - [ ] `check_open_notebook_core_diff.cmd <new-tag>` == exit 0 (core diff 0).
 - [ ] airgap 번들 재빌드 성공(lockfile/uv-cache 재시드, `uv sync --frozen --offline` 일치).
-- [ ] 폐쇄망 e2e 스모크(OP-2) + AeroOne backend 175 / frontend 193 통과.
+- [ ] 폐쇄망 e2e 스모크(OP-2) + AeroOne backend 175 / frontend 203 통과.
 - [ ] 위 전부 통과 후에만 submodule 핀 승급(한국어 커밋 + Lore trailer).
 
 ---

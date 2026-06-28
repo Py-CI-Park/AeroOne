@@ -50,6 +50,19 @@ test('copy button writes the message content to the clipboard', async () => {
   await waitFor(() => expect(writeText).toHaveBeenCalledWith('첫 답변'));
 });
 
+test('copy button writes raw markdown instead of rendered text', async () => {
+  const markdown = '# 제목\n\n- **굵게**';
+  mocks.sendAiChat.mockResolvedValue({ model: 'gemma4:12b', message: { role: 'assistant', content: markdown }, citations: [] });
+  render(<AiChatWorkspace />);
+  fireEvent.change(screen.getByTestId('ai-chat-input'), { target: { value: '마크다운 질문' } });
+  fireEvent.click(screen.getByRole('button', { name: '보내기' }));
+
+  expect(await screen.findByRole('heading', { name: '제목' })).toBeInTheDocument();
+  const copyButtons = await screen.findAllByRole('button', { name: '메시지 복사' });
+  fireEvent.click(copyButtons[copyButtons.length - 1]);
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(markdown));
+});
+
 test('regenerate resends the last user message without the prior assistant turn', async () => {
   render(<AiChatWorkspace />);
   await sendOnce();
