@@ -38,9 +38,19 @@ const MANUAL_SECTIONS = [
     label: 'AeroAI',
     title: 'AeroAI 채팅과 문서 근거',
     rows: [
-      ['AeroAI 채팅', '대시보드 AeroAI 카드에서 사내 폐쇄망 AI 와 대화합니다. 대화는 저장되어 좌측 목록에서 다시 열 수 있고, 응답 생성 중에는 대기 표시가 나옵니다.'],
-      ['문서 근거 답변', '검색 결과를 체크해 그 문서만 답변 근거로 보내거나, 근거 범위(Document/Civil/NSA)를 토글할 수 있습니다. 답변 근거는 우측 패널에서 새 탭/미리보기로 확인합니다.'],
-      ['HTML 본문 검색', 'AeroAI 화면 오른쪽 검색창에서 _database/document, _database/civil_aircraft 본문을 검색하고 결과 링크로 바로 이동합니다.'],
+      ['AeroAI 채팅', '대시보드 AeroAI 카드에서 사내 폐쇄망 AI 와 대화합니다. 답변은 Markdown 형식으로 렌더링되며, 복사 버튼은 보고서/메일에 붙여 넣기 좋은 원본 Markdown 을 복사합니다.'],
+      ['문서 근거 답변', '검색 결과를 체크해 그 문서만 답변 근거로 보내거나, 근거 범위(Document/Civil/NSA)를 토글할 수 있습니다. 답변 근거는 우측 패널에서 새 탭/확대 미리보기/전체 보기로 확인합니다.'],
+      ['HTML 본문 검색', 'AeroAI 화면 오른쪽 검색창에서 _database/document, _database/civil_aircraft 본문을 검색하고 결과 링크를 새 탭으로 엽니다.'],
+    ],
+  },
+  {
+    id: 'viewer',
+    label: 'Viewer',
+    title: '로컬 Viewer',
+    rows: [
+      ['파일 열기', '로컬 Markdown·HTML 파일을 끌어다 놓거나 선택한 뒤 미리보기 렌더를 누릅니다. 파일은 서버에 저장되지 않습니다.'],
+      ['보기 전환', '편집+미리보기 / 미리보기 집중 / 전체화면 미리보기로 화면 폭과 모니터 높이에 맞춰 봅니다.'],
+      ['보안 경계', '로컬 파일 미리보기는 빈 sandbox iframe 으로 표시되어 문서 안의 스크립트와 동일출처 권한이 차단됩니다.'],
     ],
   },
   {

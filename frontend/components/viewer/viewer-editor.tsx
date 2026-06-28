@@ -15,6 +15,7 @@ export function inferDocType(fileName: string): ViewerDocType {
 }
 
 const ACCEPT = '.md,.markdown,.html,.htm';
+type PreviewLayout = 'split' | 'preview';
 
 // 로컬 .md/.html 파일을 열어 편집하고, 서버에서 sanitize 한 HTML 을
 // 빈 sandbox(스크립트/동일출처 모두 차단) iframe 으로 미리보기한 뒤 Blob 으로 저장한다.
@@ -27,7 +28,10 @@ export function ViewerEditor() {
   const [error, setError] = useState('');
   const [rendering, setRendering] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [previewLayout, setPreviewLayout] = useState<PreviewLayout>('split');
+  const [fullscreenPreview, setFullscreenPreview] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewFocused = previewLayout === 'preview';
 
   const loadFile = useCallback((file: File) => {
     setError('');
@@ -77,8 +81,11 @@ export function ViewerEditor() {
       if (!response.ok) {
         throw new Error(`렌더 실패 (${response.status})`);
       }
-      const payload = (await response.json()) as { html?: string };
-      setHtml(typeof payload.html === 'string' ? payload.html : '');
+      const payload = (await response.json()) as { html?: unknown };
+      if (typeof payload.html !== 'string') {
+        throw new Error('렌더 응답이 올바르지 않습니다.');
+      }
+      setHtml(payload.html);
     } catch (renderError) {
       setError(renderError instanceof Error ? renderError.message : '렌더 중 오류가 발생했습니다.');
       setHtml('');
@@ -158,29 +165,101 @@ export function ViewerEditor() {
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-ink-3">보기</span>
+        <button
+          type="button"
+          onClick={() => setPreviewLayout('split')}
+          aria-pressed={!previewFocused}
+          className={`rounded border px-3 py-1.5 text-sm font-medium ${
+            previewFocused ? 'border-line text-ink-2' : 'border-accent bg-accent-soft text-accent'
+          }`}
+        >
+          편집+미리보기
+        </button>
+        <button
+          type="button"
+          onClick={() => setPreviewLayout('preview')}
+          aria-pressed={previewFocused}
+          className={`rounded border px-3 py-1.5 text-sm font-medium ${
+            previewFocused ? 'border-accent bg-accent-soft text-accent' : 'border-line text-ink-2'
+          }`}
+        >
+          미리보기 집중
+        </button>
+        <button
+          type="button"
+          onClick={() => setFullscreenPreview(true)}
+          className="rounded border border-line px-3 py-1.5 text-sm font-medium text-ink-1"
+        >
+          전체화면 미리보기
+        </button>
+      </div>
       {error ? (
         <p data-testid="viewer-error" className="text-sm text-danger">
           {error}
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <textarea
-          data-testid="viewer-editor"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          spellCheck={false}
-          placeholder="파일을 불러오면 여기에 내용이 표시됩니다. 직접 편집할 수 있습니다."
-          className="min-h-[420px] w-full rounded-lg border border-line bg-surface-elevated p-3 font-mono text-sm text-ink-1"
-        />
-        <iframe
-          title="Viewer preview"
-          data-testid="viewer-preview"
-          sandbox=""
-          srcDoc={html}
-          className="min-h-[420px] w-full rounded-lg border border-line bg-white"
-        />
+      <div
+        data-testid="viewer-editor-grid"
+        className={`grid grid-cols-1 gap-4 ${previewFocused ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}
+      >
+        <label className={`flex flex-col gap-2 ${previewFocused ? 'hidden' : ''}`}>
+          <span className="text-sm font-medium text-ink-2">편집</span>
+          <textarea
+            data-testid="viewer-editor"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            spellCheck={false}
+            placeholder="파일을 불러오면 여기에 내용이 표시됩니다. 직접 편집할 수 있습니다."
+            className="min-h-[560px] w-full resize-y rounded-lg border border-line bg-surface-elevated p-4 font-mono text-sm leading-6 text-ink-1"
+          />
+        </label>
+        <section className="flex min-h-[560px] flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-ink-2">보안 미리보기</h2>
+            <p className="text-xs text-ink-3">빈 sandbox iframe으로 로컬 파일 스크립트와 동일출처 권한을 차단합니다.</p>
+          </div>
+          <iframe
+            title="Viewer preview"
+            data-testid="viewer-preview"
+            sandbox=""
+            srcDoc={html}
+            className="min-h-[560px] w-full flex-1 rounded-lg border border-line bg-white"
+          />
+        </section>
       </div>
+
+      {fullscreenPreview ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="전체화면 미리보기"
+          className="fixed inset-0 z-50 flex flex-col gap-3 bg-surface-base p-4"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink-1">전체화면 미리보기</h2>
+              <p className="text-xs text-ink-3">동일한 렌더 결과를 빈 sandbox iframe으로 표시합니다.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFullscreenPreview(false)}
+              className="rounded border border-line px-3 py-1.5 text-sm font-medium text-ink-1"
+            >
+              닫기
+            </button>
+          </div>
+          <iframe
+            title="Viewer preview fullscreen"
+            data-testid="viewer-preview-fullscreen"
+            sandbox=""
+            srcDoc={html}
+            className="min-h-0 flex-1 rounded-lg border border-line bg-white"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -58,6 +58,21 @@ test('unchecking civil narrows the chat scope to document only', async () => {
   );
 });
 
+test('scope toggles do not silently fall back after the last active scope is clicked', async () => {
+  render(<AiChatWorkspace />);
+  await screen.findByTestId('ai-scope');
+
+  fireEvent.click(screen.getByLabelText('Civil'));
+  fireEvent.click(screen.getByLabelText('Document'));
+
+  expect(screen.getByLabelText('Document')).toBeChecked();
+  await send();
+  expect(mocks.sendAiChat).toHaveBeenCalledWith(
+    expect.objectContaining({ collections: ['document'] }),
+    expect.anything(),
+  );
+});
+
 test('nsa option is disabled until unlocked, enabled and selectable once unlocked', async () => {
   const { unmount } = render(<AiChatWorkspace />);
   expect((screen.getByLabelText(/NSA/) as HTMLInputElement).disabled).toBe(true);

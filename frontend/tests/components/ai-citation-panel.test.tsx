@@ -60,6 +60,25 @@ test('citation link opens the viewer in a new tab', async () => {
   expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
 });
 
+test('citation panel rejects unsafe navigation URLs from persisted citations', async () => {
+  mocks.sendAiChat.mockResolvedValue({
+    model: 'gemma4:12b',
+    message: { role: 'assistant', content: '근거 답변' },
+    citations: [{ ...CITATION, navigation_url: '//evil.example/path' }],
+  });
+
+  render(<AiChatWorkspace />);
+  await chatWithCitation();
+
+  expect(screen.getByText(/document · 항공\/정비/)).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /document · 항공\/정비/ })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
+  await screen.findByTestId('ai-citation-preview');
+  expect(screen.queryByRole('link', { name: '새 탭에서 열기' })).not.toBeInTheDocument();
+  expect(screen.getByText('새 탭에서 열기')).toHaveAttribute('aria-disabled', 'true');
+});
+
 test('preview loads sanitized content into the right panel', async () => {
   render(<AiChatWorkspace />);
   await chatWithCitation();
@@ -72,6 +91,24 @@ test('preview loads sanitized content into the right panel', async () => {
   expect(iframe).not.toBeNull();
   expect(iframe).toHaveAttribute('sandbox', '');
   expect(iframe?.getAttribute('srcDoc') ?? iframe?.getAttribute('srcdoc')).toContain('정비 본문');
+});
+
+test('preview supports enlarged full-view mode while keeping sandbox', async () => {
+  render(<AiChatWorkspace />);
+  await chatWithCitation();
+  fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
+
+  const preview = await screen.findByTestId('ai-citation-preview');
+  const iframe = preview.querySelector('iframe');
+  expect(iframe).toHaveAttribute('sandbox', '');
+  expect(iframe?.className).toContain('h-[64dvh]');
+
+  fireEvent.click(screen.getByRole('button', { name: '전체 보기' }));
+  expect(screen.getByRole('button', { name: '패널로 보기' })).toBeInTheDocument();
+  expect(preview.className).toContain('fixed');
+  const expandedIframe = preview.querySelector('iframe');
+  expect(expandedIframe).toHaveAttribute('sandbox', '');
+  expect(expandedIframe?.className).toContain('flex-1');
 });
 
 test('preview can be closed', async () => {

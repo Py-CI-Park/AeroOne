@@ -15,6 +15,17 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.7.0',
+    date: '2026-06-26',
+    items: [
+      'AeroAI 화면을 모니터 높이에 맞는 3분할 워크스페이스로 재정비했습니다 — 대화 목록, 답변, HTML 본문 검색 패널이 화면 안에 머물고 긴 결과는 패널 내부에서 스크롤됩니다.',
+      'AeroAI 답변을 안전한 Markdown 렌더링으로 표시합니다. 제목·목록·표·코드블록·링크를 읽기 좋게 보여주면서 복사 버튼은 원본 답변 텍스트를 그대로 복사합니다.',
+      'HTML 본문 검색 결과의 파일 열기는 새 탭으로 열리며, API 가 준 위험한 navigation URL 은 링크로 만들지 않도록 방어했습니다.',
+      'AeroAI 인용 미리보기와 Viewer 미리보기를 더 크게 볼 수 있게 했습니다 — 인용 전체 보기, Viewer 미리보기 집중, 전체화면 미리보기를 추가하고 sandbox iframe 격리는 유지했습니다.',
+      'Open Notebook co-deploy 를 함께 확인했습니다 — 8502 Frontend, 5055 API health/config, Models 화면의 gemma4:12b·nomic-embed-text 할당, 주요 메뉴 라우팅을 스모크했습니다.',
+    ],
+  },
+  {
     version: '1.6.2',
     date: '2026-06-18',
     items: [

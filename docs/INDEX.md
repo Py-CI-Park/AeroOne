@@ -2,8 +2,8 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 버전: `1.6.2` 릴리즈 예정 (`1.6.1 폐쇄망 smoke 결함 보강`)
-- 갱신일: 2026-06-18
+- 기준 버전: `1.7.0` (`AeroAI/Viewer UX 강화 + Open Notebook 동거 릴리즈`)
+- 갱신일: 2026-06-26
 
 ---
 
@@ -47,7 +47,7 @@
 
 ## 3. 단계별 변경 보고서 (`docs/reports/`)
 
-폐쇄망 운영 보강 4단계 + 기능 모듈/운영 패치 단계(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색·Open Notebook 연구/동거 배포·AI 대화 영속화·뷰어·폐쇄망 smoke 패치)의 의도와 합의안. 각 보고서는 변경 commit 또는 릴리즈 패치와 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
+폐쇄망 운영 보강 4단계 + 기능 모듈/운영 패치 단계(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색·Open Notebook 연구/동거 배포·AI 대화 영속화·뷰어·폐쇄망 smoke 패치·AeroAI/Viewer UX 강화)의 의도와 합의안. 각 보고서는 변경 commit 또는 릴리즈 패치와 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
 
 | 단계 | 보고서 | 핵심 결과 | commit |
 |---|---|---|---|
@@ -64,6 +64,7 @@
 | 단계 16 | [`reports/phase-16-ai-conversation-and-document-grounding.md`](reports/phase-16-ai-conversation-and-document-grounding.md) | AI 대화 영속화 + 문서 근거 연결 강화 — 1.5 2차 증분 | `1.5.0-dev` |
 | 단계 17 | [`reports/phase-17-viewer-editor-and-launcher-ai-fixes.md`](reports/phase-17-viewer-editor-and-launcher-ai-fixes.md) | Viewer 탭 + 런처/AeroAI/HTML 스크롤 수정 — minor 1.6.0 | `1.6.0-dev` |
 | 단계 18 | [`reports/phase-18-closed-network-smoke-fixes.md`](reports/phase-18-closed-network-smoke-fixes.md) | 1.6.1 폐쇄망 smoke 결함 보강 — patch 1.6.2 | `1.6.2` |
+| 단계 19 | [`reports/phase-19-aeroai-viewer-ux-release.md`](reports/phase-19-aeroai-viewer-ux-release.md) | AeroAI Markdown 답변·HTML 검색 새 탭·모니터 높이 레이아웃 + Viewer 집중/전체화면 + Open Notebook 동거 릴리즈 — minor 1.7.0 | `1.7.0-dev` |
 
 ---
 
@@ -112,10 +113,11 @@
 | 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일. 대시보드에 민간항공기 규격 카탈로그 카드(활성)도 포함 |
 | 민간항공기 규격 카탈로그 | `backend/app/modules/collections/api/public.py` (`GET /api/v1/collections/civil/list`, `GET /api/v1/collections/civil/content/html?path=`) + `frontend/app/reports/civil-aircraft/page.tsx` + `frontend/components/documents/documents-workspace.tsx`(collection="civil") | `_database/civil_aircraft` 의 여러 HTML 을 Document 와 동일한 폴더 트리 목록 UI 로 표시(기본 접힘). 1.4.0 에서 단일 보고서에서 다중 카탈로그 목록으로 전환. 단일보고서 엔드포인트(`/api/v1/reports/civil-aircraft/content/html`)는 1릴리즈 deprecated 유지 |
 | 문서 보관소 | `backend/app/modules/collections/api/public.py` (`GET /api/v1/collections/document/list`, `GET /api/v1/collections/document/content/html?path=`) + `frontend/app/documents/page.tsx` + `frontend/components/documents/documents-workspace.tsx`(재귀 폴더 트리) | `_database/document` 의 HTML 을 하위 폴더 포함 재귀 수집해 좌측 접을 수 있는 폴더 트리로 목록화(기본 접힘), 선택 1개를 우측 HtmlViewer(sandbox iframe)로 렌더. `_debug.html` 제외, `(folder,name)` 정렬, 디렉토리 이탈 400 |
+| 로컬 Viewer | `frontend/app/viewer/page.tsx` + `frontend/components/viewer/viewer-editor.tsx` + `backend/app/modules/render/api.py` | 로컬 `.md`/`.html` 파일을 열어 편집·렌더·다운로드. 1.7.0 부터 편집+미리보기 / 미리보기 집중 / 전체화면 미리보기 모드를 제공하며, 모든 미리보기는 빈 `sandbox` iframe 으로 스크립트와 동일출처 권한을 차단 |
 | 컬렉션 same-origin 프록시 | `frontend/app/api/frontend/collections/[...segments]/route.ts` | 브라우저가 `/api/frontend/collections/<collection>/...` 로 요청하면 Next.js 서버가 `SERVER_API_BASE_URL`(loopback) 경유로 백엔드에 전달. 외부 PC 에서 document·civil·nsa 본문이 "failed to fetch" 로 실패하던 문제를 구조적으로 해결(1.4.0). 첫 세그먼트 화이트리스트(document·civil·nsa) 검증. 뉴스레터 프록시와 동일 패턴 |
 | NSA 탭 | `frontend/app/nsa/page.tsx` + `frontend/components/collections/collection-password-gate.tsx` + `_database/nsa/`(문서 보관 폴더) | 대시보드 카드 → /nsa. 비밀번호(기본 0000) 입력 전에는 목록·본문 요청 없음. 정답 입력 후 `fetchCollectionList('nsa')` 호출해 DocumentsWorkspace 에 prop 주입. **가벼운 가림막이며 실 인증 아님** — 백엔드 무인증, 민감 자료 보관 금지 |
 | Ladder(사다리타기) | `frontend/app/games/ladder/page.tsx` + `frontend/components/games/ladder-game.tsx` | 대시보드 카드 → /games/ladder. 참가자·상품 입력 후 랜덤 사다리로 배정 결과 표시. 순수 프론트엔드, 백엔드 없음 |
-| Ollama AI / 본문 검색 | `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/page.tsx`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/` | 대시보드 AI 카드 → `/ai`. 브라우저는 same-origin AI 프록시만 호출하고 백엔드가 `OLLAMA_BASE_URL` 의 `gemma4:12b` 와 통신. reasoning-only 빈 응답은 1회 재시도 후 계속 비면 502 로 구분. `_database` HTML 본문 검색은 collections/shared SQLite FTS5 가 소유하며 기본 scope 는 `document,civil`, NSA 는 unlock 이후에만 포함 |
+| Ollama AI / 본문 검색 | `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/page.tsx`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/` | 대시보드 AI 카드 → `/ai`. 브라우저는 same-origin AI 프록시만 호출하고 백엔드가 `OLLAMA_BASE_URL` 의 `gemma4:12b` 와 통신. reasoning-only 빈 응답은 1회 재시도 후 계속 비면 502 로 구분. 1.7.0 부터 답변은 안전한 Markdown 으로 렌더링하고 복사는 원문 텍스트를 유지하며, `_database` HTML 본문 검색 결과는 새 탭으로 열린다. 기본 scope 는 `document,civil`, NSA 는 unlock 이후에만 포함 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 | 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
 
@@ -123,7 +125,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.6.2 기준 backend 175 passed, frontend Vitest 193 passed(47 파일), `tsc --noEmit`/`next build` 성공.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.7.0 기준 backend 175 passed, frontend Vitest 203 passed(47 파일), `tsc --noEmit`/`next build` 성공.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
