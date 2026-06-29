@@ -12,6 +12,8 @@ __pycache__/
 # Node / Next
 frontend/node_modules/
 frontend/.next/
+node_modules/
+
 
 # Runtime data
 backend/data/
@@ -29,6 +31,21 @@ storage/attachments/
 
 # OMC runtime state
 .omc/
+
+# GJC / workflow runtime state
+.gjc/
+.ug-*.json
+.ug-*.txt
+
+# Local analysis and QA artifacts
+.codegraph/
+artifacts/
+
+# Local logs / temporary captures
+backend/_be.log
+frontend/_fe.log
+frontend/.devserver.log
+.nl*.html
 
 _database/
 
