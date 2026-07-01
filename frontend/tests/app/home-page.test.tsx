@@ -53,27 +53,42 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
   expect(reportLink).toHaveTextContent('Active');
   expect(within(reportLink).getByTestId('service-card-description')).toHaveTextContent(/Commercial aircraft specs/i);
 
-  // 상단 요약 카운트는 MODULES 에서 파생 — NSA·AI·Ladder·Notebook·Viewer 추가로 활성 8개 / coming 2개.
+  // 상단 요약 카운트는 MODULES 에서 파생 — 개발중 섹션 재분류 후에도 활성 8개 / coming 2개.
   expect(screen.getByText('8 active · 2 coming soon')).toBeInTheDocument();
 });
 
-test('groups active dashboard cards into ordered sections before coming soon', async () => {
+test('groups dashboard cards into ordered sections and keeps coming-soon cards in development', async () => {
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   // 섹션 제목과 카드 제목이 같은 이름(heading)이라 첫 번째(섹션 헤더)를 집는다.
   const newsletterSection = screen.getAllByRole('heading', { name: 'Newsletter' })[0];
   const documentSection = screen.getAllByRole('heading', { name: 'Document' })[0];
-  const aeroAiSection = screen.getAllByRole('heading', { name: 'AeroAI' })[0];
-  const comingHeading = screen.getByRole('heading', { name: 'Coming soon' });
+  const developmentSection = screen.getByRole('heading', { name: '개발중' });
   const nsaLink = screen.getByRole('link', { name: /NSA/i });
+  const aiLink = screen.getByRole('link', { name: /AeroAI/i });
+  const viewerLink = screen.getByRole('link', { name: /Viewer/i });
+  const ladderLink = screen.getByRole('link', { name: /Ladder/i });
+  const notebookLink = screen.getByRole('link', { name: /Notebook/i });
   const announcement = screen.getByRole('heading', { name: 'Announcement' });
+  const schedule = screen.getByRole('heading', { name: 'Schedule' });
 
-  // 섹션 순서: Newsletter → Document → AeroAI, 그리고 활성 섹션은 Coming soon 앞에 온다.
+  // 섹션 순서: Newsletter → Document → 개발중. 개발중 안의 기존 기능 버튼은 active 링크로 유지된다.
   expect(newsletterSection.compareDocumentPosition(documentSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(documentSection.compareDocumentPosition(aeroAiSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(aeroAiSection.compareDocumentPosition(comingHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(nsaLink.compareDocumentPosition(comingHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(comingHeading.compareDocumentPosition(announcement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(documentSection.compareDocumentPosition(developmentSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(nsaLink.compareDocumentPosition(developmentSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(developmentSection.compareDocumentPosition(viewerLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(developmentSection.compareDocumentPosition(aiLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(developmentSection.compareDocumentPosition(notebookLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(developmentSection.compareDocumentPosition(ladderLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  // Coming soon 섹션은 별도로 만들지 않고, 개발중 섹션 안에서 비활성 카드로 남긴다.
+  expect(screen.queryByRole('heading', { name: 'Coming soon' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Announcement/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Schedule/i })).not.toBeInTheDocument();
+  expect(announcement.closest('[aria-disabled="true"]')).not.toBeNull();
+  expect(schedule.closest('[aria-disabled="true"]')).not.toBeNull();
+  expect(announcement.closest('[aria-disabled="true"]')).toHaveTextContent('Coming soon');
+  expect(schedule.closest('[aria-disabled="true"]')).toHaveTextContent('Coming soon');
 });
 
 test('adds an active NSA card linking to /nsa', async () => {

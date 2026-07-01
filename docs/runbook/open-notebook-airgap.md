@@ -2,7 +2,7 @@
 
 이 문서는 AeroOne 옆에 **Open Notebook**(NotebookLM 대안, MIT)을 **별도 프로세스 군으로 나란히(co-deploy)** 배치해 폐쇄망에서 함께 운영하기 위한 단일 진실 원천(SoT)입니다. 근거 계획: 승인된 ralplan `2026-06-13-0254-bd02` (`.gjc/plans/ralplan/2026-06-13-0254-bd02/pending-approval.md`).
 
-> **경계(절대 규칙).** 두 스택은 코드 병합 없이 동거합니다. DB(AeroOne SQLite vs Open Notebook SurrealDB)·세션·포트를 공유하지 않으며 결합점은 단 둘 — **대시보드 진입 링크**(AeroAI 섹션의 Notebook 카드 → `http://<host>:8502`)와 **공유 Ollama 엔드포인트**. AeroOne 자체 스택(same-origin proxy / backend-only Ollama / SQLite / path-guard)과 `AGENTS.md` §6 위험신호 6종은 미접촉입니다.
+> **경계(절대 규칙).** 두 스택은 코드 병합 없이 동거합니다. DB(AeroOne SQLite vs Open Notebook SurrealDB)·세션·포트를 공유하지 않으며 결합점은 단 둘 — **대시보드 진입 링크**(개발중 섹션의 Notebook 카드 → `http://<host>:8502`)와 **공유 Ollama 엔드포인트**. AeroOne 자체 스택(same-origin proxy / backend-only Ollama / SQLite / path-guard)과 `AGENTS.md` §6 위험신호 6종은 미접촉입니다.
 
 ---
 

@@ -15,7 +15,7 @@
 | Open Notebook | `http://<host>:8502/` | 8502 (frontend) / 5055 (API) / 8000 (SurrealDB) | 자체 무인증 (§5 보안 주의) |
 | 공유 Ollama | (백엔드 전용) | 11434 | — |
 
-대시보드(AeroOne) AeroAI 섹션의 **Notebook 카드**가 `http://<host>:8502` 로 연결됩니다. 두 스택은 DB·세션·포트를 공유하지 않고, 결합점은 **대시보드 링크 + 공유 Ollama** 둘뿐입니다.
+대시보드(AeroOne) 개발중 섹션의 **Notebook 카드**가 `http://<host>:8502` 로 연결됩니다. 두 스택은 DB·세션·포트를 공유하지 않고, 결합점은 **대시보드 링크 + 공유 Ollama** 둘뿐입니다.
 
 ---
 
@@ -108,9 +108,9 @@ cd D:\AeroOne-bundle && 3-run.bat --local
 
 ## 6. 확인 (정상 동작 체크리스트)
 
-- [ ] `http://<host>:29501/` 대시보드 로드(단일 PC `--local` 은 `http://localhost:29501/`), AeroAI 섹션에 **Notebook 카드** 보임 (상단 요약 `8 active`).
+- [ ] `http://<host>:29501/` 대시보드 로드(단일 PC `--local` 은 `http://localhost:29501/`), 개발중 섹션에 **AeroAI / Notebook / Viewer / Ladder** active 카드와 비활성 **Coming soon** 카드 보임 (상단 요약 `8 active · 2 coming soon`).
 - [ ] AeroAI: `/ai` 에서 사내 문서 근거 챗 응답(인용 표시), Markdown 답변 렌더링, 원문 복사, HTML 본문 검색 결과 새 탭 열기, 오른쪽 검색 패널 내부 스크롤 확인.
-- [ ] Viewer: 대시보드 Document 섹션 **Viewer 카드** → `/viewer` 에서 로컬 `.md`/`.html` 열기·편집·미리보기·다운로드, **미리보기 집중**, **전체화면 미리보기** 동작.
+- [ ] Viewer: 대시보드 개발중 섹션 **Viewer 카드** → `/viewer` 에서 로컬 `.md`/`.html` 열기·편집·미리보기·다운로드, **미리보기 집중**, **전체화면 미리보기** 동작.
 - [ ] Notebook 카드 클릭 → 같은 호스트의 `:8502` Open Notebook 로드(예: `http://<host>:8502/`, 연결 오류 없음).
 - [ ] Open Notebook **Settings → Models**: Chat = `gemma4:12b`, Embedding = `nomic-embed-text` 자동 할당 확인.
 - [ ] Open Notebook 주요 메뉴(Sources / Notebooks / Ask and Search / Podcasts / Models / Transformations / Settings / Advanced) 로딩 확인.

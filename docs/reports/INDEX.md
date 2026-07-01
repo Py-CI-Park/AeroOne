@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션 핸드오프 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -130,6 +130,14 @@
 - 문서: `README.md`, `docs/INDEX.md`, `docs/CLOSED_NETWORK_GUIDE.md`, `docs/runbook/closed-network-install-manual.md`, `docs/runbook/open-notebook-airgap.md`
 - 회귀 방지: `frontend/tests/components/{ai-chat-workspace,ai-chat-controls,ai-citation-panel,ai-scope,viewer-editor}.test.tsx`, full frontend Vitest 203 passed, backend pytest 175 passed, `scripts\run_all.bat --dry-run --on-bundle ..\AeroOne-bundle --local`, 브라우저 AeroAI/Viewer/Open Notebook smoke.
 
+### 단계 20 — 대시보드 개발중 섹션 재분류 핸드오프
+
+- 파일: [`phase-20-dashboard-development-section-handoff.md`](phase-20-dashboard-development-section-handoff.md)
+- 분류: patch UI 정리 — 대시보드 운영 상태 분류와 핸드오프 문서화.
+- 무엇: `개발중` 섹션을 새로 만들고 Viewer/AeroAI/Notebook/Ladder 를 active 카드로 이동, Announcement/Schedule 은 같은 섹션 안의 비활성 `Coming soon` 카드로 유지. 별도 `Coming soon` 섹션 제거.
+- 코드: `frontend/app/page.tsx`, `frontend/tests/app/home-page.test.tsx`, `frontend/lib/changelog.ts`
+- 문서: `README.md`, `docs/INDEX.md`, `docs/CLOSED_NETWORK_GUIDE.md`, `docs/runbook/closed-network-install-manual.md`, `docs/runbook/open-notebook-airgap.md`
+- 회귀 방지: focused frontend Vitest 14 passed, `tsc --noEmit`, `next build`, production browser dashboard smoke, Ultragoal review/QA gate.
 
 ---
 
