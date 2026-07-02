@@ -2,8 +2,8 @@
 
 - 분류: patch UI 정리 / 운영자 요청 반영
 - 대상 화면: 대시보드 `/`
-- 기준 버전: `1.7.0`
-- 상태: 구현·검증 완료, 커밋 포함
+- 기준 버전: `1.7.1`
+- 상태: 개발중 섹션 재분류 완료 + 1.7.1 뉴스레터/사용법 patch 반영
 
 ---
 
@@ -73,7 +73,7 @@ npm run build
 브라우저 확인:
 
 - `start_offline.bat --no-pause` 기반 production frontend `http://localhost:29501/`
-- `v1.7.0` 헤더 표시 확인
+- `v1.7.0` 헤더 표시 확인(초기 대시보드 재분류 검증)
 - `개발중` 섹션 표시 확인
 - `AeroAI`, `Notebook`, `Viewer`, `Ladder` active 카드 확인
 - `Announcement`, `Schedule` 비활성 `Coming soon` 카드 확인
@@ -88,7 +88,26 @@ npm run build
 
 ---
 
-## 6. 후속 작업자 주의사항
+## 6. 1.7.1 추가 패치
+
+릴리즈 `1.7.1` 에서는 같은 대시보드/뉴스레터 사용성 흐름을 이어 다음을 추가 반영했다.
+
+- 뉴스레터 리딩 뷰의 달력 접힘 상태를 부모 그리드까지 전달해, `달력 접기` 시 왼쪽 날짜 영역의 데스크톱 가로 폭도 `max-content` 로 줄인다.
+- 뉴스레터 `HTML 다운로드` 버튼을 accent soft 배경, font-semibold, shadow/ring 으로 강조해 원본 HTML 다운로드 경로를 더 쉽게 찾게 했다.
+- 헤더 `사용법` 팝업을 현재 서비스 중(`Newsletter`, `Document`, `Civil Aircraft`, `NSA`)과 개발중(`Viewer`, `AeroAI`, `Notebook`, `Ladder`, Coming soon 카드) 구분에 맞게 갱신했다.
+- 헤더 버전 changelog 에 `1.7.1` 항목을 추가하고 README/운영 가이드/설치 매뉴얼의 반입 파일 버전을 `1.7.1` 로 올렸다.
+
+추가 회귀 방지(1.7.1 최종 검증: backend `pytest tests` 175 passed / frontend Vitest 205 passed / 47 파일, `tsc --noEmit`, `next build`, browser smoke):
+
+- `frontend/tests/components/newsletter-date-calendar.test.tsx` — controlled open callback 및 collapsed `w-max` 상태
+- `frontend/tests/app/newsletters-layout.test.tsx` — 달력 접기 후 `data-calendar-open=false` 와 `lg:grid-cols-[max-content_minmax(0,1fr)]`
+- `frontend/tests/components/html-viewer.test.tsx` — HTML 다운로드 버튼 강조 클래스
+- `frontend/tests/components/app-shell.test.tsx` — 사용법 팝업의 개발중/현재 서비스 안내
+- `frontend/tests/components/version-badge.test.tsx` — `APP_VERSION = 1.7.1`
+
+---
+
+## 7. 후속 작업자 주의사항
 
 - `개발중` 섹션 안의 active 카드는 기능 자체를 비활성화한 것이 아니다. 단지 운영 상태 분류만 바뀌었다.
 - `Notebook` 은 여전히 별도 Open Notebook 앱 `http://<host>:8502` 로 새 탭 이동한다. AeroOne 코드 병합이나 DB/세션 공유는 없다.

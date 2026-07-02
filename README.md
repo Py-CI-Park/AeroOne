@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.7.0-1f6feb)
+![version](https://img.shields.io/badge/version-1.7.1-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -72,7 +72,7 @@
 | 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (175 passed), frontend Vitest + Testing Library (203 passed, 47 파일), `tsc --noEmit` exit 0, `next build` 성공, Windows 실행 스모크 |
+| 검증 | backend pytest + httpx (175 passed), frontend Vitest + Testing Library (205 passed, 47 파일), `tsc --noEmit` exit 0, `next build` 성공, Windows 실행 스모크 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -117,11 +117,11 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
                                                  scripts\run_all.bat
 ```
 
-### 릴리즈 1.7.0 반입 파일
+### 릴리즈 1.7.1 반입 파일
 
 | 파일 | 어디서 받는가 | 폐쇄망에서 놓을 위치 | 역할 |
 |---|---|---|---|
-| `AeroOne-offline-1.7.0-YYYYMMDD-HHMMSS.zip` | GitHub Release `1.7.0` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 | AeroOne 본체, backend/frontend, wheelhouse, prebuilt `.next`, 문서/뉴스레터 스냅샷 |
+| `AeroOne-offline-1.7.1-YYYYMMDD-HHMMSS.zip` | GitHub Release `1.7.1` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 | AeroOne 본체, backend/frontend, wheelhouse, prebuilt `.next`, 문서/뉴스레터 스냅샷 |
 | `AeroOne-bundle.zip` | 같은 Release asset 또는 Open Notebook 저장소 `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 | Open Notebook 별도 앱(Frontend 8502, API 5055, SurrealDB 8000), 자체 Python/Node/uv/ffmpeg/SurrealDB 포함 |
 | `%USERPROFILE%\.ollama\models\manifests`, `blobs` | 인터넷 PC 에서 `ollama pull gemma4:12b`, `ollama pull nomic-embed-text` 후 복사 | 폐쇄망 PC 같은 경로 | AeroAI/Open Notebook 공용 LLM·임베딩 모델 |
 | `OllamaSetup.exe` | Ollama 공식 설치 파일 | 폐쇄망 PC에서 1회 설치 | `127.0.0.1:11434` 로 두 앱이 공유하는 모델 서버 |
@@ -300,7 +300,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.7.0 기준 backend `pytest tests` 결과 **175 passed** (실패 0), frontend Vitest **203 passed** (47 파일), `tsc --noEmit` exit 0, `next build` 성공. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.7.1 기준 backend `pytest tests` 결과 **175 passed** (경고 3, 실패 0), frontend Vitest **205 passed** (47 파일), `tsc --noEmit` exit 0, `next build` 성공, 대시보드·뉴스레터 브라우저 smoke 통과. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

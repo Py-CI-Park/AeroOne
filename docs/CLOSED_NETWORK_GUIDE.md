@@ -2,9 +2,9 @@
 
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
-- 기준 commit: `1.7.0` (`AeroAI/Viewer UX 강화 + Open Notebook 동거 릴리즈`)
-- 갱신일: 2026-06-26
-- 테스트 상태: backend `pytest tests` **175 passed** (실패 0), frontend Vitest **203 passed** (47 파일), `tsc --noEmit` / `next build` 성공
+- 기준 commit: `1.7.1` (`뉴스레터 달력 접힘 + 다운로드 강조 + 사용법 최신화`)
+- 갱신일: 2026-07-01
+- 테스트 상태: backend `pytest tests` **175 passed** (경고 3, 실패 0), frontend Vitest **205 passed** (47 파일), `tsc --noEmit` / `next build` / 대시보드·뉴스레터 browser smoke 성공
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 ---
@@ -43,7 +43,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.7.0 기준 backend 175개·frontend 203개 회귀와 폐쇄망 smoke(AeroAI Markdown/HTML 검색, Viewer 전체화면, run_all/Open Notebook readiness) 로 검증된 상태입니다.
+**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.7.1 기준 뉴스레터 달력 접힘·HTML 다운로드 강조·사용법 팝업 최신화까지 backend 175개·frontend 205개 회귀와 브라우저 smoke 로 검증된 상태입니다.
 
 ---
 
@@ -53,6 +53,7 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
+| `1.7.1` | 단계 20 | 뉴스레터 달력 접힘 가로 폭 축소, HTML 다운로드 버튼 강조, 사용법 팝업의 현재 서비스 중/개발중 구분 최신화 |
 | `1.7.0` | 단계 19 | AeroAI Markdown 답변·HTML 검색 새 탭·모니터 높이 레이아웃, Viewer 미리보기 집중/전체화면, Open Notebook co-deploy 릴리즈 검증 |
 | `1.6.2` | 단계 18 | 1.6.1 폐쇄망 smoke 결함 보강 — 뷰어 크기/스크롤, AeroAI 빈 응답, run_all/Open Notebook readiness, packaging hygiene |
 | `1.6.1` | patch | 헤더 버전 표기와 사용 매뉴얼 정정 |
@@ -74,14 +75,14 @@
 ### 3.3 테스트 통계
 
 - backend 전체: **175 passed**
-- frontend 전체: **203 passed / 47 files**
+- frontend 전체: **205 passed / 47 files**
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, `offline_package.bat` packaging 제외 목록, 문서/컬렉션/AI API, 뷰어·Document·AeroAI 프론트 컴포넌트
 
-### 3.4 릴리즈 1.7.0 폐쇄망 반입물
+### 3.4 릴리즈 1.7.1 폐쇄망 반입물
 
 | 반입물 | 릴리즈/생성 위치 | 폐쇄망 배치 | 필수 여부 |
 |---|---|---|---|
-| `AeroOne-offline-1.7.0-YYYYMMDD-HHMMSS.zip` + `.sha256` | AeroOne GitHub Release `1.7.0` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
+| `AeroOne-offline-1.7.1-YYYYMMDD-HHMMSS.zip` + `.sha256` | AeroOne GitHub Release `1.7.1` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
 | `AeroOne-bundle.zip` + `.sha256` | 같은 Release asset 또는 Open Notebook `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 후 `2-airgap-install.bat` | Open Notebook 사용 시 필수 |
 | Ollama 모델 폴더(`manifests\`, `blobs\`) | 인터넷 PC `%USERPROFILE%\.ollama\models` | 폐쇄망 PC `%USERPROFILE%\.ollama\models` | AeroAI/Open Notebook AI 사용 시 필수 |
 | `OllamaSetup.exe` | 인터넷 PC에서 별도 다운로드 | 폐쇄망 PC에 1회 설치 | 폐쇄망 PC에 Ollama 없을 때 필수 |
@@ -529,6 +530,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 
 | 단계 | 커밋 | 단계 보고서 |
 |---|---|---|
+| 단계 20 (1.7.1 dashboard/newsletter UX patch) | `1.7.1-dev` | `phase-20-dashboard-development-section-handoff.md` |
 | 단계 19 (1.7.0 AeroAI/Viewer UX release) | `1.7.0` | `phase-19-aeroai-viewer-ux-release.md` |
 | 단계 18 (1.6.2 smoke patch) | `1.6.2` | `phase-18-closed-network-smoke-fixes.md` |
 | 단계 17 (viewer/editor + launcher/AI fixes) | `1.6.0-dev` | `phase-17-viewer-editor-and-launcher-ai-fixes.md` |

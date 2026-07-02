@@ -23,6 +23,8 @@ it('starts collapsed and expands the light calendar on click', () => {
   expect(panel).toHaveClass('bg-surface-raised');
   expect(panel).toHaveClass('h-full');
   expect(panel).toHaveClass('p-2');
+  expect(panel).toHaveClass('w-max');
+  expect(panel).toHaveAttribute('data-newsletter-calendar-state', 'closed');
   expect(panel?.className).not.toContain('bg-slate-900');
   expect(screen.queryByText('2026년 3월')).toBeNull();
   ['일', '월', '화', '수', '목', '금', '토'].forEach((weekday) => {
@@ -38,6 +40,7 @@ it('starts collapsed and expands the light calendar on click', () => {
   // Expanded state: month label, grid, nav buttons all present
   const expandedPanel = container.querySelector('section');
   expect(expandedPanel).toHaveClass('p-4');
+  expect(expandedPanel).toHaveAttribute('data-newsletter-calendar-state', 'open');
   expect(screen.getByRole('button', { name: '달력 접기' })).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByRole('button', { name: '이전 달' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '다음 달' })).toBeInTheDocument();
@@ -75,4 +78,21 @@ it('can render the calendar panel with dark theme classes', () => {
     'href',
     '/newsletters?slug=newsletter-20260326&theme=dark',
   );
+});
+
+it('notifies a controlled parent when the collapsed calendar should expand horizontally', () => {
+  const onOpenChange = vi.fn();
+  render(
+    <NewsletterDateCalendar
+      selectedSlug="newsletter-20260326"
+      entries={[...entries]}
+      open={false}
+      onOpenChange={onOpenChange}
+    />,
+  );
+
+  const toggle = screen.getByRole('button', { name: '달력 펼치기' });
+  fireEvent.click(toggle);
+
+  expect(onOpenChange).toHaveBeenCalledWith(true);
 });

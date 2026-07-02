@@ -15,6 +15,15 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.7.1',
+    date: '2026-07-01',
+    items: [
+      '뉴스레터 달력 접기를 개선했습니다 — 달력을 접으면 왼쪽 날짜 영역의 가로 폭도 함께 줄어 본문을 더 넓게 볼 수 있습니다.',
+      '뉴스레터 HTML 다운로드 버튼을 음영과 강조색으로 더 잘 보이게 해, 원본 HTML 파일을 쉽게 내려받을 수 있도록 했습니다.',
+      '사용법 팝업을 현재 서비스 중 / 개발중 구분에 맞춰 갱신하고, 개발중 섹션의 Active 카드와 Coming soon 비활성 카드를 명확히 안내합니다.',
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-06-26',
     items: [
