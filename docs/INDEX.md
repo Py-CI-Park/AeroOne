@@ -2,8 +2,8 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 버전: `1.7.0` (`AeroAI/Viewer UX 강화 + Open Notebook 동거 릴리즈`)
-- 갱신일: 2026-06-26
+- 기준 버전: `1.7.1` (`뉴스레터 달력 접힘 + 다운로드 강조 + 사용법 최신화`)
+- 갱신일: 2026-07-01
 
 ---
 
@@ -65,7 +65,7 @@
 | 단계 17 | [`reports/phase-17-viewer-editor-and-launcher-ai-fixes.md`](reports/phase-17-viewer-editor-and-launcher-ai-fixes.md) | Viewer 탭 + 런처/AeroAI/HTML 스크롤 수정 — minor 1.6.0 | `1.6.0-dev` |
 | 단계 18 | [`reports/phase-18-closed-network-smoke-fixes.md`](reports/phase-18-closed-network-smoke-fixes.md) | 1.6.1 폐쇄망 smoke 결함 보강 — patch 1.6.2 | `1.6.2` |
 | 단계 19 | [`reports/phase-19-aeroai-viewer-ux-release.md`](reports/phase-19-aeroai-viewer-ux-release.md) | AeroAI Markdown 답변·HTML 검색 새 탭·모니터 높이 레이아웃 + Viewer 집중/전체화면 + Open Notebook 동거 릴리즈 — minor 1.7.0 | `1.7.0-dev` |
-| 단계 20 | [`reports/phase-20-dashboard-development-section-handoff.md`](reports/phase-20-dashboard-development-section-handoff.md) | 대시보드 개발중 섹션 신설 + AeroAI/Notebook/Viewer/Ladder active 이동 + coming-soon 카드 비활성 유지 | 이번 변경 |
+| 단계 20 | [`reports/phase-20-dashboard-development-section-handoff.md`](reports/phase-20-dashboard-development-section-handoff.md) | 대시보드 개발중 섹션 신설 + AeroAI/Notebook/Viewer/Ladder active 이동 + coming-soon 카드 비활성 유지 + 1.7.1 뉴스레터/사용법 patch | `1.7.1-dev` |
 
 ---
 
@@ -126,7 +126,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.7.0 기준 backend 175 passed, frontend Vitest 203 passed(47 파일), `tsc --noEmit`/`next build` 성공.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.7.1 기준 backend 175 passed, frontend Vitest 205 passed(47 파일), `tsc --noEmit`, `next build`, 대시보드·뉴스레터 브라우저 smoke 를 수행한다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|

@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 
 import { NewsletterDateCalendar } from '@/components/newsletter/newsletter-date-calendar';
 import { NewsletterDetailClient } from '@/components/newsletter/newsletter-detail-client';
@@ -19,13 +21,19 @@ export function NewslettersReading({
   calendarEntries: NewsletterCalendarEntry[];
   theme?: NewsletterTheme;
 }) {
+  const [calendarOpen, setCalendarOpen] = useState(true);
+  const gridClassName =
+    calendarEntries.length === 0
+      ? 'grid gap-5'
+      : `grid gap-5 ${calendarOpen ? 'lg:grid-cols-[300px_minmax(0,1fr)]' : 'lg:grid-cols-[max-content_minmax(0,1fr)]'}`;
+
   return (
-    <div data-testid="newsletters-reading" className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+    <div data-testid="newsletters-reading" data-calendar-open={calendarOpen} className={gridClassName}>
       {/* 읽음 비콘 — 독자 브라우저가 백엔드를 직접 호출해 접속 IP 를 기록(렌더 출력 없음) */}
       <ReadBeacon newsletterId={newsletter.id} />
 
       {/* 좌측 — 달력(기본 펼침) */}
-      <aside className="flex flex-col gap-3">
+      <aside className={`flex flex-col gap-3 ${calendarOpen ? '' : 'lg:w-max'}`}>
         {calendarEntries.length > 0 ? (
           <section data-testid="newsletters-calendar-panel">
             <NewsletterDateCalendar
@@ -33,6 +41,8 @@ export function NewslettersReading({
               selectedSlug={newsletter.slug}
               theme={theme}
               defaultOpen
+              open={calendarOpen}
+              onOpenChange={setCalendarOpen}
             />
           </section>
         ) : null}

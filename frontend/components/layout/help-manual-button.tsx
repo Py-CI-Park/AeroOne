@@ -6,11 +6,11 @@ const MANUAL_SECTIONS = [
   {
     id: 'dashboard',
     label: '대시보드',
-    title: '대시보드와 공통 조작',
+    title: '대시보드와 서비스 상태',
     rows: [
-      ['모듈 열기', '카드나 상단 메뉴를 클릭해 뉴스레터, 문서, AI, 보고서, 게임으로 이동합니다.'],
-      ['테마 변경', '우측 상단 DARK/LIGHT 버튼으로 라이트·다크 테마를 전환합니다.'],
-      ['사용법 보기', '현재 버튼을 눌러 기능별 사용법을 팝업으로 확인합니다.'],
+      ['현재 서비스 중', 'Newsletter, Document, Civil Aircraft, NSA 는 운영 중인 열람 서비스입니다. 카드나 상단 메뉴를 클릭해 바로 이동합니다.'],
+      ['개발중', 'Viewer, AeroAI, Notebook, Ladder 는 개발중 섹션에 모아 두었지만 현재 사용할 수 있는 Active 카드입니다. Announcement 와 Schedule 은 Coming soon 비활성 카드로 남겨 둡니다.'],
+      ['테마·사용법', '우측 상단 DARK/LIGHT 로 테마를 전환하고, 사용법 버튼으로 현재 서비스 중/개발중 기능 안내를 확인합니다.'],
     ],
   },
   {
@@ -19,8 +19,8 @@ const MANUAL_SECTIONS = [
     title: '뉴스레터 열람',
     rows: [
       ['최신 글 보기', 'Newsletter 메뉴에서 최신 뉴스레터가 자동으로 열립니다.'],
-      ['날짜 이동', '달력/목록에서 원하는 날짜의 이슈를 선택합니다.'],
-      ['HTML/PDF/Markdown', '제공된 형식 버튼을 눌러 미리보기 또는 다운로드를 사용합니다. 원본 파일이 없으면 안내 메시지가 표시됩니다.'],
+      ['달력 접기', '달력 접기를 누르면 날짜 영역이 세로뿐 아니라 가로 폭도 줄어 본문을 더 넓게 볼 수 있습니다. 다시 달력 펼치기로 날짜 선택 영역을 복원합니다.'],
+      ['HTML 다운로드', '강조된 HTML 다운로드 버튼으로 현재 뉴스레터 원본 HTML 을 바로 내려받습니다. PDF/Markdown 자산이 있으면 형식 버튼으로 전환해 미리보기 또는 다운로드를 사용합니다.'],
     ],
   },
   {
@@ -28,17 +28,17 @@ const MANUAL_SECTIONS = [
     label: '문서',
     title: '문서·보고서 HTML 보관소',
     rows: [
-      ['문서 보관소', 'Document 메뉴에서 _database/document 의 HTML 문서를 폴더 트리로 엽니다.'],
-      ['민간항공기 보고서', 'Civil Aircraft 카드에서 _database/civil_aircraft 문서를 봅니다.'],
-      ['NSA 문서', 'NSA 카드는 비밀번호 입력 후 _database/nsa 목록을 불러옵니다. 민감자료 보관용 인증 기능은 아닙니다.'],
+      ['Document', '현재 서비스 중입니다. Document 메뉴에서 _database/document 의 HTML 문서를 폴더 트리로 엽니다.'],
+      ['Civil Aircraft', '현재 서비스 중입니다. Civil Aircraft 카드에서 _database/civil_aircraft 문서를 봅니다.'],
+      ['NSA', '현재 서비스 중인 가벼운 가림막입니다. 비밀번호 입력 후 _database/nsa 목록을 불러오며, 민감자료 보관용 인증 기능은 아닙니다.'],
     ],
   },
   {
     id: 'ai',
     label: 'AeroAI',
-    title: 'AeroAI 채팅과 문서 근거',
+    title: 'AeroAI 채팅과 문서 근거 (개발중)',
     rows: [
-      ['AeroAI 채팅', '대시보드 AeroAI 카드에서 사내 폐쇄망 AI 와 대화합니다. 답변은 Markdown 형식으로 렌더링되며, 복사 버튼은 보고서/메일에 붙여 넣기 좋은 원본 Markdown 을 복사합니다.'],
+      ['AeroAI 채팅', '개발중 섹션의 Active 카드입니다. 사내 폐쇄망 AI 와 대화하고, 답변은 Markdown 으로 렌더링되며 복사 버튼은 원본 Markdown 을 복사합니다.'],
       ['문서 근거 답변', '검색 결과를 체크해 그 문서만 답변 근거로 보내거나, 근거 범위(Document/Civil/NSA)를 토글할 수 있습니다. 답변 근거는 우측 패널에서 새 탭/확대 미리보기/전체 보기로 확인합니다.'],
       ['HTML 본문 검색', 'AeroAI 화면 오른쪽 검색창에서 _database/document, _database/civil_aircraft 본문을 검색하고 결과 링크를 새 탭으로 엽니다.'],
     ],
@@ -46,11 +46,21 @@ const MANUAL_SECTIONS = [
   {
     id: 'viewer',
     label: 'Viewer',
-    title: '로컬 Viewer',
+    title: '로컬 Viewer (개발중)',
     rows: [
-      ['파일 열기', '로컬 Markdown·HTML 파일을 끌어다 놓거나 선택한 뒤 미리보기 렌더를 누릅니다. 파일은 서버에 저장되지 않습니다.'],
+      ['파일 열기', '개발중 섹션의 Active 카드입니다. 로컬 Markdown·HTML 파일을 끌어다 놓거나 선택한 뒤 미리보기 렌더를 누릅니다. 파일은 서버에 저장되지 않습니다.'],
       ['보기 전환', '편집+미리보기 / 미리보기 집중 / 전체화면 미리보기로 화면 폭과 모니터 높이에 맞춰 봅니다.'],
       ['보안 경계', '로컬 파일 미리보기는 빈 sandbox iframe 으로 표시되어 문서 안의 스크립트와 동일출처 권한이 차단됩니다.'],
+    ],
+  },
+  {
+    id: 'notebook-ladder',
+    label: '기타 개발중',
+    title: 'Notebook·Ladder (개발중)',
+    rows: [
+      ['Notebook', '개발중 섹션의 Active 카드입니다. 같은 호스트의 Open Notebook 앱(:8502)을 새 탭으로 열며 AeroOne 과 DB·세션·포트를 공유하지 않습니다.'],
+      ['Ladder', '개발중 섹션의 Active 카드입니다. 참가자와 당첨 항목을 입력해 브라우저 안에서 사다리 결과를 계산합니다.'],
+      ['Coming soon', 'Announcement 와 Schedule 은 아직 이동하지 않는 비활성 카드입니다. 활성화 전까지 클릭 경로가 없습니다.'],
     ],
   },
   {
@@ -73,11 +83,11 @@ const MANUAL_SECTIONS = [
       ['Ollama 설정', 'Ollama 가 다른 PC 에 있으면 backend/.env 의 OLLAMA_BASE_URL 을 http://<ollama-ip>:11434 로 바꿉니다.'],
     ],
   },
-];
+] as const;
 
 export function HelpManualButton() {
   const [open, setOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState(MANUAL_SECTIONS[0].id);
+  const [selectedId, setSelectedId] = useState<string>(MANUAL_SECTIONS[0].id);
   const selected = useMemo(
     () => MANUAL_SECTIONS.find((section) => section.id === selectedId) ?? MANUAL_SECTIONS[0],
     [selectedId],

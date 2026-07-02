@@ -766,7 +766,7 @@ export function HtmlViewer({
             download
             data-testid="html-viewer-download"
             onClick={onDownload}
-            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line-subtle bg-surface-raised px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1"
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-accent/60 bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent shadow-md shadow-accent/20 ring-1 ring-accent/15 transition-colors hover:bg-accent hover:text-accent-on focus-visible:shadow-focus focus-visible:outline-none"
             title={`${title} HTML 다운로드`}
             aria-label={`${title} HTML 다운로드`}
           >

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
@@ -39,8 +39,27 @@ vi.mock('@/lib/api', async () => {
 });
 
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
-  NewsletterDateCalendar: ({ theme, defaultOpen }: { theme: string; defaultOpen?: boolean }) => (
-    <div data-testid="newsletter-date-calendar" data-theme={theme} data-default-open={String(Boolean(defaultOpen))} />
+  NewsletterDateCalendar: ({
+    theme,
+    defaultOpen,
+    open,
+    onOpenChange,
+  }: {
+    theme: string;
+    defaultOpen?: boolean;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="newsletter-date-calendar"
+      data-theme={theme}
+      data-default-open={String(Boolean(defaultOpen))}
+      data-open={String(Boolean(open))}
+      onClick={() => onOpenChange?.(!open)}
+    >
+      mock calendar
+    </button>
   ),
 }));
 
@@ -112,6 +131,19 @@ test('renders the reading view in a token-themed shell with the newsletters nav 
 
   const nav = screen.getByRole('navigation');
   expect(nav.querySelector('a[aria-current="page"]')?.textContent).toBe('Newsletter');
+});
+
+test('collapsing the calendar also narrows the desktop grid column', async () => {
+  render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+
+  const reading = screen.getByTestId('newsletters-reading');
+  expect(reading).toHaveAttribute('data-calendar-open', 'true');
+  expect(reading).toHaveClass('lg:grid-cols-[300px_minmax(0,1fr)]');
+
+  fireEvent.click(screen.getByTestId('newsletter-date-calendar'));
+
+  expect(reading).toHaveAttribute('data-calendar-open', 'false');
+  expect(reading).toHaveClass('lg:grid-cols-[max-content_minmax(0,1fr)]');
 });
 
 test('query theme overrides cookie and env defaults and reaches the calendar', async () => {

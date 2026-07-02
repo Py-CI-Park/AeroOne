@@ -19,11 +19,15 @@ export function NewsletterDateCalendar({
   selectedSlug,
   theme = 'light',
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   entries: NewsletterCalendarEntry[];
   selectedSlug?: string;
   theme?: NewsletterTheme;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const parsedEntries = useMemo<CalendarEntry[]>(
     () =>
@@ -51,7 +55,14 @@ export function NewsletterDateCalendar({
   );
 
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) {
+      setInternalOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
   const [year, month] = (monthKeys[monthIndex] ?? monthKeys[0] ?? `${new Date().getFullYear()}-${new Date().getMonth()}`)
     .split('-')
     .map(Number);
@@ -78,7 +89,7 @@ export function NewsletterDateCalendar({
     'rounded border border-line-subtle bg-surface-elevated px-2.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-sunken hover:text-ink-1 disabled:cursor-not-allowed disabled:opacity-40';
 
   return (
-    <section className={`h-full rounded-lg border border-line-subtle bg-surface-raised text-ink-1 ${open ? 'p-4' : 'p-2'}`}>
+    <section data-newsletter-calendar-state={open ? 'open' : 'closed'} className={`h-full rounded-lg border border-line-subtle bg-surface-raised text-ink-1 ${open ? 'p-4' : 'w-max p-2'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-wide text-ink-3">Calendar</p>
@@ -114,7 +125,7 @@ export function NewsletterDateCalendar({
             type="button"
             aria-expanded={open}
             aria-controls="newsletter-calendar-grid"
-            onClick={() => setOpen((current) => !current)}
+            onClick={() => setOpen(!open)}
             className="rounded border border-accent-soft bg-accent-soft px-2.5 py-1.5 text-sm text-accent transition-colors hover:bg-surface-sunken"
           >
             {open ? '달력 접기' : '달력 펼치기'}

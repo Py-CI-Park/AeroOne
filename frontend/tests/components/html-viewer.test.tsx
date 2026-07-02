@@ -204,6 +204,9 @@ it('renders optional HTML download next to the fit toggle with text only', () =>
 
   expect(download).toHaveAttribute('href', '/api/frontend/collections/document/download/html?path=doc.html');
   expect(download).toHaveTextContent('HTML 다운로드');
+  expect(download).toHaveClass('bg-accent-soft');
+  expect(download).toHaveClass('font-semibold');
+  expect(download).toHaveClass('shadow-md');
   expect(download.querySelector('svg')).toBeNull();
   expect(controls?.children[2]).toBe(screen.getByTestId('html-viewer-fit-toggle'));
   expect(controls?.children[3]).toBe(download);

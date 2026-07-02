@@ -54,8 +54,11 @@ test('opens the usage manual popup from the header', async () => {
 
   await user.click(screen.getByRole('button', { name: 'AeroAI' }));
 
-  expect(screen.getByRole('heading', { name: 'AeroAI 채팅과 문서 근거' })).toBeInTheDocument();
-  expect(screen.getByText(/사내 폐쇄망 AI/)).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'AeroAI 채팅과 문서 근거 (개발중)' })).toBeInTheDocument();
+  expect(screen.getByText(/개발중 섹션의 Active 카드/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '대시보드' }));
+  expect(screen.getAllByText(/현재 서비스 중/).length).toBeGreaterThan(0);
+  expect(screen.getByText(/Viewer, AeroAI, Notebook, Ladder/)).toBeInTheDocument();
 
   await user.click(screen.getByRole('button', { name: '닫기' }));
 
