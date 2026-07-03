@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import uuid
+import time
+from hashlib import sha256
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -23,6 +25,7 @@ from app.modules.ai.service import AiChatService, OllamaEmptyResponse, OllamaMod
 from app.modules.ai import models as ai_models  # noqa: F401  (create_all 등록용 import 체인)
 from app.modules.ai.repositories import AiConversationRepository
 from app.modules.ai.models import AiConversation
+from app.modules.admin.models import AiRequestLog
 from app.modules.auth.dependencies import get_db, get_settings
 from app.modules.collections.search_service import ALL_SEARCH_COLLECTIONS, DEFAULT_SEARCH_COLLECTIONS, CollectionSearchRoot
 
@@ -144,6 +147,8 @@ def chat_with_ai(
     settings: Settings = Depends(get_settings),
     db: Session = Depends(get_db),
 ) -> AiChatResponse:
+    started = time.perf_counter()
+    request_id = uuid.uuid4().hex
     collections = _requested_collections(payload.collections)
     roots = [
         CollectionSearchRoot(collection=collection, root=_resolve_collection_root(collection, settings))
@@ -153,6 +158,24 @@ def chat_with_ai(
     roots_by_collection = {
         collection: _resolve_collection_root(collection, settings) for collection in ALL_SEARCH_COLLECTIONS
     }
+    def log_failure(error_code: str) -> None:
+        db.add(
+            AiRequestLog(
+                request_id=request_id,
+                user_id=None,
+                session_hash=None,
+                ip_address=_client_ip(request),
+                model=settings.ollama_default_model,
+                status='error',
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                error_code=error_code,
+                citation_count=0,
+                collection_scope=','.join(collections),
+            )
+        )
+        db.flush()
+        db.commit()
+
     try:
         answer, citations = AiChatService(settings).chat(
             payload.messages,
@@ -163,19 +186,24 @@ def chat_with_ai(
             roots_by_collection=roots_by_collection,
         )
     except OllamaModelMissing as exc:
+        log_failure(exc.__class__.__name__)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except OllamaUnavailable as exc:
+        log_failure(exc.__class__.__name__)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except OllamaEmptyResponse as exc:
         # 연결 다운(503)이 아니라 모델이 빈 응답을 준 경우 — 502 Bad Gateway 로 구분.
+        log_failure(exc.__class__.__name__)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     citation_dicts = [result.as_dict() for result in citations]
     conversation_id: int | None = None
     persisted = False
+    owner_session_id: str | None = None
     # 임시 대화 또는 영속화 비활성 시 DB 저장 없음(임시성 원칙).
     if settings.ai_persistence_enabled and not payload.temporary:
-        session_id = _owner_session(request, response, settings)
+        owner_session_id = _owner_session(request, response, settings)
+        session_id = owner_session_id
         repo = AiConversationRepository(db)
         conversation: AiConversation | None = None
         if payload.conversation_id is not None:
@@ -197,6 +225,24 @@ def chat_with_ai(
         db.commit()
         conversation_id = conversation.id
         persisted = True
+    session_hash = None
+    if owner_session_id:
+        session_hash = sha256(owner_session_id.encode('utf-8')).hexdigest()[:64]
+    db.add(
+        AiRequestLog(
+            request_id=request_id,
+            user_id=None,
+            session_hash=session_hash,
+            ip_address=_client_ip(request),
+            model=settings.ollama_default_model,
+            status='ok',
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            conversation_id=conversation_id,
+            citation_count=len(citation_dicts),
+            collection_scope=','.join(collections),
+        )
+    )
+    db.flush()
 
     return AiChatResponse(
         model=settings.ollama_default_model,

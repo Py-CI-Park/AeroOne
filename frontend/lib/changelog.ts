@@ -15,6 +15,15 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.8.0',
+    date: '2026-07-03',
+    items: [
+      '관리자 콘솔을 추가했습니다 — 버전/운영 모드, DB 상태, 뉴스레터·자산·읽음·AI 상태, 최근 감사 로그, 백업 상태를 한 화면에서 확인합니다.',
+      '대시보드 카드 원천을 service_modules DB 관리로 전환했습니다 — 개발중/Active/Coming soon, 설명, 링크, 순서를 코드 릴리즈 없이 조정할 수 있습니다.',
+      'Open WebUI 벤치마크를 반영해 admin/user/pending 역할, 권한 조합, 관리자 감사 로그, 뉴스레터 상태·자산 점검·일괄 작업, metadata-only AI 운영 로그를 도입했습니다.',
+    ],
+  },
+  {
     version: '1.7.1',
     date: '2026-07-01',
     items: [

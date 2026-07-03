@@ -7,12 +7,13 @@ import { VersionBadge } from '@/components/layout/version-badge';
 import { HelpManualButton } from '@/components/layout/help-manual-button';
 import type { NewsletterTheme } from '@/lib/theme';
 
-type ActiveNav = 'dashboard' | 'newsletters' | 'documents' | 'none';
+type ActiveNav = 'dashboard' | 'newsletters' | 'documents' | 'admin' | 'none';
 
 const NAV_ITEMS: { id: Exclude<ActiveNav, 'none'>; label: string; href: string }[] = [
   { id: 'dashboard', label: 'Dashboard', href: '/' },
   { id: 'newsletters', label: 'Newsletter', href: '/newsletters' },
   { id: 'documents', label: 'Document', href: '/documents' },
+  { id: 'admin', label: 'Admin', href: '/admin' },
 ];
 
 export function AppShell({

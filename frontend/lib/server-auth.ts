@@ -28,5 +28,9 @@ export async function requireAdminSession() {
     redirect('/login');
   }
 
-  return (await response.json()) as AuthResponse['user'];
+  const user = (await response.json()) as AuthResponse['user'];
+  if (user.role !== 'admin') {
+    redirect('/login');
+  }
+  return user;
 }

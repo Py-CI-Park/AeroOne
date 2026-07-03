@@ -1,109 +1,42 @@
 import { AppShell } from '@/components/layout/app-shell';
 import { ServiceCard } from '@/components/dashboard/service-card';
 import { NotebookLinkCard } from '@/components/dashboard/notebook-link-card';
+import { fetchPublicServiceModules } from '@/lib/api';
 import { getAppTheme } from '@/lib/server-theme';
+import type { ServiceModule } from '@/lib/types';
 
 type SearchParams = {
   theme?: string;
 };
 
-const MODULES = [
-  {
-    id: 'newsletter',
-    title: 'Newsletter',
-    href: '/newsletters',
-    badge: 'Active',
-    active: true,
-    section: 'Newsletter',
-  },
-  {
-    id: 'civil-aircraft',
-    title: 'Civil Aircraft Spec Catalog',
-    description: 'Commercial aircraft specs & market competition analysis.',
-    href: '/reports/civil-aircraft',
-    badge: 'Active',
-    active: true,
-    section: 'Document',
-  },
-  {
-    id: 'document',
-    title: 'Document',
-    description: 'Browse HTML documents organized in folders.',
-    href: '/documents',
-    badge: 'Active',
-    active: true,
-    section: 'Document',
-  },
-  {
-    id: 'nsa',
-    title: 'NSA',
-    description: 'Password-protected HTML documents.',
-    href: '/nsa',
-    badge: 'Active',
-    active: true,
-    section: 'Document',
-  },
-  {
-    id: 'viewer',
-    title: 'Viewer',
-    description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).',
-    href: '/viewer',
-    badge: 'Active',
-    active: true,
-    section: '개발중',
-  },
-  {
-    id: 'ai',
-    title: 'AeroAI',
-    description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.',
-    href: '/ai',
-    badge: 'Active',
-    active: true,
-    section: '개발중',
-  },
-  {
-    id: 'open-notebook',
-    title: 'Notebook',
-    description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).',
-    // href 는 NotebookLinkCard 가 window.location.hostname 으로 직접 생성하므로 비워 둔다(external 분기에서 module.href 미사용).
-    href: '',
-    badge: 'Active',
-    active: true,
-    section: '개발중',
-    external: true,
-  },
-  {
-    id: 'ladder',
-    title: 'Ladder',
-    description: 'Coffee-bet ladder game (사다리타기).',
-    href: '/games/ladder',
-    badge: 'Active',
-    active: true,
-    section: '개발중',
-  },
-  {
-    id: 'announcement',
-    title: 'Announcement',
-    description: 'Company-wide announcements module.',
-    // 비활성 모듈 — ServiceCard 가 active:false 를 비링크 div 로 렌더하므로 이동하지 않는다.
-    // href 는 '/newsletters' 오인 연결 대신 무의미 앵커로 둔다.
-    href: '#',
-    badge: 'Coming soon',
-    active: false,
-    section: '개발중',
-  },
-  {
-    id: 'schedule',
-    title: 'Schedule',
-    description: 'Shared calendar & event tracking.',
-    href: '#',
-    badge: 'Coming soon',
-    active: false,
-    section: '개발중',
-  },
-] as const;
+const FALLBACK_MODULES: ServiceModule[] = [
+  { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false },
+  { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false },
+  { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false },
+  { id: 4, key: 'nsa', title: 'NSA', description: 'Password-protected HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false },
+  { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 50, is_external: false },
+  { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 60, is_external: false },
+  { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 70, is_external: true },
+  { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 80, is_external: false },
+  { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: '개발중', status: 'coming_soon', sort_order: 90, is_external: false },
+  { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: '개발중', status: 'coming_soon', sort_order: 100, is_external: false },
+];
 
-const SECTION_ORDER = ['Newsletter', 'Document', '개발중'] as const;
+const SECTION_ORDER = ['Newsletter', 'Document', '개발중'];
+
+function orderSections(modules: ServiceModule[]) {
+  const extras = modules.map((module) => module.section).filter((section) => !SECTION_ORDER.includes(section));
+  return [...SECTION_ORDER, ...Array.from(new Set(extras))];
+}
+
+async function loadModules(): Promise<{ modules: ServiceModule[]; degraded: boolean }> {
+  try {
+    const modules = await fetchPublicServiceModules();
+    return { modules, degraded: false };
+  } catch {
+    return { modules: FALLBACK_MODULES, degraded: true };
+  }
+}
 
 export default async function HomePage({
   searchParams,
@@ -112,10 +45,10 @@ export default async function HomePage({
 }) {
   const params = await searchParams;
   const theme = await getAppTheme(params.theme);
-
-  // 카운트는 MODULES 에서 파생 — 카드를 늘려도 상단 요약이 자동으로 맞는다.
-  const activeCount = MODULES.filter((module) => module.active).length;
-  const comingCount = MODULES.length - activeCount;
+  const { modules, degraded } = await loadModules();
+  const sortedModules = [...modules].sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
+  const activeCount = sortedModules.filter((module) => module.is_enabled).length;
+  const comingCount = sortedModules.filter((module) => module.status === 'coming_soon' || !module.is_enabled).length;
 
   return (
     <AppShell
@@ -126,29 +59,37 @@ export default async function HomePage({
       titleMeta={`${activeCount} active · ${comingCount} coming soon`}
     >
       <section className="flex flex-col gap-8">
-        {SECTION_ORDER.map((sectionName) => {
-          const sectionModules = MODULES.filter((module) => module.section === sectionName);
+        {degraded ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            대시보드 모듈 DB 를 읽지 못해 내장 fallback 목록을 표시합니다. 관리자 화면에서 DB 상태와
+            service_modules migration 을 확인하세요.
+          </div>
+        ) : null}
+        {orderSections(sortedModules).map((sectionName) => {
+          const sectionModules = sortedModules.filter((module) => module.section === sectionName);
           if (sectionModules.length === 0) return null;
           return (
             <div key={sectionName}>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">{sectionName}</h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {sectionModules.map((module) =>
-                  'external' in module && module.external ? (
+                  module.is_external ? (
                     <NotebookLinkCard
-                      key={module.id}
+                      key={module.key}
                       title={module.title}
-                      description={'description' in module ? module.description : undefined}
+                      description={module.description ?? undefined}
                       badge={module.badge}
+                      href={module.href}
+                      active={module.is_enabled}
                     />
                   ) : (
                     <ServiceCard
-                      key={module.id}
+                      key={module.key}
                       title={module.title}
-                      description={'description' in module ? module.description : undefined}
+                      description={module.description ?? undefined}
                       href={module.href}
                       badge={module.badge}
-                      active={module.active}
+                      active={module.is_enabled}
                     />
                   ),
                 )}

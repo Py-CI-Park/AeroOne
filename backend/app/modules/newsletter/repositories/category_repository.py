@@ -10,8 +10,11 @@ class CategoryRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def list_all(self) -> list[Category]:
-        return list(self.db.scalars(select(Category).order_by(Category.name)).all())
+    def list_all(self, *, include_inactive: bool = False) -> list[Category]:
+        stmt = select(Category).order_by(Category.sort_order, Category.name)
+        if not include_inactive:
+            stmt = stmt.where(Category.is_active.is_(True))
+        return list(self.db.scalars(stmt).all())
 
     def get(self, category_id: int) -> Category | None:
         return self.db.get(Category, category_id)

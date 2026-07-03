@@ -19,7 +19,7 @@ export default async function AdminImportsPage({
   await requireAdminSession();
 
   return (
-    <AppShell title="Import / Sync" theme={theme} themePath="/admin/imports">
+    <AppShell title="Import / Sync" theme={theme} themePath="/admin/imports" active="admin">
       <ImportPanel />
     </AppShell>
   );

@@ -16,7 +16,7 @@ class NewsletterRepository:
         return select(Newsletter).options(joinedload(Newsletter.assets), joinedload(Newsletter.tags), joinedload(Newsletter.category))
 
     def list_public(self, *, q: str | None = None, category: str | None = None, tag: str | None = None, source_type: SourceType | None = None) -> list[Newsletter]:
-        stmt = self.base_query().where(Newsletter.is_active.is_(True)).order_by(Newsletter.published_at.desc().nullslast(), Newsletter.created_at.desc())
+        stmt = self.base_query().where(Newsletter.is_active.is_(True), Newsletter.status == 'published').order_by(Newsletter.published_at.desc().nullslast(), Newsletter.created_at.desc())
         if q:
             like = f'%{q.lower()}%'
             stmt = stmt.outerjoin(Newsletter.tags).where(
@@ -34,9 +34,20 @@ class NewsletterRepository:
             stmt = stmt.where(Newsletter.source_type == source_type)
         return list(self.db.execute(stmt.distinct()).scalars().unique().all())
 
-    def list_admin(self) -> list[Newsletter]:
+    def list_admin(self, *, q: str | None = None, status: str | None = None) -> list[Newsletter]:
         stmt = self.base_query().order_by(Newsletter.updated_at.desc())
-        return list(self.db.execute(stmt).scalars().unique().all())
+        if q:
+            like = f'%{q.lower()}%'
+            stmt = stmt.outerjoin(Newsletter.tags).where(
+                or_(
+                    func.lower(Newsletter.title).like(like),
+                    func.lower(func.coalesce(Newsletter.description, '')).like(like),
+                    func.lower(func.coalesce(Tag.name, '')).like(like),
+                )
+            )
+        if status:
+            stmt = stmt.where(Newsletter.status == status)
+        return list(self.db.execute(stmt.distinct()).scalars().unique().all())
 
     def get_by_slug(self, slug: str) -> Newsletter | None:
         stmt = self.base_query().where(Newsletter.slug == slug)

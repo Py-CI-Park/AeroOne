@@ -19,7 +19,7 @@ export default async function AdminNewslettersPage({
   await requireAdminSession();
 
   return (
-    <AppShell title="관리자 뉴스레터 목록" theme={theme} themePath="/admin/newsletters">
+    <AppShell title="관리자 뉴스레터 목록" theme={theme} themePath="/admin/newsletters" active="admin">
       <AdminNewsletterList />
     </AppShell>
   );

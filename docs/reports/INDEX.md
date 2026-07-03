@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -138,6 +138,14 @@
 - 코드: `frontend/app/page.tsx`, `frontend/tests/app/home-page.test.tsx`, `frontend/components/newsletter/newsletters-reading.tsx`, `frontend/components/newsletter/newsletter-date-calendar.tsx`, `frontend/components/newsletter/html-viewer.tsx`, `frontend/components/layout/help-manual-button.tsx`, `frontend/lib/changelog.ts`
 - 문서: `README.md`, `docs/INDEX.md`, `docs/CLOSED_NETWORK_GUIDE.md`, `docs/runbook/closed-network-install-manual.md`, `docs/runbook/open-notebook-airgap.md`
 - 회귀 방지: backend `pytest tests` 175 passed(경고 3), frontend Vitest 205 passed(47 파일), `tsc --noEmit`, `next build`, production browser dashboard/newsletter smoke, Ultragoal review/QA gate.
+
+### 단계 21 — 관리자 RBAC·운영 콘솔·DB 관리 기반 (1.8.0)
+
+- 파일: [`phase-21-admin-rbac-operations-console.md`](phase-21-admin-rbac-operations-console.md)
+- 분류: minor (`1.8.0`) — 관리자 권한·감사·운영 콘솔·DB 기반 대시보드 관리 확장.
+- 무엇: Open WebUI 벤치마크에서 `admin/user/pending`, additive permissions/groups, 운영 analytics 패턴만 채택해 `require_permission`/CSRF 분리, same-transaction audit, `service_modules` DB 원천, `/admin` 홈 콘솔, 뉴스레터 상태/자산/bulk/taxonomy, 백업 manifest+sha256+restore dry-run, 통합 검색, AI metadata-only 로그를 구현.
+- 코드: `backend/app/modules/admin/`, `backend/alembic/versions/20260703_0004_admin_rbac_operations.py`, `frontend/app/admin/page.tsx`, `frontend/components/admin/admin-home-console.tsx`, `frontend/app/page.tsx`
+- 회귀 방지: backend `pytest tests` 177 passed(경고 3), frontend Vitest 205 passed(47 파일), `tsc --noEmit`, `next build`, browser dashboard/admin smoke, Ultragoal architect/QA gate CLEAR.
 
 ---
 

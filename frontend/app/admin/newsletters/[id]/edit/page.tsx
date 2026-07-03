@@ -22,7 +22,7 @@ export default async function AdminNewsletterEditPage({
   await requireAdminSession();
 
   return (
-    <AppShell title="관리자 수정" theme={theme} themePath={`/admin/newsletters/${id}/edit`}>
+    <AppShell title="관리자 수정" theme={theme} themePath={`/admin/newsletters/${id}/edit`} active="admin">
       <AdminNewsletterEditClient newsletterId={Number(id)} />
     </AppShell>
   );

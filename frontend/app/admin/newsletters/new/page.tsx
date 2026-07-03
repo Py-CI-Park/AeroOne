@@ -19,7 +19,7 @@ export default async function AdminNewsletterCreatePage({
   await requireAdminSession();
 
   return (
-    <AppShell title="관리자 등록" theme={theme} themePath="/admin/newsletters/new">
+    <AppShell title="관리자 등록" theme={theme} themePath="/admin/newsletters/new" active="admin">
       <NewsletterForm mode="create" />
     </AppShell>
   );

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.modules.auth.dependencies import get_current_admin, get_db, get_settings
+from app.modules.auth.dependencies import get_current_user, get_db, get_settings
 from app.modules.auth.schemas import AuthResponse, LoginRequest, UserResponse
 from app.modules.auth.services import AuthError, AuthService
 
@@ -52,5 +52,5 @@ def logout(response: Response, settings: Settings = Depends(get_settings)) -> di
 
 
 @router.get('/me', response_model=UserResponse)
-def me(current_user=Depends(get_current_admin)) -> UserResponse:
+def me(current_user=Depends(get_current_user)) -> UserResponse:
     return UserResponse.model_validate(current_user)

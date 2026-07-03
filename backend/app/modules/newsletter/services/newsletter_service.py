@@ -48,12 +48,15 @@ class NewsletterService:
         )
         return [self.serialize_newsletter(newsletter) for newsletter in newsletters]
 
-    def list_admin(self) -> list[NewsletterListItem]:
-        return [self.serialize_newsletter(newsletter) for newsletter in self.newsletter_repository.list_admin()]
+    def list_admin(self, *, q: str | None = None, status: str | None = None) -> list[NewsletterListItem]:
+        return [
+            self.serialize_newsletter(newsletter)
+            for newsletter in self.newsletter_repository.list_admin(q=q, status=status)
+        ]
 
     def get_detail_by_slug(self, slug: str) -> NewsletterDetailResponse:
         newsletter = self.newsletter_repository.get_by_slug(slug)
-        if not newsletter or not newsletter.is_active:
+        if not newsletter or not newsletter.is_active or newsletter.status != 'published':
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Newsletter not found')
         return self.serialize_detail(newsletter)
 
@@ -102,6 +105,7 @@ class NewsletterService:
             source_identifier=source_identifier,
             published_at=payload.published_at,
             is_active=payload.is_active,
+            status=payload.status or ('published' if payload.is_active else 'draft'),
         )
         if payload.category_id:
             newsletter.category = self.category_repository.get(payload.category_id)
@@ -129,7 +133,7 @@ class NewsletterService:
         self.db.flush()
         return self.serialize_detail(newsletter)
 
-    def update_newsletter(self, newsletter_id: int, payload: NewsletterUpdateRequest) -> NewsletterDetailResponse:
+    def update_newsletter(self, newsletter_id: int, payload: NewsletterUpdateRequest, actor_id: int | None = None) -> NewsletterDetailResponse:
         newsletter = self.get_detail_by_id(newsletter_id, allow_inactive=True)
         if payload.title is not None:
             newsletter.title = payload.title
@@ -149,6 +153,12 @@ class NewsletterService:
             newsletter.tags = self.tag_repository.get_many(payload.tag_ids)
         if payload.is_active is not None:
             newsletter.is_active = payload.is_active
+            newsletter.status = 'published' if payload.is_active else 'archived'
+            newsletter.status_changed_by_user_id = actor_id
+        if payload.status is not None:
+            newsletter.status = payload.status
+            newsletter.is_active = payload.status == 'published'
+            newsletter.status_changed_by_user_id = actor_id
         if payload.markdown_body is not None:
             if newsletter.source_type != SourceType.MARKDOWN:
                 raise HTTPException(
@@ -175,12 +185,21 @@ class NewsletterService:
                 newsletter.assets.append(asset)
             asset.file_path = markdown_relative
             asset.is_primary = True
+        if payload.status is not None or payload.is_active is not None:
+            from sqlalchemy import func
+
+            newsletter.status_changed_at = func.now()
         self.db.flush()
         return self.serialize_detail(newsletter)
 
-    def soft_delete(self, newsletter_id: int) -> dict[str, str]:
+    def soft_delete(self, newsletter_id: int, actor_id: int | None = None) -> dict[str, str]:
         newsletter = self.get_detail_by_id(newsletter_id, allow_inactive=True)
         newsletter.is_active = False
+        newsletter.status = 'archived'
+        newsletter.status_changed_by_user_id = actor_id
+        from sqlalchemy import func
+
+        newsletter.status_changed_at = func.now()
         self.db.flush()
         return {'status': 'ok'}
 
@@ -199,6 +218,8 @@ class NewsletterService:
             source_type=newsletter.source_type,
             thumbnail_url=self._thumbnail_url(newsletter.thumbnail_path),
             published_at=newsletter.published_at,
+            status=newsletter.status,
+            status_changed_at=newsletter.status_changed_at,
             category=CategoryResponse.model_validate(newsletter.category) if newsletter.category else None,
             tags=[TagResponse.model_validate(tag) for tag in newsletter.tags],
             available_assets=self._asset_responses(newsletter),
@@ -252,7 +273,7 @@ class NewsletterService:
         imported = [
             newsletter
             for newsletter in self.newsletter_repository.list_imported_with_external_assets()
-            if newsletter.is_active and newsletter.published_at is not None
+            if newsletter.is_active and newsletter.status == 'published' and newsletter.published_at is not None
         ]
         if imported:
             return sorted(imported, key=lambda item: item.published_at or item.created_at, reverse=True)

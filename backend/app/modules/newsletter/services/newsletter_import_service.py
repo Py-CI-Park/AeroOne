@@ -57,6 +57,7 @@ class NewsletterImportService:
                 source_checksum=checksum,
                 source_mtime=issue.published_at,
                 is_active=True,
+                status='published',
             )
             self.db.add(newsletter)
             self.db.flush()
@@ -69,6 +70,7 @@ class NewsletterImportService:
             newsletter.source_type = source_type
             changed = True
         newsletter.is_active = True
+        newsletter.status = 'published'
         newsletter.published_at = issue.published_at
         newsletter.source_mtime = issue.published_at
         newsletter.source_checksum = checksum
@@ -101,5 +103,6 @@ class NewsletterImportService:
         for newsletter in self.repository.list_imported_with_external_assets():
             if newsletter.source_identifier not in issue_keys and newsletter.is_active:
                 newsletter.is_active = False
+                newsletter.status = 'archived'
                 deactivated += 1
         return deactivated

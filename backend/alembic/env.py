@@ -11,6 +11,7 @@ from app.modules.auth import models as auth_models  # noqa: F401
 from app.modules.newsletter.models import category, newsletter, tag  # noqa: F401
 from app.modules.read_tracking.models import read_event  # noqa: F401
 from app.modules.ai import models as ai_models  # noqa: F401
+from app.modules.admin import models as admin_models  # noqa: F401
 
 config = context.config
 settings = get_settings()

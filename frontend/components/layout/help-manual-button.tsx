@@ -66,11 +66,13 @@ const MANUAL_SECTIONS = [
   {
     id: 'admin',
     label: '관리자',
-    title: '관리자와 가져오기',
+    title: '관리자 콘솔과 운영 관리',
     rows: [
-      ['로그인', '/login 에서 setup 시 생성된 ADMIN_USERNAME / ADMIN_PASSWORD 로 로그인합니다.'],
-      ['뉴스레터 동기화', '관리자 가져오기 화면에서 _database/newsletter 원본을 DB 메타데이터와 동기화합니다.'],
-      ['읽음 통계', '관리자 읽음 이벤트 화면에서 뉴스레터 열람 기록을 확인합니다.'],
+      ['관리자 홈', '/admin 에서 버전/운영 모드, DB 상태, 최신 뉴스레터, 자산·읽음·AI 상태, 최근 감사 로그를 한 번에 확인합니다.'],
+      ['권한/RBAC', 'admin/user/pending 역할, 직접 권한, 그룹 권한을 관리자 콘솔에서 관리합니다. pending 사용자는 대기 상태 UI, 본인 확인, 로그아웃만 허용됩니다.'],
+      ['대시보드 모듈 관리', '대시보드 카드는 service_modules DB 에서 읽습니다. 개발중/Active/Coming soon, 설명, 순서, 링크를 관리자 콘솔에서 조정합니다.'],
+      ['뉴스레터 운영', '목록에서 상태 필터, 검색, 일괄 게시/보관, 자산 상태 점검을 사용합니다. 카테고리/태그는 /admin 의 카테고리/태그 관리 섹션에서 생성·정렬·비활성화합니다.'],
+      ['백업·검색·감사', '백업은 storage/admin_backups 아래 manifest+sha256 ZIP 으로 생성·검증합니다. 통합 검색은 Newsletter/Document/Civil/권한 있는 NSA 를 한 번에 찾고, 감사 로그는 관리자 변경·Sync·백업·읽음 purge 를 추적합니다.'],
     ],
   },
   {
