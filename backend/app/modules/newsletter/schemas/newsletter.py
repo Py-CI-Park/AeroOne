@@ -12,6 +12,8 @@ class CategoryResponse(BaseModel):
     name: str
     slug: str
     description: str | None = None
+    sort_order: int = 0
+    is_active: bool = True
 
     class Config:
         from_attributes = True
@@ -21,6 +23,8 @@ class TagResponse(BaseModel):
     id: int
     name: str
     slug: str
+    sort_order: int = 0
+    is_active: bool = True
 
     class Config:
         from_attributes = True
@@ -42,6 +46,8 @@ class NewsletterListItem(BaseModel):
     source_type: SourceType
     thumbnail_url: str | None = None
     published_at: datetime | None = None
+    status: str = 'published'
+    status_changed_at: datetime | None = None
     category: CategoryResponse | None = None
     tags: list[TagResponse] = Field(default_factory=list)
     available_assets: list[NewsletterAssetResponse] = Field(default_factory=list)
@@ -78,6 +84,7 @@ class NewsletterCreateRequest(BaseModel):
     tag_ids: list[int] = Field(default_factory=list)
     is_active: bool = True
     markdown_body: str | None = None
+    status: str | None = None
 
 
 class NewsletterUpdateRequest(BaseModel):
@@ -90,11 +97,21 @@ class NewsletterUpdateRequest(BaseModel):
     tag_ids: list[int] | None = None
     is_active: bool | None = None
     markdown_body: str | None = None
+    status: str | None = None
 
 
 class TaxonomyCreateRequest(BaseModel):
     name: str
     description: str | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+class TaxonomyUpdateRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
 
 
 class SyncResultResponse(BaseModel):

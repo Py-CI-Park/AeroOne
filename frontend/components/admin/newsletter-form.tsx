@@ -25,6 +25,7 @@ export function NewsletterForm({ mode, initialData }: Props) {
   const [categoryId, setCategoryId] = useState<number | ''>(initialData?.category?.id ?? '');
   const [tagIds, setTagIds] = useState<number[]>(initialData?.tags.map((tag) => tag.id) ?? []);
   const [isActive, setIsActive] = useState(initialData?.is_active ?? true);
+  const [publicationStatus, setPublicationStatus] = useState(initialData?.status ?? (initialData?.is_active === false ? 'archived' : 'published'));
   const [message, setMessage] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPath, setThumbnailPath] = useState(initialData?.thumbnail_path ?? '');
@@ -44,6 +45,7 @@ export function NewsletterForm({ mode, initialData }: Props) {
       category_id: categoryId || null,
       tag_ids: tagIds,
       is_active: isActive,
+      status: publicationStatus,
       ...(isMarkdown ? { source_type: 'markdown', markdown_body: markdownBody || undefined } : {}),
     };
     const csrfToken = getCsrfCookie();
@@ -79,8 +81,8 @@ export function NewsletterForm({ mode, initialData }: Props) {
         <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
           <div className="mb-2 flex flex-wrap gap-2">
             <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium uppercase text-white">{initialData?.source_type}</span>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>
-              {isActive ? '활성' : '비활성'}
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${publicationStatus === 'published' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}`}>
+              {publicationStatus}
             </span>
           </div>
           <div className="grid gap-2 md:grid-cols-2">
@@ -153,9 +155,31 @@ export function NewsletterForm({ mode, initialData }: Props) {
       {isEdit ? (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
-            <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(event) => {
+                setIsActive(event.target.checked);
+                setPublicationStatus(event.target.checked ? 'published' : 'archived');
+              }}
+            />
             공개 활성 상태
           </label>
+          <label htmlFor="newsletter-status" className="mb-1 block text-sm font-medium text-slate-700">게시 상태</label>
+          <select
+            id="newsletter-status"
+            value={publicationStatus}
+            onChange={(event) => {
+              setPublicationStatus(event.target.value);
+              setIsActive(event.target.value === 'published');
+            }}
+            className="mb-3 w-full rounded-md border border-slate-300 px-3 py-2"
+          >
+            <option value="draft">초안</option>
+            <option value="scheduled">예약</option>
+            <option value="published">게시</option>
+            <option value="archived">보관</option>
+          </select>
           <div className="mt-4 space-y-3">
             <div className="text-sm font-medium text-slate-700">썸네일</div>
             {thumbnailUrl ? (

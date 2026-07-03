@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     app_name: str = 'AeroOne Newsletter Platform'
+    app_version: str = '1.8.0'
     app_env: Literal['development', 'test', 'production', 'closed_network'] = 'development'
     backend_port: int = 18437
     frontend_port: int = 29501
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
     thumbnails_dir_name: str = 'thumbnails'
     attachments_dir_name: str = 'attachments'
     markdown_dir_name: str = 'markdown'
+    backup_dir_name: str = 'admin_backups'
     csrf_cookie_name: str = 'csrf_token'
     cors_origins: str = 'http://localhost:29501'
     ai_features_enabled: bool = True
@@ -83,6 +85,10 @@ class Settings(BaseSettings):
         return (self.managed_storage_root / self.attachments_dir_name).resolve()
 
     @property
+    def backup_root(self) -> Path:
+        return (self.managed_storage_root / self.backup_dir_name).resolve()
+
+    @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(',') if origin.strip()]
 
@@ -95,7 +101,13 @@ class Settings(BaseSettings):
         return None
 
     def ensure_directories(self) -> None:
-        for path in [self.managed_storage_root, self.thumbnails_root, self.markdown_root, self.attachments_root]:
+        for path in [
+            self.managed_storage_root,
+            self.thumbnails_root,
+            self.markdown_root,
+            self.attachments_root,
+            self.backup_root,
+        ]:
             path.mkdir(parents=True, exist_ok=True)
         if self.sqlite_path is not None:
             self.sqlite_path.parent.mkdir(parents=True, exist_ok=True)

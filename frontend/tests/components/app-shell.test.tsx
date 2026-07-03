@@ -111,7 +111,7 @@ test('marks the active nav item and exposes the page title meta + actions', () =
   expect(screen.getByRole('button', { name: 'Grid' })).toBeInTheDocument();
 });
 
-test('top nav renders exactly 3 links: Dashboard, Newsletter, Document — and not NSA, Ladder, or Civil', () => {
+test('top nav renders exactly 4 links: Dashboard, Newsletter, Document, Admin — and not NSA, Ladder, or Civil', () => {
   render(
     <AppShell title="Nav Guard">
       <p>content</p>
@@ -121,10 +121,11 @@ test('top nav renders exactly 3 links: Dashboard, Newsletter, Document — and n
   const nav = screen.getByRole('navigation');
   const navLinks = within(nav).getAllByRole('link');
 
-  expect(navLinks).toHaveLength(3);
+  expect(navLinks).toHaveLength(4);
   expect(within(nav).getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
   expect(within(nav).getByRole('link', { name: 'Newsletter' })).toBeInTheDocument();
   expect(within(nav).getByRole('link', { name: 'Document' })).toBeInTheDocument();
+  expect(within(nav).getByRole('link', { name: 'Admin' })).toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /NSA/i })).not.toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /Ladder/i })).not.toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /Civil/i })).not.toBeInTheDocument();

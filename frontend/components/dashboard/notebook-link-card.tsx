@@ -13,10 +13,14 @@ export function NotebookLinkCard({
   title,
   description,
   badge,
+  href,
+  active = true,
 }: {
   title: string;
   description?: string;
   badge: string;
+  href?: string;
+  active?: boolean;
 }) {
   const [host, setHost] = useState('localhost');
 
@@ -24,12 +28,15 @@ export function NotebookLinkCard({
     setHost(window.location.hostname);
   }, []);
 
+  const targetHref = href && href.trim() ? href : `http://${host}:${NOTEBOOK_PORT}`;
+
   return (
     <ServiceCard
       title={title}
       description={description}
-      href={`http://${host}:${NOTEBOOK_PORT}`}
+      href={targetHref}
       badge={badge}
+      active={active}
       external
     />
   );

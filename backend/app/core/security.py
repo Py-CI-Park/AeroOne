@@ -27,7 +27,14 @@ def hash_file_bytes(data: bytes) -> str:
     return sha256(data).hexdigest()
 
 
-def create_access_token(secret_key: str, subject: str, role: str, csrf_token: str, ttl_minutes: int) -> str:
+def create_access_token(
+    secret_key: str,
+    subject: str,
+    role: str,
+    csrf_token: str,
+    ttl_minutes: int,
+    session_version: int | None = None,
+) -> str:
     now = datetime.now(UTC)
     payload: dict[str, Any] = {
         'sub': subject,
@@ -36,6 +43,8 @@ def create_access_token(secret_key: str, subject: str, role: str, csrf_token: st
         'iat': int(now.timestamp()),
         'exp': int((now + timedelta(minutes=ttl_minutes)).timestamp()),
     }
+    if session_version is not None:
+        payload['ver'] = session_version
     return jwt.encode(payload, secret_key, algorithm='HS256')
 
 

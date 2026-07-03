@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.7.1-1f6feb)
+![version](https://img.shields.io/badge/version-1.8.0-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -55,7 +55,7 @@
 - **폐쇄망 우선 설계** — 인터넷이 가능한 PC에서 ZIP 한 개를 만들어 옮기면, 폐쇄망 PC에서 같은 코드·같은 의존성·같은 시드 데이터로 그대로 동작합니다. wheelhouse, `node_modules`, 옵션 인스톨러까지 묶여 있습니다.
 - **다중 포맷 통합 뷰어** — `newsletter_YYYYMMDD.html` 과 `Aerospace Daily News_YYYYMMDD.pdf` 처럼 한 이슈가 여러 자산을 가지는 현실 데이터를 그대로 다룹니다. `source_type` 에 따라 sandbox iframe / PDF delivery / Markdown render 로 분기합니다.
 - **안전한 기본값** — production 환경에서는 기본 secret 과 admin 비밀번호가 거부되고, setup 시 매번 랜덤 값이 생성됩니다. 정적 노출 범위는 `storage/thumbnails` 하위로 한정하고, `_debug.html` 은 import 와 공개 목록에서 모두 제외됩니다.
-- **확장 가능한 구조** — 뉴스레터 외 announcement, schedule, document publishing, admin tools 등 사내 모듈을 같은 저장소 안에서 modular monolith 로 붙일 수 있도록 설계했습니다.
+- **확장 가능한 구조** — 뉴스레터 외 document publishing, AeroAI, Open Notebook, admin tools 를 modular monolith 안에서 점진적으로 붙입니다. 1.8.0 부터 대시보드 카드와 운영 변경은 `service_modules` DB 와 관리자 콘솔에서 관리합니다.
 
 ---
 
@@ -64,15 +64,15 @@
 | 영역 | 내용 |
 |---|---|
 | 사용자 화면 | 대시보드 모듈 카드(뉴스레터·민간항공기 보고서·문서 보관소 등), 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, 민간항공기 규격 카탈로그(/reports/civil-aircraft, 달력 없음), 문서 보관소(/documents, `_database/document` HTML 을 폴더 트리로 열람), `[data-theme]` 라이트·다크 테마 토글 |
-| AeroAI 어시스턴트 (1.7+) | 대시보드 개발중 섹션의 `/ai` — 사내 폐쇄망 문서(Document/Civil/NSA)를 **근거로 답하는** RAG 챗. 대화 영속화·인용(citation) 근거연결·3분할 워크스페이스·프롬프트 프리셋. 답변은 안전한 Markdown 으로 렌더링하고 복사는 원문 텍스트를 유지합니다. HTML 본문 검색 결과는 새 탭으로 열립니다. backend-only Ollama(`gemma4:12b`), same-origin 프록시, reasoning-only 빈 응답 1회 재시도 |
+| AeroAI 어시스턴트 (1.7+) | 대시보드 개발중 섹션의 `/ai` — 사내 폐쇄망 문서(Document/Civil/NSA)를 **근거로 답하는** RAG 챗. 대화 영속화·인용(citation) 근거연결·3분할 워크스페이스·프롬프트 프리셋. 답변은 안전한 Markdown 으로 렌더링하고 복사는 원문 텍스트를 유지합니다. HTML 본문 검색 결과는 새 탭으로 열립니다. backend-only Ollama(`gemma4:12b`), same-origin 프록시, reasoning-only 빈 응답 1회 재시도. 1.8.0 부터 운영 로그는 metadata-only 로 저장하며 prompt/answer/snippet 원문은 기록하지 않습니다. |
 | Open Notebook 동거 배포 (1.5+) | NotebookLM 대안(MIT)을 **코드 병합 없이 나란히(co-deploy)** — 대시보드 개발중 섹션의 Notebook 카드 → `:8502`. 분리 번들(airgap) + 공유 Ollama + 무인 자동 프로비저닝(모델 자동등록). `run_all.bat` 는 ON API/Frontend/runtime config readiness 확인 후 READY 표시. 상세: [`docs/runbook/closed-network-install-manual.md`](docs/runbook/closed-network-install-manual.md) |
 | 콘텐츠 분기 | HTML(sandbox iframe + sanitize + CSP), PDF(direct delivery), Markdown(서버 렌더) |
-| 관리자 화면 | 로그인, 메타데이터 CRUD, 카테고리·태그 관리, 썸네일 업로드, `_database/newsletter` import / sync |
-| 인증 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰, 단일 시드 관리자 |
-| 데이터 모델 | `users / categories / tags / newsletters / newsletter_tags / newsletter_assets` 로 다중 자산 페어링 |
+| 관리자 화면 (1.8+) | 로그인 후 `/admin` 홈 콘솔에서 버전/모드, DB, 최신 뉴스레터, 자산 상태, 읽음 요약, AI 상태, 최근 감사, 사용자/RBAC, 대시보드 모듈, 백업 상태를 확인합니다. 뉴스레터 목록은 검색/상태 필터/일괄 게시·보관/자산 점검을 지원합니다. |
+| 인증/권한 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰. 서버 권한은 `admin/user/pending` 역할과 additive permissions/groups/resource grants 로 판단하며, 관리자 mutation 은 permission + CSRF + same-transaction audit 를 통과해야 합니다. |
+| 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (175 passed), frontend Vitest + Testing Library (205 passed, 47 파일), `tsc --noEmit` exit 0, `next build` 성공, Windows 실행 스모크 |
+| 검증 | backend pytest + httpx (177 passed), frontend Vitest + Testing Library (205 passed, 47 파일), `tsc --noEmit` exit 0, release gate 에서 `next build` 와 브라우저 smoke |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -117,11 +117,11 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
                                                  scripts\run_all.bat
 ```
 
-### 릴리즈 1.7.1 반입 파일
+### 릴리즈 1.8.0 반입 파일
 
 | 파일 | 어디서 받는가 | 폐쇄망에서 놓을 위치 | 역할 |
 |---|---|---|---|
-| `AeroOne-offline-1.7.1-YYYYMMDD-HHMMSS.zip` | GitHub Release `1.7.1` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 | AeroOne 본체, backend/frontend, wheelhouse, prebuilt `.next`, 문서/뉴스레터 스냅샷 |
+| `AeroOne-offline-1.8.0-YYYYMMDD-HHMMSS.zip` | GitHub Release `1.8.0` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 | AeroOne 본체, backend/frontend, wheelhouse, prebuilt `.next`, 문서/뉴스레터 스냅샷 |
 | `AeroOne-bundle.zip` | 같은 Release asset 또는 Open Notebook 저장소 `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 | Open Notebook 별도 앱(Frontend 8502, API 5055, SurrealDB 8000), 자체 Python/Node/uv/ffmpeg/SurrealDB 포함 |
 | `%USERPROFILE%\.ollama\models\manifests`, `blobs` | 인터넷 PC 에서 `ollama pull gemma4:12b`, `ollama pull nomic-embed-text` 후 복사 | 폐쇄망 PC 같은 경로 | AeroAI/Open Notebook 공용 LLM·임베딩 모델 |
 | `OllamaSetup.exe` | Ollama 공식 설치 파일 | 폐쇄망 PC에서 1회 설치 | `127.0.0.1:11434` 로 두 앱이 공유하는 모델 서버 |
@@ -300,7 +300,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.7.1 기준 backend `pytest tests` 결과 **175 passed** (경고 3, 실패 0), frontend Vitest **205 passed** (47 파일), `tsc --noEmit` exit 0, `next build` 성공, 대시보드·뉴스레터 브라우저 smoke 통과. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.8.0 기준 backend `pytest tests` 결과 **177 passed** (경고 3, 실패 0), frontend Vitest **205 passed** (47 파일), `tsc --noEmit` exit 0. release gate 에서 `next build` 와 대시보드·관리자 콘솔·뉴스레터 브라우저 smoke 를 추가로 수행합니다. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

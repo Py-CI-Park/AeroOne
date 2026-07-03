@@ -1,4 +1,12 @@
 import type {
+  AdminSummary,
+  AdminUser,
+  AdminGroup,
+  AssetHealthResponse,
+  AuditEvent,
+  BackupRecord,
+  BackupRestoreDryRun,
+  AiAdminStatus,
   AiChatMessage,
   AiChatResponse,
   AiConversationDetail,
@@ -14,8 +22,11 @@ import type {
   NewsletterDetail,
   NewsletterItem,
   ReadEventsResponse,
+  Permission,
   SyncResponse,
+  ServiceModule,
   Tag,
+  UnifiedSearchResult,
 } from '@/lib/types';
 import { buildNewsletterProxyPath, loggedServerFetchJson } from '@/lib/newsletter-observability';
 
@@ -286,6 +297,130 @@ export async function login(username: string, password: string) {
   });
 }
 
+
+export async function fetchPublicServiceModules() {
+  return loggedServerFetchJson<ServiceModule[]>({
+    label: 'service-modules.public',
+    baseUrl: getServerApiBase(),
+    path: '/api/v1/admin/service-modules/public',
+  });
+}
+
+export async function fetchAdminSummary() {
+  return browserFetch<AdminSummary>('/api/v1/admin/dashboard', { method: 'GET' });
+}
+
+export async function fetchAdminUsers() {
+  return browserFetch<AdminUser[]>('/api/v1/admin/users', { method: 'GET' });
+}
+
+export async function fetchAdminPermissions() {
+  return browserFetch<Permission[]>('/api/v1/admin/permissions', { method: 'GET' });
+}
+
+export async function createAdminUser(payload: { username: string; password: string; role: string; email?: string | null; is_active?: boolean }, csrfToken: string) {
+  return browserFetch<AdminUser>('/api/v1/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateAdminUser(id: number, payload: Partial<Pick<AdminUser, 'email' | 'role' | 'is_active'>> & { permissions?: string[] }, csrfToken: string) {
+  return browserFetch<AdminUser>(`/api/v1/admin/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function resetAdminUserPassword(id: number, temporaryPassword: string, csrfToken: string) {
+  return browserFetch<AdminUser>(`/api/v1/admin/users/${id}/password-reset`, {
+    method: 'POST',
+    body: JSON.stringify({ temporary_password: temporaryPassword }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchAdminGroups() {
+  return browserFetch<AdminGroup[]>('/api/v1/admin/groups', { method: 'GET' });
+}
+
+export async function upsertAdminGroup(payload: { key: string; name: string; description?: string | null; is_active: boolean; permissions: string[] }, csrfToken: string) {
+  return browserFetch<AdminGroup>('/api/v1/admin/groups', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchAuditEvents() {
+  return browserFetch<AuditEvent[]>('/api/v1/admin/audit-events', { method: 'GET' });
+}
+
+export async function fetchServiceModulesAdmin() {
+  return browserFetch<ServiceModule[]>('/api/v1/admin/service-modules', { method: 'GET' });
+}
+
+export async function updateServiceModule(id: number, payload: Partial<ServiceModule>, csrfToken: string) {
+  return browserFetch<ServiceModule>(`/api/v1/admin/service-modules/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchAssetHealth() {
+  return browserFetch<AssetHealthResponse>('/api/v1/admin/newsletters/assets/health', { method: 'GET' });
+}
+
+export async function bulkUpdateNewsletters(ids: number[], action: 'publish' | 'archive' | 'draft', csrfToken: string) {
+  return browserFetch<{ updated: number }>('/api/v1/admin/newsletters/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ids, action }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchBackups() {
+  return browserFetch<BackupRecord[]>('/api/v1/admin/backups', { method: 'GET' });
+}
+
+export async function createBackup(csrfToken: string) {
+  return browserFetch<BackupRecord>('/api/v1/admin/backups', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function validateBackup(id: number, csrfToken: string) {
+  return browserFetch<{ filename: string; valid: boolean; issues: string[] }>(
+    `/api/v1/admin/backups/${id}/validate`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+  );
+}
+
+export async function dryRunRestoreBackup(id: number, csrfToken: string) {
+  return browserFetch<BackupRestoreDryRun>(`/api/v1/admin/backups/${id}/restore/dry-run`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchAdminAiStatus() {
+  return browserFetch<AiAdminStatus>('/api/v1/admin/ai/status', { method: 'GET' });
+}
+
+export async function fetchUnifiedSearch(q: string, includeNsa = false) {
+  const query = new URLSearchParams({ q, include_nsa: includeNsa ? 'true' : 'false' });
+  return browserFetch<{ query: string; results: UnifiedSearchResult[]; degraded: boolean; reason?: string }>(
+    `/api/v1/admin/search?${query.toString()}`,
+    { method: 'GET' },
+  );
+}
 export async function fetchAdminNewsletters() {
   return browserFetch<NewsletterItem[]>('/api/v1/admin/newsletters', { method: 'GET' });
 }
@@ -329,8 +464,40 @@ export async function fetchCategories() {
   return browserFetch<Category[]>('/api/v1/admin/categories', { method: 'GET' });
 }
 
+export async function createCategory(payload: { name: string; description?: string | null; sort_order?: number; is_active?: boolean }, csrfToken: string) {
+  return browserFetch<Category>('/api/v1/admin/categories', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateCategory(id: number, payload: Partial<Category>, csrfToken: string) {
+  return browserFetch<Category>(`/api/v1/admin/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
 export async function fetchTags() {
   return browserFetch<Tag[]>('/api/v1/admin/tags', { method: 'GET' });
+}
+
+export async function createTag(payload: { name: string; sort_order?: number; is_active?: boolean }, csrfToken: string) {
+  return browserFetch<Tag>('/api/v1/admin/tags', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateTag(id: number, payload: Partial<Tag>, csrfToken: string) {
+  return browserFetch<Tag>(`/api/v1/admin/tags/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
 }
 
 // 읽음 비콘 — 브라우저가 백엔드를 "직접" 호출해야 request.client.host 가 독자 LAN IP 가 된다

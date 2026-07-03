@@ -1,4 +1,4 @@
-import { ReadEventsList } from '@/components/admin/read-events-list';
+import { AdminHomeConsole } from '@/components/admin/admin-home-console';
 import { AppShell } from '@/components/layout/app-shell';
 import { requireAdminSession } from '@/lib/server-auth';
 import { getAppTheme } from '@/lib/server-theme';
@@ -9,7 +9,7 @@ type SearchParams = {
   theme?: string;
 };
 
-export default async function AdminReadEventsPage({
+export default async function AdminHomePage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -19,8 +19,8 @@ export default async function AdminReadEventsPage({
   await requireAdminSession();
 
   return (
-    <AppShell title="읽음 현황" theme={theme} themePath="/admin/read-events" active="admin">
-      <ReadEventsList />
+    <AppShell title="관리자 콘솔" theme={theme} themePath="/admin" active="admin" contentClassName="max-w-7xl">
+      <AdminHomeConsole />
     </AppShell>
   );
 }

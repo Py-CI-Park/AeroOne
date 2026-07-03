@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.modules.auth.dependencies import get_db, get_settings, require_csrf
+from app.modules.admin.audit import record_admin_audit
+from app.modules.auth.dependencies import get_current_user, get_db, get_settings, require_csrf, require_permission
+from app.modules.auth.models import User
 from app.modules.newsletter.schemas.newsletter import SyncResultResponse
 from app.modules.newsletter.services.newsletter_autosync_service import compute_signature
 from app.modules.newsletter.services.newsletter_import_service import NewsletterImportService
@@ -14,8 +16,13 @@ from app.modules.newsletter.services.newsletter_import_service import Newsletter
 router = APIRouter()
 
 
-@router.post('/newsletters/sync', response_model=SyncResultResponse, dependencies=[Depends(require_csrf)])
-def sync_newsletters(request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> SyncResultResponse:
+@router.post('/newsletters/sync', response_model=SyncResultResponse, dependencies=[Depends(require_permission('admin.newsletters.sync')), Depends(require_csrf)])
+def sync_newsletters(
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    actor: User = Depends(get_current_user),
+) -> SyncResultResponse:
     result = NewsletterImportService(db, settings.import_root).sync()
     # 수동 sync 도 자동 동기화의 베이스라인 시그니처를 함께 갱신한다. 그래야 폴더가
     # 바뀌지 않은 상태에서 이어지는 공개 읽기가 sync 를 재실행해 (예: HTML <title> 로)
@@ -24,4 +31,13 @@ def sync_newsletters(request: Request, db: Session = Depends(get_db), settings: 
     if state is not None:
         with state.lock:
             state.signature = compute_signature(settings.import_root)
-    return SyncResultResponse(**asdict(result))
+    payload = asdict(result)
+    record_admin_audit(
+        db,
+        actor=actor,
+        action='newsletter.sync',
+        target_type='newsletter',
+        request=request,
+        metadata=payload,
+    )
+    return SyncResultResponse(**payload)

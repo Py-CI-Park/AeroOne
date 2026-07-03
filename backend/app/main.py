@@ -8,8 +8,9 @@ from sqlalchemy import text
 from app.core.config import Settings, ensure_runtime_directories, get_settings
 from app.db.session import Database, get_engine
 from app.modules.auth.api import router as auth_router
+from app.modules.admin.api import router as operations_admin_router
 from app.modules.ai.api.public import router as ai_router
-from app.modules.newsletter.api.admin import router as admin_router
+from app.modules.newsletter.api.admin import router as newsletter_admin_router
 from app.modules.newsletter.api.imports import router as imports_router
 from app.modules.newsletter.api.public import router as public_router
 from app.modules.newsletter.services.newsletter_autosync_service import AutoSyncState
@@ -60,8 +61,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(auth_router, prefix='/api/v1/auth')
     app.include_router(public_router, prefix='/api/v1/newsletters')
-    app.include_router(admin_router, prefix='/api/v1/admin')
+    app.include_router(newsletter_admin_router, prefix='/api/v1/admin')
     app.include_router(imports_router, prefix='/api/v1/admin')
+    app.include_router(operations_admin_router, prefix='/api/v1/admin')
     # 읽음추적: 공개 비콘(POST /newsletters/{id}/read)과 관리자 조회/purge(/admin/read-events).
     app.include_router(read_beacon_router, prefix='/api/v1/newsletters')
     app.include_router(read_events_admin_router, prefix='/api/v1/admin')

@@ -10,8 +10,11 @@ class TagRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def list_all(self) -> list[Tag]:
-        return list(self.db.scalars(select(Tag).order_by(Tag.name)).all())
+    def list_all(self, *, include_inactive: bool = False) -> list[Tag]:
+        stmt = select(Tag).order_by(Tag.sort_order, Tag.name)
+        if not include_inactive:
+            stmt = stmt.where(Tag.is_active.is_(True))
+        return list(self.db.scalars(stmt).all())
 
     def get_many(self, tag_ids: list[int]) -> list[Tag]:
         if not tag_ids:

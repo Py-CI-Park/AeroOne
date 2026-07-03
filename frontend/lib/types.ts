@@ -6,12 +6,16 @@ export interface Category {
   name: string;
   slug: string;
   description?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
 }
 
 export interface Tag {
   id: number;
   name: string;
   slug: string;
+  sort_order?: number;
+  is_active?: boolean;
 }
 
 export interface NewsletterAsset {
@@ -31,6 +35,8 @@ export interface NewsletterItem {
   thumbnail_url?: string | null;
   thumbnail_path?: string | null;
   published_at?: string | null;
+  status?: string;
+  status_changed_at?: string | null;
   category?: Category | null;
   tags: Tag[];
   available_assets: NewsletterAsset[];
@@ -64,6 +70,122 @@ export interface AuthResponse {
     is_active: boolean;
   };
   csrf_token: string;
+}
+
+export interface ServiceModule {
+  id: number;
+  key: string;
+  title: string;
+  description?: string | null;
+  href: string;
+  section: string;
+  status: 'active' | 'development' | 'coming_soon' | 'hidden' | string;
+  badge: string;
+  sort_order: number;
+  is_enabled: boolean;
+  is_external: boolean;
+}
+
+export interface AdminSummary {
+  app_version: string;
+  app_env: string;
+  database_url: string;
+  db_ok: boolean;
+  newsletter_total: number;
+  latest_newsletter_title?: string | null;
+  active_modules: number;
+  coming_soon_modules: number;
+  asset_health: Record<string, number>;
+  read_summary: Record<string, number>;
+  ai_status: Record<string, unknown>;
+  recent_audit_events: AuditEvent[];
+}
+
+export interface AuditEvent {
+  id: number;
+  actor_username?: string | null;
+  actor_role?: string | null;
+  action: string;
+  target_type: string;
+  target_id?: string | null;
+  method?: string | null;
+  path?: string | null;
+  status: string;
+  ip_address?: string | null;
+  created_at: string;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email?: string | null;
+  role: string;
+  is_active: boolean;
+  permissions: string[];
+}
+
+export interface Permission {
+  key: string;
+}
+
+export interface AdminGroup {
+  id: number;
+  key: string;
+  name: string;
+  description?: string | null;
+  is_active: boolean;
+  permissions: string[];
+}
+
+export interface AiAdminStatus {
+  status: Record<string, unknown>;
+  request_logs_total: number;
+  request_failures: number;
+}
+
+export interface AssetHealthItem {
+  newsletter_id: number;
+  newsletter_title: string;
+  asset_type: string;
+  file_path: string;
+  exists: boolean;
+  file_size?: number | null;
+  checksum?: string | null;
+  expected_checksum?: string | null;
+  ok: boolean;
+}
+
+export interface AssetHealthResponse {
+  ok: number;
+  missing: number;
+  checksum_mismatch: number;
+  items: AssetHealthItem[];
+}
+
+export interface BackupRecord {
+  id: number;
+  filename: string;
+  sha256: string;
+  file_size: number;
+  status: string;
+  created_at: string;
+}
+
+export interface BackupRestoreDryRun {
+  filename: string;
+  valid: boolean;
+  compatible: boolean;
+  issues: string[];
+  would_restore: string[];
+  manifest?: Record<string, unknown> | null;
+}
+
+export interface UnifiedSearchResult {
+  source: string;
+  title: string;
+  snippet: string;
+  url: string;
+  score: number;
 }
 
 export interface SyncResponse {
