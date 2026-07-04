@@ -3,14 +3,15 @@ import { render, screen, within } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 
-const { cookieThemeMock, isAdminMock, MODULES } = vi.hoisted(() => ({
+const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, MODULES } = vi.hoisted(() => ({
   cookieThemeMock: vi.fn<() => string | undefined>(),
   isAdminMock: vi.fn<() => boolean>(),
+  fetchPublicServiceModulesMock: vi.fn(),
   MODULES: [
     { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, visibility: 'public' },
     { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, visibility: 'public' },
     { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, visibility: 'public' },
-    { id: 4, key: 'nsa', title: 'NSA', description: 'Password-protected HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, visibility: 'public' },
+    { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
     { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, visibility: 'admin' },
     { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, visibility: 'admin' },
     { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, visibility: 'admin' },
@@ -34,19 +35,25 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>();
   return {
     ...actual,
-    fetchPublicServiceModules: vi.fn(() => Promise.resolve(MODULES)),
+    fetchPublicServiceModules: fetchPublicServiceModulesMock,
   };
 });
 
 beforeEach(() => {
   cookieThemeMock.mockReturnValue(undefined);
   isAdminMock.mockReturnValue(false);
+  // Simulate the backend /service-modules/public per-caller filtering: admins get all
+  // modules; non-admins get only public, non-permission-gated modules.
+  fetchPublicServiceModulesMock.mockImplementation(() =>
+    Promise.resolve(isAdminMock() ? MODULES : MODULES.filter((m) => m.visibility === 'public' && !m.required_permission)),
+  );
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
   cookieThemeMock.mockReset();
   isAdminMock.mockReset();
+  fetchPublicServiceModulesMock.mockReset();
 });
 
 test('removes the home hero copy while keeping the Newsletter link and theme selector', async () => {
@@ -63,20 +70,33 @@ test('removes the home hero copy while keeping the Newsletter link and theme sel
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
 });
 
-test('non-admin dashboard shows only public cards and hides development and coming-soon', async () => {
+test('non-admin dashboard hides required-permission NSA plus development and coming-soon cards', async () => {
   isAdminMock.mockReturnValue(false);
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   const main = screen.getByRole('main');
   expect(within(main).getByRole('link', { name: /Newsletter/i })).toBeInTheDocument();
-  expect(within(main).getByRole('link', { name: /NSA/i })).toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /NSA/i })).not.toBeInTheDocument();
 
   // Development and coming-soon are operator-only surfaces.
   expect(screen.queryByRole('heading', { name: 'Development' })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /Viewer/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /AeroAI/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Announcement' })).not.toBeInTheDocument();
-  expect(screen.getByText('4 active · 0 coming soon')).toBeInTheDocument();
+  expect(screen.getByText('3 active · 0 coming soon')).toBeInTheDocument();
+});
+
+test('non-admin fallback dashboard drops required-permission NSA cards', async () => {
+  fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
+  isAdminMock.mockReturnValue(false);
+
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  expect(within(main).getByRole('link', { name: /Newsletter/i })).toBeInTheDocument();
+  expect(within(main).queryByRole('link', { name: /NSA/i })).not.toBeInTheDocument();
+  expect(screen.getByText(/대시보드 모듈 DB 를 읽지 못해 내장 fallback 목록을 표시합니다/)).toBeInTheDocument();
+  expect(screen.getByText('3 active · 0 coming soon')).toBeInTheDocument();
 });
 
 test('adds an active Civil Aircraft Spec Catalog card linking to the report page', async () => {
@@ -121,6 +141,7 @@ test('operator dashboard groups cards into ordered sections and keeps coming-soo
 });
 
 test('adds an active NSA card linking to /nsa', async () => {
+  isAdminMock.mockReturnValue(true);
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   const main = screen.getByRole('main');
@@ -128,7 +149,7 @@ test('adds an active NSA card linking to /nsa', async () => {
 
   expect(nsaLink).toHaveAttribute('href', '/nsa');
   expect(nsaLink).toHaveTextContent('Active');
-  expect(within(nsaLink).getByTestId('service-card-description')).toHaveTextContent(/Password-protected HTML documents/i);
+  expect(within(nsaLink).getByTestId('service-card-description')).toHaveTextContent(/Access-controlled HTML documents/i);
 });
 
 test('operator dashboard shows an active Ladder card linking to /games/ladder', async () => {

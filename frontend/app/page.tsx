@@ -16,7 +16,7 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, visibility: 'public' },
   { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, visibility: 'public' },
   { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, visibility: 'public' },
-  { id: 4, key: 'nsa', title: 'NSA', description: 'Password-protected HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, visibility: 'public' },
+  { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
   { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, visibility: 'admin' },
   { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, visibility: 'admin' },
   { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, visibility: 'admin' },
@@ -54,9 +54,13 @@ export default async function HomePage({
     .join('; ');
   const isAdmin = await resolveIsAdmin();
   const { modules, degraded } = await loadModules(cookieHeader);
-  // Development/coming-soon surfaces are operator-only. Non-operators only see
-  // public-audience cards even when the fallback list is used.
-  const visibleModules = modules.filter((module) => isAdmin || module.visibility === 'public');
+  // The live SSR path is already backend-filtered per caller (visibility + required_permission +
+  // resource/collection policy), so trust it as-is. Only the degraded/fallback list has no
+  // per-user info, so conservatively drop operator-only (non-public) and permission-gated cards
+  // for non-admins there.
+  const visibleModules = degraded
+    ? modules.filter((module) => isAdmin || (module.visibility === 'public' && !module.required_permission))
+    : modules;
   const sortedModules = [...visibleModules].sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
   const activeCount = sortedModules.filter((module) => module.is_enabled).length;
   const comingCount = sortedModules.filter((module) => module.status === 'coming_soon' || !module.is_enabled).length;

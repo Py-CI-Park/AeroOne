@@ -94,6 +94,9 @@ class ServiceModule(Base):
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
     is_external: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     visibility: Mapped[str] = mapped_column(String(20), nullable=False, server_default='public')
+    required_permission: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    resource_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    resource_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 

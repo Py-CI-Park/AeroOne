@@ -45,6 +45,16 @@ export function getNewsletterProxyPath(path: string) {
   return buildNewsletterProxyPath(path);
 }
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${getBrowserApiBase()}${path}`, {
     credentials: 'include',
@@ -141,7 +151,7 @@ export async function fetchCollectionContent(
   );
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Failed to load document: ${response.status}`);
+    throw new ApiError(text || `Failed to load document: ${response.status}`, response.status);
   }
   return (await response.json()) as { asset_type: 'html'; content_html: string };
 }
@@ -157,7 +167,7 @@ export async function fetchCollectionList(collection: string): Promise<{ documen
   const response = await fetch(`/api/frontend/collections/${collection}/list`, { cache: 'no-store' });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Failed to load collection list: ${response.status}`);
+    throw new ApiError(text || `Failed to load collection list: ${response.status}`, response.status);
   }
   return (await response.json()) as { documents: DocumentListItem[] };
 }

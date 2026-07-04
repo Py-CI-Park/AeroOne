@@ -85,6 +85,9 @@ export interface ServiceModule {
   is_enabled: boolean;
   is_external: boolean;
   visibility: 'public' | 'admin' | string;
+  required_permission?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
 }
 
 export interface AdminSummary {

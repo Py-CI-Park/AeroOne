@@ -148,7 +148,7 @@ export function CollectionPasswordGate({
 
   const gateStatus = (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-accent-soft bg-accent-soft/40 px-3 py-2 text-sm">
-      <span className="font-medium text-accent">NSA 잠금 해제됨</span>
+      <span className="font-medium text-accent">{title ?? collection} 잠금 해제됨</span>
       <button
         type="button"
         data-testid="collection-gate-lock"

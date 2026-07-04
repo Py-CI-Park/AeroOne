@@ -8,7 +8,7 @@ const MANUAL_SECTIONS = [
     label: '대시보드',
     title: '대시보드와 서비스 상태',
     rows: [
-      ['현재 서비스 중', 'Newsletter, Document, Civil Aircraft, NSA 는 모든 사용자에게 보이는 운영 중 열람 서비스입니다. 카드나 상단 메뉴를 클릭해 바로 이동합니다.'],
+      ['현재 서비스 중', 'Newsletter, Document, Civil Aircraft 는 모든 사용자에게 보이는 운영 중 열람 서비스입니다. NSA 는 권한 있는 계정에만 노출·열람됩니다. 카드나 상단 메뉴를 클릭해 이동합니다.'],
       ['Development(개발중)', 'Viewer, AeroAI, Notebook, Ladder 는 Development 섹션의 Active 카드이고, Announcement 와 Schedule 은 Coming soon 비활성 카드입니다. 이 섹션과 Coming soon 카드는 관리자(서버 실행자)에게만 노출됩니다.'],
       ['Admin·테마·사용법', '헤더 오른쪽은 다크(DARK/LIGHT) · 사용법 · (로그인 또는 Admin) 순서입니다. 로그인 전에는 로그인 링크가, 관리자로 로그인하면 Admin 링크가 보입니다. 일반 사용자에게는 둘 다 표시되지 않습니다.'],
     ],
@@ -30,7 +30,7 @@ const MANUAL_SECTIONS = [
     rows: [
       ['Document', '현재 서비스 중입니다. Document 메뉴에서 _database/document 의 HTML 문서를 폴더 트리로 엽니다.'],
       ['Civil Aircraft', '현재 서비스 중입니다. Civil Aircraft 카드에서 _database/civil_aircraft 문서를 봅니다.'],
-      ['NSA', '현재 서비스 중인 가벼운 가림막입니다. 비밀번호 입력 후 _database/nsa 목록을 불러오며, 민감자료 보관용 인증 기능은 아닙니다.'],
+      ['NSA', '권한 있는 계정만 이용할 수 있는 HTML 보관소입니다. 기존 0000 비밀번호 가림막은 제거되었고, 접근 권한이 없으면 관리자에게 권한 요청 안내가 표시됩니다.'],
     ],
   },
   {

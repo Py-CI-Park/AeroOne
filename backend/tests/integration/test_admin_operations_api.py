@@ -92,21 +92,33 @@ def test_admin_user_rbac_self_lockout_and_non_admin_forbidden(csrf_client) -> No
     assert reset_events
     assert 'new-operator-password' not in (reset_events[0].get('metadata_json') or '')
 
-def test_public_modules_hide_admin_only_for_anonymous(client) -> None:
+def test_public_modules_hide_admin_only_and_gated_for_anonymous(client) -> None:
     response = client.get('/api/v1/admin/service-modules/public')
     assert response.status_code == 200
     modules = response.json()
     keys = {module['key'] for module in modules}
-    assert keys == {'newsletter', 'civil-aircraft', 'document', 'nsa'}
+    assert {'newsletter', 'civil-aircraft', 'document'} <= keys
+    assert 'nsa' not in keys
     assert all(module['visibility'] == 'public' for module in modules)
     assert 'ai' not in keys and 'announcement' not in keys
+
+
+def test_public_modules_include_nsa_for_direct_permission_user(client, app) -> None:
+    _create_user(app, 'nsa-dashboard-user', permission='collections.nsa.read')
+    login_response = client.post('/api/v1/auth/login', json={'username': 'nsa-dashboard-user', 'password': 'password'})
+    assert login_response.status_code == 200
+
+    response = client.get('/api/v1/admin/service-modules/public')
+    assert response.status_code == 200
+    keys = {module['key'] for module in response.json()}
+    assert {'newsletter', 'civil-aircraft', 'document', 'nsa'} <= keys
 
 
 def test_operator_sees_admin_only_modules(csrf_client) -> None:
     response = csrf_client.get('/api/v1/admin/service-modules/public')
     assert response.status_code == 200
     keys = {module['key'] for module in response.json()}
-    assert {'ai', 'announcement', 'open-notebook'} <= keys
+    assert {'ai', 'announcement', 'open-notebook', 'nsa'} <= keys
 
 
 def test_service_module_create_and_delete(csrf_client) -> None:

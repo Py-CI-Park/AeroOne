@@ -24,7 +24,7 @@ from app.modules.admin.models import (
     UserPermission,
     AiRequestLog,
 )
-from app.modules.admin.permissions import ADMIN_PERMISSIONS, list_user_permission_keys
+from app.modules.admin.permissions import ADMIN_PERMISSIONS, has_permission, has_resource_permission, list_user_permission_keys
 from app.modules.admin.session_fanout import bump_group_members
 from app.modules.admin.schemas import (
     AdminSummaryResponse,
@@ -66,16 +66,16 @@ from app.modules.shared.storage.service import StorageError, StorageService, sha
 router = APIRouter()
 
 DEFAULT_SERVICE_MODULES = [
-    {'key': 'newsletter', 'title': 'Newsletter', 'description': None, 'href': '/newsletters', 'section': 'Newsletter', 'status': 'active', 'badge': 'Active', 'sort_order': 10, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
-    {'key': 'civil-aircraft', 'title': 'Civil Aircraft Spec Catalog', 'description': 'Commercial aircraft specs & market competition analysis.', 'href': '/reports/civil-aircraft', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 20, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
-    {'key': 'document', 'title': 'Document', 'description': 'Browse HTML documents organized in folders.', 'href': '/documents', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 30, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
-    {'key': 'nsa', 'title': 'NSA', 'description': 'Password-protected HTML documents.', 'href': '/nsa', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 40, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
-    {'key': 'viewer', 'title': 'Viewer', 'description': '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', 'href': '/viewer', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 50, 'is_enabled': True, 'is_external': False, 'visibility': 'admin'},
-    {'key': 'ai', 'title': 'AeroAI', 'description': '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', 'href': '/ai', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 60, 'is_enabled': True, 'is_external': False, 'visibility': 'admin'},
-    {'key': 'open-notebook', 'title': 'Notebook', 'description': 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', 'href': '', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 70, 'is_enabled': True, 'is_external': True, 'visibility': 'admin'},
-    {'key': 'ladder', 'title': 'Ladder', 'description': 'Coffee-bet ladder game (사다리타기).', 'href': '/games/ladder', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 80, 'is_enabled': True, 'is_external': False, 'visibility': 'admin'},
-    {'key': 'announcement', 'title': 'Announcement', 'description': 'Company-wide announcements module.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 90, 'is_enabled': False, 'is_external': False, 'visibility': 'admin'},
-    {'key': 'schedule', 'title': 'Schedule', 'description': 'Shared calendar & event tracking.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 100, 'is_enabled': False, 'is_external': False, 'visibility': 'admin'},
+    {'key': 'newsletter', 'title': 'Newsletter', 'description': None, 'href': '/newsletters', 'section': 'Newsletter', 'status': 'active', 'badge': 'Active', 'sort_order': 10, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'civil-aircraft', 'title': 'Civil Aircraft Spec Catalog', 'description': 'Commercial aircraft specs & market competition analysis.', 'href': '/reports/civil-aircraft', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 20, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'document', 'title': 'Document', 'description': 'Browse HTML documents organized in folders.', 'href': '/documents', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 30, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'nsa', 'title': 'NSA', 'description': 'Password-protected HTML documents.', 'href': '/nsa', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 40, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': 'collections.nsa.read', 'resource_type': 'collection', 'resource_id': 'nsa'},
+    {'key': 'viewer', 'title': 'Viewer', 'description': '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', 'href': '/viewer', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 50, 'is_enabled': True, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'ai', 'title': 'AeroAI', 'description': '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', 'href': '/ai', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 60, 'is_enabled': True, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'open-notebook', 'title': 'Notebook', 'description': 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', 'href': '', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 70, 'is_enabled': True, 'is_external': True, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'ladder', 'title': 'Ladder', 'description': 'Coffee-bet ladder game (사다리타기).', 'href': '/games/ladder', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 80, 'is_enabled': True, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'announcement', 'title': 'Announcement', 'description': 'Company-wide announcements module.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 90, 'is_enabled': False, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'schedule', 'title': 'Schedule', 'description': 'Shared calendar & event tracking.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 100, 'is_enabled': False, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
 ]
 
 
@@ -123,6 +123,9 @@ def _safe_module_snapshot(module: ServiceModule) -> dict[str, object]:
         'is_enabled': module.is_enabled,
         'is_external': module.is_external,
         'visibility': module.visibility,
+        'required_permission': module.required_permission,
+        'resource_type': module.resource_type,
+        'resource_id': module.resource_id,
     }
 
 
@@ -178,6 +181,21 @@ def _asset_health(db: Session, settings: Settings) -> AssetHealthResponse:
     return AssetHealthResponse(ok=ok_count, missing=missing, checksum_mismatch=mismatch, items=items)
 
 
+def _user_can_access_module(db: Session, user: User | None, module: ServiceModule) -> bool:
+    required_permission = module.required_permission
+    if not required_permission:
+        return True
+    if user is None:
+        return False
+    if has_permission(db, user, required_permission):
+        return True
+    if module.resource_type and module.resource_id and has_resource_permission(db, user, module.resource_type, module.resource_id, required_permission):
+        return True
+    if module.resource_type == 'collection' and module.resource_id:
+        return can_read_collection(db, user, module.resource_id)
+    return False
+
+
 @router.get('/service-modules/public', response_model=list[ServiceModuleResponse])
 def public_service_modules(db: Session = Depends(get_db), user: User | None = Depends(get_optional_user)) -> list[ServiceModuleResponse]:
     _ensure_service_modules(db)
@@ -186,7 +204,11 @@ def public_service_modules(db: Session = Depends(get_db), user: User | None = De
     if not is_operator:
         # Non-operators only see public-audience modules. Development/coming-soon
         # surfaces are operator-only and never leak to the anonymous dashboard.
-        modules = [module for module in modules if module.visibility == 'public' and module.is_enabled]
+        modules = [
+            module
+            for module in modules
+            if module.visibility == 'public' and module.is_enabled and _user_can_access_module(db, user, module)
+        ]
     return [ServiceModuleResponse.model_validate(module) for module in modules]
 
 

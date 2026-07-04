@@ -95,6 +95,9 @@ class ServiceModuleResponse(BaseModel):
     is_enabled: bool
     is_external: bool
     visibility: str = 'public'
+    required_permission: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -112,6 +115,9 @@ class ServiceModuleUpdateRequest(BaseModel):
     is_enabled: bool | None = None
     is_external: bool | None = None
     visibility: Literal['public', 'admin'] | None = None
+    required_permission: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
 
 
 class ServiceModuleCreateRequest(BaseModel):
@@ -126,6 +132,9 @@ class ServiceModuleCreateRequest(BaseModel):
     is_enabled: bool = True
     is_external: bool = False
     visibility: Literal['public', 'admin'] = 'admin'
+    required_permission: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
 
 
 class AdminSummaryResponse(BaseModel):
