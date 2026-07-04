@@ -26,7 +26,9 @@ from app.modules.ai import models as ai_models  # noqa: F401  (create_all 등록
 from app.modules.ai.repositories import AiConversationRepository
 from app.modules.ai.models import AiConversation
 from app.modules.admin.models import AiRequestLog
-from app.modules.auth.dependencies import get_db, get_settings
+from app.modules.auth.dependencies import get_db, get_optional_user, get_settings
+from app.modules.auth.models import User
+from app.modules.collections.policy import can_read_collection, readable_collections
 from app.modules.collections.search_service import ALL_SEARCH_COLLECTIONS, DEFAULT_SEARCH_COLLECTIONS, CollectionSearchRoot
 
 
@@ -146,23 +148,31 @@ def chat_with_ai(
     response: Response,
     settings: Settings = Depends(get_settings),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> AiChatResponse:
     started = time.perf_counter()
     request_id = uuid.uuid4().hex
-    collections = _requested_collections(payload.collections)
+    requested_collections = _requested_collections(payload.collections)
+    collections = readable_collections(db, current_user, requested_collections)
     roots = [
         CollectionSearchRoot(collection=collection, root=_resolve_collection_root(collection, settings))
         for collection in collections
     ]
-    selected_refs = [(ref.collection, ref.path) for ref in payload.selected_refs]
+    selected_refs = [
+        (ref.collection, ref.path)
+        for ref in payload.selected_refs
+        if can_read_collection(db, current_user, ref.collection)
+    ]
     roots_by_collection = {
-        collection: _resolve_collection_root(collection, settings) for collection in ALL_SEARCH_COLLECTIONS
+        collection: _resolve_collection_root(collection, settings)
+        for collection in ALL_SEARCH_COLLECTIONS
+        if can_read_collection(db, current_user, collection)
     }
     def log_failure(error_code: str) -> None:
         db.add(
             AiRequestLog(
                 request_id=request_id,
-                user_id=None,
+                user_id=current_user.id if current_user is not None else None,
                 session_hash=None,
                 ip_address=_client_ip(request),
                 model=settings.ollama_default_model,
@@ -231,7 +241,7 @@ def chat_with_ai(
     db.add(
         AiRequestLog(
             request_id=request_id,
-            user_id=None,
+            user_id=current_user.id if current_user is not None else None,
             session_hash=session_hash,
             ip_address=_client_ip(request),
             model=settings.ollama_default_model,

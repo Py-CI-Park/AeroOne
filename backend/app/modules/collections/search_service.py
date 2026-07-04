@@ -91,8 +91,8 @@ class HtmlCollectionSearchService:
         목록/검색/다운로드와 동일하게 ``resolve_download_path`` (path-guard, .html,
         _debug 제외)를 강제 경유한다. AI service 가 자체 경로 해석/본문 추출을 하지
         않도록 컬렉션 인프라에 위임한다. 잘못된/traversal/미허용 컬렉션 참조는 조용히
-        건너뛴다(silent drop). nsa 는 기존 검색과 동일 정책(현상유지)으로 별도 차단하지
-        않는다.
+        건너뛴다(silent drop). Authorization is enforced by the caller: routes must pass
+        only collection roots and refs already filtered through collections.policy.
         """
 
         results: list[CollectionSearchResult] = []

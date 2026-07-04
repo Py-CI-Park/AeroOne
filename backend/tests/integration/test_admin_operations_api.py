@@ -1,4 +1,19 @@
 from __future__ import annotations
+from app.core.security import hash_password
+from app.modules.admin.models import UserPermission
+from app.modules.auth.models import User
+
+
+def _create_user(app, username: str, *, permission: str | None = None) -> None:
+    with app.state.db.session() as session:
+        user = User(username=username, password_hash=hash_password('password'), role='user', is_active=True)
+        session.add(user)
+        session.flush()
+        if permission is not None:
+            session.add(UserPermission(user_id=user.id, permission_key=permission))
+        session.commit()
+
+
 
 
 def test_admin_dashboard_modules_assets_and_backup(csrf_client) -> None:
@@ -130,3 +145,28 @@ def test_self_password_change_rotates_credentials(csrf_client) -> None:
 
     audit_actions = {event['action'] for event in csrf_client.get('/api/v1/admin/audit-events').json()}
     assert 'account.password_change' in audit_actions
+
+
+def test_unified_search_include_nsa_uses_collection_policy(client, app, test_paths) -> None:
+    (test_paths['document_root'] / 'public.html').write_text('<html><body>SharedSearchToken document</body></html>', encoding='utf-8')
+    (test_paths['nsa_root'] / 'secret.html').write_text('<html><body>SharedSearchToken nsa</body></html>', encoding='utf-8')
+
+    _create_user(app, 'plain')
+    plain_login = client.post('/api/v1/auth/login', json={'username': 'plain', 'password': 'password'})
+    assert plain_login.status_code == 200
+    plain_response = client.get('/api/v1/admin/search', params={'q': 'SharedSearchToken', 'include_nsa': 'true'})
+    assert plain_response.status_code == 200
+    assert {item['source'] for item in plain_response.json()['results']} == {'document'}
+
+    admin_login = client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'password'})
+    assert admin_login.status_code == 200
+    admin_response = client.get('/api/v1/admin/search', params={'q': 'SharedSearchToken', 'include_nsa': 'true'})
+    assert admin_response.status_code == 200
+    assert {'document', 'nsa'} <= {item['source'] for item in admin_response.json()['results']}
+
+    _create_user(app, 'nsa-user', permission='collections.nsa.read')
+    nsa_login = client.post('/api/v1/auth/login', json={'username': 'nsa-user', 'password': 'password'})
+    assert nsa_login.status_code == 200
+    nsa_response = client.get('/api/v1/admin/search', params={'q': 'SharedSearchToken', 'include_nsa': 'true'})
+    assert nsa_response.status_code == 200
+    assert {'document', 'nsa'} <= {item['source'] for item in nsa_response.json()['results']}

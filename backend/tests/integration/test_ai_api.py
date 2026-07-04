@@ -1,4 +1,7 @@
 from __future__ import annotations
+from app.core.security import hash_password
+from app.modules.admin.models import UserPermission
+from app.modules.auth.models import User
 
 from app.modules.collections.search_service import CollectionSearchResult, CollectionSearchUnavailable
 
@@ -62,8 +65,40 @@ def test_ai_chat_uses_default_document_civil_scope_and_returns_citations(client,
     assert payload['citations'][0]['navigation_url'].startswith('/documents?path=')
 
 
-def test_ai_chat_allows_explicit_nsa_scope_for_unlocked_flow(client, monkeypatch) -> None:
+def test_ai_chat_drops_explicit_nsa_scope_for_anonymous(client, monkeypatch) -> None:
     captured = {}
+
+    def fake_chat(self, messages, roots, use_search, limit, **kwargs):
+        captured['collections'] = [root.collection for root in roots]
+        return 'nsa answer', []
+
+    monkeypatch.setattr('app.modules.ai.service.AiChatService.chat', fake_chat)
+
+    response = client.post(
+        '/api/v1/ai/chat',
+        json={
+            'messages': [{'role': 'user', 'content': 'NSA 질의'}],
+            'use_search': True,
+            'collections': ['nsa'],
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured['collections'] == []
+
+
+def test_ai_chat_allows_explicit_nsa_scope_for_authorized_user(client, app, monkeypatch) -> None:
+    captured = {}
+
+    with app.state.db.session() as session:
+        user = User(username='nsa-user', password_hash=hash_password('password'), role='user', is_active=True)
+        session.add(user)
+        session.flush()
+        session.add(UserPermission(user_id=user.id, permission_key='collections.nsa.read'))
+        session.commit()
+
+    login = client.post('/api/v1/auth/login', json={'username': 'nsa-user', 'password': 'password'})
+    assert login.status_code == 200
 
     def fake_chat(self, messages, roots, use_search, limit, **kwargs):
         captured['collections'] = [root.collection for root in roots]

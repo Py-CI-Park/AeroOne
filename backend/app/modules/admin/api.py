@@ -54,7 +54,8 @@ from app.modules.ai.service import AiChatService
 from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf, require_permission
 from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
-from app.modules.collections.search_service import CollectionSearchRoot, HtmlCollectionSearchService
+from app.modules.collections.search_service import CollectionSearchRoot, CollectionSearchUnavailable, HtmlCollectionSearchService
+from app.modules.collections.policy import can_read_collection
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter
 from app.modules.newsletter.repositories.newsletter_repository import NewsletterRepository
 from app.modules.newsletter.services.newsletter_service import NewsletterService
@@ -540,12 +541,18 @@ def unified_search(q: str, include_nsa: bool = False, db: Session = Depends(get_
     if len(q.strip()) < 2:
         return UnifiedSearchResponse(query=q, results=[])
     collections = ['document', 'civil']
-    from app.modules.admin.permissions import has_permission
-    if include_nsa and user and has_permission(db, user, 'search.nsa.read'):
+    if include_nsa and can_read_collection(db, user, 'nsa'):
         collections.append('nsa')
     roots_by_key = {'document': settings.document_root_path, 'civil': settings.civil_aircraft_root_path, 'nsa': settings.nsa_root_path}
     roots = [CollectionSearchRoot(collection=key, root=roots_by_key[key]) for key in collections]
-    collection_results = HtmlCollectionSearchService().search(roots, q, settings.managed_storage_root, limit=20)
+    try:
+        collection_results = HtmlCollectionSearchService().search(roots, q, settings.managed_storage_root, limit=20)
+        degraded = False
+        reason = None
+    except CollectionSearchUnavailable as exc:
+        collection_results = []
+        degraded = True
+        reason = str(exc)
     newsletter_rows = NewsletterRepository(db).list_public(q=q)[:20]
     results = [
         UnifiedSearchResult(source='newsletter', title=item.title, snippet=item.description or item.summary or '', url=f'/newsletters/{item.slug}', score=1.0)
@@ -553,9 +560,9 @@ def unified_search(q: str, include_nsa: bool = False, db: Session = Depends(get_
     ]
     results.extend(
         UnifiedSearchResult(source=result.collection, title=result.name, snippet=result.snippet, url=result.navigation_url, score=result.score)
-        for result in collection_results.results
+        for result in collection_results
     )
-    return UnifiedSearchResponse(query=q, results=results[:30], degraded=collection_results.degraded, reason=collection_results.reason)
+    return UnifiedSearchResponse(query=q, results=results[:30], degraded=degraded, reason=reason)
 
 
 @router.get('/ai/status', dependencies=[Depends(require_permission('admin.ai.read'))])
