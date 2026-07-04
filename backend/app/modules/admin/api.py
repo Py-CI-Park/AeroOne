@@ -25,6 +25,7 @@ from app.modules.admin.models import (
     AiRequestLog,
 )
 from app.modules.admin.permissions import ADMIN_PERMISSIONS, list_user_permission_keys
+from app.modules.admin.session_fanout import bump_group_members
 from app.modules.admin.schemas import (
     AdminSummaryResponse,
     AssetHealthItem,
@@ -316,6 +317,9 @@ def upsert_group(payload: GroupUpsertRequest, request: Request, db: Session = De
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f'Unknown permission: {key}')
         db.add(GroupPermission(group_id=group.id, permission_key=key))
     db.flush()
+    # Group active-flag/permission changes affect every member's effective permissions;
+    # bump their session_version so stale sessions cannot keep old authorization.
+    bump_group_members(db, group.id)
     after = _serialize_group(db, group).model_dump()
     record_admin_audit(db, actor=actor, action=action, target_type='group', target_id=group.id, request=request, before=before, after=after)
     return _serialize_group(db, group)
