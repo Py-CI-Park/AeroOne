@@ -15,6 +15,18 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.10.0',
+    date: '2026-07-04',
+    items: [
+      'RBAC 읽기 권한 상승 경로를 막고 컬렉션/리소스 권한 기반을 단일 정책으로 정리했습니다.',
+      'NSA 는 0000 비밀번호 가림막을 제거하고 서버측 권한·ResourceGrant 로 접근을 제어합니다.',
+      '사용자별 유효 권한을 세션 힌트로 내려 메뉴와 카드 노출을 계정별로 맞춥니다.',
+      '자산 상태 자가진단과 config-health 로 배포 누락·경로 오류를 운영 화면에서 확인합니다.',
+      '사용자·그룹·리소스 권한 CRUD 와 RBAC 매트릭스를 추가하고 세션 버전 fanout 을 전체화했습니다.',
+      '접속자 대시보드에서 로그인/세션 활동과 익명 IP 읽음 추적을 보존·감사·purge 할 수 있습니다.',
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-07-03',
     items: [

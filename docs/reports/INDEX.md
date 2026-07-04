@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -154,6 +154,15 @@
 - 무엇: `service_modules.visibility`(public/admin) 신설로 개발중(Development)·Coming soon 카드와 Admin 메뉴를 관리자에게만 노출, 헤더를 다크·사용법·Admin 순서로 정리, `/admin` 에서 모듈 추가·삭제·노출 대상 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight 로 stale-DB 500 예방, `개발중` 섹션 라벨 영어(Development)화.
 - 코드: `backend/alembic/versions/20260703_0005_service_module_visibility.py`, `backend/app/modules/admin/{models,schemas,api}.py`, `backend/app/modules/auth/{api,schemas,dependencies}.py`, `frontend/components/layout/{app-shell,admin-nav-link,help-manual-button}.tsx`, `frontend/app/page.tsx`, `frontend/components/admin/admin-home-console.tsx`, `frontend/lib/{api,types,server-auth,changelog}.ts`, `start_offline.bat`
 - 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 10개·`27882788` 로그인).
+
+
+### 단계 23 — 관리자 권한 강화·NSA 서버측 접근제어·접속자 대시보드 (1.10.0)
+
+- 파일: [`phase-23-admin-authz-hardening.md`](phase-23-admin-authz-hardening.md)
+- 분류: minor (`1.10.0`) — 관리자 권한 모델을 사용자/그룹/리소스 단위로 확장하고 문서 컬렉션 읽기 경계를 서버측으로 고정.
+- 무엇: `READ_PERMISSION_BY_PREFIX` 권한 상승 경로를 차단하고 `can_read_collection` 단일 정책으로 collections/admin-search/AI 를 통일, NSA 0000 비밀번호 가림막 제거 후 `collections.nsa.read` + `collection:nsa` ResourceGrant 를 요구, 사용자별 유효 권한 기반 메뉴 힌트, 자산/config-health 진단, 사용자·그룹·리소스 권한 CRUD 와 RBAC 매트릭스, 로그인/세션/익명 IP 읽음 추적 접속자 대시보드를 추가.
+- 코드: `backend/alembic/versions/20260704_0006_*.py`, `backend/alembic/versions/20260704_0007_*.py`, `backend/app/modules/{admin,auth,collections,ai,read_tracking}/`, `frontend/app/{admin,nsa,ai}/`, `frontend/components/{admin,layout,documents,ai}/`, `frontend/lib/changelog.ts`
+- 회귀 방지: backend `pytest tests` 248 passed(경고 3), frontend Vitest 216 passed(49 파일), `tsc --noEmit`, `next build`, alembic upgrades through `20260704_0007`, 단계별 architect/executor QA gate 통과.
 
 ---
 

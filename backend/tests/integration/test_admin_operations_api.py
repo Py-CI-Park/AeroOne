@@ -28,7 +28,7 @@ def test_admin_dashboard_modules_assets_and_backup(csrf_client) -> None:
     summary_response = csrf_client.get('/api/v1/admin/dashboard')
     assert summary_response.status_code == 200
     summary = summary_response.json()
-    assert summary['app_version'] == '1.9.0'
+    assert summary['app_version'] == '1.10.0'
     assert summary['db_ok'] is True
     assert 'asset_health' in summary
 
