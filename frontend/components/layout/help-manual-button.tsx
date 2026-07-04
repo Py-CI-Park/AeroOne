@@ -10,7 +10,7 @@ const MANUAL_SECTIONS = [
     rows: [
       ['현재 서비스 중', 'Newsletter, Document, Civil Aircraft, NSA 는 모든 사용자에게 보이는 운영 중 열람 서비스입니다. 카드나 상단 메뉴를 클릭해 바로 이동합니다.'],
       ['Development(개발중)', 'Viewer, AeroAI, Notebook, Ladder 는 Development 섹션의 Active 카드이고, Announcement 와 Schedule 은 Coming soon 비활성 카드입니다. 이 섹션과 Coming soon 카드는 관리자(서버 실행자)에게만 노출됩니다.'],
-      ['Admin·테마·사용법', '헤더 오른쪽은 다크(DARK/LIGHT) · 사용법 · Admin 순서입니다. Admin 메뉴는 로그인한 관리자에게만 보이며, 일반 사용자에게는 나타나지 않습니다.'],
+      ['Admin·테마·사용법', '헤더 오른쪽은 다크(DARK/LIGHT) · 사용법 · (로그인 또는 Admin) 순서입니다. 로그인 전에는 로그인 링크가, 관리자로 로그인하면 Admin 링크가 보입니다. 일반 사용자에게는 둘 다 표시되지 않습니다.'],
     ],
   },
   {
