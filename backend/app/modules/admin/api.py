@@ -7,7 +7,7 @@ from pathlib import Path
 
 import zipfile
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, PlainTextResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -40,6 +40,7 @@ from app.modules.admin.schemas import (
     GroupUpsertRequest,
     PermissionResponse,
     ServiceModuleResponse,
+    ServiceModuleCreateRequest,
     ServiceModuleUpdateRequest,
     UnifiedSearchResponse,
     UnifiedSearchResult,
@@ -49,7 +50,7 @@ from app.modules.admin.schemas import (
     PasswordResetRequest,
 )
 from app.modules.ai.service import AiChatService
-from app.modules.auth.dependencies import get_current_user, get_db, get_settings, require_csrf, require_permission
+from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf, require_permission
 from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
 from app.modules.collections.search_service import CollectionSearchRoot, HtmlCollectionSearchService
@@ -63,16 +64,16 @@ from app.modules.shared.storage.service import StorageError, StorageService, sha
 router = APIRouter()
 
 DEFAULT_SERVICE_MODULES = [
-    {'key': 'newsletter', 'title': 'Newsletter', 'description': None, 'href': '/newsletters', 'section': 'Newsletter', 'status': 'active', 'badge': 'Active', 'sort_order': 10, 'is_enabled': True, 'is_external': False},
-    {'key': 'civil-aircraft', 'title': 'Civil Aircraft Spec Catalog', 'description': 'Commercial aircraft specs & market competition analysis.', 'href': '/reports/civil-aircraft', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 20, 'is_enabled': True, 'is_external': False},
-    {'key': 'document', 'title': 'Document', 'description': 'Browse HTML documents organized in folders.', 'href': '/documents', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 30, 'is_enabled': True, 'is_external': False},
-    {'key': 'nsa', 'title': 'NSA', 'description': 'Password-protected HTML documents.', 'href': '/nsa', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 40, 'is_enabled': True, 'is_external': False},
-    {'key': 'viewer', 'title': 'Viewer', 'description': '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', 'href': '/viewer', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 50, 'is_enabled': True, 'is_external': False},
-    {'key': 'ai', 'title': 'AeroAI', 'description': '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', 'href': '/ai', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 60, 'is_enabled': True, 'is_external': False},
-    {'key': 'open-notebook', 'title': 'Notebook', 'description': 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', 'href': '', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 70, 'is_enabled': True, 'is_external': True},
-    {'key': 'ladder', 'title': 'Ladder', 'description': 'Coffee-bet ladder game (사다리타기).', 'href': '/games/ladder', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 80, 'is_enabled': True, 'is_external': False},
-    {'key': 'announcement', 'title': 'Announcement', 'description': 'Company-wide announcements module.', 'href': '#', 'section': '개발중', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 90, 'is_enabled': False, 'is_external': False},
-    {'key': 'schedule', 'title': 'Schedule', 'description': 'Shared calendar & event tracking.', 'href': '#', 'section': '개발중', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 100, 'is_enabled': False, 'is_external': False},
+    {'key': 'newsletter', 'title': 'Newsletter', 'description': None, 'href': '/newsletters', 'section': 'Newsletter', 'status': 'active', 'badge': 'Active', 'sort_order': 10, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
+    {'key': 'civil-aircraft', 'title': 'Civil Aircraft Spec Catalog', 'description': 'Commercial aircraft specs & market competition analysis.', 'href': '/reports/civil-aircraft', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 20, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
+    {'key': 'document', 'title': 'Document', 'description': 'Browse HTML documents organized in folders.', 'href': '/documents', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 30, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
+    {'key': 'nsa', 'title': 'NSA', 'description': 'Password-protected HTML documents.', 'href': '/nsa', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 40, 'is_enabled': True, 'is_external': False, 'visibility': 'public'},
+    {'key': 'viewer', 'title': 'Viewer', 'description': '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', 'href': '/viewer', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 50, 'is_enabled': True, 'is_external': False, 'visibility': 'admin'},
+    {'key': 'ai', 'title': 'AeroAI', 'description': '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', 'href': '/ai', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 60, 'is_enabled': True, 'is_external': False, 'visibility': 'admin'},
+    {'key': 'open-notebook', 'title': 'Notebook', 'description': 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', 'href': '', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 70, 'is_enabled': True, 'is_external': True, 'visibility': 'admin'},
+    {'key': 'ladder', 'title': 'Ladder', 'description': 'Coffee-bet ladder game (사다리타기).', 'href': '/games/ladder', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 80, 'is_enabled': True, 'is_external': False, 'visibility': 'admin'},
+    {'key': 'announcement', 'title': 'Announcement', 'description': 'Company-wide announcements module.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 90, 'is_enabled': False, 'is_external': False, 'visibility': 'admin'},
+    {'key': 'schedule', 'title': 'Schedule', 'description': 'Shared calendar & event tracking.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 100, 'is_enabled': False, 'is_external': False, 'visibility': 'admin'},
 ]
 
 
@@ -119,6 +120,7 @@ def _safe_module_snapshot(module: ServiceModule) -> dict[str, object]:
         'sort_order': module.sort_order,
         'is_enabled': module.is_enabled,
         'is_external': module.is_external,
+        'visibility': module.visibility,
     }
 
 
@@ -175,9 +177,14 @@ def _asset_health(db: Session, settings: Settings) -> AssetHealthResponse:
 
 
 @router.get('/service-modules/public', response_model=list[ServiceModuleResponse])
-def public_service_modules(db: Session = Depends(get_db)) -> list[ServiceModuleResponse]:
+def public_service_modules(db: Session = Depends(get_db), user: User | None = Depends(get_optional_user)) -> list[ServiceModuleResponse]:
     _ensure_service_modules(db)
     modules = db.execute(select(ServiceModule).order_by(ServiceModule.sort_order, ServiceModule.id)).scalars().all()
+    is_operator = bool(user and user.role == 'admin')
+    if not is_operator:
+        # Non-operators only see public-audience modules. Development/coming-soon
+        # surfaces are operator-only and never leak to the anonymous dashboard.
+        modules = [module for module in modules if module.visibility == 'public' and module.is_enabled]
     return [ServiceModuleResponse.model_validate(module) for module in modules]
 
 
@@ -326,6 +333,29 @@ def list_service_modules(db: Session = Depends(get_db)) -> list[ServiceModuleRes
     _ensure_service_modules(db)
     modules = db.execute(select(ServiceModule).order_by(ServiceModule.sort_order, ServiceModule.id)).scalars().all()
     return [ServiceModuleResponse.model_validate(module) for module in modules]
+
+
+@router.post('/service-modules', response_model=ServiceModuleResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission('admin.dashboard.manage')), Depends(require_csrf)])
+def create_service_module(payload: ServiceModuleCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> ServiceModuleResponse:
+    if db.scalar(select(ServiceModule).where(ServiceModule.key == payload.key)):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Service module key already exists')
+    module = ServiceModule(**payload.model_dump())
+    db.add(module)
+    db.flush()
+    record_admin_audit(db, actor=actor, action='service_module.create', target_type='service_module', target_id=module.key, request=request, after=_safe_module_snapshot(module))
+    return ServiceModuleResponse.model_validate(module)
+
+
+@router.delete('/service-modules/{module_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permission('admin.dashboard.manage')), Depends(require_csrf)])
+def delete_service_module(module_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> Response:
+    module = db.get(ServiceModule, module_id)
+    if module is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Service module not found')
+    before = _safe_module_snapshot(module)
+    db.delete(module)
+    db.flush()
+    record_admin_audit(db, actor=actor, action='service_module.delete', target_type='service_module', target_id=before['key'], request=request, before=before)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch('/service-modules/{module_id}', response_model=ServiceModuleResponse, dependencies=[Depends(require_permission('admin.dashboard.manage')), Depends(require_csrf)])

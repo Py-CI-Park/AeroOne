@@ -61,6 +61,9 @@ async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(text || `Request failed: ${response.status}`);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return (await response.json()) as T;
 }
 
@@ -298,11 +301,12 @@ export async function login(username: string, password: string) {
 }
 
 
-export async function fetchPublicServiceModules() {
+export async function fetchPublicServiceModules(cookieHeader?: string) {
   return loggedServerFetchJson<ServiceModule[]>({
     label: 'service-modules.public',
     baseUrl: getServerApiBase(),
     path: '/api/v1/admin/service-modules/public',
+    init: cookieHeader ? { headers: { cookie: cookieHeader } } : undefined,
   });
 }
 
@@ -366,6 +370,29 @@ export async function updateServiceModule(id: number, payload: Partial<ServiceMo
   return browserFetch<ServiceModule>(`/api/v1/admin/service-modules/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function createServiceModule(payload: Partial<ServiceModule> & { key: string; title: string }, csrfToken: string) {
+  return browserFetch<ServiceModule>('/api/v1/admin/service-modules', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteServiceModule(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/v1/admin/service-modules/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function changeOwnPassword(currentPassword: string, newPassword: string, csrfToken: string) {
+  return browserFetch<AuthResponse>('/api/v1/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }

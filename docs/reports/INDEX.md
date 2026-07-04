@@ -147,6 +147,14 @@
 - 코드: `backend/app/modules/admin/`, `backend/alembic/versions/20260703_0004_admin_rbac_operations.py`, `frontend/app/admin/page.tsx`, `frontend/components/admin/admin-home-console.tsx`, `frontend/app/page.tsx`
 - 회귀 방지: backend `pytest tests` 177 passed(경고 3), frontend Vitest 205 passed(47 파일), `tsc --noEmit`, `next build`, browser dashboard/admin smoke, Ultragoal architect/QA gate CLEAR.
 
+### 단계 22 — 관리자 전용 노출·헤더 정리·모듈 DB 관리 강화·비밀번호 변경 (1.9.0)
+
+- 파일: [`phase-22-operator-visibility-and-module-management.md`](phase-22-operator-visibility-and-module-management.md)
+- 분류: minor (`1.9.0`) — 관리자(서버 실행자) 전용 노출 제어와 대시보드 운영 편의 강화.
+- 무엇: `service_modules.visibility`(public/admin) 신설로 개발중(Development)·Coming soon 카드와 Admin 메뉴를 관리자에게만 노출, 헤더를 다크·사용법·Admin 순서로 정리, `/admin` 에서 모듈 추가·삭제·노출 대상 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight 로 stale-DB 500 예방, `개발중` 섹션 라벨 영어(Development)화.
+- 코드: `backend/alembic/versions/20260703_0005_service_module_visibility.py`, `backend/app/modules/admin/{models,schemas,api}.py`, `backend/app/modules/auth/{api,schemas,dependencies}.py`, `frontend/components/layout/{app-shell,admin-nav-link,help-manual-button}.tsx`, `frontend/app/page.tsx`, `frontend/components/admin/admin-home-console.tsx`, `frontend/lib/{api,types,server-auth,changelog}.ts`, `start_offline.bat`
+- 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 10개·`27882788` 로그인).
+
 ---
 
 ## 보고서가 다루지 않는 자리

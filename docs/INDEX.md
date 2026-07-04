@@ -2,7 +2,7 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 버전: `1.8.0` (`관리자 RBAC·운영 콘솔·DB 기반 대시보드 관리`)
+- 기준 버전: `1.9.0` (`관리자 전용 노출·헤더 정리·모듈 DB 관리 강화·비밀번호 변경`)
 - 갱신일: 2026-07-03
 
 ---
@@ -67,6 +67,7 @@
 | 단계 19 | [`reports/phase-19-aeroai-viewer-ux-release.md`](reports/phase-19-aeroai-viewer-ux-release.md) | AeroAI Markdown 답변·HTML 검색 새 탭·모니터 높이 레이아웃 + Viewer 집중/전체화면 + Open Notebook 동거 릴리즈 — minor 1.7.0 | `1.7.0-dev` |
 | 단계 20 | [`reports/phase-20-dashboard-development-section-handoff.md`](reports/phase-20-dashboard-development-section-handoff.md) | 대시보드 개발중 섹션 신설 + AeroAI/Notebook/Viewer/Ladder active 이동 + coming-soon 카드 비활성 유지 + 1.7.1 뉴스레터/사용법 patch | `1.7.1-dev` |
 | 단계 21 | [`reports/phase-21-admin-rbac-operations-console.md`](reports/phase-21-admin-rbac-operations-console.md) | 관리자 RBAC·same-transaction audit·운영 콘솔·service_modules DB 대시보드·뉴스레터 자산/상태/bulk·백업 — minor 1.8.0 | `1.8.0-dev` |
+| 단계 22 | [`reports/phase-22-operator-visibility-and-module-management.md`](reports/phase-22-operator-visibility-and-module-management.md) | 관리자 전용 Admin/개발중(Development)/Coming soon 노출 + 헤더 다크·사용법·Admin 순서 + 모듈 add/delete·노출 대상 관리 + 관리자 비밀번호 변경 + start_offline 마이그레이션 preflight — minor 1.9.0 | `1.9.0-dev` |
 
 ---
 
@@ -129,7 +130,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.8.0 기준 backend 177 passed, frontend Vitest 205 passed(47 파일), `tsc --noEmit` 를 수행한다. release gate 에서는 여기에 `next build` 와 브라우저 smoke 를 더한다.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.9.0 기준 backend 181 passed, frontend Vitest 206 passed(47 파일), `tsc --noEmit` 를 수행한다. release gate 에서는 여기에 `next build` 와 브라우저 smoke 를 더한다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|

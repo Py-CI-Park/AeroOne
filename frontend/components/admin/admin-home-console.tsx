@@ -6,6 +6,9 @@ import Link from 'next/link';
 import {
   createAdminUser,
   createBackup,
+  changeOwnPassword,
+  createServiceModule,
+  deleteServiceModule,
   createCategory,
   createTag,
   dryRunRestoreBackup,
@@ -46,7 +49,7 @@ import type {
   UnifiedSearchResult,
 } from '@/lib/types';
 
-type ModuleDraft = Pick<ServiceModule, 'title' | 'description' | 'href' | 'section' | 'status' | 'badge' | 'sort_order' | 'is_enabled' | 'is_external'>;
+type ModuleDraft = Pick<ServiceModule, 'title' | 'description' | 'href' | 'section' | 'status' | 'badge' | 'sort_order' | 'is_enabled' | 'is_external' | 'visibility'>;
 type UserDraft = Pick<AdminUser, 'email' | 'role' | 'is_active'> & { permissions_csv: string };
 type TaxonomyDraft = { name: string; description?: string | null; sort_order: number; is_active: boolean };
 
@@ -109,6 +112,7 @@ function moduleToDraft(module: ServiceModule): ModuleDraft {
     sort_order: module.sort_order,
     is_enabled: module.is_enabled,
     is_external: module.is_external,
+    visibility: module.visibility ?? 'admin',
   };
 }
 
@@ -149,6 +153,8 @@ export function AdminHomeConsole() {
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', sort_order: 0, is_active: true });
   const [tagForm, setTagForm] = useState({ name: '', sort_order: 0, is_active: true });
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
+  const [moduleForm, setModuleForm] = useState({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' });
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
 
   async function refresh() {
     try {
@@ -202,6 +208,36 @@ export function AdminHomeConsole() {
     await runBusy(`module-${module.id}`, async () => {
       await updateServiceModule(module.id, { is_enabled: !draft.is_enabled }, getCsrfCookie());
       setState((current) => ({ ...current, message: `${module.title} 모듈 상태를 변경했습니다.` }));
+    });
+  }
+
+  async function createModule() {
+    if (!moduleForm.key.trim() || !moduleForm.title.trim()) return;
+    await runBusy('module-create', async () => {
+      await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie());
+      setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' });
+      setState((current) => ({ ...current, message: '대시보드 모듈을 추가했습니다.' }));
+    });
+  }
+
+  async function removeModule(module: ServiceModule) {
+    if (typeof window !== 'undefined' && !window.confirm(`${module.key} 모듈을 삭제할까요?`)) return;
+    await runBusy(`module-${module.id}`, async () => {
+      await deleteServiceModule(module.id, getCsrfCookie());
+      setState((current) => ({ ...current, message: `${module.title} 모듈을 삭제했습니다.` }));
+    });
+  }
+
+  async function changePassword() {
+    if (!passwordForm.current || !passwordForm.next) return;
+    if (passwordForm.next !== passwordForm.confirm) {
+      setState((current) => ({ ...current, error: '새 비밀번호와 확인 값이 일치하지 않습니다.' }));
+      return;
+    }
+    await runBusy('password-change', async () => {
+      await changeOwnPassword(passwordForm.current, passwordForm.next, getCsrfCookie());
+      setPasswordForm({ current: '', next: '', confirm: '' });
+      setState((current) => ({ ...current, message: '관리자 비밀번호를 변경했습니다.' }));
     });
   }
 
@@ -378,14 +414,55 @@ export function AdminHomeConsole() {
                 </div>
                 <textarea value={draft.description ?? ''} onChange={(event) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, description: event.target.value } }))} className="mt-2 w-full rounded-md border border-slate-300 px-2 py-1" rows={2} aria-label={`${module.key} description`} />
                 <label className="mt-2 inline-flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={draft.is_external} onChange={(event) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, is_external: event.target.checked } }))} /> external</label>
+                <label className="mt-2 ml-3 inline-flex items-center gap-2 text-xs text-slate-600">audience
+                  <select value={draft.visibility} onChange={(event) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, visibility: event.target.value } }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label={`${module.key} visibility`}>
+                    <option value="public">public</option>
+                    <option value="admin">admin (operator only)</option>
+                  </select>
+                </label>
                 <div className="mt-2 flex gap-2">
                   <button type="button" disabled={state.busy === `module-${module.id}`} onClick={() => void saveModule(module)} className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">저장</button>
                   <button type="button" disabled={state.busy === `module-${module.id}`} onClick={() => void toggleModule(module)} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40">{draft.is_enabled ? '비활성화' : '활성화'}</button>
+                  <button type="button" disabled={state.busy === `module-${module.id}`} onClick={() => void removeModule(module)} className="rounded-md border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:opacity-40">삭제</button>
                 </div>
               </div>
             );
           })}
         </div>
+        <div className="mt-4 rounded-lg border border-dashed border-slate-300 p-3 text-sm">
+          <p className="mb-2 font-semibold text-slate-700">새 모듈 추가</p>
+          <div className="grid gap-2 md:grid-cols-3">
+            <input value={moduleForm.key} onChange={(event) => setModuleForm((current) => ({ ...current, key: event.target.value }))} placeholder="key" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module key" />
+            <input value={moduleForm.title} onChange={(event) => setModuleForm((current) => ({ ...current, title: event.target.value }))} placeholder="title" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module title" />
+            <input value={moduleForm.section} onChange={(event) => setModuleForm((current) => ({ ...current, section: event.target.value }))} placeholder="section" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module section" />
+            <input value={moduleForm.href} onChange={(event) => setModuleForm((current) => ({ ...current, href: event.target.value }))} placeholder="href" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module href" />
+            <select value={moduleForm.status} onChange={(event) => setModuleForm((current) => ({ ...current, status: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module status">
+              <option value="active">active</option>
+              <option value="development">development</option>
+              <option value="coming_soon">coming soon</option>
+              <option value="hidden">hidden</option>
+            </select>
+            <select value={moduleForm.visibility} onChange={(event) => setModuleForm((current) => ({ ...current, visibility: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module visibility">
+              <option value="public">public</option>
+              <option value="admin">admin (operator only)</option>
+            </select>
+          </div>
+          <button type="button" disabled={state.busy === 'module-create'} onClick={() => void createModule()} className="mt-2 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">모듈 추가</button>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">관리자 계정 / 비밀번호</h2>
+          <Badge tone="amber">self-service</Badge>
+        </div>
+        <p className="mb-3 text-sm text-slate-500">현재 비밀번호를 확인한 뒤 새 비밀번호로 교체합니다. 변경 즉시 다른 세션은 로그아웃됩니다.</p>
+        <div className="grid gap-2 md:grid-cols-3">
+          <input type="password" value={passwordForm.current} onChange={(event) => setPasswordForm((current) => ({ ...current, current: event.target.value }))} placeholder="현재 비밀번호" className="rounded-md border border-slate-300 px-2 py-1" aria-label="current password" />
+          <input type="password" value={passwordForm.next} onChange={(event) => setPasswordForm((current) => ({ ...current, next: event.target.value }))} placeholder="새 비밀번호 (8자 이상)" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new password" />
+          <input type="password" value={passwordForm.confirm} onChange={(event) => setPasswordForm((current) => ({ ...current, confirm: event.target.value }))} placeholder="새 비밀번호 확인" className="rounded-md border border-slate-300 px-2 py-1" aria-label="confirm password" />
+        </div>
+        <button type="button" disabled={state.busy === 'password-change'} onClick={() => void changePassword()} className="mt-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">비밀번호 변경</button>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">

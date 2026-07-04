@@ -94,6 +94,7 @@ class ServiceModuleResponse(BaseModel):
     sort_order: int
     is_enabled: bool
     is_external: bool
+    visibility: str = 'public'
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -110,6 +111,21 @@ class ServiceModuleUpdateRequest(BaseModel):
     sort_order: int | None = None
     is_enabled: bool | None = None
     is_external: bool | None = None
+    visibility: Literal['public', 'admin'] | None = None
+
+
+class ServiceModuleCreateRequest(BaseModel):
+    key: str
+    title: str
+    description: str | None = None
+    href: str = '#'
+    section: str = 'Development'
+    status: Literal['active', 'development', 'coming_soon', 'hidden'] = 'development'
+    badge: str = 'Active'
+    sort_order: int = 0
+    is_enabled: bool = True
+    is_external: bool = False
+    visibility: Literal['public', 'admin'] = 'admin'
 
 
 class AdminSummaryResponse(BaseModel):

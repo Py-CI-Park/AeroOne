@@ -84,6 +84,7 @@ export interface ServiceModule {
   sort_order: number;
   is_enabled: boolean;
   is_external: boolean;
+  visibility: 'public' | 'admin' | string;
 }
 
 export interface AdminSummary {

@@ -44,6 +44,18 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> User | None:
+    try:
+        user, _payload = _current_user_from_request(request, db, settings)
+    except HTTPException:
+        return None
+    return user
+
+
 def get_current_admin(
     request: Request,
     db: Session = Depends(get_db),

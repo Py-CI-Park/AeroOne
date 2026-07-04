@@ -1,7 +1,10 @@
+import { cookies } from 'next/headers';
+
 import { AppShell } from '@/components/layout/app-shell';
 import { ServiceCard } from '@/components/dashboard/service-card';
 import { NotebookLinkCard } from '@/components/dashboard/notebook-link-card';
 import { fetchPublicServiceModules } from '@/lib/api';
+import { resolveIsAdmin } from '@/lib/server-auth';
 import { getAppTheme } from '@/lib/server-theme';
 import type { ServiceModule } from '@/lib/types';
 
@@ -10,28 +13,28 @@ type SearchParams = {
 };
 
 const FALLBACK_MODULES: ServiceModule[] = [
-  { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false },
-  { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false },
-  { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false },
-  { id: 4, key: 'nsa', title: 'NSA', description: 'Password-protected HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false },
-  { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 50, is_external: false },
-  { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 60, is_external: false },
-  { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 70, is_external: true },
-  { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: '개발중', status: 'development', sort_order: 80, is_external: false },
-  { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: '개발중', status: 'coming_soon', sort_order: 90, is_external: false },
-  { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: '개발중', status: 'coming_soon', sort_order: 100, is_external: false },
+  { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, visibility: 'public' },
+  { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, visibility: 'public' },
+  { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, visibility: 'public' },
+  { id: 4, key: 'nsa', title: 'NSA', description: 'Password-protected HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, visibility: 'public' },
+  { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, visibility: 'admin' },
+  { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, visibility: 'admin' },
+  { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, visibility: 'admin' },
+  { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, visibility: 'admin' },
+  { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, visibility: 'admin' },
+  { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, visibility: 'admin' },
 ];
 
-const SECTION_ORDER = ['Newsletter', 'Document', '개발중'];
+const SECTION_ORDER = ['Newsletter', 'Document', 'Development'];
 
 function orderSections(modules: ServiceModule[]) {
   const extras = modules.map((module) => module.section).filter((section) => !SECTION_ORDER.includes(section));
   return [...SECTION_ORDER, ...Array.from(new Set(extras))];
 }
 
-async function loadModules(): Promise<{ modules: ServiceModule[]; degraded: boolean }> {
+async function loadModules(cookieHeader: string): Promise<{ modules: ServiceModule[]; degraded: boolean }> {
   try {
-    const modules = await fetchPublicServiceModules();
+    const modules = await fetchPublicServiceModules(cookieHeader || undefined);
     return { modules, degraded: false };
   } catch {
     return { modules: FALLBACK_MODULES, degraded: true };
@@ -45,8 +48,16 @@ export default async function HomePage({
 }) {
   const params = await searchParams;
   const theme = await getAppTheme(params.theme);
-  const { modules, degraded } = await loadModules();
-  const sortedModules = [...modules].sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
+  const cookieHeader = cookies()
+    .getAll()
+    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join('; ');
+  const isAdmin = await resolveIsAdmin();
+  const { modules, degraded } = await loadModules(cookieHeader);
+  // Development/coming-soon surfaces are operator-only. Non-operators only see
+  // public-audience cards even when the fallback list is used.
+  const visibleModules = modules.filter((module) => isAdmin || module.visibility === 'public');
+  const sortedModules = [...visibleModules].sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
   const activeCount = sortedModules.filter((module) => module.is_enabled).length;
   const comingCount = sortedModules.filter((module) => module.status === 'coming_soon' || !module.is_enabled).length;
 

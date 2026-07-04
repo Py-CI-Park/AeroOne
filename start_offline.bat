@@ -93,6 +93,7 @@ call :ensure_port_free %BACKEND_PORT% "offline backend"
 if errorlevel 1 exit /b 1
 call :ensure_port_free %FRONTEND_PORT% "offline frontend"
 if errorlevel 1 exit /b 1
+call :ensure_db_migrated
 
 if defined ALLOW_HOST (
   set "AEROONE_ALLOW_HOST=%ALLOW_HOST%"
@@ -134,6 +135,35 @@ if not "!PORT_PROBE_EXIT!"=="0" (
   exit /b 1
 )
 exit /b 0
+:ensure_db_migrated
+REM 실행 DB 가 최신 마이그레이션 이전이면(예: 코드만 갱신하고 setup_offline 재실행을 건너뛴 경우)
+REM 대시보드/뉴스레터가 500 으로 죽는다. setup_offline 과 동일한 ensure_db_state 분기로
+REM 시작 전에 스키마를 head 로 맞춘다. 이미 head 면 no-op 이라 안전하다.
+if not exist "%BACKEND_DIR%\.venv\Scripts\activate.bat" (
+  echo [WARN ] backend venv missing; run setup_offline.bat first. Skipping migration preflight.
+  exit /b 0
+)
+REM DATABASE_URL 을 명시적으로 넘겨 .env 로딩/작업 디렉토리 차이에 흔들리지 않게 한다.
+REM setlocal 로 이 변경을 서브루틴 안에만 가두어 backend/frontend 실행 창에는 새지 않게 한다.
+setlocal
+set "AEROONE_DB_URL_PATH=%BACKEND_DIR:\=/%/data/aeroone.db"
+pushd "%BACKEND_DIR%"
+call .venv\Scripts\activate.bat
+set "PYTHONPATH=."
+set "DATABASE_URL=sqlite:///%AEROONE_DB_URL_PATH%"
+call python scripts\ensure_db_state.py data\aeroone.db
+set "MIGRATION_MODE=%ERRORLEVEL%"
+if "%MIGRATION_MODE%"=="3" (
+  echo [INFO ] Existing database without Alembic metadata detected. Stamping head.
+  call alembic stamp head || echo [WARN ] alembic stamp head failed; check DB state.
+) else (
+  echo [INFO ] Applying pending database migrations ^(no-op if already current^)...
+  call alembic upgrade head || echo [WARN ] alembic upgrade head failed; dashboard/newsletter may error until resolved.
+)
+popd
+endlocal
+exit /b 0
+
 
 :resolve_auto_host
 echo [INFO ] Detecting this PC's LAN IPv4 for LAN access...

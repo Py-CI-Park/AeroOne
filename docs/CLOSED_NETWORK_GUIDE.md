@@ -2,9 +2,9 @@
 
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
-- 기준 commit: `1.8.0` (`관리자 RBAC·운영 콘솔·DB 기반 대시보드 관리`)
+- 기준 commit: `1.9.0` (`관리자 전용 노출·헤더 정리·모듈 DB 관리 강화·비밀번호 변경`)
 - 갱신일: 2026-07-03
-- 테스트 상태: backend `pytest tests` **177 passed** (경고 3, 실패 0), frontend Vitest **205 passed** (47 파일), `tsc --noEmit` 성공
+- 테스트 상태: backend `pytest tests` **181 passed** (경고 3, 실패 0), frontend Vitest **206 passed** (47 파일), `tsc --noEmit` 성공
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 ---
@@ -43,7 +43,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.8.0 기준 관리자 RBAC·운영 콘솔·DB 기반 대시보드 관리까지 backend 177개·frontend 205개 회귀로 검증된 상태입니다.
+**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.9.0 기준 관리자 전용 메뉴/개발중·Coming soon 노출 제어, 헤더 정리, `service_modules` DB 관리 강화, 관리자 비밀번호 변경까지 backend 181개·frontend 206개 회귀로 검증된 상태입니다.
 
 ---
 
@@ -53,6 +53,7 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
+| `1.9.0` | 단계 22 | 관리자(서버 실행자) 전용 Admin 메뉴·개발중(Development)·Coming soon 노출, 헤더 다크·사용법·Admin 순서, 모듈 add/delete + 노출 대상(public/admin) 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight |
 | `1.8.0` | 단계 21 | 관리자 RBAC, same-transaction audit, `/admin` 운영 콘솔, `service_modules` DB 대시보드, 뉴스레터 자산/상태/bulk/taxonomy, 백업 manifest+sha256+복원 dry-run, 통합 검색 |
 | `1.7.1` | 단계 20 | 뉴스레터 달력 접힘 가로 폭 축소, HTML 다운로드 버튼 강조, 사용법 팝업의 현재 서비스 중/개발중 구분 최신화 |
 | `1.7.0` | 단계 19 | AeroAI Markdown 답변·HTML 검색 새 탭·모니터 높이 레이아웃, Viewer 미리보기 집중/전체화면, Open Notebook co-deploy 릴리즈 검증 |
@@ -75,8 +76,8 @@
 
 ### 3.3 테스트 통계
 
-- backend 전체: **177 passed**
-- frontend 전체: **205 passed / 47 files**
+- backend 전체: **181 passed**
+- frontend 전체: **206 passed / 47 files**
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, `offline_package.bat` packaging 제외 목록, 관리자 RBAC/audit/backup, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API, 뷰어·Document·AeroAI 프론트 컴포넌트
 
 ### 3.4 릴리즈 1.8.0 폐쇄망 반입물
@@ -309,7 +310,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-기대 출력 예: `177 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+기대 출력 예: `181 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
@@ -339,10 +340,10 @@ python -m pytest tests -q
 | 메타데이터/게시 상태 수정 | 관리자 화면의 **편집** 버튼 (제목·요약·카테고리·태그·게시 상태·활성 여부·썸네일) 또는 뉴스레터 목록 일괄 게시/보관 |
 | 카테고리/태그 정리 | `/admin` 콘솔의 카테고리/태그 관리에서 생성·정렬·비활성화 |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
-| 대시보드 카드 변경 | `/admin` 콘솔의 대시보드 모듈 DB 관리에서 `service_modules` 활성/비활성, 개발중/Coming soon, 링크·설명·순서를 조정 |
+| 대시보드 카드 변경 | `/admin` 콘솔의 대시보드 모듈 DB 관리에서 `service_modules` 카드 추가·삭제, 활성/비활성, Development/Coming soon, 링크·설명·순서, 노출 대상(public: 모든 사용자 / admin: 관리자 전용)을 조정. 개발중·Coming soon 카드와 Admin 메뉴는 관리자에게만 노출 |
 | 사용자/권한 관리 | `/admin` 콘솔에서 admin/user/pending 사용자, 직접 권한, 그룹 권한을 관리. self-lockout 과 마지막 admin 제거는 API 가 거부 |
 | 운영 상태 확인 | `/admin` 콘솔에서 버전/DB/뉴스레터/자산/read/AI/audit/백업 요약, 통합 검색, 백업 생성·검증·복원 점검을 확인 |
-| 비밀번호 교체 | `setup_offline.bat` 재실행 → `backend\.env` 의 `ADMIN_PASSWORD` 재확인. 기존 `.env` 는 `.bak` 자동 백업 |
+| 비밀번호 교체 | `/admin` 콘솔의 **관리자 계정 / 비밀번호** 에서 현재 비밀번호 확인 후 직접 변경(변경 시 다른 세션 로그아웃). 또는 `setup_offline.bat` 재실행으로 `backend\.env` 의 `ADMIN_PASSWORD` 재발급(기존 `.env` 는 `.bak` 자동 백업). 이 배포본 초기 비밀번호는 `27882788` |
 
 ---
 
