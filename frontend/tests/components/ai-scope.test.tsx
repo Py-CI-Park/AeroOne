@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   fetchCollectionSearch: vi.fn(),
   sendAiChat: vi.fn(),
   listAiConversations: vi.fn(),
+  fetchClientSession: vi.fn(),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -23,6 +24,10 @@ beforeEach(() => {
   mocks.fetchCollectionSearch.mockResolvedValue({ results: [], degraded: false, collections: ['document', 'civil'] });
   mocks.sendAiChat.mockResolvedValue({ model: 'gemma4:12b', message: { role: 'assistant', content: 'ok' }, citations: [] });
   mocks.listAiConversations.mockResolvedValue({ conversations: [] });
+  // Default: authenticated non-admin with NO nsa permission -> NSA scope stays locked.
+  mocks.fetchClientSession.mockResolvedValue({
+    authenticated: true, role: 'user', isAdmin: false, permissions: [], resources: [],
+  });
 });
 
 afterEach(() => {
@@ -73,16 +78,21 @@ test('scope toggles do not silently fall back after the last active scope is cli
   );
 });
 
-test('nsa option is disabled until unlocked, enabled and selectable once unlocked', async () => {
+test('nsa scope is disabled without permission and enabled once the session grants nsa access', async () => {
+  // No nsa permission (beforeEach default) -> NSA scope disabled.
   const { unmount } = render(<AiChatWorkspace />);
-  expect((screen.getByLabelText(/NSA/) as HTMLInputElement).disabled).toBe(true);
+  await screen.findByTestId('ai-scope');
+  await waitFor(() => expect((screen.getByLabelText(/NSA/) as HTMLInputElement).disabled).toBe(true));
   unmount();
 
-  window.localStorage.setItem('aeroone.collection.nsa.unlocked', '1');
+  // Session hint grants nsa read -> NSA scope enabled and selectable.
+  mocks.fetchClientSession.mockResolvedValue({
+    authenticated: true, role: 'user', isAdmin: false, permissions: ['collections.nsa.read'], resources: [],
+  });
   render(<AiChatWorkspace />);
-  const nsa = screen.getByLabelText('NSA') as HTMLInputElement;
-  expect(nsa.disabled).toBe(false);
-  fireEvent.click(nsa);
+  await screen.findByTestId('ai-scope');
+  await waitFor(() => expect((screen.getByLabelText('NSA') as HTMLInputElement).disabled).toBe(false));
+  fireEvent.click(screen.getByLabelText('NSA'));
   await send();
   expect(mocks.sendAiChat).toHaveBeenCalledWith(
     expect.objectContaining({ collections: ['document', 'civil', 'nsa'] }),

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false, func, true
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, func, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -79,6 +79,36 @@ class AdminAuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class LoginEvent(Base):
+    __tablename__ = 'login_events'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'), index=True, nullable=True)
+    username: Mapped[str] = mapped_column(String(100), nullable=False)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False, server_default=func.now())
+
+
+class UserSessionActivity(Base):
+    __tablename__ = 'user_session_activity'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'session_hash', name='uq_user_session_activity_user_hash'),
+        Index('ix_user_session_activity_user_id', 'user_id'),
+        Index('ix_user_session_activity_last_seen_at', 'last_seen_at'),
+        Index('ix_user_session_activity_expires_at', 'expires_at'),
+        Index('ix_user_session_activity_session_hash', 'session_hash'),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    session_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class ServiceModule(Base):
     __tablename__ = 'service_modules'
 
@@ -93,6 +123,10 @@ class ServiceModule(Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default='0')
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
     is_external: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
+    visibility: Mapped[str] = mapped_column(String(20), nullable=False, server_default='public')
+    required_permission: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    resource_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    resource_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 

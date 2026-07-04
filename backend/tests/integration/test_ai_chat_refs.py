@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from app.core.security import hash_password
+from app.modules.admin.models import UserPermission
+from app.modules.auth.models import User
 
 
 def _seed(root: Path, rel: str, body: str) -> None:
@@ -84,7 +87,7 @@ def test_traversal_and_unknown_refs_are_silently_dropped(client, test_paths, mon
     assert [c['path'] for c in citations] == ['valid.html']
 
 
-def test_nsa_selected_ref_is_accepted_as_status_quo(client, test_paths, monkeypatch) -> None:
+def test_nsa_selected_ref_is_dropped_for_anonymous(client, test_paths, monkeypatch) -> None:
     _seed(test_paths['nsa_root'], 'secret-brief.html', 'NSA 문서')
     _mock_ollama(monkeypatch)
 
@@ -96,7 +99,30 @@ def test_nsa_selected_ref_is_accepted_as_status_quo(client, test_paths, monkeypa
         },
     )
 
-    # nsa 백엔드 게이트는 이 스토리 범위 밖 — 기존 /search 와 동일하게 수용(현상유지).
+    assert response.status_code == 200
+    assert response.json()['citations'] == []
+
+
+def test_nsa_selected_ref_is_allowed_for_authorized_user(client, app, test_paths, monkeypatch) -> None:
+    _seed(test_paths['nsa_root'], 'secret-brief.html', 'NSA 문서')
+    _mock_ollama(monkeypatch)
+    with app.state.db.session() as session:
+        user = User(username='nsa-user', password_hash=hash_password('password'), role='user', is_active=True)
+        session.add(user)
+        session.flush()
+        session.add(UserPermission(user_id=user.id, permission_key='collections.nsa.read'))
+        session.commit()
+    login = client.post('/api/v1/auth/login', json={'username': 'nsa-user', 'password': 'password'})
+    assert login.status_code == 200
+
+    response = client.post(
+        '/api/v1/ai/chat',
+        json={
+            'messages': [{'role': 'user', 'content': '질문'}],
+            'selected_refs': [{'collection': 'nsa', 'path': 'secret-brief.html'}],
+        },
+    )
+
     assert response.status_code == 200
     citations = response.json()['citations']
     assert [c['collection'] for c in citations] == ['nsa']

@@ -1,6 +1,8 @@
 import React, { ReactNode } from 'react';
 import Link from 'next/link';
 
+import { AdminNavLink } from '@/components/layout/admin-nav-link';
+
 import { Icon } from '@/components/ui/icons';
 import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import { VersionBadge } from '@/components/layout/version-badge';
@@ -13,7 +15,6 @@ const NAV_ITEMS: { id: Exclude<ActiveNav, 'none'>; label: string; href: string }
   { id: 'dashboard', label: 'Dashboard', href: '/' },
   { id: 'newsletters', label: 'Newsletter', href: '/newsletters' },
   { id: 'documents', label: 'Document', href: '/documents' },
-  { id: 'admin', label: 'Admin', href: '/admin' },
 ];
 
 export function AppShell({
@@ -91,8 +92,9 @@ export function AppShell({
         ) : null}
 
         <div className="ml-auto flex items-center gap-2">
-          <HelpManualButton />
           {showThemeSelector ? <NewsletterThemeSelector theme={theme} currentPath={themePath} /> : null}
+          <HelpManualButton />
+          <AdminNavLink active={active === 'admin'} />
         </div>
       </header>
 

@@ -60,6 +60,49 @@ class GroupUpsertRequest(BaseModel):
     permissions: list[str] = Field(default_factory=list)
 
 
+class ResourceGrantCreateRequest(BaseModel):
+    subject_type: Literal['user', 'group']
+    subject_id: int
+    resource_type: str
+    resource_id: str
+    permission_key: str
+
+
+class ResourceGrantResponse(ResourceGrantCreateRequest):
+    id: int
+    created_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RbacGroupPermissionSource(BaseModel):
+    group: str
+    key: str
+
+
+class RbacEffectivePermissionSource(BaseModel):
+    key: str
+    sources: list[str]
+
+
+class RbacResourceGrantSource(BaseModel):
+    resource_type: str
+    resource_id: str
+    permission_key: str
+    source: str
+
+
+class RbacMatrixUserResponse(BaseModel):
+    user_id: int
+    username: str
+    role: str
+    role_permissions: list[str]
+    direct_permissions: list[str]
+    group_permissions: list[RbacGroupPermissionSource]
+    effective_permissions: list[RbacEffectivePermissionSource]
+    resource_grants: list[RbacResourceGrantSource]
+
+
 class AuditEventResponse(BaseModel):
     id: int
     actor_user_id: int | None = None
@@ -94,6 +137,10 @@ class ServiceModuleResponse(BaseModel):
     sort_order: int
     is_enabled: bool
     is_external: bool
+    visibility: str = 'public'
+    required_permission: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -110,6 +157,58 @@ class ServiceModuleUpdateRequest(BaseModel):
     sort_order: int | None = None
     is_enabled: bool | None = None
     is_external: bool | None = None
+    visibility: Literal['public', 'admin'] | None = None
+    required_permission: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
+
+
+class ServiceModuleCreateRequest(BaseModel):
+    key: str
+    title: str
+    description: str | None = None
+    href: str = '#'
+    section: str = 'Development'
+    status: Literal['active', 'development', 'coming_soon', 'hidden'] = 'development'
+    badge: str = 'Active'
+    sort_order: int = 0
+    is_enabled: bool = True
+    is_external: bool = False
+    visibility: Literal['public', 'admin'] = 'admin'
+    required_permission: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
+
+
+class ConnectedSessionResponse(BaseModel):
+    user_id: int
+    username: str
+    last_seen_at: datetime
+
+
+class LoginEventResponse(BaseModel):
+    id: int
+    user_id: int | None = None
+    username: str
+    ip_address: str | None = None
+    user_agent: str | None = None
+    status: Literal['success', 'failure']
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConnectedUsersResponse(BaseModel):
+    active_sessions: list[ConnectedSessionResponse]
+    active_count: int
+    recent_login_events: list[LoginEventResponse]
+    login_failure_count: int
+    read_tracking_summary: dict[str, int]
+
+
+class SessionPurgeResponse(BaseModel):
+    login_events_deleted: int
+    session_activity_deleted: int
 
 
 class AdminSummaryResponse(BaseModel):
@@ -137,13 +236,30 @@ class AssetHealthItem(BaseModel):
     checksum: str | None = None
     expected_checksum: str | None = None
     ok: bool
+    status: Literal['ok', 'missing', 'checksum_mismatch', 'misconfig'] = 'ok'
+    resolved_root: str | None = None
+    resolved_path: str | None = None
+    root_kind: str
+    remediation: str
+    error_code: str | None = None
 
 
 class AssetHealthResponse(BaseModel):
     ok: int
     missing: int
     checksum_mismatch: int
+    misconfig: int = 0
     items: list[AssetHealthItem]
+
+class ConfigHealthItem(BaseModel):
+    kind: str
+    resolved_path: str
+    exists: bool
+    readable: bool
+
+
+class ConfigHealthResponse(BaseModel):
+    roots: list[ConfigHealthItem]
 
 
 class BackupRecordResponse(BaseModel):

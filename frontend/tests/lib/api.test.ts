@@ -5,6 +5,7 @@ import {
   fetchCollectionContent,
   fetchCollectionList,
   fetchDocumentContent,
+  fetchClientSession,
   getServerApiBase,
   fetchLatestNewsletter,
   getNewsletterProxyPath,
@@ -139,4 +140,47 @@ test('fetchDocumentContent delegates to collection content proxy path', async ()
   expect(fetchMock).toHaveBeenCalledTimes(1);
   const calledUrl: string = fetchMock.mock.calls[0][0] as string;
   expect(calledUrl).toMatch(/^\/api\/frontend\/collections\/document\/content\/html\?path=x\.html/);
+});
+
+test('fetchClientSession calls same-origin session route with credentials', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      authenticated: true,
+      role: 'user',
+      isAdmin: false,
+      permissions: ['collections.nsa.read'],
+      resources: [{ resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' }],
+    }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  const session = await fetchClientSession();
+
+  expect(fetchMock).toHaveBeenCalledWith('/api/frontend/session', {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  expect(session.permissions).toEqual(['collections.nsa.read']);
+  expect(session.resources).toEqual([
+    { resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' },
+  ]);
+});
+
+
+test('connected users helpers call session endpoints', async () => {
+  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({ active_sessions: [], active_count: 0, recent_login_events: [], login_failure_count: 0, read_tracking_summary: { rows: 0, total_reads: 0 } }) } as Response);
+  const { fetchConnectedUsers } = await import('@/lib/api');
+  await fetchConnectedUsers();
+  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/admin/sessions'), expect.objectContaining({ method: 'GET', credentials: 'include' }));
+  fetchMock.mockRestore();
+});
+
+test('purgeSessions sends csrf header', async () => {
+  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({ login_events_deleted: 1, session_activity_deleted: 2 }) } as Response);
+  const { purgeSessions } = await import('@/lib/api');
+  await purgeSessions('csrf-token');
+  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/admin/sessions/purge'), expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token' }) }));
+  fetchMock.mockRestore();
 });

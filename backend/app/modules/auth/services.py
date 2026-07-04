@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, create_csrf_token, verify_password
 from app.modules.auth.repositories import UserRepository
+from app.modules.admin.models import LoginEvent
 
 
 class AuthError(ValueError):
@@ -33,11 +34,16 @@ class AuthService:
         *,
         seed_username: str | None = None,
         seed_password: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> tuple[object, str, str]:
         if seed_username and seed_password:
             self.ensure_admin(seed_username, seed_password)
         user = self.user_repository.get_by_username(username)
         if not user or not user.is_active or not verify_password(password, user.password_hash):
+            self.db.add(LoginEvent(user_id=user.id if user else None, username=username[:100], ip_address=ip_address, user_agent=user_agent[:500] if user_agent else None, status='failure'))
+            self.db.flush()
+            self.db.commit()
             raise AuthError('Invalid credentials')
         csrf_token = create_csrf_token()
         token = create_access_token(
@@ -49,5 +55,6 @@ class AuthService:
             user.session_version,
         )
         user.last_login_at = datetime.now(UTC)
+        self.db.add(LoginEvent(user_id=user.id, username=username[:100], ip_address=ip_address, user_agent=user_agent[:500] if user_agent else None, status='success'))
         self.db.flush()
         return user, token, csrf_token

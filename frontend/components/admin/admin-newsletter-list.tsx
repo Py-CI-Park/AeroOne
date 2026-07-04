@@ -8,6 +8,13 @@ import { bulkUpdateNewsletters, fetchAdminNewsletters, fetchAssetHealth } from '
 import { getCsrfCookie } from '@/lib/cookies';
 import type { AssetHealthResponse, NewsletterItem } from '@/lib/types';
 
+const assetStatusMeta = {
+  ok: { label: 'OK', className: 'bg-emerald-50 text-emerald-700' },
+  missing: { label: '파일 없음', className: 'bg-red-50 text-red-700' },
+  checksum_mismatch: { label: '체크섬 불일치', className: 'bg-amber-50 text-amber-800' },
+  misconfig: { label: '설정 오류', className: 'bg-purple-50 text-purple-700' },
+} as const;
+
 export function AdminNewsletterList() {
   const [items, setItems] = useState<NewsletterItem[]>([]);
   const [health, setHealth] = useState<AssetHealthResponse | null>(null);
@@ -42,8 +49,8 @@ export function AdminNewsletterList() {
     return matchesQuery && matchesStatus;
   });
 
-  const missingByNewsletter = new Set(
-    health?.items.filter((item) => !item.ok).map((item) => item.newsletter_id) ?? [],
+  const healthByNewsletter = new Map(
+    (health?.items ?? []).map((asset) => [asset.newsletter_id, asset]),
   );
 
   if (error) {
@@ -77,7 +84,7 @@ export function AdminNewsletterList() {
         </select>
         <button type="button" onClick={() => void runBulk('publish')} className="rounded-md border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700">선택 게시</button>
         <button type="button" onClick={() => void runBulk('archive')} className="rounded-md border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-700">선택 보관</button>
-        <span className="ml-auto text-xs text-slate-500">자산 OK {health?.ok ?? 0} · 누락/불일치 {(health?.missing ?? 0) + (health?.checksum_mismatch ?? 0)}</span>
+        <span className="ml-auto text-xs text-slate-500">자산 OK {health?.ok ?? 0} · 파일 없음 {health?.missing ?? 0} · 체크섬 {health?.checksum_mismatch ?? 0} · 설정 오류 {health?.misconfig ?? 0}</span>
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
@@ -92,36 +99,45 @@ export function AdminNewsletterList() {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((item) => (
-              <tr key={item.id} className="border-t border-slate-200">
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(item.id)}
-                    onChange={(event) => {
-                      setSelectedIds((current) =>
-                        event.target.checked
-                          ? [...current, item.id]
-                          : current.filter((id) => id !== item.id),
-                      );
-                    }}
-                  />
-                </td>
-                <td className="px-4 py-3">{item.title}</td>
-                <td className="px-4 py-3 uppercase">{item.source_type}</td>
-                <td className="px-4 py-3">{item.status ?? 'published'}</td>
-                <td className="px-4 py-3">
-                  {missingByNewsletter.has(item.id) ? (
-                    <span className="rounded bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">점검 필요</span>
-                  ) : (
-                    <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">OK</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <Link href={`/admin/newsletters/${item.id}/edit`} className="text-blue-700">편집</Link>
-                </td>
-              </tr>
-            ))}
+            {filteredItems.map((item) => {
+              const assetHealth = healthByNewsletter.get(item.id);
+              const statusMeta = assetHealth ? assetStatusMeta[assetHealth.status] : assetStatusMeta.ok;
+              return (
+                <tr key={item.id} className="border-t border-slate-200">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(item.id)}
+                      onChange={(event) => {
+                        setSelectedIds((current) =>
+                          event.target.checked
+                            ? [...current, item.id]
+                            : current.filter((id) => id !== item.id),
+                        );
+                      }}
+                    />
+                  </td>
+                  <td className="px-4 py-3">{item.title}</td>
+                  <td className="px-4 py-3 uppercase">{item.source_type}</td>
+                  <td className="px-4 py-3">{item.status ?? 'published'}</td>
+                  <td className="px-4 py-3">
+                    <div className="space-y-1">
+                      <span className={`rounded px-2 py-1 text-xs font-semibold ${statusMeta.className}`}>{statusMeta.label}</span>
+                      {assetHealth && !assetHealth.ok ? (
+                        <div className="max-w-md text-xs text-slate-600">
+                          <p>점검 필요 = DB 자산을 해석된 루트/경로에서 검증할 수 없음.</p>
+                          <p>{assetHealth.remediation}</p>
+                          <p className="font-mono text-[11px] text-slate-500">{assetHealth.resolved_path ?? assetHealth.resolved_root ?? assetHealth.file_path}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/admin/newsletters/${item.id}/edit`} className="text-blue-700">편집</Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

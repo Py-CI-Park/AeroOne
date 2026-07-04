@@ -1,15 +1,49 @@
 from __future__ import annotations
 
+import hashlib
+from datetime import UTC, datetime, timedelta
+
 import jwt
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.security import decode_access_token
 from app.db.session import get_db_session
+from app.modules.admin.models import UserSessionActivity
 from app.modules.admin.permissions import has_permission
 from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
+
+
+def _record_session_activity(request: Request, db: Session, settings: Settings, user: User, token: str, payload: dict) -> None:
+    try:
+        now = datetime.now(UTC)
+        debounce_seconds = max(int(settings.session_activity_debounce_seconds), 0)
+        cutoff = now - timedelta(seconds=debounce_seconds)
+        session_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+        exp = payload.get('exp')
+        expires_at = datetime.fromtimestamp(exp, UTC) if isinstance(exp, (int, float)) else None
+        existing = db.execute(
+            select(UserSessionActivity).where(
+                UserSessionActivity.user_id == user.id,
+                UserSessionActivity.session_hash == session_hash,
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            db.add(UserSessionActivity(user_id=user.id, session_hash=session_hash, last_seen_at=now, expires_at=expires_at))
+            db.flush()
+            return
+        last_seen = existing.last_seen_at
+        if last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=UTC)
+        if last_seen < cutoff:
+            existing.last_seen_at = now
+            existing.expires_at = expires_at
+            db.flush()
+    except Exception:
+        db.rollback()
 
 
 def get_db(db: Session = Depends(get_db_session)) -> Session:
@@ -32,6 +66,7 @@ def _current_user_from_request(request: Request, db: Session, settings: Settings
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Session expired')
     request.state.auth_payload = payload
     request.state.current_user = user
+    _record_session_activity(request, db, settings, user, token, payload)
     return user, payload
 
 
@@ -41,6 +76,18 @@ def get_current_user(
     settings: Settings = Depends(get_settings),
 ) -> User:
     user, _payload = _current_user_from_request(request, db, settings)
+    return user
+
+
+def get_optional_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> User | None:
+    try:
+        user, _payload = _current_user_from_request(request, db, settings)
+    except HTTPException:
+        return None
     return user
 
 

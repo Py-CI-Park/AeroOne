@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { AppShell } from '@/components/layout/app-shell';
-import { CollectionPasswordGate } from '@/components/collections/collection-password-gate';
+import { NsaCollectionWorkspace } from '@/components/collections/nsa-collection-workspace';
 import { getAppTheme } from '@/lib/server-theme';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +31,7 @@ export default async function NsaPage({
       themePath={PAGE_PATH}
       active="none"
     >
-      <CollectionPasswordGate collection="nsa" title="NSA" initialPath={params.path} />
+      <NsaCollectionWorkspace initialPath={params.path} />
     </AppShell>
   );
 }

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import secrets
 import json
 from pathlib import Path
 
 import zipfile
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, PlainTextResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -20,15 +21,24 @@ from app.modules.admin.models import (
     BackupRecord,
     Group,
     GroupPermission,
+    ResourceGrant,
     ServiceModule,
+    UserGroup,
     UserPermission,
     AiRequestLog,
+    LoginEvent,
+    UserSessionActivity,
 )
-from app.modules.admin.permissions import ADMIN_PERMISSIONS, list_user_permission_keys
+from app.modules.admin.permissions import ADMIN_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, has_permission, has_resource_permission, list_user_permission_keys
+from app.modules.admin.session_fanout import bump_authorization_session_versions, bump_group_members, users_affected_by_resource_grant
 from app.modules.admin.schemas import (
     AdminSummaryResponse,
     AssetHealthItem,
     AssetHealthResponse,
+    ConfigHealthItem,
+    ConfigHealthResponse,
+    ConnectedUsersResponse,
+    SessionPurgeResponse,
     AuditEventResponse,
     BackupCreateResponse,
     BackupRecordResponse,
@@ -38,8 +48,12 @@ from app.modules.admin.schemas import (
     BulkNewsletterResponse,
     GroupResponse,
     GroupUpsertRequest,
+    RbacMatrixUserResponse,
+    ResourceGrantCreateRequest,
+    ResourceGrantResponse,
     PermissionResponse,
     ServiceModuleResponse,
+    ServiceModuleCreateRequest,
     ServiceModuleUpdateRequest,
     UnifiedSearchResponse,
     UnifiedSearchResult,
@@ -49,10 +63,11 @@ from app.modules.admin.schemas import (
     PasswordResetRequest,
 )
 from app.modules.ai.service import AiChatService
-from app.modules.auth.dependencies import get_current_user, get_db, get_settings, require_csrf, require_permission
+from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf, require_permission
 from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
-from app.modules.collections.search_service import CollectionSearchRoot, HtmlCollectionSearchService
+from app.modules.collections.search_service import CollectionSearchRoot, CollectionSearchUnavailable, HtmlCollectionSearchService
+from app.modules.collections.policy import can_read_collection
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter
 from app.modules.newsletter.repositories.newsletter_repository import NewsletterRepository
 from app.modules.newsletter.services.newsletter_service import NewsletterService
@@ -63,22 +78,84 @@ from app.modules.shared.storage.service import StorageError, StorageService, sha
 router = APIRouter()
 
 DEFAULT_SERVICE_MODULES = [
-    {'key': 'newsletter', 'title': 'Newsletter', 'description': None, 'href': '/newsletters', 'section': 'Newsletter', 'status': 'active', 'badge': 'Active', 'sort_order': 10, 'is_enabled': True, 'is_external': False},
-    {'key': 'civil-aircraft', 'title': 'Civil Aircraft Spec Catalog', 'description': 'Commercial aircraft specs & market competition analysis.', 'href': '/reports/civil-aircraft', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 20, 'is_enabled': True, 'is_external': False},
-    {'key': 'document', 'title': 'Document', 'description': 'Browse HTML documents organized in folders.', 'href': '/documents', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 30, 'is_enabled': True, 'is_external': False},
-    {'key': 'nsa', 'title': 'NSA', 'description': 'Password-protected HTML documents.', 'href': '/nsa', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 40, 'is_enabled': True, 'is_external': False},
-    {'key': 'viewer', 'title': 'Viewer', 'description': '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', 'href': '/viewer', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 50, 'is_enabled': True, 'is_external': False},
-    {'key': 'ai', 'title': 'AeroAI', 'description': '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', 'href': '/ai', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 60, 'is_enabled': True, 'is_external': False},
-    {'key': 'open-notebook', 'title': 'Notebook', 'description': 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', 'href': '', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 70, 'is_enabled': True, 'is_external': True},
-    {'key': 'ladder', 'title': 'Ladder', 'description': 'Coffee-bet ladder game (사다리타기).', 'href': '/games/ladder', 'section': '개발중', 'status': 'development', 'badge': 'Active', 'sort_order': 80, 'is_enabled': True, 'is_external': False},
-    {'key': 'announcement', 'title': 'Announcement', 'description': 'Company-wide announcements module.', 'href': '#', 'section': '개발중', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 90, 'is_enabled': False, 'is_external': False},
-    {'key': 'schedule', 'title': 'Schedule', 'description': 'Shared calendar & event tracking.', 'href': '#', 'section': '개발중', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 100, 'is_enabled': False, 'is_external': False},
+    {'key': 'newsletter', 'title': 'Newsletter', 'description': None, 'href': '/newsletters', 'section': 'Newsletter', 'status': 'active', 'badge': 'Active', 'sort_order': 10, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'civil-aircraft', 'title': 'Civil Aircraft Spec Catalog', 'description': 'Commercial aircraft specs & market competition analysis.', 'href': '/reports/civil-aircraft', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 20, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'document', 'title': 'Document', 'description': 'Browse HTML documents organized in folders.', 'href': '/documents', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 30, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'nsa', 'title': 'NSA', 'description': 'Password-protected HTML documents.', 'href': '/nsa', 'section': 'Document', 'status': 'active', 'badge': 'Active', 'sort_order': 40, 'is_enabled': True, 'is_external': False, 'visibility': 'public', 'required_permission': 'collections.nsa.read', 'resource_type': 'collection', 'resource_id': 'nsa'},
+    {'key': 'viewer', 'title': 'Viewer', 'description': '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', 'href': '/viewer', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 50, 'is_enabled': True, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'ai', 'title': 'AeroAI', 'description': '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', 'href': '/ai', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 60, 'is_enabled': True, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'open-notebook', 'title': 'Notebook', 'description': 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', 'href': '', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 70, 'is_enabled': True, 'is_external': True, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'ladder', 'title': 'Ladder', 'description': 'Coffee-bet ladder game (사다리타기).', 'href': '/games/ladder', 'section': 'Development', 'status': 'development', 'badge': 'Active', 'sort_order': 80, 'is_enabled': True, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'announcement', 'title': 'Announcement', 'description': 'Company-wide announcements module.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 90, 'is_enabled': False, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
+    {'key': 'schedule', 'title': 'Schedule', 'description': 'Shared calendar & event tracking.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 100, 'is_enabled': False, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
 ]
+
+
+def _connected_user_retention_days(settings: Settings) -> int:
+    return min(max(int(settings.connected_user_retention_days), 30), 90)
+
+
+def _read_tracking_summary(db: Session) -> dict[str, int]:
+    row = db.execute(select(func.count(NewsletterReadEvent.id), func.coalesce(func.sum(NewsletterReadEvent.read_count), 0))).one()
+    return {'rows': int(row[0] or 0), 'total_reads': int(row[1] or 0)}
 
 
 def _serialize_user(db: Session, user: User) -> UserAdminResponse:
     return UserAdminResponse.model_validate(user).model_copy(update={'permissions': sorted(list_user_permission_keys(db, user))})
 
+
+
+
+def _serialize_resource_grant(grant: ResourceGrant) -> ResourceGrantResponse:
+    return ResourceGrantResponse.model_validate(grant)
+
+
+def _resource_grant_snapshot(grant: ResourceGrant) -> dict[str, object]:
+    return {
+        'id': grant.id,
+        'subject_type': grant.subject_type,
+        'subject_id': grant.subject_id,
+        'resource_type': grant.resource_type,
+        'resource_id': grant.resource_id,
+        'permission_key': grant.permission_key,
+    }
+
+
+def _validate_resource_grant_subject(db: Session, subject_type: str, subject_id: int) -> None:
+    if subject_type == 'user' and db.get(User, subject_id) is not None:
+        return
+    if subject_type == 'group' and db.get(Group, subject_id) is not None:
+        return
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'{subject_type.title()} subject not found')
+
+
+def _build_rbac_matrix_user(db: Session, user: User) -> RbacMatrixUserResponse:
+    role_permissions = sorted(DEFAULT_ROLE_PERMISSIONS.get(user.role, set()))
+    direct_permissions = sorted(db.execute(select(UserPermission.permission_key).where(UserPermission.user_id == user.id)).scalars().all())
+    group_rows = db.execute(
+        select(Group.key, GroupPermission.permission_key)
+        .join(UserGroup, UserGroup.group_id == Group.id)
+        .join(GroupPermission, GroupPermission.group_id == Group.id)
+        .where(UserGroup.user_id == user.id, Group.is_active.is_(True))
+        .order_by(Group.key, GroupPermission.permission_key)
+    ).all()
+    group_permissions = [{'group': row[0], 'key': row[1]} for row in group_rows]
+    effective: dict[str, set[str]] = {}
+    for key in role_permissions:
+        effective.setdefault(key, set()).add(f'role:{user.role}')
+    for key in direct_permissions:
+        effective.setdefault(key, set()).add('direct')
+    for row in group_permissions:
+        effective.setdefault(row['key'], set()).add(f"group:{row['group']}")
+    group_ids = db.execute(select(UserGroup.group_id, Group.key).join(Group, Group.id == UserGroup.group_id).where(UserGroup.user_id == user.id, Group.is_active.is_(True))).all()
+    resource_grants = [
+        {'resource_type': row.resource_type, 'resource_id': row.resource_id, 'permission_key': row.permission_key, 'source': 'user'}
+        for row in db.execute(select(ResourceGrant).where(ResourceGrant.subject_type == 'user', ResourceGrant.subject_id == user.id)).scalars().all()
+    ]
+    for group_id, group_key in group_ids:
+        for row in db.execute(select(ResourceGrant).where(ResourceGrant.subject_type == 'group', ResourceGrant.subject_id == group_id)).scalars().all():
+            resource_grants.append({'resource_type': row.resource_type, 'resource_id': row.resource_id, 'permission_key': row.permission_key, 'source': f'group:{group_key}'})
+    return RbacMatrixUserResponse(user_id=user.id, username=user.username, role=user.role, role_permissions=role_permissions, direct_permissions=direct_permissions, group_permissions=group_permissions, effective_permissions=[{'key': key, 'sources': sorted(sources)} for key, sources in sorted(effective.items())], resource_grants=sorted(resource_grants, key=lambda item: (item['resource_type'], item['resource_id'], item['permission_key'], item['source'])))
 
 def _serialize_group(db: Session, group: Group) -> GroupResponse:
     perms = db.execute(select(GroupPermission.permission_key).where(GroupPermission.group_id == group.id)).scalars().all()
@@ -119,7 +196,17 @@ def _safe_module_snapshot(module: ServiceModule) -> dict[str, object]:
         'sort_order': module.sort_order,
         'is_enabled': module.is_enabled,
         'is_external': module.is_external,
+        'visibility': module.visibility,
+        'required_permission': module.required_permission,
+        'resource_type': module.resource_type,
+        'resource_id': module.resource_id,
     }
+
+
+def _asset_root(storage: StorageService, asset_type: AssetType) -> tuple[str, Path]:
+    if asset_type == AssetType.MARKDOWN:
+        return 'markdown', storage.managed_root
+    return 'import', storage.import_root
 
 
 def _asset_path(storage: StorageService, asset_type: AssetType, relative_path: str) -> Path:
@@ -128,36 +215,101 @@ def _asset_path(storage: StorageService, asset_type: AssetType, relative_path: s
     return storage.resolve_external_relative_path(relative_path)
 
 
+def _path_readable(path: Path) -> bool:
+    try:
+        if not path.exists():
+            return False
+        if path.is_dir():
+            next(path.iterdir(), None)
+        else:
+            with path.open('rb'):
+                pass
+        return True
+    except OSError:
+        return False
+
+
+def _root_missing_remediation(root: Path) -> str:
+    return f'루트 경로 {root}를 확인하세요. _database/storage 위치를 가리켜야 하며 환경변수 override 오설정을 점검하세요.'
+
+
+def _config_health(settings: Settings) -> ConfigHealthResponse:
+    roots = [
+        ('storage', settings.storage_root_path),
+        ('import', settings.import_root),
+        ('document', settings.document_root_path),
+        ('civil', settings.civil_aircraft_root_path),
+        ('nsa', settings.nsa_root_path),
+        ('markdown', settings.markdown_root),
+        ('thumbnails', settings.thumbnails_root),
+    ]
+    return ConfigHealthResponse(
+        roots=[
+            ConfigHealthItem(kind=kind, resolved_path=str(path), exists=path.exists(), readable=_path_readable(path))
+            for kind, path in roots
+        ]
+    )
+
 def _asset_health(db: Session, settings: Settings) -> AssetHealthResponse:
     storage = StorageService(settings)
     newsletters = NewsletterRepository(db).list_admin()
     items: list[AssetHealthItem] = []
     missing = 0
     mismatch = 0
+    misconfig = 0
     ok_count = 0
     for newsletter in newsletters:
         for asset in newsletter.assets:
+            root_kind, root = _asset_root(storage, asset.asset_type)
             exists = False
             size: int | None = None
             actual_checksum: str | None = None
             ok = False
-            try:
-                path = _asset_path(storage, asset.asset_type, asset.file_path)
-                exists = path.exists()
-                if exists:
-                    data = path.read_bytes()
-                    size = len(data)
-                    actual_checksum = hash_file_bytes(data)
-                    ok = not asset.checksum or asset.checksum == actual_checksum
-            except (StorageError, OSError):
-                exists = False
-                ok = False
-            if ok:
-                ok_count += 1
-            elif not exists:
-                missing += 1
+            status_value: str = 'missing'
+            error_code: str | None = 'FILE_NOT_FOUND'
+            remediation = '해석된 자산 경로에 파일이 없습니다. 가져오기 루트와 DB 파일 경로를 확인하세요.'
+            resolved_path: Path | None = None
+            if not root.exists() or not root.is_dir() or not _path_readable(root):
+                status_value = 'misconfig'
+                error_code = 'ROOT_MISSING'
+                remediation = _root_missing_remediation(root)
             else:
+                try:
+                    resolved_path = _asset_path(storage, asset.asset_type, asset.file_path)
+                    exists = resolved_path.exists()
+                    if exists:
+                        data = resolved_path.read_bytes()
+                        size = len(data)
+                        actual_checksum = hash_file_bytes(data)
+                        ok = not asset.checksum or asset.checksum == actual_checksum
+                        if ok:
+                            status_value = 'ok'
+                            error_code = None
+                            remediation = '정상입니다.'
+                        else:
+                            status_value = 'checksum_mismatch'
+                            error_code = 'CHECKSUM_MISMATCH'
+                            remediation = '파일은 있지만 DB 체크섬과 다릅니다. 원본 파일 변경 여부를 확인하고 재가져오기를 실행하세요.'
+                    else:
+                        status_value = 'missing'
+                        error_code = 'FILE_NOT_FOUND'
+                except StorageError:
+                    status_value = 'misconfig'
+                    error_code = 'PATH_ESCAPE'
+                    remediation = 'DB 파일 경로가 허용된 루트 밖을 가리킵니다. 경로 값을 수정하거나 재가져오기 하세요.'
+                except OSError:
+                    exists = False
+                    ok = False
+                    status_value = 'missing'
+                    error_code = 'FILE_NOT_FOUND'
+            if status_value == 'ok':
+                ok_count += 1
+            elif status_value == 'missing':
+                missing += 1
+            elif status_value == 'checksum_mismatch':
                 mismatch += 1
+            else:
+                misconfig += 1
             items.append(
                 AssetHealthItem(
                     newsletter_id=newsletter.id,
@@ -169,15 +321,45 @@ def _asset_health(db: Session, settings: Settings) -> AssetHealthResponse:
                     checksum=actual_checksum,
                     expected_checksum=asset.checksum,
                     ok=ok,
+                    status=status_value,
+                    resolved_root=str(root),
+                    resolved_path=str(resolved_path) if resolved_path is not None else None,
+                    root_kind=root_kind,
+                    remediation=remediation,
+                    error_code=error_code,
                 )
             )
-    return AssetHealthResponse(ok=ok_count, missing=missing, checksum_mismatch=mismatch, items=items)
+    return AssetHealthResponse(ok=ok_count, missing=missing, checksum_mismatch=mismatch, misconfig=misconfig, items=items)
+
+
+def _user_can_access_module(db: Session, user: User | None, module: ServiceModule) -> bool:
+    required_permission = module.required_permission
+    if not required_permission:
+        return True
+    if user is None:
+        return False
+    if has_permission(db, user, required_permission):
+        return True
+    if module.resource_type and module.resource_id and has_resource_permission(db, user, module.resource_type, module.resource_id, required_permission):
+        return True
+    if module.resource_type == 'collection' and module.resource_id:
+        return can_read_collection(db, user, module.resource_id)
+    return False
 
 
 @router.get('/service-modules/public', response_model=list[ServiceModuleResponse])
-def public_service_modules(db: Session = Depends(get_db)) -> list[ServiceModuleResponse]:
+def public_service_modules(db: Session = Depends(get_db), user: User | None = Depends(get_optional_user)) -> list[ServiceModuleResponse]:
     _ensure_service_modules(db)
     modules = db.execute(select(ServiceModule).order_by(ServiceModule.sort_order, ServiceModule.id)).scalars().all()
+    is_operator = bool(user and user.role == 'admin')
+    if not is_operator:
+        # Non-operators only see public-audience modules. Development/coming-soon
+        # surfaces are operator-only and never leak to the anonymous dashboard.
+        modules = [
+            module
+            for module in modules
+            if module.visibility == 'public' and module.is_enabled and _user_can_access_module(db, user, module)
+        ]
     return [ServiceModuleResponse.model_validate(module) for module in modules]
 
 
@@ -187,7 +369,7 @@ def admin_summary(settings: Settings = Depends(get_settings), db: Session = Depe
     health = _asset_health(db, settings)
     latest = db.execute(select(Newsletter).order_by(Newsletter.published_at.desc().nullslast(), Newsletter.created_at.desc())).scalars().first()
     modules = db.execute(select(ServiceModule)).scalars().all()
-    read_rows = db.execute(select(func.count(NewsletterReadEvent.id), func.coalesce(func.sum(NewsletterReadEvent.read_count), 0))).one()
+    read_summary = _read_tracking_summary(db)
     audits = db.execute(select(AdminAuditEvent).order_by(AdminAuditEvent.created_at.desc()).limit(10)).scalars().all()
     ai_status = AiChatService(settings).status()
     return AdminSummaryResponse(
@@ -199,11 +381,47 @@ def admin_summary(settings: Settings = Depends(get_settings), db: Session = Depe
         latest_newsletter_title=latest.title if latest else None,
         active_modules=sum(1 for module in modules if module.is_enabled),
         coming_soon_modules=sum(1 for module in modules if module.status == 'coming_soon'),
-        asset_health={'ok': health.ok, 'missing': health.missing, 'checksum_mismatch': health.checksum_mismatch},
-        read_summary={'rows': int(read_rows[0] or 0), 'total_reads': int(read_rows[1] or 0)},
+        asset_health={'ok': health.ok, 'missing': health.missing, 'checksum_mismatch': health.checksum_mismatch, 'misconfig': health.misconfig},
+        read_summary=read_summary,
         ai_status=ai_status,
         recent_audit_events=[AuditEventResponse.model_validate(event) for event in audits],
     )
+
+
+@router.get('/sessions', response_model=ConnectedUsersResponse, dependencies=[Depends(require_permission('admin.sessions.read'))])
+def connected_sessions(settings: Settings = Depends(get_settings), db: Session = Depends(get_db)) -> ConnectedUsersResponse:
+    now = datetime.now(UTC)
+    active_since = now - timedelta(minutes=settings.access_token_ttl_minutes)
+    sessions = db.execute(
+        select(UserSessionActivity.user_id, User.username, func.max(UserSessionActivity.last_seen_at))
+        .join(User, User.id == UserSessionActivity.user_id)
+        .where(UserSessionActivity.last_seen_at >= active_since)
+        .group_by(UserSessionActivity.user_id, User.username)
+        .order_by(func.max(UserSessionActivity.last_seen_at).desc())
+    ).all()
+    events = db.execute(select(LoginEvent).order_by(LoginEvent.created_at.desc(), LoginEvent.id.desc()).limit(25)).scalars().all()
+    failure_count = db.scalar(select(func.count(LoginEvent.id)).where(LoginEvent.status == 'failure')) or 0
+    return ConnectedUsersResponse(
+        active_sessions=[{'user_id': row[0], 'username': row[1], 'last_seen_at': row[2]} for row in sessions],
+        active_count=len(sessions),
+        recent_login_events=events,
+        login_failure_count=int(failure_count),
+        read_tracking_summary=_read_tracking_summary(db),
+    )
+
+
+@router.post('/sessions/purge', response_model=SessionPurgeResponse, dependencies=[Depends(require_permission('admin.sessions.purge')), Depends(require_csrf)])
+def purge_connected_sessions(request: Request, settings: Settings = Depends(get_settings), db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> SessionPurgeResponse:
+    cutoff = datetime.now(UTC) - timedelta(days=_connected_user_retention_days(settings))
+    login_result = db.execute(delete(LoginEvent).where(LoginEvent.created_at < cutoff))
+    session_result = db.execute(delete(UserSessionActivity).where(UserSessionActivity.last_seen_at < cutoff))
+    counts = {
+        'login_events_deleted': int(login_result.rowcount or 0),
+        'session_activity_deleted': int(session_result.rowcount or 0),
+    }
+    record_admin_audit(db, actor=actor, action='admin.sessions.purge', target_type='session_activity', target_id=None, request=request, metadata=counts)
+    db.flush()
+    return SessionPurgeResponse(**counts)
 
 
 @router.get('/permissions', response_model=list[PermissionResponse], dependencies=[Depends(require_permission('admin.rbac.read'))])
@@ -309,9 +527,89 @@ def upsert_group(payload: GroupUpsertRequest, request: Request, db: Session = De
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f'Unknown permission: {key}')
         db.add(GroupPermission(group_id=group.id, permission_key=key))
     db.flush()
+    # Group active-flag/permission changes affect every member's effective permissions;
+    # bump their session_version so stale sessions cannot keep old authorization.
+    bump_group_members(db, group.id)
     after = _serialize_group(db, group).model_dump()
     record_admin_audit(db, actor=actor, action=action, target_type='group', target_id=group.id, request=request, before=before, after=after)
     return _serialize_group(db, group)
+
+
+
+
+@router.get('/rbac-matrix', response_model=list[RbacMatrixUserResponse], dependencies=[Depends(require_permission('admin.rbac.read'))])
+def get_rbac_matrix(db: Session = Depends(get_db)) -> list[RbacMatrixUserResponse]:
+    users = db.execute(select(User).order_by(User.id)).scalars().all()
+    return [_build_rbac_matrix_user(db, user) for user in users]
+
+
+@router.get('/resource-grants', response_model=list[ResourceGrantResponse], dependencies=[Depends(require_permission('admin.resource_grants.read'))])
+def list_resource_grants(subject_type: str | None = None, subject_id: int | None = None, db: Session = Depends(get_db)) -> list[ResourceGrantResponse]:
+    stmt = select(ResourceGrant).order_by(ResourceGrant.id)
+    if subject_type is not None:
+        if subject_type not in {'user', 'group'}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid subject_type')
+        stmt = stmt.where(ResourceGrant.subject_type == subject_type)
+    if subject_id is not None:
+        stmt = stmt.where(ResourceGrant.subject_id == subject_id)
+    return [_serialize_resource_grant(grant) for grant in db.execute(stmt).scalars().all()]
+
+
+@router.post('/resource-grants', response_model=ResourceGrantResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission('admin.resource_grants.manage')), Depends(require_csrf)])
+def create_resource_grant(payload: ResourceGrantCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> ResourceGrantResponse:
+    _validate_resource_grant_subject(db, payload.subject_type, payload.subject_id)
+    grant = ResourceGrant(**payload.model_dump())
+    db.add(grant)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Resource grant already exists') from exc
+    bump_authorization_session_versions(db, users_affected_by_resource_grant(db, grant.subject_type, grant.subject_id))
+    record_admin_audit(db, actor=actor, action='resource_grant.create', target_type='resource_grant', target_id=grant.id, request=request, after=_resource_grant_snapshot(grant))
+    return _serialize_resource_grant(grant)
+
+
+@router.delete('/resource-grants/{grant_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permission('admin.resource_grants.manage')), Depends(require_csrf)])
+def delete_resource_grant(grant_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> Response:
+    grant = db.get(ResourceGrant, grant_id)
+    if grant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Resource grant not found')
+    before = _resource_grant_snapshot(grant)
+    affected_user_ids = users_affected_by_resource_grant(db, grant.subject_type, grant.subject_id)
+    db.delete(grant)
+    db.flush()
+    bump_authorization_session_versions(db, affected_user_ids)
+    record_admin_audit(db, actor=actor, action='resource_grant.delete', target_type='resource_grant', target_id=grant_id, request=request, before=before)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post('/users/{user_id}/groups/{group_id}', response_model=UserAdminResponse, dependencies=[Depends(require_permission('admin.rbac.manage')), Depends(require_csrf)])
+def add_user_group(user_id: int, group_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> UserAdminResponse:
+    user = db.get(User, user_id)
+    group = db.get(Group, group_id)
+    if user is None or group is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User or group not found')
+    if db.get(UserGroup, {'user_id': user_id, 'group_id': group_id}) is None:
+        db.add(UserGroup(user_id=user_id, group_id=group_id))
+        bump_authorization_session_versions(db, [user_id])
+        db.flush()
+        record_admin_audit(db, actor=actor, action='user_group.add', target_type='user', target_id=user_id, request=request, after={'group_id': group_id, 'group_key': group.key})
+    return _serialize_user(db, user)
+
+
+@router.delete('/users/{user_id}/groups/{group_id}', response_model=UserAdminResponse, dependencies=[Depends(require_permission('admin.rbac.manage')), Depends(require_csrf)])
+def remove_user_group(user_id: int, group_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> UserAdminResponse:
+    user = db.get(User, user_id)
+    membership = db.get(UserGroup, {'user_id': user_id, 'group_id': group_id})
+    group = db.get(Group, group_id)
+    if user is None or group is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User or group not found')
+    if membership is not None:
+        db.delete(membership)
+        db.flush()
+        bump_authorization_session_versions(db, [user_id])
+        record_admin_audit(db, actor=actor, action='user_group.remove', target_type='user', target_id=user_id, request=request, before={'group_id': group_id, 'group_key': group.key})
+    return _serialize_user(db, user)
 
 
 @router.get('/audit-events', response_model=list[AuditEventResponse], dependencies=[Depends(require_permission('admin.audit.read'))])
@@ -326,6 +624,29 @@ def list_service_modules(db: Session = Depends(get_db)) -> list[ServiceModuleRes
     _ensure_service_modules(db)
     modules = db.execute(select(ServiceModule).order_by(ServiceModule.sort_order, ServiceModule.id)).scalars().all()
     return [ServiceModuleResponse.model_validate(module) for module in modules]
+
+
+@router.post('/service-modules', response_model=ServiceModuleResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission('admin.dashboard.manage')), Depends(require_csrf)])
+def create_service_module(payload: ServiceModuleCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> ServiceModuleResponse:
+    if db.scalar(select(ServiceModule).where(ServiceModule.key == payload.key)):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Service module key already exists')
+    module = ServiceModule(**payload.model_dump())
+    db.add(module)
+    db.flush()
+    record_admin_audit(db, actor=actor, action='service_module.create', target_type='service_module', target_id=module.key, request=request, after=_safe_module_snapshot(module))
+    return ServiceModuleResponse.model_validate(module)
+
+
+@router.delete('/service-modules/{module_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permission('admin.dashboard.manage')), Depends(require_csrf)])
+def delete_service_module(module_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> Response:
+    module = db.get(ServiceModule, module_id)
+    if module is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Service module not found')
+    before = _safe_module_snapshot(module)
+    db.delete(module)
+    db.flush()
+    record_admin_audit(db, actor=actor, action='service_module.delete', target_type='service_module', target_id=before['key'], request=request, before=before)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch('/service-modules/{module_id}', response_model=ServiceModuleResponse, dependencies=[Depends(require_permission('admin.dashboard.manage')), Depends(require_csrf)])
@@ -345,6 +666,11 @@ def update_service_module(module_id: int, payload: ServiceModuleUpdateRequest, r
 @router.get('/newsletters/assets/health', response_model=AssetHealthResponse, dependencies=[Depends(require_permission('admin.newsletters.read'))])
 def newsletter_asset_health(settings: Settings = Depends(get_settings), db: Session = Depends(get_db)) -> AssetHealthResponse:
     return _asset_health(db, settings)
+
+
+@router.get('/config/health', response_model=ConfigHealthResponse, dependencies=[Depends(require_permission('admin.audit.read'))])
+def config_health(settings: Settings = Depends(get_settings)) -> ConfigHealthResponse:
+    return _config_health(settings)
 
 
 @router.post('/newsletters/bulk', response_model=BulkNewsletterResponse, dependencies=[Depends(require_permission('admin.newsletters.bulk')), Depends(require_csrf)])
@@ -506,12 +832,18 @@ def unified_search(q: str, include_nsa: bool = False, db: Session = Depends(get_
     if len(q.strip()) < 2:
         return UnifiedSearchResponse(query=q, results=[])
     collections = ['document', 'civil']
-    from app.modules.admin.permissions import has_permission
-    if include_nsa and user and has_permission(db, user, 'search.nsa.read'):
+    if include_nsa and can_read_collection(db, user, 'nsa'):
         collections.append('nsa')
     roots_by_key = {'document': settings.document_root_path, 'civil': settings.civil_aircraft_root_path, 'nsa': settings.nsa_root_path}
     roots = [CollectionSearchRoot(collection=key, root=roots_by_key[key]) for key in collections]
-    collection_results = HtmlCollectionSearchService().search(roots, q, settings.managed_storage_root, limit=20)
+    try:
+        collection_results = HtmlCollectionSearchService().search(roots, q, settings.managed_storage_root, limit=20)
+        degraded = False
+        reason = None
+    except CollectionSearchUnavailable as exc:
+        collection_results = []
+        degraded = True
+        reason = str(exc)
     newsletter_rows = NewsletterRepository(db).list_public(q=q)[:20]
     results = [
         UnifiedSearchResult(source='newsletter', title=item.title, snippet=item.description or item.summary or '', url=f'/newsletters/{item.slug}', score=1.0)
@@ -519,9 +851,9 @@ def unified_search(q: str, include_nsa: bool = False, db: Session = Depends(get_
     ]
     results.extend(
         UnifiedSearchResult(source=result.collection, title=result.name, snippet=result.snippet, url=result.navigation_url, score=result.score)
-        for result in collection_results.results
+        for result in collection_results
     )
-    return UnifiedSearchResponse(query=q, results=results[:30], degraded=collection_results.degraded, reason=collection_results.reason)
+    return UnifiedSearchResponse(query=q, results=results[:30], degraded=degraded, reason=reason)
 
 
 @router.get('/ai/status', dependencies=[Depends(require_permission('admin.ai.read'))])

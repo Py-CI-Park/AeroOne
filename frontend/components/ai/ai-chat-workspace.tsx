@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   deleteAiConversation,
+  fetchClientSession,
   fetchAiStatus,
   fetchCollectionSearch,
   fetchCollectionContent,
@@ -450,11 +451,27 @@ export function AiChatWorkspace() {
   const [nsaUnlocked, setNsaUnlocked] = useState(false);
 
   useEffect(() => {
-    try {
-      setNsaUnlocked(window.localStorage.getItem('aeroone.collection.nsa.unlocked') === '1');
-    } catch {
-      // localStorage 접근 불가 환경은 nsa 잠금 상태로 둔다.
-    }
+    // NSA scope availability is a UX hint derived from the caller's effective permissions
+    // (backend enforcement in can_read_collection is authoritative and drops unauthorized
+    // NSA scope/refs regardless). The old localStorage password-unlock flag was removed
+    // with the NSA password gate in 1.10.0.
+    let cancelled = false;
+    void fetchClientSession()
+      .then((session) => {
+        if (cancelled) return;
+        const canReadNsa =
+          session.isAdmin ||
+          session.permissions.includes('collections.nsa.read') ||
+          session.permissions.includes('search.nsa.read') ||
+          session.resources.some((grant) => grant.resource_type === 'collection' && grant.resource_id === 'nsa');
+        setNsaUnlocked(canReadNsa);
+      })
+      .catch(() => {
+        // 세션 조회 실패 시 NSA 는 비활성(권한 없음) 상태로 둔다.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const scopeCollections = useMemo<Array<'document' | 'civil' | 'nsa'>>(
@@ -820,9 +837,9 @@ export function AiChatWorkspace() {
               <input type="checkbox" checked={scope.civil} onChange={() => toggleScope('civil')} />
               Civil
             </label>
-            <label className={`inline-flex items-center gap-1 ${nsaUnlocked ? '' : 'opacity-50'}`} title={nsaUnlocked ? '' : 'NSA 화면에서 잠금 해제 후 사용 가능'}>
+            <label className={`inline-flex items-center gap-1 ${nsaUnlocked ? '' : 'opacity-50'}`} title={nsaUnlocked ? '' : 'NSA 자료 접근 권한이 있는 계정만 사용할 수 있습니다'}>
               <input type="checkbox" checked={scope.nsa} disabled={!nsaUnlocked} onChange={() => toggleScope('nsa')} />
-              NSA{nsaUnlocked ? '' : ' (잠금)'}
+              NSA{nsaUnlocked ? '' : ' (권한 없음)'}
             </label>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">

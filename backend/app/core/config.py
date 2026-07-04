@@ -11,13 +11,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     app_name: str = 'AeroOne Newsletter Platform'
-    app_version: str = '1.8.0'
+    app_version: str = '1.10.0'
     app_env: Literal['development', 'test', 'production', 'closed_network'] = 'development'
     backend_port: int = 18437
     frontend_port: int = 29501
     database_url: str = 'sqlite:///./backend/data/aeroone.db'
     jwt_secret_key: str = 'change-me'
     access_token_ttl_minutes: int = 30
+    session_activity_debounce_seconds: int = 60
+    connected_user_retention_days: int = 30
     admin_session_cookie_name: str = 'admin_session'
     admin_username: str = 'admin'
     admin_password: str = 'change-me'

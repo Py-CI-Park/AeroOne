@@ -22,6 +22,9 @@ const FORWARDED_UPSTREAM_REQUEST_HEADERS = [
   'if-range',
   'if-none-match',
   'if-modified-since',
+  // Forward the session cookie so backend collection authorization (e.g. NSA
+  // access control) sees the real caller instead of treating them as anonymous.
+  'cookie',
 ] as const;
 
 export async function GET(

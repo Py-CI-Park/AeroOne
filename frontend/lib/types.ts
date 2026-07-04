@@ -72,6 +72,20 @@ export interface AuthResponse {
   csrf_token: string;
 }
 
+export interface ClientSessionResourceGrant {
+  resource_type: string;
+  resource_id: string;
+  permission_key: string;
+}
+
+export interface ClientSession {
+  authenticated: boolean | null;
+  role: string | null;
+  isAdmin: boolean;
+  permissions: string[];
+  resources: ClientSessionResourceGrant[];
+}
+
 export interface ServiceModule {
   id: number;
   key: string;
@@ -84,6 +98,40 @@ export interface ServiceModule {
   sort_order: number;
   is_enabled: boolean;
   is_external: boolean;
+  visibility: 'public' | 'admin' | string;
+  required_permission?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+}
+
+
+export interface ConnectedSession {
+  user_id: number;
+  username: string;
+  last_seen_at: string;
+}
+
+export interface LoginEvent {
+  id: number;
+  user_id?: number | null;
+  username: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  status: 'success' | 'failure';
+  created_at: string;
+}
+
+export interface ConnectedUsersResponse {
+  active_sessions: ConnectedSession[];
+  active_count: number;
+  recent_login_events: LoginEvent[];
+  login_failure_count: number;
+  read_tracking_summary: Record<string, number>;
+}
+
+export interface SessionPurgeResponse {
+  login_events_deleted: number;
+  session_activity_deleted: number;
 }
 
 export interface AdminSummary {
@@ -137,11 +185,52 @@ export interface AdminGroup {
   permissions: string[];
 }
 
+
+export interface ResourceGrant {
+  id: number;
+  subject_type: 'user' | 'group';
+  subject_id: number;
+  resource_type: string;
+  resource_id: string;
+  permission_key: string;
+  created_at?: string | null;
+}
+
+export interface RbacGroupPermissionSource {
+  group: string;
+  key: string;
+}
+
+export interface RbacEffectivePermissionSource {
+  key: string;
+  sources: string[];
+}
+
+export interface RbacResourceGrantSource {
+  resource_type: string;
+  resource_id: string;
+  permission_key: string;
+  source: string;
+}
+
+export interface RbacMatrixUser {
+  user_id: number;
+  username: string;
+  role: string;
+  role_permissions: string[];
+  direct_permissions: string[];
+  group_permissions: RbacGroupPermissionSource[];
+  effective_permissions: RbacEffectivePermissionSource[];
+  resource_grants: RbacResourceGrantSource[];
+}
+
 export interface AiAdminStatus {
   status: Record<string, unknown>;
   request_logs_total: number;
   request_failures: number;
 }
+
+export type AssetHealthStatus = 'ok' | 'missing' | 'checksum_mismatch' | 'misconfig';
 
 export interface AssetHealthItem {
   newsletter_id: number;
@@ -153,13 +242,31 @@ export interface AssetHealthItem {
   checksum?: string | null;
   expected_checksum?: string | null;
   ok: boolean;
+  status: AssetHealthStatus;
+  resolved_root?: string | null;
+  resolved_path?: string | null;
+  root_kind: string;
+  remediation: string;
+  error_code?: string | null;
 }
 
 export interface AssetHealthResponse {
   ok: number;
   missing: number;
   checksum_mismatch: number;
+  misconfig: number;
   items: AssetHealthItem[];
+}
+
+export interface ConfigHealthItem {
+  kind: string;
+  resolved_path: string;
+  exists: boolean;
+  readable: boolean;
+}
+
+export interface ConfigHealthResponse {
+  roots: ConfigHealthItem[];
 }
 
 export interface BackupRecord {

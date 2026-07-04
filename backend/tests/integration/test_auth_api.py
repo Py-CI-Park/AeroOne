@@ -1,4 +1,7 @@
 from fastapi.testclient import TestClient
+from app.core.security import hash_password
+from app.modules.admin.models import ResourceGrant, UserPermission
+from app.modules.auth.models import User
 import pytest
 
 from app.core.config import reset_settings_cache
@@ -78,3 +81,41 @@ def test_production_login_sets_secure_configured_csrf_cookie(monkeypatch, tmp_pa
     assert category_response.status_code == 200
     reset_settings_cache()
     reset_db_caches()
+
+
+def test_effective_permissions_requires_auth(client) -> None:
+    response = client.get('/api/v1/auth/effective-permissions')
+
+    assert response.status_code == 401
+
+
+def test_effective_permissions_returns_user_permissions_and_resource_grants(client, app) -> None:
+    with app.state.db.session() as session:
+        user = User(username='nsa-reader', password_hash=hash_password('password'), role='user', is_active=True)
+        session.add(user)
+        session.flush()
+        session.add(UserPermission(user_id=user.id, permission_key='collections.nsa.read'))
+        session.add(
+            ResourceGrant(
+                subject_type='user',
+                subject_id=user.id,
+                resource_type='collection',
+                resource_id='nsa',
+                permission_key='collections.nsa.read',
+            )
+        )
+        session.commit()
+
+    login_response = client.post('/api/v1/auth/login', json={'username': 'nsa-reader', 'password': 'password'})
+    assert login_response.status_code == 200
+
+    response = client.get('/api/v1/auth/effective-permissions')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert 'collections.nsa.read' in payload['permissions']
+    assert {
+        'resource_type': 'collection',
+        'resource_id': 'nsa',
+        'permission_key': 'collections.nsa.read',
+    } in payload['resources']

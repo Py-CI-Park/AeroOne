@@ -34,3 +34,23 @@ export async function requireAdminSession() {
   }
   return user;
 }
+
+export async function resolveIsAdmin(): Promise<boolean> {
+  const cookieHeader = buildCookieHeader();
+  if (!cookieHeader) {
+    return false;
+  }
+  try {
+    const response = await fetch(`${getServerApiBase()}/api/v1/auth/me`, {
+      cache: 'no-store',
+      headers: { cookie: cookieHeader },
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const user = (await response.json()) as AuthResponse['user'];
+    return user.role === 'admin';
+  } catch {
+    return false;
+  }
+}

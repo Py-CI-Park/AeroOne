@@ -3,6 +3,7 @@ import type {
   AdminUser,
   AdminGroup,
   AssetHealthResponse,
+  ConfigHealthResponse,
   AuditEvent,
   BackupRecord,
   BackupRestoreDryRun,
@@ -16,15 +17,20 @@ import type {
   AssetType,
   AuthResponse,
   Category,
+  ClientSession,
   CollectionSearchResponse,
+  ConnectedUsersResponse,
   DocumentListItem,
   NewsletterCalendarEntry,
   NewsletterDetail,
   NewsletterItem,
   ReadEventsResponse,
   Permission,
+  RbacMatrixUser,
+  ResourceGrant,
   SyncResponse,
   ServiceModule,
+  SessionPurgeResponse,
   Tag,
   UnifiedSearchResult,
 } from '@/lib/types';
@@ -45,6 +51,16 @@ export function getNewsletterProxyPath(path: string) {
   return buildNewsletterProxyPath(path);
 }
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${getBrowserApiBase()}${path}`, {
     credentials: 'include',
@@ -61,9 +77,24 @@ async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(text || `Request failed: ${response.status}`);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return (await response.json()) as T;
 }
 
+
+
+export async function fetchClientSession(): Promise<ClientSession> {
+  const response = await fetch('/api/frontend/session', {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to load session: ${response.status}`);
+  }
+  return (await response.json()) as ClientSession;
+}
 export async function fetchNewsletters(params?: Record<string, string>) {
   const query = params ? `?${new URLSearchParams(params).toString()}` : '';
   return loggedServerFetchJson<NewsletterItem[]>({
@@ -138,7 +169,7 @@ export async function fetchCollectionContent(
   );
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Failed to load document: ${response.status}`);
+    throw new ApiError(text || `Failed to load document: ${response.status}`, response.status);
   }
   return (await response.json()) as { asset_type: 'html'; content_html: string };
 }
@@ -154,7 +185,7 @@ export async function fetchCollectionList(collection: string): Promise<{ documen
   const response = await fetch(`/api/frontend/collections/${collection}/list`, { cache: 'no-store' });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Failed to load collection list: ${response.status}`);
+    throw new ApiError(text || `Failed to load collection list: ${response.status}`, response.status);
   }
   return (await response.json()) as { documents: DocumentListItem[] };
 }
@@ -298,16 +329,29 @@ export async function login(username: string, password: string) {
 }
 
 
-export async function fetchPublicServiceModules() {
+export async function fetchPublicServiceModules(cookieHeader?: string) {
   return loggedServerFetchJson<ServiceModule[]>({
     label: 'service-modules.public',
     baseUrl: getServerApiBase(),
     path: '/api/v1/admin/service-modules/public',
+    init: cookieHeader ? { headers: { cookie: cookieHeader } } : undefined,
   });
 }
 
 export async function fetchAdminSummary() {
   return browserFetch<AdminSummary>('/api/v1/admin/dashboard', { method: 'GET' });
+}
+
+
+export async function fetchConnectedUsers() {
+  return browserFetch<ConnectedUsersResponse>('/api/v1/admin/sessions', { method: 'GET' });
+}
+
+export async function purgeSessions(csrfToken: string) {
+  return browserFetch<SessionPurgeResponse>('/api/v1/admin/sessions/purge', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
 }
 
 export async function fetchAdminUsers() {
@@ -354,6 +398,45 @@ export async function upsertAdminGroup(payload: { key: string; name: string; des
   });
 }
 
+
+export async function fetchRbacMatrix() {
+  return browserFetch<RbacMatrixUser[]>('/api/v1/admin/rbac-matrix', { method: 'GET' });
+}
+
+export async function listResourceGrants(subject?: { subject_type: 'user' | 'group'; subject_id: number }) {
+  const query = subject ? `?${new URLSearchParams({ subject_type: subject.subject_type, subject_id: String(subject.subject_id) }).toString()}` : '';
+  return browserFetch<ResourceGrant[]>(`/api/v1/admin/resource-grants${query}`, { method: 'GET' });
+}
+
+export async function createResourceGrant(payload: Omit<ResourceGrant, 'id' | 'created_at'>, csrfToken: string) {
+  return browserFetch<ResourceGrant>('/api/v1/admin/resource-grants', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteResourceGrant(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/v1/admin/resource-grants/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function addUserGroup(userId: number, groupId: number, csrfToken: string) {
+  return browserFetch<AdminUser>(`/api/v1/admin/users/${userId}/groups/${groupId}`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function removeUserGroup(userId: number, groupId: number, csrfToken: string) {
+  return browserFetch<AdminUser>(`/api/v1/admin/users/${userId}/groups/${groupId}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
 export async function fetchAuditEvents() {
   return browserFetch<AuditEvent[]>('/api/v1/admin/audit-events', { method: 'GET' });
 }
@@ -370,8 +453,35 @@ export async function updateServiceModule(id: number, payload: Partial<ServiceMo
   });
 }
 
+export async function createServiceModule(payload: Partial<ServiceModule> & { key: string; title: string }, csrfToken: string) {
+  return browserFetch<ServiceModule>('/api/v1/admin/service-modules', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteServiceModule(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/v1/admin/service-modules/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function changeOwnPassword(currentPassword: string, newPassword: string, csrfToken: string) {
+  return browserFetch<AuthResponse>('/api/v1/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
 export async function fetchAssetHealth() {
   return browserFetch<AssetHealthResponse>('/api/v1/admin/newsletters/assets/health', { method: 'GET' });
+}
+
+export async function fetchConfigHealth() {
+  return browserFetch<ConfigHealthResponse>('/api/v1/admin/config/health', { method: 'GET' });
 }
 
 export async function bulkUpdateNewsletters(ids: number[], action: 'publish' | 'archive' | 'draft', csrfToken: string) {

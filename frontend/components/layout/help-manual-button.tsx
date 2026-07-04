@@ -8,9 +8,9 @@ const MANUAL_SECTIONS = [
     label: '대시보드',
     title: '대시보드와 서비스 상태',
     rows: [
-      ['현재 서비스 중', 'Newsletter, Document, Civil Aircraft, NSA 는 운영 중인 열람 서비스입니다. 카드나 상단 메뉴를 클릭해 바로 이동합니다.'],
-      ['개발중', 'Viewer, AeroAI, Notebook, Ladder 는 개발중 섹션에 모아 두었지만 현재 사용할 수 있는 Active 카드입니다. Announcement 와 Schedule 은 Coming soon 비활성 카드로 남겨 둡니다.'],
-      ['테마·사용법', '우측 상단 DARK/LIGHT 로 테마를 전환하고, 사용법 버튼으로 현재 서비스 중/개발중 기능 안내를 확인합니다.'],
+      ['현재 서비스 중', 'Newsletter, Document, Civil Aircraft 는 모든 사용자에게 보이는 운영 중 열람 서비스입니다. NSA 는 권한 있는 계정에만 노출·열람됩니다. 카드나 상단 메뉴를 클릭해 이동합니다.'],
+      ['Development(개발중)', 'Viewer, AeroAI, Notebook, Ladder 는 Development 섹션의 Active 카드이고, Announcement 와 Schedule 은 Coming soon 비활성 카드입니다. 이 섹션과 Coming soon 카드는 관리자(서버 실행자)에게만 노출됩니다.'],
+      ['Admin·테마·사용법', '헤더 오른쪽은 다크(DARK/LIGHT) · 사용법 · (로그인 또는 Admin) 순서입니다. 로그인 전에는 로그인 링크가, 관리자로 로그인하면 Admin 링크가 보입니다. 일반 사용자에게는 둘 다 표시되지 않습니다.'],
     ],
   },
   {
@@ -30,7 +30,7 @@ const MANUAL_SECTIONS = [
     rows: [
       ['Document', '현재 서비스 중입니다. Document 메뉴에서 _database/document 의 HTML 문서를 폴더 트리로 엽니다.'],
       ['Civil Aircraft', '현재 서비스 중입니다. Civil Aircraft 카드에서 _database/civil_aircraft 문서를 봅니다.'],
-      ['NSA', '현재 서비스 중인 가벼운 가림막입니다. 비밀번호 입력 후 _database/nsa 목록을 불러오며, 민감자료 보관용 인증 기능은 아닙니다.'],
+      ['NSA', '권한 있는 계정만 이용할 수 있는 HTML 보관소입니다. 기존 0000 비밀번호 가림막은 제거되었고, 접근 권한이 없으면 관리자에게 권한 요청 안내가 표시됩니다.'],
     ],
   },
   {
@@ -70,7 +70,8 @@ const MANUAL_SECTIONS = [
     rows: [
       ['관리자 홈', '/admin 에서 버전/운영 모드, DB 상태, 최신 뉴스레터, 자산·읽음·AI 상태, 최근 감사 로그를 한 번에 확인합니다.'],
       ['권한/RBAC', 'admin/user/pending 역할, 직접 권한, 그룹 권한을 관리자 콘솔에서 관리합니다. pending 사용자는 대기 상태 UI, 본인 확인, 로그아웃만 허용됩니다.'],
-      ['대시보드 모듈 관리', '대시보드 카드는 service_modules DB 에서 읽습니다. 개발중/Active/Coming soon, 설명, 순서, 링크를 관리자 콘솔에서 조정합니다.'],
+      ['대시보드 모듈 관리', '대시보드 카드는 service_modules DB 에서 읽습니다. 관리자 콘솔에서 카드를 추가·삭제하고 Active/Development/Coming soon, 설명, 순서, 링크와 노출 대상(public: 모든 사용자 / admin: 관리자 전용)을 조정합니다.'],
+      ['비밀번호 변경', '관리자 계정 / 비밀번호 섹션에서 현재 비밀번호를 확인한 뒤 새 비밀번호(8자 이상)로 교체합니다. 변경 즉시 다른 세션은 로그아웃됩니다. 초기 비밀번호는 27882788 이며 로그인 후 반드시 변경하세요.'],
       ['뉴스레터 운영', '목록에서 상태 필터, 검색, 일괄 게시/보관, 자산 상태 점검을 사용합니다. 카테고리/태그는 /admin 의 카테고리/태그 관리 섹션에서 생성·정렬·비활성화합니다.'],
       ['백업·검색·감사', '백업은 storage/admin_backups 아래 manifest+sha256 ZIP 으로 생성·검증합니다. 통합 검색은 Newsletter/Document/Civil/권한 있는 NSA 를 한 번에 찾고, 감사 로그는 관리자 변경·Sync·백업·읽음 purge 를 추적합니다.'],
     ],

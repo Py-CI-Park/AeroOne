@@ -4,8 +4,14 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import {
+  addUserGroup,
   createAdminUser,
   createBackup,
+  changeOwnPassword,
+  createResourceGrant,
+  createServiceModule,
+  deleteResourceGrant,
+  deleteServiceModule,
   createCategory,
   createTag,
   dryRunRestoreBackup,
@@ -15,13 +21,19 @@ import {
   getBrowserApiBase,
   fetchAdminSummary,
   fetchAdminUsers,
+  fetchRbacMatrix,
   fetchAssetHealth,
+  fetchConfigHealth,
+  fetchConnectedUsers,
   fetchAuditEvents,
   fetchBackups,
   fetchCategories,
   fetchServiceModulesAdmin,
   fetchTags,
+  listResourceGrants,
+  purgeSessions,
   fetchUnifiedSearch,
+  removeUserGroup,
   resetAdminUserPassword,
   updateAdminUser,
   updateCategory,
@@ -37,16 +49,20 @@ import type {
   AdminUser,
   AiAdminStatus,
   AssetHealthResponse,
+  ConfigHealthResponse,
+  ConnectedUsersResponse,
   AuditEvent,
   BackupRecord,
   Category,
   Permission,
+  RbacMatrixUser,
+  ResourceGrant,
   ServiceModule,
   Tag,
   UnifiedSearchResult,
 } from '@/lib/types';
 
-type ModuleDraft = Pick<ServiceModule, 'title' | 'description' | 'href' | 'section' | 'status' | 'badge' | 'sort_order' | 'is_enabled' | 'is_external'>;
+type ModuleDraft = Pick<ServiceModule, 'title' | 'description' | 'href' | 'section' | 'status' | 'badge' | 'sort_order' | 'is_enabled' | 'is_external' | 'visibility'>;
 type UserDraft = Pick<AdminUser, 'email' | 'role' | 'is_active'> & { permissions_csv: string };
 type TaxonomyDraft = { name: string; description?: string | null; sort_order: number; is_active: boolean };
 
@@ -54,11 +70,15 @@ type PanelState = {
   summary?: AdminSummary;
   ai?: AiAdminStatus;
   users: AdminUser[];
+  connectedUsers?: ConnectedUsersResponse;
   permissions: Permission[];
   groups: AdminGroup[];
+  rbacMatrix: RbacMatrixUser[];
+  resourceGrants: ResourceGrant[];
   audits: AuditEvent[];
   modules: ServiceModule[];
   health?: AssetHealthResponse;
+  configHealth?: ConfigHealthResponse;
   backups: BackupRecord[];
   categories: Category[];
   tags: Tag[];
@@ -72,6 +92,8 @@ const initialState: PanelState = {
   users: [],
   permissions: [],
   groups: [],
+  rbacMatrix: [],
+  resourceGrants: [],
   audits: [],
   modules: [],
   backups: [],
@@ -109,6 +131,7 @@ function moduleToDraft(module: ServiceModule): ModuleDraft {
     sort_order: module.sort_order,
     is_enabled: module.is_enabled,
     is_external: module.is_external,
+    visibility: module.visibility ?? 'admin',
   };
 }
 
@@ -146,26 +169,34 @@ export function AdminHomeConsole() {
   const [tagDrafts, setTagDrafts] = useState<Record<number, TaxonomyDraft>>({});
   const [userForm, setUserForm] = useState({ username: '', password: '', email: '', role: 'user', is_active: true });
   const [groupForm, setGroupForm] = useState({ key: '', name: '', description: '', is_active: true, permissions_csv: '' });
+  const [grantForm, setGrantForm] = useState({ subject_type: 'user' as 'user' | 'group', subject_id: '', resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' });
+  const [membershipForm, setMembershipForm] = useState({ user_id: '', group_id: '' });
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', sort_order: 0, is_active: true });
   const [tagForm, setTagForm] = useState({ name: '', sort_order: 0, is_active: true });
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
+  const [moduleForm, setModuleForm] = useState({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' });
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
 
   async function refresh() {
     try {
-      const [summary, users, permissions, groups, audits, modules, health, backups, categories, tags, ai] = await Promise.all([
+      const [summary, users, connectedUsers, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai] = await Promise.all([
         fetchAdminSummary(),
         fetchAdminUsers(),
+        fetchConnectedUsers(),
         fetchAdminPermissions(),
         fetchAdminGroups(),
+        fetchRbacMatrix(),
+        listResourceGrants(),
         fetchAuditEvents(),
         fetchServiceModulesAdmin(),
         fetchAssetHealth(),
+        fetchConfigHealth(),
         fetchBackups(),
         fetchCategories(),
         fetchTags(),
         fetchAdminAiStatus(),
       ]);
-      setState((current) => ({ ...current, summary, users, permissions, groups, audits, modules, health, backups, categories, tags, ai, error: undefined }));
+      setState((current) => ({ ...current, summary, users, connectedUsers, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai, error: undefined }));
       setModuleDrafts(Object.fromEntries(modules.map((module) => [module.id, moduleToDraft(module)])));
       setUserDrafts(Object.fromEntries(users.map((user) => [user.id, userToDraft(user)])));
       setCategoryDrafts(Object.fromEntries(categories.map((category) => [category.id, categoryToDraft(category)])));
@@ -205,6 +236,36 @@ export function AdminHomeConsole() {
     });
   }
 
+  async function createModule() {
+    if (!moduleForm.key.trim() || !moduleForm.title.trim()) return;
+    await runBusy('module-create', async () => {
+      await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie());
+      setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' });
+      setState((current) => ({ ...current, message: '대시보드 모듈을 추가했습니다.' }));
+    });
+  }
+
+  async function removeModule(module: ServiceModule) {
+    if (typeof window !== 'undefined' && !window.confirm(`${module.key} 모듈을 삭제할까요?`)) return;
+    await runBusy(`module-${module.id}`, async () => {
+      await deleteServiceModule(module.id, getCsrfCookie());
+      setState((current) => ({ ...current, message: `${module.title} 모듈을 삭제했습니다.` }));
+    });
+  }
+
+  async function changePassword() {
+    if (!passwordForm.current || !passwordForm.next) return;
+    if (passwordForm.next !== passwordForm.confirm) {
+      setState((current) => ({ ...current, error: '새 비밀번호와 확인 값이 일치하지 않습니다.' }));
+      return;
+    }
+    await runBusy('password-change', async () => {
+      await changeOwnPassword(passwordForm.current, passwordForm.next, getCsrfCookie());
+      setPasswordForm({ current: '', next: '', confirm: '' });
+      setState((current) => ({ ...current, message: '관리자 비밀번호를 변경했습니다.' }));
+    });
+  }
+
   async function createUser() {
     if (!userForm.username.trim() || !userForm.password.trim()) return;
     await runBusy('user-create', async () => {
@@ -228,6 +289,35 @@ export function AdminHomeConsole() {
     await runBusy(`user-reset-${user.id}`, async () => {
       await resetAdminUserPassword(user.id, temporaryPassword, getCsrfCookie());
       setState((current) => ({ ...current, message: `${user.username} 비밀번호를 재설정했습니다.` }));
+    });
+  }
+
+
+
+  async function saveResourceGrant() {
+    const subjectId = Number(grantForm.subject_id);
+    if (!subjectId || !grantForm.resource_type.trim() || !grantForm.resource_id.trim() || !grantForm.permission_key.trim()) return;
+    await runBusy('resource-grant-save', async () => {
+      await createResourceGrant({ subject_type: grantForm.subject_type, subject_id: subjectId, resource_type: grantForm.resource_type, resource_id: grantForm.resource_id, permission_key: grantForm.permission_key }, getCsrfCookie());
+      setState((current) => ({ ...current, message: '리소스 권한을 부여했습니다.' }));
+    });
+  }
+
+  async function removeResourceGrant(grant: ResourceGrant) {
+    await runBusy(`resource-grant-${grant.id}`, async () => {
+      await deleteResourceGrant(grant.id, getCsrfCookie());
+      setState((current) => ({ ...current, message: '리소스 권한을 삭제했습니다.' }));
+    });
+  }
+
+  async function changeMembership(action: 'add' | 'remove') {
+    const userId = Number(membershipForm.user_id);
+    const groupId = Number(membershipForm.group_id);
+    if (!userId || !groupId) return;
+    await runBusy(`membership-${action}`, async () => {
+      if (action === 'add') await addUserGroup(userId, groupId, getCsrfCookie());
+      else await removeUserGroup(userId, groupId, getCsrfCookie());
+      setState((current) => ({ ...current, message: '사용자 그룹 멤버십을 변경했습니다.' }));
     });
   }
 
@@ -268,6 +358,14 @@ export function AdminHomeConsole() {
     await runBusy(`tag-${tag.id}`, async () => {
       await updateTag(tag.id, draft, getCsrfCookie());
       setState((current) => ({ ...current, message: `${tag.name} 태그를 저장했습니다.` }));
+    });
+  }
+
+
+  async function purgeSessionMetadata() {
+    await runBusy('sessions-purge', async () => {
+      const result = await purgeSessions(getCsrfCookie());
+      setState((current) => ({ ...current, message: `세션/로그 정리 완료: 로그인 ${result.login_events_deleted}건 · 세션 ${result.session_activity_deleted}건` }));
     });
   }
 
@@ -340,12 +438,80 @@ export function AdminHomeConsole() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase text-slate-500">Assets</p>
           <p className="mt-2 text-2xl font-semibold">{state.health?.ok ?? 0} OK</p>
-          <p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0}</p>
+          <p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0} · 설정 {state.health?.misconfig ?? 0}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase text-slate-500">AI 운영</p>
           <p className="mt-2 text-2xl font-semibold">{String(state.summary?.ai_status?.status ?? '-')}</p>
           <p className="text-sm text-slate-500">logs {state.ai?.request_logs_total ?? 0} · failures {state.ai?.request_failures ?? 0}</p>
+        </div>
+      </section>
+
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">접속자/세션</h2>
+            <p className="text-sm text-slate-500">로그인 세션 활동과 익명 IP 읽음 집계를 함께 확인합니다.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void purgeSessionMetadata()}
+            disabled={state.busy === 'sessions-purge'}
+            className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+          >
+            오래된 세션/로그 정리
+          </button>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-lg border border-slate-100 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Active sessions</p>
+            <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.active_count ?? 0}</p>
+            <div className="mt-3 space-y-2 text-sm">
+              {(state.connectedUsers?.active_sessions ?? []).length ? state.connectedUsers?.active_sessions.map((session) => (
+                <div key={`${session.user_id}-${session.last_seen_at}`} className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-slate-700">{session.username}</span>
+                  <span className="text-xs text-slate-500">{new Date(session.last_seen_at).toLocaleString('ko-KR')}</span>
+                </div>
+              )) : <p className="text-slate-500">활성 로그인 세션 없음</p>}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-100 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Recent login events</p>
+            <p className="mt-1 text-sm text-slate-600">실패 {state.connectedUsers?.login_failure_count ?? 0}건</p>
+            <div className="mt-3 max-h-40 space-y-2 overflow-auto text-sm">
+              {(state.connectedUsers?.recent_login_events ?? []).slice(0, 6).map((event) => (
+                <div key={event.id} className="flex items-center justify-between gap-2">
+                  <span>{event.username}</span>
+                  <Badge tone={event.status === 'success' ? 'green' : 'red'}>{event.status}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-100 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Anonymous read tracking</p>
+            <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.read_tracking_summary.total_reads ?? 0}</p>
+            <p className="text-sm text-slate-500">IP/뉴스레터 집계 행 {state.connectedUsers?.read_tracking_summary.rows ?? 0}개</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">DB/자산 경로 상태</h2>
+          <Badge tone="blue">config-health</Badge>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {(state.configHealth?.roots ?? []).map((root) => (
+            <div key={root.kind} className="rounded-lg border border-slate-100 p-3 text-sm">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <strong>{root.kind}</strong>
+                <Badge tone={root.exists && root.readable ? 'green' : 'red'}>{root.exists && root.readable ? 'OK' : '점검 필요'}</Badge>
+              </div>
+              <p className="break-all font-mono text-xs text-slate-500">{root.resolved_path}</p>
+              <p className="mt-1 text-xs text-slate-500">exists {String(root.exists)} · readable {String(root.readable)}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -378,14 +544,55 @@ export function AdminHomeConsole() {
                 </div>
                 <textarea value={draft.description ?? ''} onChange={(event) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, description: event.target.value } }))} className="mt-2 w-full rounded-md border border-slate-300 px-2 py-1" rows={2} aria-label={`${module.key} description`} />
                 <label className="mt-2 inline-flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={draft.is_external} onChange={(event) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, is_external: event.target.checked } }))} /> external</label>
+                <label className="mt-2 ml-3 inline-flex items-center gap-2 text-xs text-slate-600">audience
+                  <select value={draft.visibility} onChange={(event) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, visibility: event.target.value } }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label={`${module.key} visibility`}>
+                    <option value="public">public</option>
+                    <option value="admin">admin (operator only)</option>
+                  </select>
+                </label>
                 <div className="mt-2 flex gap-2">
                   <button type="button" disabled={state.busy === `module-${module.id}`} onClick={() => void saveModule(module)} className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">저장</button>
                   <button type="button" disabled={state.busy === `module-${module.id}`} onClick={() => void toggleModule(module)} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40">{draft.is_enabled ? '비활성화' : '활성화'}</button>
+                  <button type="button" disabled={state.busy === `module-${module.id}`} onClick={() => void removeModule(module)} className="rounded-md border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 disabled:opacity-40">삭제</button>
                 </div>
               </div>
             );
           })}
         </div>
+        <div className="mt-4 rounded-lg border border-dashed border-slate-300 p-3 text-sm">
+          <p className="mb-2 font-semibold text-slate-700">새 모듈 추가</p>
+          <div className="grid gap-2 md:grid-cols-3">
+            <input value={moduleForm.key} onChange={(event) => setModuleForm((current) => ({ ...current, key: event.target.value }))} placeholder="key" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module key" />
+            <input value={moduleForm.title} onChange={(event) => setModuleForm((current) => ({ ...current, title: event.target.value }))} placeholder="title" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module title" />
+            <input value={moduleForm.section} onChange={(event) => setModuleForm((current) => ({ ...current, section: event.target.value }))} placeholder="section" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module section" />
+            <input value={moduleForm.href} onChange={(event) => setModuleForm((current) => ({ ...current, href: event.target.value }))} placeholder="href" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module href" />
+            <select value={moduleForm.status} onChange={(event) => setModuleForm((current) => ({ ...current, status: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module status">
+              <option value="active">active</option>
+              <option value="development">development</option>
+              <option value="coming_soon">coming soon</option>
+              <option value="hidden">hidden</option>
+            </select>
+            <select value={moduleForm.visibility} onChange={(event) => setModuleForm((current) => ({ ...current, visibility: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label="new module visibility">
+              <option value="public">public</option>
+              <option value="admin">admin (operator only)</option>
+            </select>
+          </div>
+          <button type="button" disabled={state.busy === 'module-create'} onClick={() => void createModule()} className="mt-2 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">모듈 추가</button>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">관리자 계정 / 비밀번호</h2>
+          <Badge tone="amber">self-service</Badge>
+        </div>
+        <p className="mb-3 text-sm text-slate-500">현재 비밀번호를 확인한 뒤 새 비밀번호로 교체합니다. 변경 즉시 다른 세션은 로그아웃됩니다.</p>
+        <div className="grid gap-2 md:grid-cols-3">
+          <input type="password" value={passwordForm.current} onChange={(event) => setPasswordForm((current) => ({ ...current, current: event.target.value }))} placeholder="현재 비밀번호" className="rounded-md border border-slate-300 px-2 py-1" aria-label="current password" />
+          <input type="password" value={passwordForm.next} onChange={(event) => setPasswordForm((current) => ({ ...current, next: event.target.value }))} placeholder="새 비밀번호 (8자 이상)" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new password" />
+          <input type="password" value={passwordForm.confirm} onChange={(event) => setPasswordForm((current) => ({ ...current, confirm: event.target.value }))} placeholder="새 비밀번호 확인" className="rounded-md border border-slate-300 px-2 py-1" aria-label="confirm password" />
+        </div>
+        <button type="button" disabled={state.busy === 'password-change'} onClick={() => void changePassword()} className="mt-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">비밀번호 변경</button>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
@@ -433,6 +640,32 @@ export function AdminHomeConsole() {
             {state.groups.length === 0 ? <p className="text-sm text-slate-500">등록된 그룹이 없습니다.</p> : null}
             {state.groups.map((group) => <div key={group.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm"><div className="flex justify-between"><strong>{group.name}</strong><Badge tone={group.is_active ? 'green' : 'amber'}>{group.key}</Badge></div><p className="mt-1 font-mono text-xs text-slate-500">{group.permissions.join(', ') || '권한 없음'}</p></div>)}
           </div>
+        </div>
+      </section>
+
+
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold">RBAC 매트릭스 / 리소스 권한</h2>
+        <div className="mb-4 grid gap-2 rounded-lg border border-slate-100 p-3 text-sm md:grid-cols-5">
+          <select value={grantForm.subject_type} onChange={(event) => setGrantForm((current) => ({ ...current, subject_type: event.target.value as 'user' | 'group' }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label="grant subject type"><option value="user">user</option><option value="group">group</option></select>
+          <input placeholder="subject id" value={grantForm.subject_id} onChange={(event) => setGrantForm((current) => ({ ...current, subject_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="resource type" value={grantForm.resource_type} onChange={(event) => setGrantForm((current) => ({ ...current, resource_type: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="resource id" value={grantForm.resource_id} onChange={(event) => setGrantForm((current) => ({ ...current, resource_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="permission key" value={grantForm.permission_key} onChange={(event) => setGrantForm((current) => ({ ...current, permission_key: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <button type="button" onClick={() => void saveResourceGrant()} className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white md:col-span-5">리소스 권한 부여</button>
+        </div>
+        <div className="mb-4 grid gap-2 rounded-lg border border-slate-100 p-3 text-sm md:grid-cols-4">
+          <input placeholder="user id" value={membershipForm.user_id} onChange={(event) => setMembershipForm((current) => ({ ...current, user_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="group id" value={membershipForm.group_id} onChange={(event) => setMembershipForm((current) => ({ ...current, group_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <button type="button" onClick={() => void changeMembership('add')} className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white">그룹 추가</button>
+          <button type="button" onClick={() => void changeMembership('remove')} className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">그룹 제거</button>
+        </div>
+        <div className="mb-4 space-y-2">
+          {state.resourceGrants.map((grant) => <div key={grant.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-xs"><span><strong>{grant.subject_type}:{grant.subject_id}</strong> → {grant.resource_type}/{grant.resource_id} · {grant.permission_key}</span><button type="button" onClick={() => void removeResourceGrant(grant)} className="rounded-md border border-red-200 px-2 py-1 font-semibold text-red-700">삭제</button></div>)}
+        </div>
+        <div className="space-y-3">
+          {state.rbacMatrix.map((row) => <div key={row.user_id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="mb-1 flex items-center gap-2"><strong>{row.username}</strong><Badge tone={row.role === 'admin' ? 'green' : 'slate'}>{row.role}</Badge><span className="text-slate-400">id {row.user_id}</span></div><p><strong>role</strong>: {row.role_permissions.join(', ') || '없음'}</p><p><strong>direct</strong>: {row.direct_permissions.join(', ') || '없음'}</p><p><strong>group</strong>: {row.group_permissions.map((item) => `${item.group}:${item.key}`).join(', ') || '없음'}</p><p><strong>effective</strong>: {row.effective_permissions.map((item) => `${item.key} [${item.sources.join('|')}]`).join(', ') || '없음'}</p><p><strong>resource</strong>: {row.resource_grants.map((item) => `${item.resource_type}/${item.resource_id}:${item.permission_key} [${item.source}]`).join(', ') || '없음'}</p></div>)}
         </div>
       </section>
 

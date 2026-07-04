@@ -2,9 +2,9 @@
 
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
-- 기준 commit: `1.8.0` (`관리자 RBAC·운영 콘솔·DB 기반 대시보드 관리`)
-- 갱신일: 2026-07-03
-- 테스트 상태: backend `pytest tests` **177 passed** (경고 3, 실패 0), frontend Vitest **205 passed** (47 파일), `tsc --noEmit` 성공
+- 기준 commit: `1.10.0` (`관리자 권한 강화: RBAC/NSA 서버측 접근제어/사용자별 메뉴/자산 진단/접속자 대시보드`)
+- 갱신일: 2026-07-04
+- 테스트 상태: backend `pytest tests` **248 passed** (경고 3, 실패 0), frontend Vitest **216 passed** (49 파일), `tsc --noEmit` 및 `next build` 성공
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 ---
@@ -43,7 +43,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.8.0 기준 관리자 RBAC·운영 콘솔·DB 기반 대시보드 관리까지 backend 177개·frontend 205개 회귀로 검증된 상태입니다.
+**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.10.0 기준 RBAC 권한 상승 수정, NSA 서버측 접근제어, 사용자별 메뉴, 자산 진단, 사용자/그룹/리소스 권한 관리, 접속자 대시보드까지 backend 248개·frontend 216개 회귀로 검증된 상태입니다.
 
 ---
 
@@ -53,6 +53,8 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
+| `1.10.0` | 단계 23 | RBAC 읽기 권한 상승 차단, `can_read_collection` 단일 정책, NSA 0000 비밀번호 제거와 서버측 권한/ResourceGrant 적용, 사용자별 메뉴 힌트, 자산/config-health 진단, 사용자·그룹·리소스 권한/RBAC 매트릭스, 접속자·세션 대시보드 |
+| `1.9.0` | 단계 22 | 관리자(서버 실행자) 전용 Admin 메뉴·개발중(Development)·Coming soon 노출, 헤더 다크·사용법·Admin 순서, 모듈 add/delete + 노출 대상(public/admin) 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight |
 | `1.8.0` | 단계 21 | 관리자 RBAC, same-transaction audit, `/admin` 운영 콘솔, `service_modules` DB 대시보드, 뉴스레터 자산/상태/bulk/taxonomy, 백업 manifest+sha256+복원 dry-run, 통합 검색 |
 | `1.7.1` | 단계 20 | 뉴스레터 달력 접힘 가로 폭 축소, HTML 다운로드 버튼 강조, 사용법 팝업의 현재 서비스 중/개발중 구분 최신화 |
 | `1.7.0` | 단계 19 | AeroAI Markdown 답변·HTML 검색 새 탭·모니터 높이 레이아웃, Viewer 미리보기 집중/전체화면, Open Notebook co-deploy 릴리즈 검증 |
@@ -75,8 +77,8 @@
 
 ### 3.3 테스트 통계
 
-- backend 전체: **177 passed**
-- frontend 전체: **205 passed / 47 files**
+- backend 전체: **248 passed**
+- frontend 전체: **216 passed / 49 files**
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, `offline_package.bat` packaging 제외 목록, 관리자 RBAC/audit/backup, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API, 뷰어·Document·AeroAI 프론트 컴포넌트
 
 ### 3.4 릴리즈 1.8.0 폐쇄망 반입물
@@ -309,7 +311,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-기대 출력 예: `177 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+기대 출력 예: `248 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
@@ -335,14 +337,21 @@ python -m pytest tests -q
 | 신규 발행 추가 | `_database\newsletter\` 에 HTML/PDF 복사 (`newsletter_YYYYMMDD.html` 형식) → `/newsletters` 새로고침 시 자동 반영 (서버 재시작 불필요). 즉시 강제는 `/admin` 또는 `/admin/imports` 의 **Import / Sync** |
 | 문서 추가 | `_database\document\` 에 HTML 복사 (하위 폴더로 분류하면 폴더 트리로 구분) → `/documents` 새로고침 시 바로 반영 (서버 재시작 불필요) |
 | Civil 카탈로그 추가 | `_database\civil_aircraft\` 에 HTML 복사 (여러 파일, 하위 폴더 가능) → `/reports/civil-aircraft` 새로고침 시 목록에 반영 |
-| NSA 문서 추가 | `_database\nsa\` 에 HTML 복사 (하위 폴더로 분류 가능) → `/nsa` 에서 비밀번호(0000) 입력 후 목록에 반영. **가벼운 가림막이며 실 인증이 아님** — 민감 자료 보관 금지 |
+| NSA 문서 추가 | `_database\nsa\` 에 HTML 복사 (하위 폴더로 분류 가능) → `/nsa` 는 로그인 사용자에게 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 가 있을 때만 목록/본문을 제공 |
 | 메타데이터/게시 상태 수정 | 관리자 화면의 **편집** 버튼 (제목·요약·카테고리·태그·게시 상태·활성 여부·썸네일) 또는 뉴스레터 목록 일괄 게시/보관 |
 | 카테고리/태그 정리 | `/admin` 콘솔의 카테고리/태그 관리에서 생성·정렬·비활성화 |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
-| 대시보드 카드 변경 | `/admin` 콘솔의 대시보드 모듈 DB 관리에서 `service_modules` 활성/비활성, 개발중/Coming soon, 링크·설명·순서를 조정 |
-| 사용자/권한 관리 | `/admin` 콘솔에서 admin/user/pending 사용자, 직접 권한, 그룹 권한을 관리. self-lockout 과 마지막 admin 제거는 API 가 거부 |
-| 운영 상태 확인 | `/admin` 콘솔에서 버전/DB/뉴스레터/자산/read/AI/audit/백업 요약, 통합 검색, 백업 생성·검증·복원 점검을 확인 |
-| 비밀번호 교체 | `setup_offline.bat` 재실행 → `backend\.env` 의 `ADMIN_PASSWORD` 재확인. 기존 `.env` 는 `.bak` 자동 백업 |
+| 대시보드 카드 변경 | `/admin` 콘솔의 대시보드 모듈 DB 관리에서 `service_modules` 카드 추가·삭제, 활성/비활성, Development/Coming soon, 링크·설명·순서, 노출 대상(public: 모든 사용자 / admin: 관리자 전용)을 조정. 개발중·Coming soon 카드와 Admin 메뉴는 관리자에게만 노출 |
+| 사용자/권한 관리 | `/admin` 콘솔에서 admin/user/pending 사용자, 직접 권한, 그룹 권한, 리소스 권한, RBAC 매트릭스를 관리. self-lockout 과 마지막 admin 제거는 API 가 거부 |
+| 운영 상태 확인 | `/admin` 콘솔에서 버전/DB/뉴스레터/자산/config-health/read/AI/audit/백업 요약, 통합 검색, 백업 생성·검증·복원 점검을 확인 |
+| NSA 권한 부여 | `/admin` 사용자/권한 화면에서 대상 계정에 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 를 함께 부여. 권한만 있거나 grant 만 있으면 fail-closed |
+| 접속자/세션 확인 | `/admin` 접속자 대시보드에서 로그인/세션 활동과 익명 IP 읽음 추적을 확인하고 보존 정책에 따라 감사 로그를 남긴 뒤 purge |
+| 자산 진단 | `/admin` 자산 진단/config-health 에서 `_database`, storage, 썸네일, DB/마이그레이션 상태를 확인하고 누락 경로를 배포 산출물 또는 운영 백업에서 복구 |
+| 비밀번호 교체 | `/admin` 콘솔의 **관리자 계정 / 비밀번호** 에서 현재 비밀번호 확인 후 직접 변경(변경 시 다른 세션 로그아웃). 또는 `setup_offline.bat` 재실행으로 `backend\.env` 의 `ADMIN_PASSWORD` 재발급(기존 `.env` 는 `.bak` 자동 백업). 이 배포본 초기 비밀번호는 `27882788` |
+
+### 9.1 NSA 접근제어 주의
+
+1.10.0 부터 `/nsa` 의 `0000` 비밀번호 가림막은 제거되었습니다. NSA 는 암호화 비밀 저장소가 아니라 `_database\nsa\` HTML 컬렉션이며, 서버가 로그인 세션의 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 를 모두 확인해 목록·본문·검색을 제공합니다. 운영자는 관리자 화면에서 계정/그룹 권한과 리소스 grant 를 명시적으로 부여하고, 미부여 사용자가 403 을 받는지 확인해야 합니다.
 
 ---
 
@@ -358,7 +367,7 @@ python -m pytest tests -q
 | `_database\newsletter\` | 뉴스레터 발행 원본 HTML/PDF | 신규 발행 시 |
 | `_database\civil_aircraft\` | 민간항공기 규격 정적 HTML 보고서 (데이터 투입 위치) | 보고서 갱신 시 |
 | `_database\document\` | 문서 보관소 HTML (하위 폴더로 분류 가능, `/documents` 폴더 트리) | 문서 추가/갱신 시 |
-| `_database\nsa\` | NSA 탭 문서 (비밀번호 가림막 후 표시) — 민감 자료 보관 금지 | 문서 추가/갱신 시 |
+| `_database\nsa\` | NSA 탭 문서 (서버측 권한/ResourceGrant 통과 후 표시) — 암호화 저장소가 아니므로 별도 보안 분류 준수 | 문서 추가/갱신 시 |
 
 관리자 콘솔의 **백업 생성** 버튼은 `storage\admin_backups\AeroOne-backup-*.zip` 형태의 manifest+sha256 백업을 만든 뒤 검증할 수 있습니다. 같은 줄의 **복원 점검**은 manifest/schema/checksum 과 포함 루트만 확인하는 dry-run 이며 실제 DB/파일 복원은 수행하지 않습니다. 이 ZIP 은 public/static root 밖에 생성되며, DB와 운영자가 관리하는 Markdown/thumbnail 자산을 포함합니다. 원본 `_database\` 폴더는 대용량 원본 보관 정책에 맞춰 별도 파일 백업을 유지하세요.
 ```cmd
@@ -581,13 +590,12 @@ _database\
 
 ### 16.3 NSA 탭
 
-대시보드에 NSA 카드가 추가되었습니다. `/nsa` 페이지에 접속하면 비밀번호 입력 화면이 먼저 나타납니다.
+대시보드에 NSA 카드가 추가되었습니다. 1.10.0 부터 `/nsa` 는 비밀번호 `0000` 가림막이 아니라 서버측 접근제어를 사용합니다.
 
-- **기본 비밀번호**: `0000`
-- 정답 입력 후에만 `_database\nsa\` 의 문서 목록과 본문이 로드됩니다 (입력 전에는 네트워크 요청 없음).
-- 구성·UI 는 Document 와 동일합니다.
-
-> **중요 — 보안 한계**: NSA 비밀번호는 클라이언트 번들에 포함된 **가벼운 가림막**이며 실제 인증이 아닙니다. 백엔드는 폐쇄망 내 무인증으로 동작합니다. **기밀·개인정보 등 민감 자료를 `_database\nsa\` 에 보관하지 마십시오.** 가림막의 목적은 화면 접근 편의 분리에 한정됩니다.
+- 필요 권한: `collections.nsa.read`
+- 필요 리소스 grant: `collection:nsa`
+- 목록·본문·검색은 백엔드가 세션 권한과 ResourceGrant 를 모두 확인한 뒤 제공하며, 둘 중 하나라도 없으면 403 으로 닫힙니다.
+- 구성·UI 는 Document 와 동일하지만, `_database\nsa\` 는 암호화 저장소가 아닙니다. 민감도 높은 자료는 별도 보안 분류와 파일 백업 정책을 따르십시오.
 
 ### 16.4 Ladder(사다리타기) 게임
 
@@ -623,7 +631,7 @@ Ollama 가 AeroOne 과 같은 PC 에 있으면 기본값을 그대로 둡니다.
 | Civil | `/reports/civil-aircraft?path=<상대 HTML 경로>` |
 | NSA | `/nsa?path=<상대 HTML 경로>` |
 
-NSA 는 기존 가림막을 유지합니다. Dashboard/global 검색에는 기본적으로 NSA 결과가 포함되지 않으며, `/nsa` unlock 이후에만 NSA 문서가 로드됩니다.
+NSA 는 기존 가림막을 제거했습니다. Dashboard/global 검색에는 기본적으로 NSA 결과가 포함되지 않으며, 서버측 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 통과 후에만 NSA 문서가 로드됩니다.
 
 ### 17.4 장애 시 동작
 

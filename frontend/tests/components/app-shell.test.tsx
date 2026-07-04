@@ -45,7 +45,7 @@ test('opens the usage manual popup from the header', async () => {
 
   const manualButton = screen.getByRole('button', { name: '사용법' });
   const themeToggle = screen.getByRole('link', { name: '다크 테마로 전환' });
-  expect(manualButton.compareDocumentPosition(themeToggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(themeToggle.compareDocumentPosition(manualButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
   await user.click(manualButton);
 
@@ -111,7 +111,7 @@ test('marks the active nav item and exposes the page title meta + actions', () =
   expect(screen.getByRole('button', { name: 'Grid' })).toBeInTheDocument();
 });
 
-test('top nav renders exactly 4 links: Dashboard, Newsletter, Document, Admin — and not NSA, Ladder, or Civil', () => {
+test('top nav renders exactly 3 links: Dashboard, Newsletter, Document — Admin is operator-only and not in the main nav', () => {
   render(
     <AppShell title="Nav Guard">
       <p>content</p>
@@ -121,11 +121,11 @@ test('top nav renders exactly 4 links: Dashboard, Newsletter, Document, Admin �
   const nav = screen.getByRole('navigation');
   const navLinks = within(nav).getAllByRole('link');
 
-  expect(navLinks).toHaveLength(4);
+  expect(navLinks).toHaveLength(3);
   expect(within(nav).getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
   expect(within(nav).getByRole('link', { name: 'Newsletter' })).toBeInTheDocument();
   expect(within(nav).getByRole('link', { name: 'Document' })).toBeInTheDocument();
-  expect(within(nav).getByRole('link', { name: 'Admin' })).toBeInTheDocument();
+  expect(within(nav).queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /NSA/i })).not.toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /Ladder/i })).not.toBeInTheDocument();
   expect(within(nav).queryByRole('link', { name: /Civil/i })).not.toBeInTheDocument();
