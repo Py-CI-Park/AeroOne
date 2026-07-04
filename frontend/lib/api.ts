@@ -3,6 +3,7 @@ import type {
   AdminUser,
   AdminGroup,
   AssetHealthResponse,
+  ConfigHealthResponse,
   AuditEvent,
   BackupRecord,
   BackupRestoreDryRun,
@@ -422,6 +423,10 @@ export async function changeOwnPassword(currentPassword: string, newPassword: st
 
 export async function fetchAssetHealth() {
   return browserFetch<AssetHealthResponse>('/api/v1/admin/newsletters/assets/health', { method: 'GET' });
+}
+
+export async function fetchConfigHealth() {
+  return browserFetch<ConfigHealthResponse>('/api/v1/admin/config/health', { method: 'GET' });
 }
 
 export async function bulkUpdateNewsletters(ids: number[], action: 'publish' | 'archive' | 'draft', csrfToken: string) {

@@ -162,13 +162,30 @@ class AssetHealthItem(BaseModel):
     checksum: str | None = None
     expected_checksum: str | None = None
     ok: bool
+    status: Literal['ok', 'missing', 'checksum_mismatch', 'misconfig'] = 'ok'
+    resolved_root: str | None = None
+    resolved_path: str | None = None
+    root_kind: str
+    remediation: str
+    error_code: str | None = None
 
 
 class AssetHealthResponse(BaseModel):
     ok: int
     missing: int
     checksum_mismatch: int
+    misconfig: int = 0
     items: list[AssetHealthItem]
+
+class ConfigHealthItem(BaseModel):
+    kind: str
+    resolved_path: str
+    exists: bool
+    readable: bool
+
+
+class ConfigHealthResponse(BaseModel):
+    roots: list[ConfigHealthItem]
 
 
 class BackupRecordResponse(BaseModel):

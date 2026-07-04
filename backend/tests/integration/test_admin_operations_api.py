@@ -1,5 +1,7 @@
 from __future__ import annotations
-from app.core.security import hash_password
+from app.core.config import reset_settings_cache
+from app.core.security import hash_file_bytes, hash_password
+from app.modules.newsletter.models.newsletter import AssetType, Newsletter, NewsletterAsset, SourceType
 from app.modules.admin.models import UserPermission
 from app.modules.auth.models import User
 
@@ -215,3 +217,84 @@ def test_unified_search_include_nsa_uses_collection_policy(client, app, test_pat
     nsa_response = client.get('/api/v1/admin/search', params={'q': 'SharedSearchToken', 'include_nsa': 'true'})
     assert nsa_response.status_code == 200
     assert {'document', 'nsa'} <= {item['source'] for item in nsa_response.json()['results']}
+
+def test_asset_health_classifies_assets_and_config_health_is_admin_only(csrf_client, client, app, test_paths, monkeypatch) -> None:
+    ok_path = test_paths['import_root'] / 'asset-ok.html'
+    missing_path = test_paths['import_root'] / 'asset-missing.html'
+    mismatch_path = test_paths['import_root'] / 'asset-mismatch.html'
+    ok_path.write_text('<html>ok</html>', encoding='utf-8')
+    missing_path.write_text('<html>missing</html>', encoding='utf-8')
+    mismatch_path.write_text('<html>actual</html>', encoding='utf-8')
+    ok_checksum = hash_file_bytes(ok_path.read_bytes())
+    wrong_checksum = hash_file_bytes(b'expected')
+
+    with app.state.db.session() as session:
+        ok_newsletter = Newsletter(
+            title='Asset OK',
+            slug='asset-ok',
+            source_type=SourceType.HTML,
+            source_identifier='asset-ok',
+            is_active=True,
+        )
+        ok_newsletter.assets.append(NewsletterAsset(asset_type=AssetType.HTML, file_path='asset-ok.html', checksum=ok_checksum, is_primary=True))
+        missing_newsletter = Newsletter(
+            title='Asset Missing',
+            slug='asset-missing',
+            source_type=SourceType.HTML,
+            source_identifier='asset-missing',
+            is_active=True,
+        )
+        missing_newsletter.assets.append(NewsletterAsset(asset_type=AssetType.HTML, file_path='asset-missing.html', checksum=hash_file_bytes(missing_path.read_bytes()), is_primary=True))
+        mismatch_newsletter = Newsletter(
+            title='Asset Mismatch',
+            slug='asset-mismatch',
+            source_type=SourceType.HTML,
+            source_identifier='asset-mismatch',
+            is_active=True,
+        )
+        mismatch_newsletter.assets.append(NewsletterAsset(asset_type=AssetType.HTML, file_path='asset-mismatch.html', checksum=wrong_checksum, is_primary=True))
+        session.add_all([ok_newsletter, missing_newsletter, mismatch_newsletter])
+        session.commit()
+
+    missing_path.unlink()
+    response = csrf_client.get('/api/v1/admin/newsletters/assets/health')
+    assert response.status_code == 200
+    health = response.json()
+    by_title = {item['newsletter_title']: item for item in health['items']}
+    assert by_title['Asset OK']['status'] == 'ok'
+    assert by_title['Asset OK']['error_code'] is None
+    assert by_title['Asset OK']['root_kind'] == 'import'
+    assert by_title['Asset Missing']['status'] == 'missing'
+    assert by_title['Asset Missing']['error_code'] == 'FILE_NOT_FOUND'
+    assert by_title['Asset Mismatch']['status'] == 'checksum_mismatch'
+    assert by_title['Asset Mismatch']['error_code'] == 'CHECKSUM_MISMATCH'
+    assert health['ok'] >= 1
+    assert health['missing'] >= 1
+    assert health['checksum_mismatch'] >= 1
+
+    config_response = csrf_client.get('/api/v1/admin/config/health')
+    assert config_response.status_code == 200
+    roots = {root['kind']: root for root in config_response.json()['roots']}
+    assert {'storage', 'import', 'document', 'civil', 'nsa', 'markdown', 'thumbnails'} <= set(roots)
+    assert roots['import']['exists'] is True
+    assert roots['import']['readable'] is True
+
+    _create_user(app, 'config-plain')
+    plain_login = client.post('/api/v1/auth/login', json={'username': 'config-plain', 'password': 'password'})
+    assert plain_login.status_code == 200
+    plain_response = client.get('/api/v1/admin/config/health')
+    assert plain_response.status_code == 403
+
+    admin_login = csrf_client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'password'})
+    assert admin_login.status_code == 200
+    csrf_client.headers.update({'x-csrf-token': admin_login.json()['csrf_token']})
+
+    monkeypatch.setenv('NEWSLETTER_IMPORT_ROOT_CONTAINER', str(test_paths['import_root'] / 'does-not-exist'))
+    reset_settings_cache()
+    misconfig_response = csrf_client.get('/api/v1/admin/newsletters/assets/health')
+    assert misconfig_response.status_code == 200
+    misconfigured = {item['newsletter_title']: item for item in misconfig_response.json()['items']}['Asset OK']
+    assert misconfigured['status'] == 'misconfig'
+    assert misconfigured['error_code'] == 'ROOT_MISSING'
+    assert misconfigured['resolved_root'].endswith('does-not-exist')
+    assert '환경변수' in misconfigured['remediation']

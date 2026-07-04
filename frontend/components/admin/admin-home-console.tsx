@@ -19,6 +19,7 @@ import {
   fetchAdminSummary,
   fetchAdminUsers,
   fetchAssetHealth,
+  fetchConfigHealth,
   fetchAuditEvents,
   fetchBackups,
   fetchCategories,
@@ -40,6 +41,7 @@ import type {
   AdminUser,
   AiAdminStatus,
   AssetHealthResponse,
+  ConfigHealthResponse,
   AuditEvent,
   BackupRecord,
   Category,
@@ -62,6 +64,7 @@ type PanelState = {
   audits: AuditEvent[];
   modules: ServiceModule[];
   health?: AssetHealthResponse;
+  configHealth?: ConfigHealthResponse;
   backups: BackupRecord[];
   categories: Category[];
   tags: Tag[];
@@ -158,7 +161,7 @@ export function AdminHomeConsole() {
 
   async function refresh() {
     try {
-      const [summary, users, permissions, groups, audits, modules, health, backups, categories, tags, ai] = await Promise.all([
+      const [summary, users, permissions, groups, audits, modules, health, configHealth, backups, categories, tags, ai] = await Promise.all([
         fetchAdminSummary(),
         fetchAdminUsers(),
         fetchAdminPermissions(),
@@ -166,12 +169,13 @@ export function AdminHomeConsole() {
         fetchAuditEvents(),
         fetchServiceModulesAdmin(),
         fetchAssetHealth(),
+        fetchConfigHealth(),
         fetchBackups(),
         fetchCategories(),
         fetchTags(),
         fetchAdminAiStatus(),
       ]);
-      setState((current) => ({ ...current, summary, users, permissions, groups, audits, modules, health, backups, categories, tags, ai, error: undefined }));
+      setState((current) => ({ ...current, summary, users, permissions, groups, audits, modules, health, configHealth, backups, categories, tags, ai, error: undefined }));
       setModuleDrafts(Object.fromEntries(modules.map((module) => [module.id, moduleToDraft(module)])));
       setUserDrafts(Object.fromEntries(users.map((user) => [user.id, userToDraft(user)])));
       setCategoryDrafts(Object.fromEntries(categories.map((category) => [category.id, categoryToDraft(category)])));
@@ -376,12 +380,31 @@ export function AdminHomeConsole() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase text-slate-500">Assets</p>
           <p className="mt-2 text-2xl font-semibold">{state.health?.ok ?? 0} OK</p>
-          <p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0}</p>
+          <p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0} · 설정 {state.health?.misconfig ?? 0}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase text-slate-500">AI 운영</p>
           <p className="mt-2 text-2xl font-semibold">{String(state.summary?.ai_status?.status ?? '-')}</p>
           <p className="text-sm text-slate-500">logs {state.ai?.request_logs_total ?? 0} · failures {state.ai?.request_failures ?? 0}</p>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">DB/자산 경로 상태</h2>
+          <Badge tone="blue">config-health</Badge>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {(state.configHealth?.roots ?? []).map((root) => (
+            <div key={root.kind} className="rounded-lg border border-slate-100 p-3 text-sm">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <strong>{root.kind}</strong>
+                <Badge tone={root.exists && root.readable ? 'green' : 'red'}>{root.exists && root.readable ? 'OK' : '점검 필요'}</Badge>
+              </div>
+              <p className="break-all font-mono text-xs text-slate-500">{root.resolved_path}</p>
+              <p className="mt-1 text-xs text-slate-500">exists {String(root.exists)} · readable {String(root.readable)}</p>
+            </div>
+          ))}
         </div>
       </section>
 

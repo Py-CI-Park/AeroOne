@@ -30,6 +30,8 @@ from app.modules.admin.schemas import (
     AdminSummaryResponse,
     AssetHealthItem,
     AssetHealthResponse,
+    ConfigHealthItem,
+    ConfigHealthResponse,
     AuditEventResponse,
     BackupCreateResponse,
     BackupRecordResponse,
@@ -129,11 +131,52 @@ def _safe_module_snapshot(module: ServiceModule) -> dict[str, object]:
     }
 
 
+def _asset_root(storage: StorageService, asset_type: AssetType) -> tuple[str, Path]:
+    if asset_type == AssetType.MARKDOWN:
+        return 'markdown', storage.managed_root
+    return 'import', storage.import_root
+
+
 def _asset_path(storage: StorageService, asset_type: AssetType, relative_path: str) -> Path:
     if asset_type == AssetType.MARKDOWN:
         return storage.resolve_managed_relative_path(relative_path)
     return storage.resolve_external_relative_path(relative_path)
 
+
+def _path_readable(path: Path) -> bool:
+    try:
+        if not path.exists():
+            return False
+        if path.is_dir():
+            next(path.iterdir(), None)
+        else:
+            with path.open('rb'):
+                pass
+        return True
+    except OSError:
+        return False
+
+
+def _root_missing_remediation(root: Path) -> str:
+    return f'루트 경로 {root}를 확인하세요. _database/storage 위치를 가리켜야 하며 환경변수 override 오설정을 점검하세요.'
+
+
+def _config_health(settings: Settings) -> ConfigHealthResponse:
+    roots = [
+        ('storage', settings.storage_root_path),
+        ('import', settings.import_root),
+        ('document', settings.document_root_path),
+        ('civil', settings.civil_aircraft_root_path),
+        ('nsa', settings.nsa_root_path),
+        ('markdown', settings.markdown_root),
+        ('thumbnails', settings.thumbnails_root),
+    ]
+    return ConfigHealthResponse(
+        roots=[
+            ConfigHealthItem(kind=kind, resolved_path=str(path), exists=path.exists(), readable=_path_readable(path))
+            for kind, path in roots
+        ]
+    )
 
 def _asset_health(db: Session, settings: Settings) -> AssetHealthResponse:
     storage = StorageService(settings)
@@ -141,30 +184,60 @@ def _asset_health(db: Session, settings: Settings) -> AssetHealthResponse:
     items: list[AssetHealthItem] = []
     missing = 0
     mismatch = 0
+    misconfig = 0
     ok_count = 0
     for newsletter in newsletters:
         for asset in newsletter.assets:
+            root_kind, root = _asset_root(storage, asset.asset_type)
             exists = False
             size: int | None = None
             actual_checksum: str | None = None
             ok = False
-            try:
-                path = _asset_path(storage, asset.asset_type, asset.file_path)
-                exists = path.exists()
-                if exists:
-                    data = path.read_bytes()
-                    size = len(data)
-                    actual_checksum = hash_file_bytes(data)
-                    ok = not asset.checksum or asset.checksum == actual_checksum
-            except (StorageError, OSError):
-                exists = False
-                ok = False
-            if ok:
-                ok_count += 1
-            elif not exists:
-                missing += 1
+            status_value: str = 'missing'
+            error_code: str | None = 'FILE_NOT_FOUND'
+            remediation = '해석된 자산 경로에 파일이 없습니다. 가져오기 루트와 DB 파일 경로를 확인하세요.'
+            resolved_path: Path | None = None
+            if not root.exists() or not root.is_dir() or not _path_readable(root):
+                status_value = 'misconfig'
+                error_code = 'ROOT_MISSING'
+                remediation = _root_missing_remediation(root)
             else:
+                try:
+                    resolved_path = _asset_path(storage, asset.asset_type, asset.file_path)
+                    exists = resolved_path.exists()
+                    if exists:
+                        data = resolved_path.read_bytes()
+                        size = len(data)
+                        actual_checksum = hash_file_bytes(data)
+                        ok = not asset.checksum or asset.checksum == actual_checksum
+                        if ok:
+                            status_value = 'ok'
+                            error_code = None
+                            remediation = '정상입니다.'
+                        else:
+                            status_value = 'checksum_mismatch'
+                            error_code = 'CHECKSUM_MISMATCH'
+                            remediation = '파일은 있지만 DB 체크섬과 다릅니다. 원본 파일 변경 여부를 확인하고 재가져오기를 실행하세요.'
+                    else:
+                        status_value = 'missing'
+                        error_code = 'FILE_NOT_FOUND'
+                except StorageError:
+                    status_value = 'misconfig'
+                    error_code = 'PATH_ESCAPE'
+                    remediation = 'DB 파일 경로가 허용된 루트 밖을 가리킵니다. 경로 값을 수정하거나 재가져오기 하세요.'
+                except OSError:
+                    exists = False
+                    ok = False
+                    status_value = 'missing'
+                    error_code = 'FILE_NOT_FOUND'
+            if status_value == 'ok':
+                ok_count += 1
+            elif status_value == 'missing':
+                missing += 1
+            elif status_value == 'checksum_mismatch':
                 mismatch += 1
+            else:
+                misconfig += 1
             items.append(
                 AssetHealthItem(
                     newsletter_id=newsletter.id,
@@ -176,9 +249,15 @@ def _asset_health(db: Session, settings: Settings) -> AssetHealthResponse:
                     checksum=actual_checksum,
                     expected_checksum=asset.checksum,
                     ok=ok,
+                    status=status_value,
+                    resolved_root=str(root),
+                    resolved_path=str(resolved_path) if resolved_path is not None else None,
+                    root_kind=root_kind,
+                    remediation=remediation,
+                    error_code=error_code,
                 )
             )
-    return AssetHealthResponse(ok=ok_count, missing=missing, checksum_mismatch=mismatch, items=items)
+    return AssetHealthResponse(ok=ok_count, missing=missing, checksum_mismatch=mismatch, misconfig=misconfig, items=items)
 
 
 def _user_can_access_module(db: Session, user: User | None, module: ServiceModule) -> bool:
@@ -230,7 +309,7 @@ def admin_summary(settings: Settings = Depends(get_settings), db: Session = Depe
         latest_newsletter_title=latest.title if latest else None,
         active_modules=sum(1 for module in modules if module.is_enabled),
         coming_soon_modules=sum(1 for module in modules if module.status == 'coming_soon'),
-        asset_health={'ok': health.ok, 'missing': health.missing, 'checksum_mismatch': health.checksum_mismatch},
+        asset_health={'ok': health.ok, 'missing': health.missing, 'checksum_mismatch': health.checksum_mismatch, 'misconfig': health.misconfig},
         read_summary={'rows': int(read_rows[0] or 0), 'total_reads': int(read_rows[1] or 0)},
         ai_status=ai_status,
         recent_audit_events=[AuditEventResponse.model_validate(event) for event in audits],
@@ -402,6 +481,11 @@ def update_service_module(module_id: int, payload: ServiceModuleUpdateRequest, r
 @router.get('/newsletters/assets/health', response_model=AssetHealthResponse, dependencies=[Depends(require_permission('admin.newsletters.read'))])
 def newsletter_asset_health(settings: Settings = Depends(get_settings), db: Session = Depends(get_db)) -> AssetHealthResponse:
     return _asset_health(db, settings)
+
+
+@router.get('/config/health', response_model=ConfigHealthResponse, dependencies=[Depends(require_permission('admin.audit.read'))])
+def config_health(settings: Settings = Depends(get_settings)) -> ConfigHealthResponse:
+    return _config_health(settings)
 
 
 @router.post('/newsletters/bulk', response_model=BulkNewsletterResponse, dependencies=[Depends(require_permission('admin.newsletters.bulk')), Depends(require_csrf)])

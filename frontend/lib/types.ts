@@ -161,6 +161,8 @@ export interface AiAdminStatus {
   request_failures: number;
 }
 
+export type AssetHealthStatus = 'ok' | 'missing' | 'checksum_mismatch' | 'misconfig';
+
 export interface AssetHealthItem {
   newsletter_id: number;
   newsletter_title: string;
@@ -171,13 +173,31 @@ export interface AssetHealthItem {
   checksum?: string | null;
   expected_checksum?: string | null;
   ok: boolean;
+  status: AssetHealthStatus;
+  resolved_root?: string | null;
+  resolved_path?: string | null;
+  root_kind: string;
+  remediation: string;
+  error_code?: string | null;
 }
 
 export interface AssetHealthResponse {
   ok: number;
   missing: number;
   checksum_mismatch: number;
+  misconfig: number;
   items: AssetHealthItem[];
+}
+
+export interface ConfigHealthItem {
+  kind: string;
+  resolved_path: string;
+  exists: boolean;
+  readable: boolean;
+}
+
+export interface ConfigHealthResponse {
+  roots: ConfigHealthItem[];
 }
 
 export interface BackupRecord {
