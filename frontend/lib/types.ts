@@ -72,6 +72,20 @@ export interface AuthResponse {
   csrf_token: string;
 }
 
+export interface ClientSessionResourceGrant {
+  resource_type: string;
+  resource_id: string;
+  permission_key: string;
+}
+
+export interface ClientSession {
+  authenticated: boolean | null;
+  role: string | null;
+  isAdmin: boolean;
+  permissions: string[];
+  resources: ClientSessionResourceGrant[];
+}
+
 export interface ServiceModule {
   id: number;
   key: string;

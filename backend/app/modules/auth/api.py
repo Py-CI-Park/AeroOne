@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.security import create_access_token, create_csrf_token, hash_password, verify_password
 from app.modules.admin.audit import record_admin_audit
+from app.modules.admin.permissions import list_user_permission_keys, list_user_resource_grants
 from app.modules.auth.dependencies import get_current_user, get_db, get_settings, require_csrf
 from app.modules.auth.schemas import AuthResponse, LoginRequest, PasswordChangeRequest, UserResponse
 from app.modules.auth.services import AuthError, AuthService
@@ -58,6 +59,15 @@ def logout(response: Response, settings: Settings = Depends(get_settings)) -> di
 @router.get('/me', response_model=UserResponse)
 def me(current_user=Depends(get_current_user)) -> UserResponse:
     return UserResponse.model_validate(current_user)
+
+
+@router.get('/effective-permissions')
+def effective_permissions(db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> dict[str, object]:
+    resources = [
+        {'resource_type': resource_type, 'resource_id': resource_id, 'permission_key': permission_key}
+        for resource_type, resource_id, permission_key in list_user_resource_grants(db, current_user)
+    ]
+    return {'permissions': sorted(list_user_permission_keys(db, current_user)), 'resources': resources}
 
 def _set_session_cookies(response: Response, settings: Settings, token: str, csrf_token: str) -> None:
     response.set_cookie(

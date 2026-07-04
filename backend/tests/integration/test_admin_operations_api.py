@@ -114,6 +114,39 @@ def test_public_modules_include_nsa_for_direct_permission_user(client, app) -> N
     assert {'newsletter', 'civil-aircraft', 'document', 'nsa'} <= keys
 
 
+
+def test_service_module_activation_patch_is_audited_and_changes_public_visibility(csrf_client, app) -> None:
+    _create_user(app, 'plain-module-user')
+    plain_login = csrf_client.post('/api/v1/auth/login', json={'username': 'plain-module-user', 'password': 'password'})
+    assert plain_login.status_code == 200
+    before_response = csrf_client.get('/api/v1/admin/service-modules/public')
+    assert before_response.status_code == 200
+    assert 'nsa' not in {module['key'] for module in before_response.json()}
+
+    admin_login = csrf_client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'password'})
+    assert admin_login.status_code == 200
+    csrf_client.headers.update({'x-csrf-token': admin_login.json()['csrf_token']})
+    modules_response = csrf_client.get('/api/v1/admin/service-modules')
+    assert modules_response.status_code == 200
+    nsa_module = next(module for module in modules_response.json() if module['key'] == 'nsa')
+
+    update_response = csrf_client.patch(
+        f"/api/v1/admin/service-modules/{nsa_module['id']}",
+        json={'required_permission': None, 'resource_type': None, 'resource_id': None},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()['required_permission'] is None
+
+    audit_response = csrf_client.get('/api/v1/admin/audit-events')
+    assert audit_response.status_code == 200
+    assert any(event['action'] == 'service_module.update' for event in audit_response.json())
+
+    plain_login = csrf_client.post('/api/v1/auth/login', json={'username': 'plain-module-user', 'password': 'password'})
+    assert plain_login.status_code == 200
+    after_response = csrf_client.get('/api/v1/admin/service-modules/public')
+    assert after_response.status_code == 200
+    assert 'nsa' in {module['key'] for module in after_response.json()}
+
 def test_operator_sees_admin_only_modules(csrf_client) -> None:
     response = csrf_client.get('/api/v1/admin/service-modules/public')
     assert response.status_code == 200

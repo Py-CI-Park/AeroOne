@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+import { fetchClientSession } from '@/lib/api';
+
 type SessionState = 'unknown' | 'anon' | 'admin' | 'user';
 
 // 헤더의 로그인/Admin 링크. 서버 실행자(관리자)에게는 Admin, 로그인 안 한 사용자에게는 로그인 을,
@@ -13,8 +15,7 @@ export function AdminNavLink({ active = false }: { active?: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/frontend/session', { credentials: 'include', cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
+    fetchClientSession()
       .then((data) => {
         if (cancelled || !data) return;
         if (data.isAdmin) setSession('admin');

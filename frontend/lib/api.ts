@@ -16,6 +16,7 @@ import type {
   AssetType,
   AuthResponse,
   Category,
+  ClientSession,
   CollectionSearchResponse,
   DocumentListItem,
   NewsletterCalendarEntry,
@@ -77,6 +78,18 @@ async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+
+
+export async function fetchClientSession(): Promise<ClientSession> {
+  const response = await fetch('/api/frontend/session', {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to load session: ${response.status}`);
+  }
+  return (await response.json()) as ClientSession;
+}
 export async function fetchNewsletters(params?: Record<string, string>) {
   const query = params ? `?${new URLSearchParams(params).toString()}` : '';
   return loggedServerFetchJson<NewsletterItem[]>({

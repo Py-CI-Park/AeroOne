@@ -5,6 +5,7 @@ import {
   fetchCollectionContent,
   fetchCollectionList,
   fetchDocumentContent,
+  fetchClientSession,
   getServerApiBase,
   fetchLatestNewsletter,
   getNewsletterProxyPath,
@@ -139,4 +140,30 @@ test('fetchDocumentContent delegates to collection content proxy path', async ()
   expect(fetchMock).toHaveBeenCalledTimes(1);
   const calledUrl: string = fetchMock.mock.calls[0][0] as string;
   expect(calledUrl).toMatch(/^\/api\/frontend\/collections\/document\/content\/html\?path=x\.html/);
+});
+
+test('fetchClientSession calls same-origin session route with credentials', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      authenticated: true,
+      role: 'user',
+      isAdmin: false,
+      permissions: ['collections.nsa.read'],
+      resources: [{ resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' }],
+    }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  const session = await fetchClientSession();
+
+  expect(fetchMock).toHaveBeenCalledWith('/api/frontend/session', {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  expect(session.permissions).toEqual(['collections.nsa.read']);
+  expect(session.resources).toEqual([
+    { resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' },
+  ]);
 });
