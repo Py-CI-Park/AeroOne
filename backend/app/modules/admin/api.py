@@ -10,6 +10,7 @@ import zipfile
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, PlainTextResponse
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -20,12 +21,14 @@ from app.modules.admin.models import (
     BackupRecord,
     Group,
     GroupPermission,
+    ResourceGrant,
     ServiceModule,
+    UserGroup,
     UserPermission,
     AiRequestLog,
 )
-from app.modules.admin.permissions import ADMIN_PERMISSIONS, has_permission, has_resource_permission, list_user_permission_keys
-from app.modules.admin.session_fanout import bump_group_members
+from app.modules.admin.permissions import ADMIN_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, has_permission, has_resource_permission, list_user_permission_keys
+from app.modules.admin.session_fanout import bump_authorization_session_versions, bump_group_members, users_affected_by_resource_grant
 from app.modules.admin.schemas import (
     AdminSummaryResponse,
     AssetHealthItem,
@@ -41,6 +44,9 @@ from app.modules.admin.schemas import (
     BulkNewsletterResponse,
     GroupResponse,
     GroupUpsertRequest,
+    RbacMatrixUserResponse,
+    ResourceGrantCreateRequest,
+    ResourceGrantResponse,
     PermissionResponse,
     ServiceModuleResponse,
     ServiceModuleCreateRequest,
@@ -84,6 +90,59 @@ DEFAULT_SERVICE_MODULES = [
 def _serialize_user(db: Session, user: User) -> UserAdminResponse:
     return UserAdminResponse.model_validate(user).model_copy(update={'permissions': sorted(list_user_permission_keys(db, user))})
 
+
+
+
+def _serialize_resource_grant(grant: ResourceGrant) -> ResourceGrantResponse:
+    return ResourceGrantResponse.model_validate(grant)
+
+
+def _resource_grant_snapshot(grant: ResourceGrant) -> dict[str, object]:
+    return {
+        'id': grant.id,
+        'subject_type': grant.subject_type,
+        'subject_id': grant.subject_id,
+        'resource_type': grant.resource_type,
+        'resource_id': grant.resource_id,
+        'permission_key': grant.permission_key,
+    }
+
+
+def _validate_resource_grant_subject(db: Session, subject_type: str, subject_id: int) -> None:
+    if subject_type == 'user' and db.get(User, subject_id) is not None:
+        return
+    if subject_type == 'group' and db.get(Group, subject_id) is not None:
+        return
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'{subject_type.title()} subject not found')
+
+
+def _build_rbac_matrix_user(db: Session, user: User) -> RbacMatrixUserResponse:
+    role_permissions = sorted(DEFAULT_ROLE_PERMISSIONS.get(user.role, set()))
+    direct_permissions = sorted(db.execute(select(UserPermission.permission_key).where(UserPermission.user_id == user.id)).scalars().all())
+    group_rows = db.execute(
+        select(Group.key, GroupPermission.permission_key)
+        .join(UserGroup, UserGroup.group_id == Group.id)
+        .join(GroupPermission, GroupPermission.group_id == Group.id)
+        .where(UserGroup.user_id == user.id, Group.is_active.is_(True))
+        .order_by(Group.key, GroupPermission.permission_key)
+    ).all()
+    group_permissions = [{'group': row[0], 'key': row[1]} for row in group_rows]
+    effective: dict[str, set[str]] = {}
+    for key in role_permissions:
+        effective.setdefault(key, set()).add(f'role:{user.role}')
+    for key in direct_permissions:
+        effective.setdefault(key, set()).add('direct')
+    for row in group_permissions:
+        effective.setdefault(row['key'], set()).add(f"group:{row['group']}")
+    group_ids = db.execute(select(UserGroup.group_id, Group.key).join(Group, Group.id == UserGroup.group_id).where(UserGroup.user_id == user.id, Group.is_active.is_(True))).all()
+    resource_grants = [
+        {'resource_type': row.resource_type, 'resource_id': row.resource_id, 'permission_key': row.permission_key, 'source': 'user'}
+        for row in db.execute(select(ResourceGrant).where(ResourceGrant.subject_type == 'user', ResourceGrant.subject_id == user.id)).scalars().all()
+    ]
+    for group_id, group_key in group_ids:
+        for row in db.execute(select(ResourceGrant).where(ResourceGrant.subject_type == 'group', ResourceGrant.subject_id == group_id)).scalars().all():
+            resource_grants.append({'resource_type': row.resource_type, 'resource_id': row.resource_id, 'permission_key': row.permission_key, 'source': f'group:{group_key}'})
+    return RbacMatrixUserResponse(user_id=user.id, username=user.username, role=user.role, role_permissions=role_permissions, direct_permissions=direct_permissions, group_permissions=group_permissions, effective_permissions=[{'key': key, 'sources': sorted(sources)} for key, sources in sorted(effective.items())], resource_grants=sorted(resource_grants, key=lambda item: (item['resource_type'], item['resource_id'], item['permission_key'], item['source'])))
 
 def _serialize_group(db: Session, group: Group) -> GroupResponse:
     perms = db.execute(select(GroupPermission.permission_key).where(GroupPermission.group_id == group.id)).scalars().all()
@@ -425,6 +484,83 @@ def upsert_group(payload: GroupUpsertRequest, request: Request, db: Session = De
     after = _serialize_group(db, group).model_dump()
     record_admin_audit(db, actor=actor, action=action, target_type='group', target_id=group.id, request=request, before=before, after=after)
     return _serialize_group(db, group)
+
+
+
+
+@router.get('/rbac-matrix', response_model=list[RbacMatrixUserResponse], dependencies=[Depends(require_permission('admin.rbac.read'))])
+def get_rbac_matrix(db: Session = Depends(get_db)) -> list[RbacMatrixUserResponse]:
+    users = db.execute(select(User).order_by(User.id)).scalars().all()
+    return [_build_rbac_matrix_user(db, user) for user in users]
+
+
+@router.get('/resource-grants', response_model=list[ResourceGrantResponse], dependencies=[Depends(require_permission('admin.resource_grants.read'))])
+def list_resource_grants(subject_type: str | None = None, subject_id: int | None = None, db: Session = Depends(get_db)) -> list[ResourceGrantResponse]:
+    stmt = select(ResourceGrant).order_by(ResourceGrant.id)
+    if subject_type is not None:
+        if subject_type not in {'user', 'group'}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid subject_type')
+        stmt = stmt.where(ResourceGrant.subject_type == subject_type)
+    if subject_id is not None:
+        stmt = stmt.where(ResourceGrant.subject_id == subject_id)
+    return [_serialize_resource_grant(grant) for grant in db.execute(stmt).scalars().all()]
+
+
+@router.post('/resource-grants', response_model=ResourceGrantResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission('admin.resource_grants.manage')), Depends(require_csrf)])
+def create_resource_grant(payload: ResourceGrantCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> ResourceGrantResponse:
+    _validate_resource_grant_subject(db, payload.subject_type, payload.subject_id)
+    grant = ResourceGrant(**payload.model_dump())
+    db.add(grant)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Resource grant already exists') from exc
+    bump_authorization_session_versions(db, users_affected_by_resource_grant(db, grant.subject_type, grant.subject_id))
+    record_admin_audit(db, actor=actor, action='resource_grant.create', target_type='resource_grant', target_id=grant.id, request=request, after=_resource_grant_snapshot(grant))
+    return _serialize_resource_grant(grant)
+
+
+@router.delete('/resource-grants/{grant_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_permission('admin.resource_grants.manage')), Depends(require_csrf)])
+def delete_resource_grant(grant_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> Response:
+    grant = db.get(ResourceGrant, grant_id)
+    if grant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Resource grant not found')
+    before = _resource_grant_snapshot(grant)
+    affected_user_ids = users_affected_by_resource_grant(db, grant.subject_type, grant.subject_id)
+    db.delete(grant)
+    db.flush()
+    bump_authorization_session_versions(db, affected_user_ids)
+    record_admin_audit(db, actor=actor, action='resource_grant.delete', target_type='resource_grant', target_id=grant_id, request=request, before=before)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post('/users/{user_id}/groups/{group_id}', response_model=UserAdminResponse, dependencies=[Depends(require_permission('admin.rbac.manage')), Depends(require_csrf)])
+def add_user_group(user_id: int, group_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> UserAdminResponse:
+    user = db.get(User, user_id)
+    group = db.get(Group, group_id)
+    if user is None or group is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User or group not found')
+    if db.get(UserGroup, {'user_id': user_id, 'group_id': group_id}) is None:
+        db.add(UserGroup(user_id=user_id, group_id=group_id))
+        bump_authorization_session_versions(db, [user_id])
+        db.flush()
+        record_admin_audit(db, actor=actor, action='user_group.add', target_type='user', target_id=user_id, request=request, after={'group_id': group_id, 'group_key': group.key})
+    return _serialize_user(db, user)
+
+
+@router.delete('/users/{user_id}/groups/{group_id}', response_model=UserAdminResponse, dependencies=[Depends(require_permission('admin.rbac.manage')), Depends(require_csrf)])
+def remove_user_group(user_id: int, group_id: int, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> UserAdminResponse:
+    user = db.get(User, user_id)
+    membership = db.get(UserGroup, {'user_id': user_id, 'group_id': group_id})
+    group = db.get(Group, group_id)
+    if user is None or group is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User or group not found')
+    if membership is not None:
+        db.delete(membership)
+        db.flush()
+        bump_authorization_session_versions(db, [user_id])
+        record_admin_audit(db, actor=actor, action='user_group.remove', target_type='user', target_id=user_id, request=request, before={'group_id': group_id, 'group_key': group.key})
+    return _serialize_user(db, user)
 
 
 @router.get('/audit-events', response_model=list[AuditEventResponse], dependencies=[Depends(require_permission('admin.audit.read'))])

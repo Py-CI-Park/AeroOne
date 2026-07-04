@@ -4,10 +4,13 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import {
+  addUserGroup,
   createAdminUser,
   createBackup,
   changeOwnPassword,
+  createResourceGrant,
   createServiceModule,
+  deleteResourceGrant,
   deleteServiceModule,
   createCategory,
   createTag,
@@ -18,6 +21,7 @@ import {
   getBrowserApiBase,
   fetchAdminSummary,
   fetchAdminUsers,
+  fetchRbacMatrix,
   fetchAssetHealth,
   fetchConfigHealth,
   fetchAuditEvents,
@@ -25,7 +29,9 @@ import {
   fetchCategories,
   fetchServiceModulesAdmin,
   fetchTags,
+  listResourceGrants,
   fetchUnifiedSearch,
+  removeUserGroup,
   resetAdminUserPassword,
   updateAdminUser,
   updateCategory,
@@ -46,6 +52,8 @@ import type {
   BackupRecord,
   Category,
   Permission,
+  RbacMatrixUser,
+  ResourceGrant,
   ServiceModule,
   Tag,
   UnifiedSearchResult,
@@ -61,6 +69,8 @@ type PanelState = {
   users: AdminUser[];
   permissions: Permission[];
   groups: AdminGroup[];
+  rbacMatrix: RbacMatrixUser[];
+  resourceGrants: ResourceGrant[];
   audits: AuditEvent[];
   modules: ServiceModule[];
   health?: AssetHealthResponse;
@@ -78,6 +88,8 @@ const initialState: PanelState = {
   users: [],
   permissions: [],
   groups: [],
+  rbacMatrix: [],
+  resourceGrants: [],
   audits: [],
   modules: [],
   backups: [],
@@ -153,6 +165,8 @@ export function AdminHomeConsole() {
   const [tagDrafts, setTagDrafts] = useState<Record<number, TaxonomyDraft>>({});
   const [userForm, setUserForm] = useState({ username: '', password: '', email: '', role: 'user', is_active: true });
   const [groupForm, setGroupForm] = useState({ key: '', name: '', description: '', is_active: true, permissions_csv: '' });
+  const [grantForm, setGrantForm] = useState({ subject_type: 'user' as 'user' | 'group', subject_id: '', resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' });
+  const [membershipForm, setMembershipForm] = useState({ user_id: '', group_id: '' });
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', sort_order: 0, is_active: true });
   const [tagForm, setTagForm] = useState({ name: '', sort_order: 0, is_active: true });
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
@@ -161,11 +175,13 @@ export function AdminHomeConsole() {
 
   async function refresh() {
     try {
-      const [summary, users, permissions, groups, audits, modules, health, configHealth, backups, categories, tags, ai] = await Promise.all([
+      const [summary, users, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai] = await Promise.all([
         fetchAdminSummary(),
         fetchAdminUsers(),
         fetchAdminPermissions(),
         fetchAdminGroups(),
+        fetchRbacMatrix(),
+        listResourceGrants(),
         fetchAuditEvents(),
         fetchServiceModulesAdmin(),
         fetchAssetHealth(),
@@ -175,7 +191,7 @@ export function AdminHomeConsole() {
         fetchTags(),
         fetchAdminAiStatus(),
       ]);
-      setState((current) => ({ ...current, summary, users, permissions, groups, audits, modules, health, configHealth, backups, categories, tags, ai, error: undefined }));
+      setState((current) => ({ ...current, summary, users, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai, error: undefined }));
       setModuleDrafts(Object.fromEntries(modules.map((module) => [module.id, moduleToDraft(module)])));
       setUserDrafts(Object.fromEntries(users.map((user) => [user.id, userToDraft(user)])));
       setCategoryDrafts(Object.fromEntries(categories.map((category) => [category.id, categoryToDraft(category)])));
@@ -268,6 +284,35 @@ export function AdminHomeConsole() {
     await runBusy(`user-reset-${user.id}`, async () => {
       await resetAdminUserPassword(user.id, temporaryPassword, getCsrfCookie());
       setState((current) => ({ ...current, message: `${user.username} 비밀번호를 재설정했습니다.` }));
+    });
+  }
+
+
+
+  async function saveResourceGrant() {
+    const subjectId = Number(grantForm.subject_id);
+    if (!subjectId || !grantForm.resource_type.trim() || !grantForm.resource_id.trim() || !grantForm.permission_key.trim()) return;
+    await runBusy('resource-grant-save', async () => {
+      await createResourceGrant({ subject_type: grantForm.subject_type, subject_id: subjectId, resource_type: grantForm.resource_type, resource_id: grantForm.resource_id, permission_key: grantForm.permission_key }, getCsrfCookie());
+      setState((current) => ({ ...current, message: '리소스 권한을 부여했습니다.' }));
+    });
+  }
+
+  async function removeResourceGrant(grant: ResourceGrant) {
+    await runBusy(`resource-grant-${grant.id}`, async () => {
+      await deleteResourceGrant(grant.id, getCsrfCookie());
+      setState((current) => ({ ...current, message: '리소스 권한을 삭제했습니다.' }));
+    });
+  }
+
+  async function changeMembership(action: 'add' | 'remove') {
+    const userId = Number(membershipForm.user_id);
+    const groupId = Number(membershipForm.group_id);
+    if (!userId || !groupId) return;
+    await runBusy(`membership-${action}`, async () => {
+      if (action === 'add') await addUserGroup(userId, groupId, getCsrfCookie());
+      else await removeUserGroup(userId, groupId, getCsrfCookie());
+      setState((current) => ({ ...current, message: '사용자 그룹 멤버십을 변경했습니다.' }));
     });
   }
 
@@ -533,6 +578,32 @@ export function AdminHomeConsole() {
             {state.groups.length === 0 ? <p className="text-sm text-slate-500">등록된 그룹이 없습니다.</p> : null}
             {state.groups.map((group) => <div key={group.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm"><div className="flex justify-between"><strong>{group.name}</strong><Badge tone={group.is_active ? 'green' : 'amber'}>{group.key}</Badge></div><p className="mt-1 font-mono text-xs text-slate-500">{group.permissions.join(', ') || '권한 없음'}</p></div>)}
           </div>
+        </div>
+      </section>
+
+
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold">RBAC 매트릭스 / 리소스 권한</h2>
+        <div className="mb-4 grid gap-2 rounded-lg border border-slate-100 p-3 text-sm md:grid-cols-5">
+          <select value={grantForm.subject_type} onChange={(event) => setGrantForm((current) => ({ ...current, subject_type: event.target.value as 'user' | 'group' }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label="grant subject type"><option value="user">user</option><option value="group">group</option></select>
+          <input placeholder="subject id" value={grantForm.subject_id} onChange={(event) => setGrantForm((current) => ({ ...current, subject_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="resource type" value={grantForm.resource_type} onChange={(event) => setGrantForm((current) => ({ ...current, resource_type: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="resource id" value={grantForm.resource_id} onChange={(event) => setGrantForm((current) => ({ ...current, resource_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="permission key" value={grantForm.permission_key} onChange={(event) => setGrantForm((current) => ({ ...current, permission_key: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <button type="button" onClick={() => void saveResourceGrant()} className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white md:col-span-5">리소스 권한 부여</button>
+        </div>
+        <div className="mb-4 grid gap-2 rounded-lg border border-slate-100 p-3 text-sm md:grid-cols-4">
+          <input placeholder="user id" value={membershipForm.user_id} onChange={(event) => setMembershipForm((current) => ({ ...current, user_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <input placeholder="group id" value={membershipForm.group_id} onChange={(event) => setMembershipForm((current) => ({ ...current, group_id: event.target.value }))} className="rounded-md border border-slate-300 px-2 py-1" />
+          <button type="button" onClick={() => void changeMembership('add')} className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white">그룹 추가</button>
+          <button type="button" onClick={() => void changeMembership('remove')} className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">그룹 제거</button>
+        </div>
+        <div className="mb-4 space-y-2">
+          {state.resourceGrants.map((grant) => <div key={grant.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-xs"><span><strong>{grant.subject_type}:{grant.subject_id}</strong> → {grant.resource_type}/{grant.resource_id} · {grant.permission_key}</span><button type="button" onClick={() => void removeResourceGrant(grant)} className="rounded-md border border-red-200 px-2 py-1 font-semibold text-red-700">삭제</button></div>)}
+        </div>
+        <div className="space-y-3">
+          {state.rbacMatrix.map((row) => <div key={row.user_id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="mb-1 flex items-center gap-2"><strong>{row.username}</strong><Badge tone={row.role === 'admin' ? 'green' : 'slate'}>{row.role}</Badge><span className="text-slate-400">id {row.user_id}</span></div><p><strong>role</strong>: {row.role_permissions.join(', ') || '없음'}</p><p><strong>direct</strong>: {row.direct_permissions.join(', ') || '없음'}</p><p><strong>group</strong>: {row.group_permissions.map((item) => `${item.group}:${item.key}`).join(', ') || '없음'}</p><p><strong>effective</strong>: {row.effective_permissions.map((item) => `${item.key} [${item.sources.join('|')}]`).join(', ') || '없음'}</p><p><strong>resource</strong>: {row.resource_grants.map((item) => `${item.resource_type}/${item.resource_id}:${item.permission_key} [${item.source}]`).join(', ') || '없음'}</p></div>)}
         </div>
       </section>
 

@@ -15,6 +15,12 @@ vi.mock('@/lib/api', async () => {
     fetchAdminUsers: vi.fn(),
     fetchAdminPermissions: vi.fn(),
     fetchAdminGroups: vi.fn(),
+    fetchRbacMatrix: vi.fn(),
+    listResourceGrants: vi.fn(),
+    createResourceGrant: vi.fn(),
+    deleteResourceGrant: vi.fn(),
+    addUserGroup: vi.fn(),
+    removeUserGroup: vi.fn(),
     fetchAuditEvents: vi.fn(),
     fetchServiceModulesAdmin: vi.fn(),
     fetchBackups: vi.fn(),
@@ -64,7 +70,9 @@ test('admin home console lists config-health roots', async () => {
   vi.mocked(api.fetchAdminSummary).mockResolvedValue({ app_version: '1.9.0', app_env: 'test', database_url: 'sqlite:///test.db', db_ok: true, newsletter_total: 0, active_modules: 0, coming_soon_modules: 0, asset_health: {}, read_summary: {}, ai_status: {}, recent_audit_events: [] } as never);
   vi.mocked(api.fetchAdminUsers).mockResolvedValue([] as never);
   vi.mocked(api.fetchAdminPermissions).mockResolvedValue([] as never);
-  vi.mocked(api.fetchAdminGroups).mockResolvedValue([] as never);
+  vi.mocked(api.fetchAdminGroups).mockResolvedValue([{ id: 2, key: 'nsa-readers', name: 'NSA Readers', is_active: true, permissions: ['collections.nsa.read'] }] as never);
+  vi.mocked(api.fetchRbacMatrix).mockResolvedValue([{ user_id: 9, username: 'operator', role: 'user', role_permissions: ['ai.use'], direct_permissions: ['search.use'], group_permissions: [{ group: 'nsa-readers', key: 'collections.nsa.read' }], effective_permissions: [{ key: 'ai.use', sources: ['role:user'] }, { key: 'search.use', sources: ['direct'] }, { key: 'collections.nsa.read', sources: ['group:nsa-readers'] }], resource_grants: [{ resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read', source: 'group:nsa-readers' }] }] as never);
+  vi.mocked(api.listResourceGrants).mockResolvedValue([{ id: 4, subject_type: 'group', subject_id: 2, resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' }] as never);
   vi.mocked(api.fetchAuditEvents).mockResolvedValue([] as never);
   vi.mocked(api.fetchServiceModulesAdmin).mockResolvedValue([] as never);
   vi.mocked(api.fetchAssetHealth).mockResolvedValue(health as never);
@@ -86,4 +94,7 @@ test('admin home console lists config-health roots', async () => {
   expect(within(section).getByText('markdown')).toBeInTheDocument();
   expect(within(section).getByText('D:/storage/markdown/newsletters')).toBeInTheDocument();
   expect(within(section).getByText('exists false · readable false')).toBeInTheDocument();
+  expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
+  expect(screen.getAllByText(/operator/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/collections.nsa.read \[group:nsa-readers\]/).length).toBeGreaterThan(0);
 });

@@ -25,6 +25,8 @@ import type {
   NewsletterItem,
   ReadEventsResponse,
   Permission,
+  RbacMatrixUser,
+  ResourceGrant,
   SyncResponse,
   ServiceModule,
   Tag,
@@ -378,6 +380,45 @@ export async function upsertAdminGroup(payload: { key: string; name: string; des
   return browserFetch<AdminGroup>('/api/v1/admin/groups', {
     method: 'POST',
     body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+
+export async function fetchRbacMatrix() {
+  return browserFetch<RbacMatrixUser[]>('/api/v1/admin/rbac-matrix', { method: 'GET' });
+}
+
+export async function listResourceGrants(subject?: { subject_type: 'user' | 'group'; subject_id: number }) {
+  const query = subject ? `?${new URLSearchParams({ subject_type: subject.subject_type, subject_id: String(subject.subject_id) }).toString()}` : '';
+  return browserFetch<ResourceGrant[]>(`/api/v1/admin/resource-grants${query}`, { method: 'GET' });
+}
+
+export async function createResourceGrant(payload: Omit<ResourceGrant, 'id' | 'created_at'>, csrfToken: string) {
+  return browserFetch<ResourceGrant>('/api/v1/admin/resource-grants', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteResourceGrant(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/v1/admin/resource-grants/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function addUserGroup(userId: number, groupId: number, csrfToken: string) {
+  return browserFetch<AdminUser>(`/api/v1/admin/users/${userId}/groups/${groupId}`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function removeUserGroup(userId: number, groupId: number, csrfToken: string) {
+  return browserFetch<AdminUser>(`/api/v1/admin/users/${userId}/groups/${groupId}`, {
+    method: 'DELETE',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }

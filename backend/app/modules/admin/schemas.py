@@ -60,6 +60,49 @@ class GroupUpsertRequest(BaseModel):
     permissions: list[str] = Field(default_factory=list)
 
 
+class ResourceGrantCreateRequest(BaseModel):
+    subject_type: Literal['user', 'group']
+    subject_id: int
+    resource_type: str
+    resource_id: str
+    permission_key: str
+
+
+class ResourceGrantResponse(ResourceGrantCreateRequest):
+    id: int
+    created_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RbacGroupPermissionSource(BaseModel):
+    group: str
+    key: str
+
+
+class RbacEffectivePermissionSource(BaseModel):
+    key: str
+    sources: list[str]
+
+
+class RbacResourceGrantSource(BaseModel):
+    resource_type: str
+    resource_id: str
+    permission_key: str
+    source: str
+
+
+class RbacMatrixUserResponse(BaseModel):
+    user_id: int
+    username: str
+    role: str
+    role_permissions: list[str]
+    direct_permissions: list[str]
+    group_permissions: list[RbacGroupPermissionSource]
+    effective_permissions: list[RbacEffectivePermissionSource]
+    resource_grants: list[RbacResourceGrantSource]
+
+
 class AuditEventResponse(BaseModel):
     id: int
     actor_user_id: int | None = None

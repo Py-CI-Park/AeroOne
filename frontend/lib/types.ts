@@ -155,6 +155,45 @@ export interface AdminGroup {
   permissions: string[];
 }
 
+
+export interface ResourceGrant {
+  id: number;
+  subject_type: 'user' | 'group';
+  subject_id: number;
+  resource_type: string;
+  resource_id: string;
+  permission_key: string;
+  created_at?: string | null;
+}
+
+export interface RbacGroupPermissionSource {
+  group: string;
+  key: string;
+}
+
+export interface RbacEffectivePermissionSource {
+  key: string;
+  sources: string[];
+}
+
+export interface RbacResourceGrantSource {
+  resource_type: string;
+  resource_id: string;
+  permission_key: string;
+  source: string;
+}
+
+export interface RbacMatrixUser {
+  user_id: number;
+  username: string;
+  role: string;
+  role_permissions: string[];
+  direct_permissions: string[];
+  group_permissions: RbacGroupPermissionSource[];
+  effective_permissions: RbacEffectivePermissionSource[];
+  resource_grants: RbacResourceGrantSource[];
+}
+
 export interface AiAdminStatus {
   status: Record<string, unknown>;
   request_logs_total: number;
