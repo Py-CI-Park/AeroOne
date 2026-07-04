@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.post('/login', response_model=AuthResponse)
-def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> AuthResponse:
+def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> AuthResponse:
     service = AuthService(db, settings.jwt_secret_key, settings.access_token_ttl_minutes)
     try:
         user, token, csrf_token = service.login(
@@ -25,6 +25,8 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
             payload.password,
             seed_username=settings.admin_username,
             seed_password=settings.admin_password,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get('user-agent'),
         )
     except AuthError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc

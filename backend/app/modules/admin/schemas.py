@@ -180,6 +180,37 @@ class ServiceModuleCreateRequest(BaseModel):
     resource_id: str | None = None
 
 
+class ConnectedSessionResponse(BaseModel):
+    user_id: int
+    username: str
+    last_seen_at: datetime
+
+
+class LoginEventResponse(BaseModel):
+    id: int
+    user_id: int | None = None
+    username: str
+    ip_address: str | None = None
+    user_agent: str | None = None
+    status: Literal['success', 'failure']
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConnectedUsersResponse(BaseModel):
+    active_sessions: list[ConnectedSessionResponse]
+    active_count: int
+    recent_login_events: list[LoginEventResponse]
+    login_failure_count: int
+    read_tracking_summary: dict[str, int]
+
+
+class SessionPurgeResponse(BaseModel):
+    login_events_deleted: int
+    session_activity_deleted: int
+
+
 class AdminSummaryResponse(BaseModel):
     app_version: str
     app_env: str

@@ -24,12 +24,14 @@ import {
   fetchRbacMatrix,
   fetchAssetHealth,
   fetchConfigHealth,
+  fetchConnectedUsers,
   fetchAuditEvents,
   fetchBackups,
   fetchCategories,
   fetchServiceModulesAdmin,
   fetchTags,
   listResourceGrants,
+  purgeSessions,
   fetchUnifiedSearch,
   removeUserGroup,
   resetAdminUserPassword,
@@ -48,6 +50,7 @@ import type {
   AiAdminStatus,
   AssetHealthResponse,
   ConfigHealthResponse,
+  ConnectedUsersResponse,
   AuditEvent,
   BackupRecord,
   Category,
@@ -67,6 +70,7 @@ type PanelState = {
   summary?: AdminSummary;
   ai?: AiAdminStatus;
   users: AdminUser[];
+  connectedUsers?: ConnectedUsersResponse;
   permissions: Permission[];
   groups: AdminGroup[];
   rbacMatrix: RbacMatrixUser[];
@@ -175,9 +179,10 @@ export function AdminHomeConsole() {
 
   async function refresh() {
     try {
-      const [summary, users, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai] = await Promise.all([
+      const [summary, users, connectedUsers, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai] = await Promise.all([
         fetchAdminSummary(),
         fetchAdminUsers(),
+        fetchConnectedUsers(),
         fetchAdminPermissions(),
         fetchAdminGroups(),
         fetchRbacMatrix(),
@@ -191,7 +196,7 @@ export function AdminHomeConsole() {
         fetchTags(),
         fetchAdminAiStatus(),
       ]);
-      setState((current) => ({ ...current, summary, users, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai, error: undefined }));
+      setState((current) => ({ ...current, summary, users, connectedUsers, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai, error: undefined }));
       setModuleDrafts(Object.fromEntries(modules.map((module) => [module.id, moduleToDraft(module)])));
       setUserDrafts(Object.fromEntries(users.map((user) => [user.id, userToDraft(user)])));
       setCategoryDrafts(Object.fromEntries(categories.map((category) => [category.id, categoryToDraft(category)])));
@@ -356,6 +361,14 @@ export function AdminHomeConsole() {
     });
   }
 
+
+  async function purgeSessionMetadata() {
+    await runBusy('sessions-purge', async () => {
+      const result = await purgeSessions(getCsrfCookie());
+      setState((current) => ({ ...current, message: `세션/로그 정리 완료: 로그인 ${result.login_events_deleted}건 · 세션 ${result.session_activity_deleted}건` }));
+    });
+  }
+
   async function runBackup() {
     await runBusy('backup', async () => {
       await createBackup(getCsrfCookie());
@@ -431,6 +444,55 @@ export function AdminHomeConsole() {
           <p className="text-xs font-semibold uppercase text-slate-500">AI 운영</p>
           <p className="mt-2 text-2xl font-semibold">{String(state.summary?.ai_status?.status ?? '-')}</p>
           <p className="text-sm text-slate-500">logs {state.ai?.request_logs_total ?? 0} · failures {state.ai?.request_failures ?? 0}</p>
+        </div>
+      </section>
+
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">접속자/세션</h2>
+            <p className="text-sm text-slate-500">로그인 세션 활동과 익명 IP 읽음 집계를 함께 확인합니다.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void purgeSessionMetadata()}
+            disabled={state.busy === 'sessions-purge'}
+            className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+          >
+            오래된 세션/로그 정리
+          </button>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-lg border border-slate-100 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Active sessions</p>
+            <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.active_count ?? 0}</p>
+            <div className="mt-3 space-y-2 text-sm">
+              {(state.connectedUsers?.active_sessions ?? []).length ? state.connectedUsers?.active_sessions.map((session) => (
+                <div key={`${session.user_id}-${session.last_seen_at}`} className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-slate-700">{session.username}</span>
+                  <span className="text-xs text-slate-500">{new Date(session.last_seen_at).toLocaleString('ko-KR')}</span>
+                </div>
+              )) : <p className="text-slate-500">활성 로그인 세션 없음</p>}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-100 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Recent login events</p>
+            <p className="mt-1 text-sm text-slate-600">실패 {state.connectedUsers?.login_failure_count ?? 0}건</p>
+            <div className="mt-3 max-h-40 space-y-2 overflow-auto text-sm">
+              {(state.connectedUsers?.recent_login_events ?? []).slice(0, 6).map((event) => (
+                <div key={event.id} className="flex items-center justify-between gap-2">
+                  <span>{event.username}</span>
+                  <Badge tone={event.status === 'success' ? 'green' : 'red'}>{event.status}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-100 p-3">
+            <p className="text-xs font-semibold uppercase text-slate-500">Anonymous read tracking</p>
+            <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.read_tracking_summary.total_reads ?? 0}</p>
+            <p className="text-sm text-slate-500">IP/뉴스레터 집계 행 {state.connectedUsers?.read_tracking_summary.rows ?? 0}개</p>
+          </div>
         </div>
       </section>
 

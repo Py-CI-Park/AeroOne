@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import secrets
 import json
 from pathlib import Path
@@ -9,7 +9,7 @@ import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, PlainTextResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,8 @@ from app.modules.admin.models import (
     UserGroup,
     UserPermission,
     AiRequestLog,
+    LoginEvent,
+    UserSessionActivity,
 )
 from app.modules.admin.permissions import ADMIN_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, has_permission, has_resource_permission, list_user_permission_keys
 from app.modules.admin.session_fanout import bump_authorization_session_versions, bump_group_members, users_affected_by_resource_grant
@@ -35,6 +37,8 @@ from app.modules.admin.schemas import (
     AssetHealthResponse,
     ConfigHealthItem,
     ConfigHealthResponse,
+    ConnectedUsersResponse,
+    SessionPurgeResponse,
     AuditEventResponse,
     BackupCreateResponse,
     BackupRecordResponse,
@@ -85,6 +89,15 @@ DEFAULT_SERVICE_MODULES = [
     {'key': 'announcement', 'title': 'Announcement', 'description': 'Company-wide announcements module.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 90, 'is_enabled': False, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
     {'key': 'schedule', 'title': 'Schedule', 'description': 'Shared calendar & event tracking.', 'href': '#', 'section': 'Development', 'status': 'coming_soon', 'badge': 'Coming soon', 'sort_order': 100, 'is_enabled': False, 'is_external': False, 'visibility': 'admin', 'required_permission': None, 'resource_type': None, 'resource_id': None},
 ]
+
+
+def _connected_user_retention_days(settings: Settings) -> int:
+    return min(max(int(settings.connected_user_retention_days), 30), 90)
+
+
+def _read_tracking_summary(db: Session) -> dict[str, int]:
+    row = db.execute(select(func.count(NewsletterReadEvent.id), func.coalesce(func.sum(NewsletterReadEvent.read_count), 0))).one()
+    return {'rows': int(row[0] or 0), 'total_reads': int(row[1] or 0)}
 
 
 def _serialize_user(db: Session, user: User) -> UserAdminResponse:
@@ -356,7 +369,7 @@ def admin_summary(settings: Settings = Depends(get_settings), db: Session = Depe
     health = _asset_health(db, settings)
     latest = db.execute(select(Newsletter).order_by(Newsletter.published_at.desc().nullslast(), Newsletter.created_at.desc())).scalars().first()
     modules = db.execute(select(ServiceModule)).scalars().all()
-    read_rows = db.execute(select(func.count(NewsletterReadEvent.id), func.coalesce(func.sum(NewsletterReadEvent.read_count), 0))).one()
+    read_summary = _read_tracking_summary(db)
     audits = db.execute(select(AdminAuditEvent).order_by(AdminAuditEvent.created_at.desc()).limit(10)).scalars().all()
     ai_status = AiChatService(settings).status()
     return AdminSummaryResponse(
@@ -369,10 +382,46 @@ def admin_summary(settings: Settings = Depends(get_settings), db: Session = Depe
         active_modules=sum(1 for module in modules if module.is_enabled),
         coming_soon_modules=sum(1 for module in modules if module.status == 'coming_soon'),
         asset_health={'ok': health.ok, 'missing': health.missing, 'checksum_mismatch': health.checksum_mismatch, 'misconfig': health.misconfig},
-        read_summary={'rows': int(read_rows[0] or 0), 'total_reads': int(read_rows[1] or 0)},
+        read_summary=read_summary,
         ai_status=ai_status,
         recent_audit_events=[AuditEventResponse.model_validate(event) for event in audits],
     )
+
+
+@router.get('/sessions', response_model=ConnectedUsersResponse, dependencies=[Depends(require_permission('admin.sessions.read'))])
+def connected_sessions(settings: Settings = Depends(get_settings), db: Session = Depends(get_db)) -> ConnectedUsersResponse:
+    now = datetime.now(UTC)
+    active_since = now - timedelta(minutes=settings.access_token_ttl_minutes)
+    sessions = db.execute(
+        select(UserSessionActivity.user_id, User.username, func.max(UserSessionActivity.last_seen_at))
+        .join(User, User.id == UserSessionActivity.user_id)
+        .where(UserSessionActivity.last_seen_at >= active_since)
+        .group_by(UserSessionActivity.user_id, User.username)
+        .order_by(func.max(UserSessionActivity.last_seen_at).desc())
+    ).all()
+    events = db.execute(select(LoginEvent).order_by(LoginEvent.created_at.desc(), LoginEvent.id.desc()).limit(25)).scalars().all()
+    failure_count = db.scalar(select(func.count(LoginEvent.id)).where(LoginEvent.status == 'failure')) or 0
+    return ConnectedUsersResponse(
+        active_sessions=[{'user_id': row[0], 'username': row[1], 'last_seen_at': row[2]} for row in sessions],
+        active_count=len(sessions),
+        recent_login_events=events,
+        login_failure_count=int(failure_count),
+        read_tracking_summary=_read_tracking_summary(db),
+    )
+
+
+@router.post('/sessions/purge', response_model=SessionPurgeResponse, dependencies=[Depends(require_permission('admin.sessions.purge')), Depends(require_csrf)])
+def purge_connected_sessions(request: Request, settings: Settings = Depends(get_settings), db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> SessionPurgeResponse:
+    cutoff = datetime.now(UTC) - timedelta(days=_connected_user_retention_days(settings))
+    login_result = db.execute(delete(LoginEvent).where(LoginEvent.created_at < cutoff))
+    session_result = db.execute(delete(UserSessionActivity).where(UserSessionActivity.last_seen_at < cutoff))
+    counts = {
+        'login_events_deleted': int(login_result.rowcount or 0),
+        'session_activity_deleted': int(session_result.rowcount or 0),
+    }
+    record_admin_audit(db, actor=actor, action='admin.sessions.purge', target_type='session_activity', target_id=None, request=request, metadata=counts)
+    db.flush()
+    return SessionPurgeResponse(**counts)
 
 
 @router.get('/permissions', response_model=list[PermissionResponse], dependencies=[Depends(require_permission('admin.rbac.read'))])

@@ -104,6 +104,36 @@ export interface ServiceModule {
   resource_id?: string | null;
 }
 
+
+export interface ConnectedSession {
+  user_id: number;
+  username: string;
+  last_seen_at: string;
+}
+
+export interface LoginEvent {
+  id: number;
+  user_id?: number | null;
+  username: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  status: 'success' | 'failure';
+  created_at: string;
+}
+
+export interface ConnectedUsersResponse {
+  active_sessions: ConnectedSession[];
+  active_count: number;
+  recent_login_events: LoginEvent[];
+  login_failure_count: number;
+  read_tracking_summary: Record<string, number>;
+}
+
+export interface SessionPurgeResponse {
+  login_events_deleted: number;
+  session_activity_deleted: number;
+}
+
 export interface AdminSummary {
   app_version: string;
   app_env: string;

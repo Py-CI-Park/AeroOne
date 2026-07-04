@@ -19,6 +19,7 @@ import type {
   Category,
   ClientSession,
   CollectionSearchResponse,
+  ConnectedUsersResponse,
   DocumentListItem,
   NewsletterCalendarEntry,
   NewsletterDetail,
@@ -29,6 +30,7 @@ import type {
   ResourceGrant,
   SyncResponse,
   ServiceModule,
+  SessionPurgeResponse,
   Tag,
   UnifiedSearchResult,
 } from '@/lib/types';
@@ -338,6 +340,18 @@ export async function fetchPublicServiceModules(cookieHeader?: string) {
 
 export async function fetchAdminSummary() {
   return browserFetch<AdminSummary>('/api/v1/admin/dashboard', { method: 'GET' });
+}
+
+
+export async function fetchConnectedUsers() {
+  return browserFetch<ConnectedUsersResponse>('/api/v1/admin/sessions', { method: 'GET' });
+}
+
+export async function purgeSessions(csrfToken: string) {
+  return browserFetch<SessionPurgeResponse>('/api/v1/admin/sessions/purge', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
 }
 
 export async function fetchAdminUsers() {
