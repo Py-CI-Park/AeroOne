@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.10.0-1f6feb)
+![version](https://img.shields.io/badge/version-1.11.0-1f6feb)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -72,7 +72,7 @@
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (177 passed), frontend Vitest + Testing Library (205 passed, 47 파일), `tsc --noEmit` exit 0, release gate 에서 `next build` 와 브라우저 smoke |
+| 검증 | backend pytest + httpx (265 passed), frontend Vitest + Testing Library (265 passed, 56 파일), `tsc --noEmit` exit 0, `next build` 성공, release gate 에서 브라우저 smoke |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -300,7 +300,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.10.0 기준 backend `pytest tests` 결과 **248 passed** (경고 3, 실패 0), frontend Vitest **216 passed** (49 파일), `tsc --noEmit` exit 0. release gate 에서 `next build` 와 대시보드·관리자 콘솔·뉴스레터 브라우저 smoke 를 추가로 수행합니다. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+릴리스 1.11.0 기준 backend `pytest tests` 결과 **265 passed** (실패 0), frontend Vitest **265 passed** (56 파일), `tsc --noEmit` exit 0, `next build` 성공. release gate 에서 대시보드·관리자 콘솔·뉴스레터 브라우저 smoke 를 추가로 수행합니다. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ---
 

@@ -3,8 +3,8 @@
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
 - 기준 commit: `1.10.0` (`관리자 권한 강화: RBAC/NSA 서버측 접근제어/사용자별 메뉴/자산 진단/접속자 대시보드`)
-- 갱신일: 2026-07-04
-- 테스트 상태: backend `pytest tests` **248 passed** (경고 3, 실패 0), frontend Vitest **216 passed** (49 파일), `tsc --noEmit` 및 `next build` 성공
+- 갱신일: 2026-07-05
+- 테스트 상태: backend `pytest tests` **265 passed** (실패 0), frontend Vitest **265 passed** (56 파일), `tsc --noEmit` 및 `next build` 성공
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 ---
@@ -43,7 +43,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.10.0 기준 RBAC 권한 상승 수정, NSA 서버측 접근제어, 사용자별 메뉴, 자산 진단, 사용자/그룹/리소스 권한 관리, 접속자 대시보드까지 backend 248개·frontend 216개 회귀로 검증된 상태입니다.
+**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.11.0 기준 관리자 로그인/CRUD same-origin 프록시, 탭형 관리자 콘솔, RBAC/ResourceGrant 입력 UX, 1.10.0 의 NSA 서버측 접근제어까지 backend 265개·frontend 265개 회귀로 검증된 상태입니다.
 
 ---
 
@@ -53,6 +53,7 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
+| `1.11.0` | 단계 24 | 관리자 로그인/CRUD same-origin `/api/frontend/auth/*`, `/api/frontend/admin/*` 프록시 통합, 전용 `/api/frontend/search/unified`, 탭형 `/admin` 콘솔(모듈/사용자/RBAC/세션/시스템/분류/검색/백업), RBAC 입력 위젯, 목록 검색/정렬/상태, ARIA Tabs, ResourceGrant key 방어 |
 | `1.10.0` | 단계 23 | RBAC 읽기 권한 상승 차단, `can_read_collection` 단일 정책, NSA 0000 비밀번호 제거와 서버측 권한/ResourceGrant 적용, 사용자별 메뉴 힌트, 자산/config-health 진단, 사용자·그룹·리소스 권한/RBAC 매트릭스, 접속자·세션 대시보드 |
 | `1.9.0` | 단계 22 | 관리자(서버 실행자) 전용 Admin 메뉴·개발중(Development)·Coming soon 노출, 헤더 다크·사용법·Admin 순서, 모듈 add/delete + 노출 대상(public/admin) 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight |
 | `1.8.0` | 단계 21 | 관리자 RBAC, same-transaction audit, `/admin` 운영 콘솔, `service_modules` DB 대시보드, 뉴스레터 자산/상태/bulk/taxonomy, 백업 manifest+sha256+복원 dry-run, 통합 검색 |
@@ -77,9 +78,9 @@
 
 ### 3.3 테스트 통계
 
-- backend 전체: **248 passed**
-- frontend 전체: **216 passed / 49 files**
-- 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, `offline_package.bat` packaging 제외 목록, 관리자 RBAC/audit/backup, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API, 뷰어·Document·AeroAI 프론트 컴포넌트
+- backend 전체: **265 passed**
+- frontend 전체: **265 passed / 56 files**
+- 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, `offline_package.bat` packaging 제외 목록, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 탭형 관리자 콘솔/RBAC/목록 UX, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API, 뷰어·Document·AeroAI 프론트 컴포넌트
 
 ### 3.4 릴리즈 1.8.0 폐쇄망 반입물
 
@@ -311,7 +312,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-기대 출력 예: `248 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+기대 출력 예: `265 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
@@ -337,21 +338,25 @@ python -m pytest tests -q
 | 신규 발행 추가 | `_database\newsletter\` 에 HTML/PDF 복사 (`newsletter_YYYYMMDD.html` 형식) → `/newsletters` 새로고침 시 자동 반영 (서버 재시작 불필요). 즉시 강제는 `/admin` 또는 `/admin/imports` 의 **Import / Sync** |
 | 문서 추가 | `_database\document\` 에 HTML 복사 (하위 폴더로 분류하면 폴더 트리로 구분) → `/documents` 새로고침 시 바로 반영 (서버 재시작 불필요) |
 | Civil 카탈로그 추가 | `_database\civil_aircraft\` 에 HTML 복사 (여러 파일, 하위 폴더 가능) → `/reports/civil-aircraft` 새로고침 시 목록에 반영 |
-| NSA 문서 추가 | `_database\nsa\` 에 HTML 복사 (하위 폴더로 분류 가능) → `/nsa` 는 로그인 사용자에게 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 가 있을 때만 목록/본문을 제공 |
+| NSA 문서 추가 | `_database\nsa\` 에 HTML 복사 (하위 폴더로 분류 가능) → `/nsa` 는 관리자이거나, 로그인 사용자에게 전역 `collections.nsa.read`/legacy `search.nsa.read` 권한 또는 `collection:nsa` ResourceGrant 중 하나가 있을 때 목록/본문을 제공 |
 | 메타데이터/게시 상태 수정 | 관리자 화면의 **편집** 버튼 (제목·요약·카테고리·태그·게시 상태·활성 여부·썸네일) 또는 뉴스레터 목록 일괄 게시/보관 |
 | 카테고리/태그 정리 | `/admin` 콘솔의 카테고리/태그 관리에서 생성·정렬·비활성화 |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
-| 대시보드 카드 변경 | `/admin` 콘솔의 대시보드 모듈 DB 관리에서 `service_modules` 카드 추가·삭제, 활성/비활성, Development/Coming soon, 링크·설명·순서, 노출 대상(public: 모든 사용자 / admin: 관리자 전용)을 조정. 개발중·Coming soon 카드와 Admin 메뉴는 관리자에게만 노출 |
-| 사용자/권한 관리 | `/admin` 콘솔에서 admin/user/pending 사용자, 직접 권한, 그룹 권한, 리소스 권한, RBAC 매트릭스를 관리. self-lockout 과 마지막 admin 제거는 API 가 거부 |
-| 운영 상태 확인 | `/admin` 콘솔에서 버전/DB/뉴스레터/자산/config-health/read/AI/audit/백업 요약, 통합 검색, 백업 생성·검증·복원 점검을 확인 |
-| NSA 권한 부여 | `/admin` 사용자/권한 화면에서 대상 계정에 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 를 함께 부여. 권한만 있거나 grant 만 있으면 fail-closed |
+| 대시보드 카드 변경 | `http://<host>:29501/admin` 콘솔의 **모듈** 탭에서 `service_modules` 카드 추가·삭제, 활성/비활성, Development/Coming soon, 링크·설명·순서, 노출 대상(public: 모든 사용자 / admin: 관리자 전용)을 조정. 개발중·Coming soon 카드와 Admin 메뉴는 관리자에게만 노출 |
+| 사용자/권한 관리 | `http://<host>:29501/admin` 콘솔의 **사용자/RBAC** 탭에서 admin/user/pending 사용자, 직접 권한, 그룹 권한, 리소스 권한, RBAC 매트릭스를 관리. self-lockout 과 마지막 admin 제거는 API 가 거부 |
+| 운영 상태 확인 | `http://<host>:29501/admin` 콘솔의 **세션/시스템/검색/백업** 탭에서 버전/DB/뉴스레터/자산/config-health/read/AI/audit/백업 요약, 통합 검색, 백업 생성·검증·복원 점검을 확인 |
+| NSA 권한 부여 | `/admin` 사용자/권한 화면에서 대상 계정 또는 그룹에 전역 `collections.nsa.read`(또는 legacy `search.nsa.read`) 권한이나 `collection:nsa` ResourceGrant 중 하나를 부여합니다. 관리자는 별도 grant 없이 접근할 수 있으며, 이 세 경로 중 하나도 없으면 fail-closed |
 | 접속자/세션 확인 | `/admin` 접속자 대시보드에서 로그인/세션 활동과 익명 IP 읽음 추적을 확인하고 보존 정책에 따라 감사 로그를 남긴 뒤 purge |
 | 자산 진단 | `/admin` 자산 진단/config-health 에서 `_database`, storage, 썸네일, DB/마이그레이션 상태를 확인하고 누락 경로를 배포 산출물 또는 운영 백업에서 복구 |
 | 비밀번호 교체 | `/admin` 콘솔의 **관리자 계정 / 비밀번호** 에서 현재 비밀번호 확인 후 직접 변경(변경 시 다른 세션 로그아웃). 또는 `setup_offline.bat` 재실행으로 `backend\.env` 의 `ADMIN_PASSWORD` 재발급(기존 `.env` 는 `.bak` 자동 백업). 이 배포본 초기 비밀번호는 `27882788` |
 
-### 9.1 NSA 접근제어 주의
+### 9.1 관리자 same-origin 접속 원칙
 
-1.10.0 부터 `/nsa` 의 `0000` 비밀번호 가림막은 제거되었습니다. NSA 는 암호화 비밀 저장소가 아니라 `_database\nsa\` HTML 컬렉션이며, 서버가 로그인 세션의 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 를 모두 확인해 목록·본문·검색을 제공합니다. 운영자는 관리자 화면에서 계정/그룹 권한과 리소스 grant 를 명시적으로 부여하고, 미부여 사용자가 403 을 받는지 확인해야 합니다.
+운영자와 사용자는 로그인(`/login`)과 관리자 콘솔(`/admin`)을 모두 같은 frontend origin 인 `http://<host>:29501` 에서 엽니다. 브라우저는 backend origin(`http://<host>:18437`)을 직접 호출하지 않고 `/api/frontend/auth/*`, `/api/frontend/admin/*`, `/api/frontend/search/unified` same-origin 경로만 호출합니다. frontend 서버가 backend 로 relay 하므로 LAN 클라이언트에서도 쿠키/CORS 경계가 흔들리지 않습니다. `/admin` 콘솔은 모듈/사용자/RBAC/세션/시스템/분류/검색/백업 탭으로 나뉩니다.
+
+### 9.2 NSA 접근제어 주의
+
+1.10.0 부터 `/nsa` 의 `0000` 비밀번호 가림막은 제거되었습니다. NSA 는 암호화 비밀 저장소가 아니라 `_database\nsa\` HTML 컬렉션이며, 서버는 관리자이거나 로그인 세션에 전역 `collections.nsa.read`/legacy `search.nsa.read` 권한 또는 일치하는 `collection:nsa` ResourceGrant 중 하나가 있을 때 목록·본문·검색을 제공합니다. 운영자는 관리자 화면에서 계정/그룹 권한 또는 리소스 grant 를 명시적으로 부여하고, 미부여 사용자가 403 을 받는지 확인해야 합니다.
 
 ---
 
@@ -592,9 +597,10 @@ _database\
 
 대시보드에 NSA 카드가 추가되었습니다. 1.10.0 부터 `/nsa` 는 비밀번호 `0000` 가림막이 아니라 서버측 접근제어를 사용합니다.
 
-- 필요 권한: `collections.nsa.read`
-- 필요 리소스 grant: `collection:nsa`
-- 목록·본문·검색은 백엔드가 세션 권한과 ResourceGrant 를 모두 확인한 뒤 제공하며, 둘 중 하나라도 없으면 403 으로 닫힙니다.
+- 허용 경로: 관리자 또는 전역 `collections.nsa.read` 권한
+- legacy 허용 경로: 전역 `search.nsa.read` 권한
+- 리소스 허용 경로: 사용자/그룹의 `collection:nsa` ResourceGrant
+- 목록·본문·검색은 백엔드가 위 조건 중 하나라도 만족할 때 제공하며, 모두 없으면 403 으로 닫힙니다.
 - 구성·UI 는 Document 와 동일하지만, `_database\nsa\` 는 암호화 저장소가 아닙니다. 민감도 높은 자료는 별도 보안 분류와 파일 백업 정책을 따르십시오.
 
 ### 16.4 Ladder(사다리타기) 게임
@@ -631,7 +637,7 @@ Ollama 가 AeroOne 과 같은 PC 에 있으면 기본값을 그대로 둡니다.
 | Civil | `/reports/civil-aircraft?path=<상대 HTML 경로>` |
 | NSA | `/nsa?path=<상대 HTML 경로>` |
 
-NSA 는 기존 가림막을 제거했습니다. Dashboard/global 검색에는 기본적으로 NSA 결과가 포함되지 않으며, 서버측 `collections.nsa.read` 권한과 `collection:nsa` ResourceGrant 통과 후에만 NSA 문서가 로드됩니다.
+NSA 는 기존 가림막을 제거했습니다. Dashboard/global 검색에는 기본적으로 NSA 결과가 포함되지 않으며, 관리자 또는 서버측 `collections.nsa.read`/`search.nsa.read` 권한이나 `collection:nsa` ResourceGrant 중 하나를 통과한 사용자에게만 NSA 문서가 로드됩니다.
 
 ### 17.4 장애 시 동작
 

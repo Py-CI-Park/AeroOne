@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -163,6 +163,14 @@
 - 무엇: `READ_PERMISSION_BY_PREFIX` 권한 상승 경로를 차단하고 `can_read_collection` 단일 정책으로 collections/admin-search/AI 를 통일, NSA 0000 비밀번호 가림막 제거 후 `collections.nsa.read` + `collection:nsa` ResourceGrant 를 요구, 사용자별 유효 권한 기반 메뉴 힌트, 자산/config-health 진단, 사용자·그룹·리소스 권한 CRUD 와 RBAC 매트릭스, 로그인/세션/익명 IP 읽음 추적 접속자 대시보드를 추가.
 - 코드: `backend/alembic/versions/20260704_0006_*.py`, `backend/alembic/versions/20260704_0007_*.py`, `backend/app/modules/{admin,auth,collections,ai,read_tracking}/`, `frontend/app/{admin,nsa,ai}/`, `frontend/components/{admin,layout,documents,ai}/`, `frontend/lib/changelog.ts`
 - 회귀 방지: backend `pytest tests` 248 passed(경고 3), frontend Vitest 216 passed(49 파일), `tsc --noEmit`, `next build`, alembic upgrades through `20260704_0007`, 단계별 architect/executor QA gate 통과.
+
+### 단계 24 — 관리자 콘솔 UX 재설계·same-origin 인증/관리 프록시 통합 (1.11.0)
+
+- 파일: [`phase-24-admin-console-proxy-redesign.md`](phase-24-admin-console-proxy-redesign.md)
+- 분류: minor (`1.11.0`) — 관리자 브라우저 표면을 같은 frontend origin 으로 고정하고 `/admin` 운영 UX 를 탭형 콘솔로 재정리.
+- 무엇: 브라우저 로그인/관리자 CRUD 를 `/api/frontend/auth/*`, `/api/frontend/admin/*` same-origin 프록시로 통일, 통합 검색은 `/api/frontend/search/unified` 로 분리, ResourceGrant global/unknown/malformed key 거부, `/admin` 을 모듈/사용자/RBAC/세션/시스템/분류/검색/백업 탭으로 분할, RBAC 권한 체크박스·리소스 grant 드롭다운·NSA 열람권 프리셋·사용자/그룹 선택기·목록 검색/정렬/상태·ARIA Tabs 키보드 접근성을 추가.
+- 코드: `backend/app/modules/{admin,auth}/`, `frontend/app/{admin,api/frontend/auth,api/frontend/admin,api/frontend/search}/`, `frontend/components/admin/`, `frontend/lib/{api,server-auth,changelog}.ts`
+- 회귀 방지: backend `pytest tests` 265 passed, frontend Vitest 265 passed(56 파일), `tsc --noEmit`, `next build`, 단계별 architect CLEAR 및 executor red-team 통과(`artifacts/qa/1.11.0-admin-proxy/`).
 
 ---
 

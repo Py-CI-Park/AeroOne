@@ -2,8 +2,8 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 버전: `1.10.0` (`관리자 권한 강화: RBAC/NSA 서버측 접근제어/사용자별 메뉴/자산 진단/접속자 대시보드`)
-- 갱신일: 2026-07-04
+- 기준 버전: `1.11.0` (`관리자 콘솔 UX 재설계/same-origin 인증·관리 프록시 통합`)
+- 갱신일: 2026-07-05
 
 ---
 
@@ -47,7 +47,7 @@
 
 ## 3. 단계별 변경 보고서 (`docs/reports/`)
 
-폐쇄망 운영 보강 4단계 + 기능 모듈/운영 패치 단계(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색·Open Notebook 연구/동거 배포·AI 대화 영속화·뷰어·폐쇄망 smoke 패치·AeroAI/Viewer UX 강화·대시보드 개발중 섹션 재분류·관리자 RBAC/운영 콘솔)의 의도와 합의안. 각 보고서는 변경 commit 또는 릴리즈 패치와 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
+폐쇄망 운영 보강 4단계 + 기능 모듈/운영 패치 단계(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색·Open Notebook 연구/동거 배포·AI 대화 영속화·뷰어·폐쇄망 smoke 패치·AeroAI/Viewer UX 강화·대시보드 개발중 섹션 재분류·관리자 RBAC/운영 콘솔·관리자 콘솔 UX/same-origin 프록시 통합)의 의도와 합의안. 각 보고서는 변경 commit 또는 릴리즈 패치와 대응됩니다. 자세한 인덱스: [`docs/reports/INDEX.md`](reports/INDEX.md).
 
 | 단계 | 보고서 | 핵심 결과 | commit |
 |---|---|---|---|
@@ -69,6 +69,7 @@
 | 단계 21 | [`reports/phase-21-admin-rbac-operations-console.md`](reports/phase-21-admin-rbac-operations-console.md) | 관리자 RBAC·same-transaction audit·운영 콘솔·service_modules DB 대시보드·뉴스레터 자산/상태/bulk·백업 — minor 1.8.0 | `1.8.0-dev` |
 | 단계 22 | [`reports/phase-22-operator-visibility-and-module-management.md`](reports/phase-22-operator-visibility-and-module-management.md) | 관리자 전용 Admin/개발중(Development)/Coming soon 노출 + 헤더 다크·사용법·Admin 순서 + 모듈 add/delete·노출 대상 관리 + 관리자 비밀번호 변경 + start_offline 마이그레이션 preflight — minor 1.9.0 | `1.9.0-dev` |
 | 단계 23 | [`reports/phase-23-admin-authz-hardening.md`](reports/phase-23-admin-authz-hardening.md) | RBAC 읽기 권한 상승 수정 + NSA 서버측 접근제어 + 사용자별 메뉴 힌트 + 자산 진단 + 사용자/그룹/리소스 권한·RBAC 매트릭스 + 접속자 대시보드 — minor 1.10.0 | `1.10.0-dev` |
+| 단계 24 | [`reports/phase-24-admin-console-proxy-redesign.md`](reports/phase-24-admin-console-proxy-redesign.md) | 관리자 로그인/CRUD same-origin 프록시 통합 + `/admin` 탭형 콘솔 UX/RBAC 입력/목록 상태/ARIA Tabs — minor 1.11.0 | `1.11.0-dev` |
 
 ---
 
@@ -113,7 +114,7 @@
 | 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트(`frontend/app/theme/route.ts`)가 쿠키 설정 후 **상대 경로**로 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>`. **1.1.1**: `/theme` 리다이렉트는 `request.url` 의 origin 대신 origin 없는 상대 Location 을 쓴다 — LAN 모드(`next start -H 0.0.0.0`)에서 origin 이 `http://0.0.0.0:29501` 로 잡혀 브라우저가 접속 불가 주소로 튕기던 테마 토글 연결 종료 버그를 회피 |
 | 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |
 | 출력 폴더 자동 동기화 | `backend/app/modules/newsletter/services/newsletter_autosync_service.py` + `backend/app/modules/newsletter/api/public.py` (`auto_sync_newsletters` 의존성) | 공개 읽기 요청 시 `_database/newsletter` 시그니처(파일명+크기+mtime) 변화를 감지해 변경 시에만 `sync()`. 수동 Sync 엔드포인트(`api/imports.py`)도 베이스라인 시그니처를 갱신해 직후 읽기가 관리자 메타데이터 편집을 덮어쓰지 않게 함 |
-| 관리자 RBAC/Audit/운영 콘솔 | `backend/app/modules/admin/`, `backend/app/modules/auth/dependencies.py`, `frontend/app/admin/page.tsx`, `frontend/components/admin/admin-home-console.tsx` | `admin/user/pending` 역할 + additive permissions/groups/resource grants. 새 관리자 API 는 `require_permission(...)` 과 `require_csrf` 를 분리해 조합. 감사 대상 mutation 은 같은 transaction 에 `admin_audit_events` 기록(fail-closed), 비밀번호·토큰·AI prompt/answer/snippet 미저장. `/admin` 홈은 버전/DB/뉴스레터/자산/read/AI/audit/백업 요약을 표시 |
+| 관리자 RBAC/Audit/운영 콘솔 | `backend/app/modules/admin/`, `backend/app/modules/auth/dependencies.py`, `frontend/app/admin/page.tsx`, `frontend/components/admin/`, `frontend/app/api/frontend/{auth,admin,search}/` | `admin/user/pending` 역할 + additive permissions/groups/resource grants. 새 관리자 API 는 `require_permission(...)` 과 `require_csrf` 를 분리해 조합. 감사 대상 mutation 은 같은 transaction 에 `admin_audit_events` 기록(fail-closed), 비밀번호·토큰·AI prompt/answer/snippet 미저장. 1.11.0 부터 브라우저 로그인과 관리자 CRUD 는 same-origin `/api/frontend/auth/*`, `/api/frontend/admin/*` 로 relay 하고, 통합 검색은 `/api/frontend/search/unified` 를 사용한다. 사용자는 로그인과 탭형 `/admin` 콘솔을 모두 같은 frontend origin(`http://<host>:29501`) 으로 연다 |
 | 대시보드 DB 원천 | `backend/app/modules/admin/api.py` (`service_modules`), `frontend/app/page.tsx` | 대시보드 카드를 `service_modules` DB 에서 읽고 관리자 콘솔에서 active/development/coming_soon, 설명, 링크, 정렬, 외부 링크를 조정. DB/table 미준비 시 visible degraded banner + 내장 fallback 목록 |
 | LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
 | 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일. 대시보드에 민간항공기 규격 카탈로그 카드(활성)도 포함 |
@@ -131,7 +132,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.10.0 기준 backend 248 passed, frontend Vitest 216 passed(49 파일), `tsc --noEmit` 를 수행한다. release gate 에서는 여기에 `next build` 와 브라우저 smoke 를 더한다.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.11.0 기준 backend 265 passed, frontend Vitest 265 passed(56 파일), `tsc --noEmit`, `next build` 를 수행한다. release gate 에서는 여기에 브라우저 smoke 를 더한다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
