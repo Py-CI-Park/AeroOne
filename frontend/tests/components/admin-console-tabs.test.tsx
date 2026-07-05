@@ -224,6 +224,30 @@ test('admin list UX filters, sorts, renders empty state, and exposes tab/toast a
   fireEvent.click(screen.getByRole('button', { name: '모듈 추가' }));
   expect(await screen.findByRole('status')).toHaveAttribute('aria-live', 'polite');
 });
+test('admin console number shortcuts switch tabs, skip focused inputs, and expose onboarding help', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+  expect(screen.getByText('콘솔 사용 도움말')).toBeInTheDocument();
+  expect(screen.getByText(/대시보드 모듈 노출과 정렬/)).toBeInTheDocument();
+  expect(screen.getByText(/숫자 키 1~9/)).toBeInTheDocument();
+
+  fireEvent.keyDown(window, { key: '3' });
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'RBAC' })).toHaveAttribute('aria-selected', 'true'));
+  expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
+
+  const groupKey = screen.getByLabelText('group key');
+  groupKey.focus();
+  fireEvent.keyDown(window, { key: '9' });
+  expect(screen.getByRole('tab', { name: 'RBAC' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('tab', { name: '감사' })).toHaveAttribute('aria-selected', 'false');
+
+  groupKey.blur();
+  fireEvent.keyDown(window, { key: '9' });
+  await waitFor(() => expect(screen.getByRole('tab', { name: '감사' })).toHaveAttribute('aria-selected', 'true'));
+  expect(await screen.findByRole('heading', { name: '감사 로그' })).toBeInTheDocument();
+});
 test('AdminHomeConsole renders the tab shell and tab switching preserves parent state', async () => {
   mockAdminData();
   render(<AdminHomeConsole />);
