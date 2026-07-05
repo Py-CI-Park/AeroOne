@@ -121,6 +121,12 @@ def _resource_grant_snapshot(grant: ResourceGrant) -> dict[str, object]:
     }
 
 
+def _validate_resource_grant_resource(payload: ResourceGrantCreateRequest) -> None:
+    policy_error = payload.resource_policy_error()
+    if policy_error is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=policy_error)
+
+
 def _validate_resource_grant_subject(db: Session, subject_type: str, subject_id: int) -> None:
     if subject_type == 'user' and db.get(User, subject_id) is not None:
         return
@@ -558,6 +564,7 @@ def list_resource_grants(subject_type: str | None = None, subject_id: int | None
 @router.post('/resource-grants', response_model=ResourceGrantResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission('admin.resource_grants.manage')), Depends(require_csrf)])
 def create_resource_grant(payload: ResourceGrantCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> ResourceGrantResponse:
     _validate_resource_grant_subject(db, payload.subject_type, payload.subject_id)
+    _validate_resource_grant_resource(payload)
     grant = ResourceGrant(**payload.model_dump())
     db.add(grant)
     try:

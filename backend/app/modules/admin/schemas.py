@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from app.modules.admin.permissions import ADMIN_PERMISSIONS, RESOURCE_SAFE_PERMISSIONS, is_resource_safe_permission, is_valid_resource_id
 
 
 class PermissionResponse(BaseModel):
@@ -66,6 +67,16 @@ class ResourceGrantCreateRequest(BaseModel):
     resource_type: str
     resource_id: str
     permission_key: str
+    def resource_policy_error(self) -> str | None:
+        if self.resource_type not in RESOURCE_SAFE_PERMISSIONS:
+            return 'Invalid resource grant resource_type'
+        if not is_valid_resource_id(self.resource_id):
+            return 'Invalid resource grant resource_id'
+        if self.permission_key in ADMIN_PERMISSIONS and not is_resource_safe_permission(self.resource_type, self.permission_key):
+            return 'Invalid resource grant permission_key'
+        if not is_resource_safe_permission(self.resource_type, self.permission_key):
+            return 'Invalid resource grant permission_key'
+        return None
 
 
 class ResourceGrantResponse(ResourceGrantCreateRequest):

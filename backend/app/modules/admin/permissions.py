@@ -38,6 +38,24 @@ ADMIN_PERMISSIONS: set[str] = {
     'ai.use',
     'ai.history.manage_own',
 }
+# ResourceGrant 로 부여 가능한 resource_type 별 안전 권한 키. 읽기 전용만 두고 전역
+# admin.* 키는 절대 포함하지 않는다. 'collections.read' 는 향후 비공개(비-NSA) 컬렉션
+# 열람용 예약 키이며, 현재 can_read_collection 이 실제로 소비하는 것은 'collections.nsa.read' 뿐이다.
+RESOURCE_SAFE_PERMISSIONS: dict[str, set[str]] = {
+    'collection': {'collections.nsa.read', 'collections.read'},
+}
+
+
+def is_resource_safe_permission(resource_type: str, permission_key: str) -> bool:
+    return permission_key in RESOURCE_SAFE_PERMISSIONS.get(resource_type, set())
+
+
+def is_valid_resource_id(resource_id: str) -> bool:
+    if resource_id != resource_id.strip() or not resource_id or len(resource_id) > 100:
+        return False
+    if any(char in resource_id for char in ('*', '/', '\\')) or '..' in resource_id:
+        return False
+    return not any(ord(char) < 32 or ord(char) == 127 for char in resource_id)
 
 DEFAULT_ROLE_PERMISSIONS: dict[str, set[str]] = {
     'admin': set(ADMIN_PERMISSIONS),
