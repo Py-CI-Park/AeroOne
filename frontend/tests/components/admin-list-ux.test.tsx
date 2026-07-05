@@ -202,7 +202,7 @@ test('admin tablist keyboard navigation uses roving tabindex and activates Arrow
 
   const modulesTab = await screen.findByRole('tab', { name: '모듈' });
   const usersTab = screen.getByRole('tab', { name: '사용자' });
-  const backupsTab = screen.getByRole('tab', { name: '백업' });
+  const auditTab = screen.getByRole('tab', { name: '감사' });
 
   expect(modulesTab).toHaveAttribute('tabindex', '0');
   expect(usersTab).toHaveAttribute('tabindex', '-1');
@@ -213,10 +213,10 @@ test('admin tablist keyboard navigation uses roving tabindex and activates Arrow
   expect(modulesTab).toHaveAttribute('tabindex', '-1');
 
   fireEvent.keyDown(usersTab, { key: 'End' });
-  await waitFor(() => expect(backupsTab).toHaveAttribute('aria-selected', 'true'));
-  expect(backupsTab).toHaveAttribute('aria-current', 'page');
+  await waitFor(() => expect(auditTab).toHaveAttribute('aria-selected', 'true'));
+  expect(auditTab).toHaveAttribute('aria-current', 'page');
 
-  fireEvent.keyDown(backupsTab, { key: 'Home' });
+  fireEvent.keyDown(auditTab, { key: 'Home' });
   await waitFor(() => expect(modulesTab).toHaveAttribute('aria-selected', 'true'));
   expect(modulesTab).toHaveAttribute('tabindex', '0');
 });

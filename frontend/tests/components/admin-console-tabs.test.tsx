@@ -156,7 +156,7 @@ const parityMatrix = [
   },
   {
     tab: '백업',
-    expected: ['create backup', 'backup list', 'validate', 'restore dry run', 'audit log'],
+    expected: ['create backup', 'backup list', 'validate', 'restore dry run'],
     assertPresent: async () => {
       fireEvent.click(screen.getByRole('tab', { name: '백업' }));
       expect(await screen.findByRole('heading', { name: '백업' })).toBeInTheDocument();
@@ -164,7 +164,17 @@ const parityMatrix = [
       expect(screen.getByText('backup.zip')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '검증' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '복원 점검' })).toBeInTheDocument();
-      expect(screen.getByText('최근 감사 로그')).toBeInTheDocument();
+      expect(screen.getByText("감사 로그는 '감사' 탭에서 필터·CSV로 확인하세요.")).toBeInTheDocument();
+    },
+  },
+  {
+    tab: '감사',
+    expected: ['audit log', 'CSV export', 'audit search', 'audit event'],
+    assertPresent: async () => {
+      fireEvent.click(screen.getByRole('tab', { name: '감사' }));
+      expect(await screen.findByRole('heading', { name: '감사 로그' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'CSV 내보내기' })).toBeInTheDocument();
+      expect(screen.getByLabelText('감사 검색')).toBeInTheDocument();
       expect(screen.getByText('backup.create')).toBeInTheDocument();
     },
   },
@@ -219,10 +229,9 @@ test('AdminHomeConsole renders the tab shell and tab switching preserves parent 
   render(<AdminHomeConsole />);
 
   expect(await screen.findByText('운영 콘솔은 DB, 자산, 권한, 감사, 백업 상태를 한 화면에 모읍니다.')).toBeInTheDocument();
-  expect(screen.getByRole('tablist', { name: '관리자 콘솔 탭' })).toBeInTheDocument();
-  for (const tab of ['모듈', '사용자', 'RBAC', '세션', '시스템', '분류', '검색', '백업']) {
-    expect(screen.getByRole('tab', { name: tab })).toBeInTheDocument();
-  }
+  const tablist = screen.getByRole('tablist', { name: '관리자 콘솔 탭' });
+  expect(tablist).toBeInTheDocument();
+  expect(within(tablist).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['모듈', '사용자', 'RBAC', '세션', '시스템', '분류', '검색', '백업', '감사']);
 
   const newModuleKey = screen.getByLabelText('new module key');
   fireEvent.change(newModuleKey, { target: { value: 'qa-module' } });

@@ -68,6 +68,7 @@ import { AdminSystemSection } from './sections/admin-system-section';
 import { AdminTaxonomySection } from './sections/admin-taxonomy-section';
 import { AdminSearchSection } from './sections/admin-search-section';
 import { AdminBackupsSection } from './sections/admin-backups-section';
+import { AdminAuditSection } from './sections/admin-audit-section';
 import { ConfirmProvider, useConfirm } from './widgets/confirm-dialog';
 import { ToastStack, type AdminToast } from './widgets/toast-stack';
 
@@ -222,6 +223,7 @@ const tabs = [
   { key: 'taxonomy', label: '분류' },
   { key: 'search', label: '검색' },
   { key: 'backups', label: '백업' },
+  { key: 'audit', label: '감사' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
@@ -477,6 +479,7 @@ function AdminConsoleTabsContent() {
           {activeTab === 'taxonomy' ? <AdminTaxonomySection /> : null}
           {activeTab === 'search' ? <AdminSearchSection /> : null}
           {activeTab === 'backups' ? <AdminBackupsSection /> : null}
+          {activeTab === 'audit' ? <AdminAuditSection /> : null}
         </div>
       </div>
     </AdminConsoleContext.Provider>
