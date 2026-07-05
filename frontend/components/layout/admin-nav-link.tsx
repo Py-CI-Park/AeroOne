@@ -7,7 +7,7 @@ import { fetchClientSession } from '@/lib/api';
 
 type SessionState = 'unknown' | 'anon' | 'admin' | 'user';
 
-// 헤더의 로그인/Admin 링크. 서버 실행자(관리자)에게는 Admin, 로그인 안 한 사용자에게는 로그인 을,
+// 헤더의 로그인/Admin 링크. 확인된 관리자에게만 Admin, 익명/미확정 사용자에게는 로그인 을,
 // 관리자가 아닌 로그인 사용자에게는 아무 것도 보이지 않는다. same-origin /api/frontend/session 을 써서
 // CORS/LAN 에 흔들리지 않게 신원을 확인한다. AppShell 은 서버 컴포넌트로 두고 이 섬만 클라이언트다.
 export function AdminNavLink({ active = false }: { active?: boolean }) {
@@ -17,14 +17,13 @@ export function AdminNavLink({ active = false }: { active?: boolean }) {
     let cancelled = false;
     fetchClientSession()
       .then((data) => {
-        if (cancelled || !data) return;
-        if (data.isAdmin) setSession('admin');
-        else if (data.authenticated === true) setSession('user');
-        else if (data.authenticated === false) setSession('anon');
-        else setSession('unknown');
+        if (cancelled) return;
+        if (data?.isAdmin === true) setSession('admin');
+        else if (data?.authenticated === true) setSession('user');
+        else setSession('anon');
       })
       .catch(() => {
-        // 미도달 시 신원 미확정 — 아무 링크도 표시하지 않는다.
+        if (!cancelled) setSession('anon');
       });
     return () => {
       cancelled = true;
@@ -47,7 +46,7 @@ export function AdminNavLink({ active = false }: { active?: boolean }) {
     );
   }
 
-  if (session === 'anon') {
+  if (session === 'unknown' || session === 'anon') {
     return (
       <Link
         href="/login"

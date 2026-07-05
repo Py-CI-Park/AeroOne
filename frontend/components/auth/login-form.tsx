@@ -15,7 +15,7 @@ export function LoginForm() {
     event.preventDefault();
     try {
       await login(username, password);
-      router.push('/admin/newsletters');
+      router.push('/admin');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : '로그인 실패');
     }

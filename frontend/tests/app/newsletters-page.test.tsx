@@ -38,6 +38,10 @@ vi.mock('@/lib/api', async () => {
   };
 });
 
+vi.mock('@/components/layout/admin-nav-link', () => ({
+  AdminNavLink: () => null,
+}));
+
 vi.mock('@/components/newsletter/newsletter-date-calendar', () => ({
   NewsletterDateCalendar: ({
     selectedSlug,

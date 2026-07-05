@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AdminNewsletterList } from '@/components/admin/admin-newsletter-list';
 import { AdminHomeConsole } from '@/components/admin/admin-home-console';
 import * as api from '@/lib/api';
@@ -90,6 +90,7 @@ test('admin home console lists config-health roots', async () => {
 
   render(<AdminHomeConsole />);
 
+  fireEvent.click(screen.getByRole('tab', { name: '시스템' }));
   const panel = await screen.findByText('DB/자산 경로 상태');
   const section = panel.closest('section')!;
   expect(within(section).getByText('import')).toBeInTheDocument();
@@ -97,9 +98,13 @@ test('admin home console lists config-health roots', async () => {
   expect(within(section).getByText('markdown')).toBeInTheDocument();
   expect(within(section).getByText('D:/storage/markdown/newsletters')).toBeInTheDocument();
   expect(within(section).getByText('exists false · readable false')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: '세션' }));
   expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
   expect(screen.getByText('Anonymous read tracking')).toBeInTheDocument();
   expect(screen.getByText('IP/뉴스레터 집계 행 2개')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: 'RBAC' }));
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
   expect(screen.getAllByText(/operator/).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/collections.nsa.read \[group:nsa-readers\]/).length).toBeGreaterThan(0);

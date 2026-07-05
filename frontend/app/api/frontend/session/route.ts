@@ -65,6 +65,6 @@ export async function GET(request: NextRequest) {
       // try the next candidate base
     }
   }
-  // 백엔드 미도달: 신원을 단정하지 않는다(헤더는 아무 링크도 표시하지 않음).
+  // 백엔드 미도달: 신원을 단정하지 않는다. 헤더는 로그인 항목만 표시하고 Admin 링크는 숨긴다.
   return NextResponse.json({ authenticated: null, role: null, isAdmin: false, ...EMPTY_HINTS }, { status: 200 });
 }
