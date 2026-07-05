@@ -1,12 +1,10 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 import { login } from '@/lib/api';
 
 export function LoginForm() {
-  const router = useRouter();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -15,7 +13,7 @@ export function LoginForm() {
     event.preventDefault();
     try {
       await login(username, password);
-      router.push('/admin');
+      window.location.assign('/admin');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : '로그인 실패');
     }

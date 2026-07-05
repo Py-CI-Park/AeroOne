@@ -3,15 +3,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { LoginForm } from '@/components/auth/login-form';
 
-const { loginMock, routerPushMock } = vi.hoisted(() => ({
+const { loginMock, locationAssignMock } = vi.hoisted(() => ({
   loginMock: vi.fn(),
-  routerPushMock: vi.fn(),
-}));
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: routerPushMock,
-  }),
+  locationAssignMock: vi.fn(),
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -20,7 +14,15 @@ vi.mock('@/lib/api', () => ({
 
 beforeEach(() => {
   loginMock.mockReset();
-  routerPushMock.mockReset();
+  locationAssignMock.mockReset();
+});
+
+Object.defineProperty(window, 'location', {
+  value: {
+    ...window.location,
+    assign: locationAssignMock,
+  },
+  writable: true,
 });
 
 test('does not prefill the default administrator password', () => {
@@ -39,5 +41,5 @@ test('redirects to the admin console after successful login', async () => {
   fireEvent.click(screen.getByRole('button', { name: '로그인' }));
 
   await waitFor(() => expect(loginMock).toHaveBeenCalledWith('admin', 'secret'));
-  expect(routerPushMock).toHaveBeenCalledWith('/admin');
+  expect(locationAssignMock).toHaveBeenCalledWith('/admin');
 });

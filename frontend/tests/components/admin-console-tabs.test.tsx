@@ -20,6 +20,13 @@ vi.mock('@/lib/api', async () => {
     fetchAuditEvents: vi.fn(),
     fetchServiceModulesAdmin: vi.fn(),
     createServiceModule: vi.fn(),
+    updateServiceModule: vi.fn(),
+    deleteServiceModule: vi.fn(),
+    createResourceGrant: vi.fn(),
+    addUserGroup: vi.fn(),
+    removeUserGroup: vi.fn(),
+    deleteResourceGrant: vi.fn(),
+    purgeSessions: vi.fn(),
     fetchAssetHealth: vi.fn(),
     fetchConfigHealth: vi.fn(),
     fetchBackups: vi.fn(),
@@ -50,6 +57,13 @@ function mockAdminData() {
   vi.mocked(api.fetchTags).mockResolvedValue([{ id: 8, name: '태그', sort_order: 0, is_active: true }] as never);
   vi.mocked(api.fetchAdminAiStatus).mockResolvedValue({ status: { ok: true }, request_logs_total: 2, request_failures: 0 } as never);
   vi.mocked(api.createServiceModule).mockResolvedValue({ id: 10, key: 'new-module', title: 'New Module', description: null, href: '/new', section: 'Development', status: 'development', badge: null, sort_order: 0, is_enabled: true, is_external: false, visibility: 'admin' } as never);
+  vi.mocked(api.updateServiceModule).mockResolvedValue({ id: 5, key: 'dashboard', title: 'Dashboard', description: 'Main', href: '/', section: 'Core', status: 'active', badge: 'Live', sort_order: 2, is_enabled: true, is_external: false, visibility: 'admin' } as never);
+  vi.mocked(api.deleteServiceModule).mockResolvedValue(undefined as never);
+  vi.mocked(api.createResourceGrant).mockResolvedValue({ id: 11, subject_type: 'user', subject_id: 1, resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' } as never);
+  vi.mocked(api.addUserGroup).mockResolvedValue(undefined as never);
+  vi.mocked(api.removeUserGroup).mockResolvedValue(undefined as never);
+  vi.mocked(api.deleteResourceGrant).mockResolvedValue(undefined as never);
+  vi.mocked(api.purgeSessions).mockResolvedValue({ login_events_deleted: 2, session_activity_deleted: 3 } as never);
 }
 
 const parityMatrix = [
@@ -299,6 +313,216 @@ test('valid module create still calls the shell create handler with the existing
     }),
     expect.any(String),
   );
+});
+
+test('destructive resource grant delete requires in-app confirm before calling the API', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
+
+  vi.clearAllMocks();
+  fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+  const dialog = await screen.findByRole('dialog', { name: '리소스 권한 삭제' });
+  expect(dialog).toHaveTextContent('접근 권한이 즉시 줄어듭니다.');
+
+  fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
+  expect(api.deleteResourceGrant).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+  const confirmDialog = await screen.findByRole('dialog', { name: '리소스 권한 삭제' });
+  fireEvent.click(within(confirmDialog).getByRole('button', { name: '삭제' }));
+
+  await waitFor(() => expect(api.deleteResourceGrant).toHaveBeenCalledWith(3, expect.any(String)));
+});
+
+test('successful actions render a dismissible toast stack item', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('new module key'), { target: { value: 'toast-module' } });
+  fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Toast Module' } });
+  fireEvent.change(screen.getByLabelText('new module href'), { target: { value: '/toast' } });
+  fireEvent.click(screen.getByRole('button', { name: '모듈 추가' }));
+
+  expect(await screen.findByRole('status')).toHaveTextContent('대시보드 모듈을 추가했습니다.');
+  fireEvent.click(screen.getByRole('button', { name: '알림 닫기' }));
+  await waitFor(() => expect(screen.queryByText('대시보드 모듈을 추가했습니다.')).not.toBeInTheDocument());
+});
+
+test('module create performs scoped refresh for modules, summary, and audits', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+  vi.clearAllMocks();
+
+  fireEvent.change(screen.getByLabelText('new module key'), { target: { value: 'scoped-module' } });
+  fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Scoped Module' } });
+  fireEvent.change(screen.getByLabelText('new module href'), { target: { value: '/scoped' } });
+  fireEvent.click(screen.getByRole('button', { name: '모듈 추가' }));
+
+  await waitFor(() => expect(api.createServiceModule).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(api.fetchServiceModulesAdmin).toHaveBeenCalledTimes(1));
+  expect(api.fetchAdminSummary).toHaveBeenCalledTimes(1);
+  expect(api.fetchAuditEvents).toHaveBeenCalledTimes(1);
+  expect(api.fetchAdminUsers).not.toHaveBeenCalled();
+  expect(api.fetchConnectedUsers).not.toHaveBeenCalled();
+  expect(api.fetchBackups).not.toHaveBeenCalled();
+  expect(api.fetchTags).not.toHaveBeenCalled();
+});
+
+test('membership remove requires confirm, cancel and Escape do not call API, confirm removes', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('membership user'), { target: { value: '1' } });
+  fireEvent.change(screen.getByLabelText('membership group'), { target: { value: '2' } });
+
+  vi.clearAllMocks();
+  fireEvent.click(screen.getByRole('button', { name: '그룹 제거' }));
+  const cancelDialog = await screen.findByRole('dialog', { name: '그룹 멤버십 제거' });
+  expect(cancelDialog).toHaveTextContent('이 사용자를 그룹에서 제거할까요?');
+  fireEvent.click(within(cancelDialog).getByRole('button', { name: '취소' }));
+  expect(api.removeUserGroup).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '그룹 제거' }));
+  expect(await screen.findByRole('dialog', { name: '그룹 멤버십 제거' })).toBeInTheDocument();
+  fireEvent.keyDown(window, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '그룹 멤버십 제거' })).not.toBeInTheDocument());
+  expect(api.removeUserGroup).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '그룹 제거' }));
+  const confirmDialog = await screen.findByRole('dialog', { name: '그룹 멤버십 제거' });
+  fireEvent.click(within(confirmDialog).getByRole('button', { name: '제거' }));
+
+  await waitFor(() => expect(api.removeUserGroup).toHaveBeenCalledWith(1, 2, expect.any(String)));
+  expect(api.addUserGroup).not.toHaveBeenCalled();
+});
+
+test('resource grant save refreshes recent audits in its scoped refetch', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
+  vi.clearAllMocks();
+
+  fireEvent.change(screen.getByLabelText('grant subject type'), { target: { value: 'user' } });
+  fireEvent.change(screen.getByLabelText('grant subject'), { target: { value: '1' } });
+  fireEvent.change(screen.getByLabelText('grant resource type'), { target: { value: 'collection' } });
+  fireEvent.change(screen.getByLabelText('grant resource id'), { target: { value: 'nsa' } });
+  fireEvent.change(screen.getByLabelText('grant permission key'), { target: { value: 'collections.nsa.read' } });
+  fireEvent.click(screen.getByRole('button', { name: '리소스 권한 부여' }));
+
+  await waitFor(() => expect(api.createResourceGrant).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(api.fetchAuditEvents).toHaveBeenCalledTimes(1));
+  expect(api.listResourceGrants).toHaveBeenCalledTimes(1);
+  expect(api.fetchRbacMatrix).toHaveBeenCalledTimes(1);
+  expect(api.fetchAdminUsers).toHaveBeenCalledTimes(1);
+});
+
+test('destructive resource grant delete cancel paths include Escape before API confirmation', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
+
+  vi.clearAllMocks();
+  fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+  expect(await screen.findByRole('dialog', { name: '리소스 권한 삭제' })).toBeInTheDocument();
+
+  fireEvent.keyDown(window, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '리소스 권한 삭제' })).not.toBeInTheDocument());
+  expect(api.deleteResourceGrant).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+  const confirmDialog = await screen.findByRole('dialog', { name: '리소스 권한 삭제' });
+  fireEvent.click(within(confirmDialog).getByRole('button', { name: '삭제' }));
+
+  await waitFor(() => expect(api.deleteResourceGrant).toHaveBeenCalledWith(3, expect.any(String)));
+});
+
+test('session metadata purge requires confirm, cancel and Escape do not call API, confirm purges', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
+
+  vi.clearAllMocks();
+  fireEvent.click(screen.getByRole('button', { name: '오래된 세션/로그 정리' }));
+  const cancelDialog = await screen.findByRole('dialog', { name: '세션/로그 정리' });
+  expect(cancelDialog).toHaveTextContent('보관 기준 밖의 세션/로그 집계가 삭제됩니다.');
+  fireEvent.click(within(cancelDialog).getByRole('button', { name: '취소' }));
+  expect(api.purgeSessions).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '오래된 세션/로그 정리' }));
+  expect(await screen.findByRole('dialog', { name: '세션/로그 정리' })).toBeInTheDocument();
+  fireEvent.keyDown(window, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '세션/로그 정리' })).not.toBeInTheDocument());
+  expect(api.purgeSessions).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '오래된 세션/로그 정리' }));
+  const confirmDialog = await screen.findByRole('dialog', { name: '세션/로그 정리' });
+  fireEvent.click(within(confirmDialog).getByRole('button', { name: '정리' }));
+
+  await waitFor(() => expect(api.purgeSessions).toHaveBeenCalledTimes(1));
+});
+
+test('toast stack exposes success status, error alert, manual dismiss, and auto dismiss', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('new module key'), { target: { value: 'toast-module' } });
+  fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Toast Module' } });
+  fireEvent.change(screen.getByLabelText('new module href'), { target: { value: '/toast' } });
+  fireEvent.click(screen.getByRole('button', { name: '모듈 추가' }));
+
+  expect(await screen.findByRole('status')).toHaveTextContent('대시보드 모듈을 추가했습니다.');
+  fireEvent.click(screen.getByRole('button', { name: '알림 닫기' }));
+  await waitFor(() => expect(screen.queryByText('대시보드 모듈을 추가했습니다.')).not.toBeInTheDocument());
+
+  vi.mocked(api.createServiceModule).mockRejectedValueOnce(new Error('boom create failed') as never);
+  fireEvent.change(screen.getByLabelText('new module key'), { target: { value: 'error-module' } });
+  fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Error Module' } });
+  fireEvent.change(screen.getByLabelText('new module href'), { target: { value: '/error' } });
+  fireEvent.click(screen.getByRole('button', { name: '모듈 추가' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('boom create failed');
+  await waitFor(() => expect(screen.queryByText('boom create failed')).not.toBeInTheDocument(), { timeout: 4500 });
+}, 10000);
+
+test('session purge performs scoped refresh for connected users and audits and updates the affected session list', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
+  expect(screen.getAllByText('operator').length).toBeGreaterThan(0);
+
+  vi.clearAllMocks();
+  vi.mocked(api.fetchConnectedUsers).mockResolvedValue({ active_sessions: [], active_count: 0, recent_login_events: [], login_failure_count: 0, read_tracking_summary: { rows: 0, total_reads: 0 } } as never);
+
+  fireEvent.click(screen.getByRole('button', { name: '오래된 세션/로그 정리' }));
+  const confirmDialog = await screen.findByRole('dialog', { name: '세션/로그 정리' });
+  fireEvent.click(within(confirmDialog).getByRole('button', { name: '정리' }));
+
+  await waitFor(() => expect(api.purgeSessions).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(api.fetchConnectedUsers).toHaveBeenCalledTimes(1));
+  expect(api.fetchAuditEvents).toHaveBeenCalledTimes(1);
+  expect(api.fetchServiceModulesAdmin).not.toHaveBeenCalled();
+  expect(api.fetchBackups).not.toHaveBeenCalled();
+  expect(api.fetchAdminSummary).not.toHaveBeenCalled();
+  expect(api.fetchAdminUsers).not.toHaveBeenCalled();
+  expect(await screen.findByText('활성 로그인 세션 없음')).toBeInTheDocument();
+  expect(screen.queryByText('operator')).not.toBeInTheDocument();
 });
 
 test('admin page keeps the server guard, sync AppShell, and client island import', () => {

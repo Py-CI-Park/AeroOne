@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 import {
@@ -68,6 +68,8 @@ import { AdminSystemSection } from './sections/admin-system-section';
 import { AdminTaxonomySection } from './sections/admin-taxonomy-section';
 import { AdminSearchSection } from './sections/admin-search-section';
 import { AdminBackupsSection } from './sections/admin-backups-section';
+import { ConfirmProvider, useConfirm } from './widgets/confirm-dialog';
+import { ToastStack, type AdminToast } from './widgets/toast-stack';
 
 export type ModuleDraft = Pick<ServiceModule, 'title' | 'description' | 'href' | 'section' | 'status' | 'badge' | 'sort_order' | 'is_enabled' | 'is_external' | 'visibility'>;
 export type UserDraft = Pick<AdminUser, 'email' | 'role' | 'is_active'> & { permissions_csv: string };
@@ -91,7 +93,7 @@ type PanelState = {
   ai?: AiAdminStatus;
   searchResults: UnifiedSearchResult[];
   error?: string;
-  message?: string;
+  toasts: AdminToast[];
   busy?: string;
 };
 
@@ -107,6 +109,7 @@ const initialState: PanelState = {
   categories: [],
   tags: [],
   searchResults: [],
+  toasts: [],
 };
 
 export function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'green' | 'amber' | 'red' | 'blue' }) {
@@ -153,7 +156,7 @@ export function tagToDraft(tag: Tag): TaxonomyDraft {
 
 type AdminConsoleContextValue = {
   state: PanelState;
-  refresh: () => Promise<void>;
+  refresh: (keys?: RefreshKey[]) => Promise<void>;
   moduleDrafts: Record<number, ModuleDraft>;
   setModuleDrafts: React.Dispatch<React.SetStateAction<Record<number, ModuleDraft>>>;
   userDrafts: Record<number, UserDraft>;
@@ -222,8 +225,20 @@ const tabs = [
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
+type RefreshKey = 'summary' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai';
+const allRefreshKeys: RefreshKey[] = ['summary', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai'];
 
 export function AdminConsoleTabs() {
+  return (
+    <ConfirmProvider>
+      <AdminConsoleTabsContent />
+    </ConfirmProvider>
+  );
+}
+
+
+function AdminConsoleTabsContent() {
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<TabKey>('modules');
   const [state, setState] = useState<PanelState>(initialState);
   const [moduleDrafts, setModuleDrafts] = useState<Record<number, ModuleDraft>>({});
@@ -239,20 +254,47 @@ export function AdminConsoleTabs() {
   const [tagForm, setTagForm] = useState({ name: '', sort_order: 0, is_active: true });
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
+  const toastIdRef = useRef(0);
 
-  async function refresh() {
+  function pushToast(type: AdminToast['type'], text: string) {
+    toastIdRef.current += 1;
+    setState((current) => ({ ...current, toasts: [...current.toasts, { id: toastIdRef.current, type, text }] }));
+  }
+
+  function dismissToast(id: number) {
+    setState((current) => ({ ...current, toasts: current.toasts.filter((toast) => toast.id !== id) }));
+  }
+
+  async function refresh(keys: RefreshKey[] = allRefreshKeys) {
     setState((current) => ({ ...current, busy: current.busy ?? 'refresh' }));
+    const next: Partial<PanelState> = { error: undefined };
     try {
-      const [summary, users, connectedUsers, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai] = await Promise.all([
-        fetchAdminSummary(), fetchAdminUsers(), fetchConnectedUsers(), fetchAdminPermissions(), fetchAdminGroups(), fetchRbacMatrix(), listResourceGrants(), fetchAuditEvents(), fetchServiceModulesAdmin(), fetchAssetHealth(), fetchConfigHealth(), fetchBackups(), fetchCategories(), fetchTags(), fetchAdminAiStatus(),
-      ]);
-      setState((current) => ({ ...current, summary, users, connectedUsers, permissions, groups, rbacMatrix, resourceGrants, audits, modules, health, configHealth, backups, categories, tags, ai, error: undefined }));
-      setModuleDrafts(Object.fromEntries(modules.map((module) => [module.id, moduleToDraft(module)])));
-      setUserDrafts(Object.fromEntries(users.map((user) => [user.id, userToDraft(user)])));
-      setCategoryDrafts(Object.fromEntries(categories.map((category) => [category.id, categoryToDraft(category)])));
-      setTagDrafts(Object.fromEntries(tags.map((tag) => [tag.id, tagToDraft(tag)])));
+      await Promise.all(keys.map(async (key) => {
+        if (key === 'summary') next.summary = await fetchAdminSummary();
+        if (key === 'users') next.users = await fetchAdminUsers();
+        if (key === 'connectedUsers') next.connectedUsers = await fetchConnectedUsers();
+        if (key === 'permissions') next.permissions = await fetchAdminPermissions();
+        if (key === 'groups') next.groups = await fetchAdminGroups();
+        if (key === 'rbacMatrix') next.rbacMatrix = await fetchRbacMatrix();
+        if (key === 'resourceGrants') next.resourceGrants = await listResourceGrants();
+        if (key === 'audits') next.audits = await fetchAuditEvents();
+        if (key === 'modules') next.modules = await fetchServiceModulesAdmin();
+        if (key === 'health') next.health = await fetchAssetHealth();
+        if (key === 'configHealth') next.configHealth = await fetchConfigHealth();
+        if (key === 'backups') next.backups = await fetchBackups();
+        if (key === 'categories') next.categories = await fetchCategories();
+        if (key === 'tags') next.tags = await fetchTags();
+        if (key === 'ai') next.ai = await fetchAdminAiStatus();
+      }));
+      setState((current) => ({ ...current, ...next }));
+      if (next.modules) setModuleDrafts(Object.fromEntries(next.modules.map((module) => [module.id, moduleToDraft(module)])));
+      if (next.users) setUserDrafts(Object.fromEntries(next.users.map((user) => [user.id, userToDraft(user)])));
+      if (next.categories) setCategoryDrafts(Object.fromEntries(next.categories.map((category) => [category.id, categoryToDraft(category)])));
+      if (next.tags) setTagDrafts(Object.fromEntries(next.tags.map((tag) => [tag.id, tagToDraft(tag)])));
     } catch (error) {
-      setState((current) => ({ ...current, error: error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.' }));
+      const text = error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.';
+      pushToast('error', text);
+      setState((current) => ({ ...current, error: text }));
     } finally {
       setState((current) => ({ ...current, busy: current.busy === 'refresh' ? undefined : current.busy }));
     }
@@ -260,11 +302,14 @@ export function AdminConsoleTabs() {
 
   useEffect(() => { void refresh(); }, []);
 
-  async function runBusy(label: string, action: () => Promise<void>) {
-    setState((current) => ({ ...current, busy: label, message: undefined, error: undefined }));
+  async function runBusy(label: string, refreshKeys: RefreshKey[], action: () => Promise<string | void>) {
+    setState((current) => ({ ...current, busy: label, error: undefined }));
     try {
-      await action();
-      await refresh();
+      const message = await action();
+      if (refreshKeys.length) await refresh(refreshKeys);
+      if (message) pushToast('success', message);
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : '작업을 완료하지 못했습니다.');
     } finally {
       setState((current) => ({ ...current, busy: undefined }));
     }
@@ -272,82 +317,92 @@ export function AdminConsoleTabs() {
 
   async function saveModule(module: ServiceModule) {
     const draft = moduleDrafts[module.id] ?? moduleToDraft(module);
-    await runBusy(`module-${module.id}`, async () => { await updateServiceModule(module.id, draft, getCsrfCookie()); setState((current) => ({ ...current, message: `${draft.title} 모듈을 저장했습니다.` })); });
+    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await updateServiceModule(module.id, draft, getCsrfCookie()); return `${draft.title} 모듈을 저장했습니다.`; });
   }
   async function toggleModule(module: ServiceModule) {
     const draft = moduleDrafts[module.id] ?? moduleToDraft(module);
-    await runBusy(`module-${module.id}`, async () => { await updateServiceModule(module.id, { is_enabled: !draft.is_enabled }, getCsrfCookie()); setState((current) => ({ ...current, message: `${module.title} 모듈 상태를 변경했습니다.` })); });
+    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await updateServiceModule(module.id, { is_enabled: !draft.is_enabled }, getCsrfCookie()); return `${module.title} 모듈 상태를 변경했습니다.`; });
   }
   async function createModule() {
     if (!moduleForm.key.trim() || !moduleForm.title.trim()) return;
-    await runBusy('module-create', async () => { await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie()); setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' }); setState((current) => ({ ...current, message: '대시보드 모듈을 추가했습니다.' })); });
+    await runBusy('module-create', ['modules', 'summary', 'audits'], async () => { await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie()); setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' }); return '대시보드 모듈을 추가했습니다.'; });
   }
   async function removeModule(module: ServiceModule) {
-    if (typeof window !== 'undefined' && !window.confirm(`${module.key} 모듈을 삭제할까요?`)) return;
-    await runBusy(`module-${module.id}`, async () => { await deleteServiceModule(module.id, getCsrfCookie()); setState((current) => ({ ...current, message: `${module.title} 모듈을 삭제했습니다.` })); });
+    const result = await confirm({ title: '모듈 삭제', message: `${module.key} 모듈을 삭제할까요?\n삭제 후 대시보드 노출 및 관리자 목록에서 제거됩니다.`, confirmLabel: '삭제', tone: 'danger' });
+    if (!result.confirmed) return;
+    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await deleteServiceModule(module.id, getCsrfCookie()); return `${module.title} 모듈을 삭제했습니다.`; });
   }
   async function changePassword() {
     if (!passwordForm.current || !passwordForm.next) return;
-    if (passwordForm.next !== passwordForm.confirm) { setState((current) => ({ ...current, error: '새 비밀번호와 확인 값이 일치하지 않습니다.' })); return; }
-    await runBusy('password-change', async () => { await changeOwnPassword(passwordForm.current, passwordForm.next, getCsrfCookie()); setPasswordForm({ current: '', next: '', confirm: '' }); setState((current) => ({ ...current, message: '관리자 비밀번호를 변경했습니다.' })); });
+    if (passwordForm.next !== passwordForm.confirm) { pushToast('error', '새 비밀번호와 확인 값이 일치하지 않습니다.'); return; }
+    await runBusy('password-change', ['audits'], async () => { await changeOwnPassword(passwordForm.current, passwordForm.next, getCsrfCookie()); setPasswordForm({ current: '', next: '', confirm: '' }); return '관리자 비밀번호를 변경했습니다.'; });
   }
   async function createUser() {
     if (!userForm.username.trim() || !userForm.password.trim()) return;
-    await runBusy('user-create', async () => { await createAdminUser({ ...userForm, email: userForm.email || null }, getCsrfCookie()); setUserForm({ username: '', password: '', email: '', role: 'user', is_active: true }); setState((current) => ({ ...current, message: '사용자를 생성했습니다.' })); });
+    await runBusy('user-create', ['users', 'rbacMatrix', 'audits'], async () => { await createAdminUser({ ...userForm, email: userForm.email || null }, getCsrfCookie()); setUserForm({ username: '', password: '', email: '', role: 'user', is_active: true }); return '사용자를 생성했습니다.'; });
   }
   async function saveUser(user: AdminUser) {
     const draft = userDrafts[user.id] ?? userToDraft(user);
-    await runBusy(`user-${user.id}`, async () => { await updateAdminUser(user.id, { email: draft.email || null, role: draft.role, is_active: draft.is_active, permissions: parseCsv(draft.permissions_csv) }, getCsrfCookie()); setState((current) => ({ ...current, message: `${user.username} 사용자를 저장했습니다.` })); });
+    await runBusy(`user-${user.id}`, ['users', 'rbacMatrix', 'audits'], async () => { await updateAdminUser(user.id, { email: draft.email || null, role: draft.role, is_active: draft.is_active, permissions: parseCsv(draft.permissions_csv) }, getCsrfCookie()); return `${user.username} 사용자를 저장했습니다.`; });
   }
   async function resetPassword(user: AdminUser) {
-    const temporaryPassword = window.prompt(`${user.username} 임시 비밀번호를 입력하세요.`);
-    if (!temporaryPassword) return;
-    await runBusy(`user-reset-${user.id}`, async () => { await resetAdminUserPassword(user.id, temporaryPassword, getCsrfCookie()); setState((current) => ({ ...current, message: `${user.username} 비밀번호를 재설정했습니다.` })); });
+    const result = await confirm({ title: '비밀번호 재설정', message: `${user.username} 사용자의 비밀번호를 임시 비밀번호로 재설정합니다.`, inputLabel: '임시 비밀번호', inputType: 'password', confirmLabel: '재설정', tone: 'danger' });
+    if (!result.confirmed || !result.value) return;
+    const temporaryPassword = result.value.trim();
+    await runBusy(`user-reset-${user.id}`, ['users', 'audits'], async () => { await resetAdminUserPassword(user.id, temporaryPassword, getCsrfCookie()); return `${user.username} 비밀번호를 재설정했습니다.`; });
   }
   async function saveGroup() {
     if (!groupForm.key.trim() || !groupForm.name.trim()) return;
-    await runBusy('group-save', async () => { await upsertAdminGroup({ ...groupForm, permissions: parseCsv(groupForm.permissions_csv) }, getCsrfCookie()); setGroupForm({ key: '', name: '', description: '', is_active: true, permissions_csv: '' }); setState((current) => ({ ...current, message: '그룹/RBAC 설정을 저장했습니다.' })); });
+    await runBusy('group-save', ['groups', 'resourceGrants', 'rbacMatrix', 'users', 'audits'], async () => { await upsertAdminGroup({ ...groupForm, permissions: parseCsv(groupForm.permissions_csv) }, getCsrfCookie()); setGroupForm({ key: '', name: '', description: '', is_active: true, permissions_csv: '' }); return '그룹/RBAC 설정을 저장했습니다.'; });
   }
   async function saveResourceGrant() {
     const subjectId = Number(grantForm.subject_id);
     if (!subjectId || !grantForm.resource_type.trim() || !grantForm.resource_id.trim() || !grantForm.permission_key.trim()) return;
-    await runBusy('resource-grant-save', async () => { await createResourceGrant({ subject_type: grantForm.subject_type, subject_id: subjectId, resource_type: grantForm.resource_type, resource_id: grantForm.resource_id, permission_key: grantForm.permission_key }, getCsrfCookie()); setState((current) => ({ ...current, message: '리소스 권한을 부여했습니다.' })); });
+    await runBusy('resource-grant-save', ['groups', 'resourceGrants', 'rbacMatrix', 'users', 'audits'], async () => { await createResourceGrant({ subject_type: grantForm.subject_type, subject_id: subjectId, resource_type: grantForm.resource_type, resource_id: grantForm.resource_id, permission_key: grantForm.permission_key }, getCsrfCookie()); return '리소스 권한을 부여했습니다.'; });
   }
   async function removeResourceGrant(grant: ResourceGrant) {
-    await runBusy(`resource-grant-${grant.id}`, async () => { await deleteResourceGrant(grant.id, getCsrfCookie()); setState((current) => ({ ...current, message: '리소스 권한을 삭제했습니다.' })); });
+    const result = await confirm({ title: '리소스 권한 삭제', message: `${grant.subject_type}:${grant.subject_id}의 ${grant.resource_type}/${grant.resource_id} 권한(${grant.permission_key})을 삭제할까요?\n해당 주체의 접근 권한이 즉시 줄어듭니다.`, confirmLabel: '삭제', tone: 'danger' });
+    if (!result.confirmed) return;
+    await runBusy(`resource-grant-${grant.id}`, ['groups', 'resourceGrants', 'rbacMatrix', 'users', 'audits'], async () => { await deleteResourceGrant(grant.id, getCsrfCookie()); return '리소스 권한을 삭제했습니다.'; });
   }
   async function changeMembership(action: 'add' | 'remove') {
     const userId = Number(membershipForm.user_id);
     const groupId = Number(membershipForm.group_id);
     if (!userId || !groupId) return;
-    await runBusy(`membership-${action}`, async () => { if (action === 'add') await addUserGroup(userId, groupId, getCsrfCookie()); else await removeUserGroup(userId, groupId, getCsrfCookie()); setState((current) => ({ ...current, message: action === 'add' ? '그룹에 사용자를 추가했습니다.' : '그룹에서 사용자를 제거했습니다.' })); });
+    if (action === 'remove') {
+      const result = await confirm({ title: '그룹 멤버십 제거', message: '이 사용자를 그룹에서 제거할까요?\n그룹 권한이 즉시 회수됩니다.', confirmLabel: '제거', tone: 'danger' });
+      if (!result.confirmed) return;
+    }
+    await runBusy(`membership-${action}`, ['groups', 'resourceGrants', 'rbacMatrix', 'users', 'audits'], async () => { if (action === 'add') await addUserGroup(userId, groupId, getCsrfCookie()); else await removeUserGroup(userId, groupId, getCsrfCookie()); return action === 'add' ? '그룹에 사용자를 추가했습니다.' : '그룹에서 사용자를 제거했습니다.'; });
   }
   async function createTaxonomy(kind: 'category' | 'tag') {
-    await runBusy(`${kind}-create`, async () => { if (kind === 'category') { if (!categoryForm.name.trim()) return; await createCategory(categoryForm, getCsrfCookie()); setCategoryForm({ name: '', description: '', sort_order: 0, is_active: true }); } else { if (!tagForm.name.trim()) return; await createTag(tagForm, getCsrfCookie()); setTagForm({ name: '', sort_order: 0, is_active: true }); } setState((current) => ({ ...current, message: '카테고리/태그를 생성했습니다.' })); });
+    await runBusy(`${kind}-create`, ['categories', 'tags', 'audits'], async () => { if (kind === 'category') { if (!categoryForm.name.trim()) return; await createCategory(categoryForm, getCsrfCookie()); setCategoryForm({ name: '', description: '', sort_order: 0, is_active: true }); } else { if (!tagForm.name.trim()) return; await createTag(tagForm, getCsrfCookie()); setTagForm({ name: '', sort_order: 0, is_active: true }); } return '카테고리/태그를 생성했습니다.'; });
   }
   async function saveCategory(category: Category) {
     const draft = categoryDrafts[category.id] ?? categoryToDraft(category);
-    await runBusy(`category-${category.id}`, async () => { await updateCategory(category.id, draft, getCsrfCookie()); setState((current) => ({ ...current, message: `${category.name} 카테고리를 저장했습니다.` })); });
+    await runBusy(`category-${category.id}`, ['categories', 'tags', 'audits'], async () => { await updateCategory(category.id, draft, getCsrfCookie()); return `${category.name} 카테고리를 저장했습니다.`; });
   }
   async function saveTag(tag: Tag) {
     const draft = tagDrafts[tag.id] ?? tagToDraft(tag);
-    await runBusy(`tag-${tag.id}`, async () => { await updateTag(tag.id, draft, getCsrfCookie()); setState((current) => ({ ...current, message: `${tag.name} 태그를 저장했습니다.` })); });
+    await runBusy(`tag-${tag.id}`, ['categories', 'tags', 'audits'], async () => { await updateTag(tag.id, draft, getCsrfCookie()); return `${tag.name} 태그를 저장했습니다.`; });
   }
   async function purgeSessionMetadata() {
-    await runBusy('sessions-purge', async () => { const result = await purgeSessions(getCsrfCookie()); setState((current) => ({ ...current, message: `세션/로그 정리 완료: 로그인 ${result.login_events_deleted}건 · 세션 ${result.session_activity_deleted}건` })); });
+    const result = await confirm({ title: '세션/로그 정리', message: '오래된 로그인 이벤트와 세션 활동 메타데이터를 정리할까요?\n보관 기준 밖의 세션/로그 집계가 삭제됩니다.', confirmLabel: '정리', tone: 'danger' });
+    if (!result.confirmed) return;
+    await runBusy('sessions-purge', ['connectedUsers', 'audits'], async () => { const payload = await purgeSessions(getCsrfCookie()); return `세션/로그 정리 완료: 로그인 ${payload.login_events_deleted}건 · 세션 ${payload.session_activity_deleted}건`; });
   }
   async function runSearch() {
     if (searchForm.q.trim().length < 2) return;
-    await runBusy('search', async () => { const payload = await fetchUnifiedSearch(searchForm.q, searchForm.includeNsa); setState((current) => ({ ...current, searchResults: payload.results, message: `통합 검색 결과 ${payload.results.length}건` })); });
+    await runBusy('search', [], async () => { const payload = await fetchUnifiedSearch(searchForm.q, searchForm.includeNsa); setState((current) => ({ ...current, searchResults: payload.results })); return `통합 검색 결과 ${payload.results.length}건`; });
   }
   async function runBackup() {
-    await runBusy('backup', async () => { await createBackup(getCsrfCookie()); setState((current) => ({ ...current, message: '백업을 생성했습니다.' })); });
+    await runBusy('backup', ['backups', 'summary', 'audits'], async () => { await createBackup(getCsrfCookie()); return '백업을 생성했습니다.'; });
   }
   async function runValidate(id: number) {
-    await runBusy(`backup-${id}`, async () => { const result = await validateBackup(id, getCsrfCookie()); setState((current) => ({ ...current, message: result.valid ? '백업 검증 성공' : `백업 검증 실패: ${result.issues.join(', ')}` })); });
+    await runBusy(`backup-${id}`, ['backups', 'summary', 'audits'], async () => { const result = await validateBackup(id, getCsrfCookie()); return result.valid ? '백업 검증 성공' : `백업 검증 실패: ${result.issues.join(', ')}`; });
   }
   async function runRestoreDryRun(id: number) {
-    await runBusy(`restore-${id}`, async () => { const result = await dryRunRestoreBackup(id, getCsrfCookie()); setState((current) => ({ ...current, message: result.compatible ? `복원 점검 성공: ${result.would_restore.join(', ')}` : `복원 점검 실패: ${result.issues.join(', ')}` })); });
+    await runBusy(`restore-${id}`, ['backups', 'summary', 'audits'], async () => { const result = await dryRunRestoreBackup(id, getCsrfCookie()); return result.compatible ? `복원 점검 성공: ${result.would_restore.join(', ')}` : `복원 점검 실패: ${result.issues.join(', ')}`; });
   }
 
   const context = useMemo<AdminConsoleContextValue>(() => ({ state, refresh, moduleDrafts, setModuleDrafts, userDrafts, setUserDrafts, categoryDrafts, setCategoryDrafts, tagDrafts, setTagDrafts, moduleForm, setModuleForm, userForm, setUserForm, groupForm, setGroupForm, grantForm, setGrantForm, membershipForm, setMembershipForm, categoryForm, setCategoryForm, tagForm, setTagForm, searchForm, setSearchForm, passwordForm, setPasswordForm, saveModule, toggleModule, createModule, removeModule, changePassword, createUser, saveUser, resetPassword, saveGroup, saveResourceGrant, removeResourceGrant, changeMembership, createTaxonomy, saveCategory, saveTag, purgeSessionMetadata, runSearch, runBackup, runValidate, runRestoreDryRun }), [state, moduleDrafts, userDrafts, categoryDrafts, tagDrafts, moduleForm, userForm, groupForm, grantForm, membershipForm, categoryForm, tagForm, searchForm, passwordForm]);
@@ -384,7 +439,7 @@ export function AdminConsoleTabs() {
             <button type="button" onClick={() => void refresh()} className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white">새로고침</button>
           </div>
         </div>
-        {state.message ? <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700" role="status" aria-live="polite">{state.message}</div> : null}
+        <ToastStack toasts={state.toasts} onDismiss={dismissToast} />
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">Version / Mode</p><p className="mt-2 text-2xl font-semibold">v{state.summary?.app_version ?? '-'}</p><p className="text-sm text-slate-500">{state.summary?.app_env ?? '-'}</p></div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">Newsletters</p><p className="mt-2 text-2xl font-semibold">{state.summary?.newsletter_total ?? 0}</p><p className="text-sm text-slate-500">최근: {state.summary?.latest_newsletter_title ?? '-'}</p></div>
