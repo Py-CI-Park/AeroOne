@@ -1,6 +1,7 @@
 'use client';
 
 import { ALLOWED_COLLECTIONS } from '@/lib/collection-proxy';
+import { describePermission } from '@/lib/permission-catalog';
 import { useMemo, useState } from 'react';
 import { useAdminConsoleData } from '../admin-console-tabs';
 
@@ -106,7 +107,10 @@ export function ResourceGrantForm() {
           aria-label="grant permission key"
         >
           <option value="">리소스 권한 선택</option>
-          {safePermissionKeys.map((key) => <option key={key} value={key}>{key}</option>)}
+          {safePermissionKeys.map((key) => {
+            const permission = describePermission(key);
+            return <option key={key} value={key}>{permission.label} ({key})</option>;
+          })}
         </select>
         {errors.permission_key ? <p className="mt-1 text-xs text-red-600">{errors.permission_key}</p> : null}
       </div>

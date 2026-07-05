@@ -102,6 +102,12 @@ test('permission checkbox grid round-trips selected permission keys without addi
   };
 
   render(<Harness />);
+  expect(screen.getByText('문서 열람')).toBeInTheDocument();
+  expect(screen.getByText('기타')).toBeInTheDocument();
+  expect(screen.getAllByText('AI 사용').length).toBeGreaterThan(0);
+  expect(screen.getByText('NSA 문서 열람')).toBeInTheDocument();
+  expect(screen.getByText('collections.nsa.read')).toHaveClass('font-mono');
+  expect(screen.getByLabelText('roundtrip permissions collections.nsa.read')).toBeInTheDocument();
   fireEvent.click(screen.getByLabelText('roundtrip permissions collections.nsa.read'));
   fireEvent.click(screen.getByLabelText('roundtrip permissions ai.use'));
   fireEvent.click(screen.getByLabelText('roundtrip permissions admin.read'));
