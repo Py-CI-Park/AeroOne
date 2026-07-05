@@ -1,16 +1,19 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Badge, useAdminConsoleData } from '../admin-console-tabs';
-import { compareDate, compareNumber, compareText, ListFilter, ListState, matchesListQuery, normalizeListQuery, stableSort } from '../widgets/list-filter';
+import { compareDate, compareNumber, compareText, ListFilter, ListPagination, ListState, matchesListQuery, normalizeListQuery, paginate, stableSort } from '../widgets/list-filter';
+import { formatRelativeTime } from '@/lib/relative-time';
 
 export function AdminSessionsSection() {
-  const { state, purgeSessionMetadata } = useAdminConsoleData();
+  const { state, refresh, purgeSessionMetadata } = useAdminConsoleData();
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [activeSearch, setActiveSearch] = useState('');
   const [activeSort, setActiveSort] = useState('last-seen-desc');
   const [loginSearch, setLoginSearch] = useState('');
   const [loginSort, setLoginSort] = useState('created-desc');
+  const [loginPage, setLoginPage] = useState(0);
   const activeSessions = state.connectedUsers?.active_sessions ?? [];
   const loginEvents = state.connectedUsers?.recent_login_events ?? [];
 
@@ -33,10 +36,29 @@ export function AdminSessionsSection() {
       return compareDate(b.created_at, a.created_at) || compareNumber(a.id, b.id);
     });
   }, [loginSearch, loginSort, loginEvents]);
+  const loginPageSize = 10;
+  const pagedLoginEvents = paginate(visibleLoginEvents, loginPage, loginPageSize);
+
+  useEffect(() => {
+    if (!autoRefresh) return undefined;
+    const intervalId = window.setInterval(() => {
+      void refresh(['connectedUsers']);
+    }, 15000);
+    return () => window.clearInterval(intervalId);
+  }, [autoRefresh, refresh]);
+
+  useEffect(() => {
+    setLoginPage(0);
+  }, [loginSearch]);
+
+  useEffect(() => {
+    if (pagedLoginEvents.page !== loginPage) setLoginPage(pagedLoginEvents.page);
+  }, [loginPage, pagedLoginEvents.page]);
+
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">접속자/세션</h2><p className="text-sm text-slate-500">로그인 세션 활동과 익명 IP 읽음 집계를 함께 확인합니다.</p></div><button type="button" onClick={() => void purgeSessionMetadata()} disabled={state.busy === 'sessions-purge'} className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">오래된 세션/로그 정리</button></div>
+      <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">접속자/세션</h2><p className="text-sm text-slate-500">로그인 세션 활동과 익명 IP 읽음 집계를 함께 확인합니다.</p></div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} aria-label="세션 자동 새로고침" className="h-4 w-4 rounded border-slate-300" />자동 새로고침</label><button type="button" onClick={() => void purgeSessionMetadata()} disabled={state.busy === 'sessions-purge'} className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">오래된 세션/로그 정리</button></div></div>
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-slate-100 p-3">
           <p className="text-xs font-semibold uppercase text-slate-500">Active sessions</p>
@@ -56,7 +78,11 @@ export function AdminSessionsSection() {
           />
           <div className="mt-3 space-y-2 text-sm">
             <ListState loading={state.busy === 'refresh'} error={state.error} totalCount={activeSessions.length} filteredCount={visibleActiveSessions.length} emptyMessage="활성 로그인 세션 없음" noMatchesMessage="검색 조건에 맞는 활성 세션이 없습니다." />
-            {visibleActiveSessions.map((session) => <div key={`${session.user_id}-${session.last_seen_at}`} className="flex items-center justify-between gap-2"><span className="font-medium text-slate-700">{session.username}</span><span className="text-xs text-slate-500">{new Date(session.last_seen_at).toLocaleString('ko-KR')}</span></div>)}
+            {visibleActiveSessions.map((session) => {
+              const absoluteLastSeen = new Date(session.last_seen_at).toLocaleString('ko-KR');
+              const relativeLastSeen = formatRelativeTime(session.last_seen_at);
+              return <div key={`${session.user_id}-${session.last_seen_at}`} className="flex items-center justify-between gap-2"><span className="font-medium text-slate-700">{session.username}</span><span className="text-xs text-slate-500">{relativeLastSeen ? `${relativeLastSeen} · ${absoluteLastSeen}` : absoluteLastSeen}</span></div>;
+            })}
           </div>
         </div>
         <div className="rounded-lg border border-slate-100 p-3">
@@ -77,8 +103,13 @@ export function AdminSessionsSection() {
           />
           <div className="mt-3 max-h-40 space-y-2 overflow-auto text-sm">
             <ListState loading={state.busy === 'refresh'} error={state.error} totalCount={loginEvents.length} filteredCount={visibleLoginEvents.length} emptyMessage="로그인 이벤트가 없습니다." noMatchesMessage="검색 조건에 맞는 로그인 이벤트가 없습니다." />
-            {visibleLoginEvents.map((event) => <div key={event.id} className="flex items-center justify-between gap-2"><span>{event.username}</span><Badge tone={event.status === 'success' ? 'green' : 'red'}>{event.status}</Badge></div>)}
+            {pagedLoginEvents.pageItems.map((event) => {
+              const absoluteCreated = new Date(event.created_at).toLocaleString('ko-KR');
+              const relativeCreated = formatRelativeTime(event.created_at);
+              return <div key={event.id} className="flex items-center justify-between gap-2"><span>{event.username}</span><span className="text-xs text-slate-500">{relativeCreated ? `${relativeCreated} · ${absoluteCreated}` : absoluteCreated}</span><Badge tone={event.status === 'success' ? 'green' : 'red'}>{event.status}</Badge></div>;
+            })}
           </div>
+          {visibleLoginEvents.length > 0 ? <ListPagination id="admin-login-events" page={pagedLoginEvents.page} totalPages={pagedLoginEvents.totalPages} onPageChange={setLoginPage} /> : null}
         </div>
         <div className="rounded-lg border border-slate-100 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Anonymous read tracking</p><p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.read_tracking_summary.total_reads ?? 0}</p><p className="text-sm text-slate-500">IP/뉴스레터 집계 행 {state.connectedUsers?.read_tracking_summary.rows ?? 0}개</p></div>
       </div>

@@ -48,6 +48,39 @@ export function stableSort<T>(items: T[], compare: (a: T, b: T) => number) {
     .sort((a, b) => compare(a.item, b.item) || a.index - b.index)
     .map(({ item }) => item);
 }
+export function paginate<T>(items: T[], page: number, pageSize: number): { pageItems: T[]; page: number; totalPages: number } {
+  if (pageSize <= 0) return { pageItems: items, page: 0, totalPages: 1 };
+
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const normalizedPage = Number.isFinite(page) ? Math.trunc(page) : 0;
+  const clampedPage = Math.min(Math.max(0, normalizedPage), totalPages - 1);
+  const start = clampedPage * pageSize;
+  return { pageItems: items.slice(start, start + pageSize), page: clampedPage, totalPages };
+}
+
+export function ListPagination({
+  id,
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  id: string;
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <nav className="mt-3 flex items-center justify-between gap-2 text-sm" aria-label={`${id} 페이지 이동`}>
+      <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 0} className="rounded-md border border-slate-200 px-3 py-1 font-semibold text-slate-700 disabled:opacity-50">
+        이전 페이지
+      </button>
+      <p className="text-xs font-semibold text-slate-600" aria-live="polite">페이지 {page + 1} / {totalPages}</p>
+      <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages - 1} className="rounded-md border border-slate-200 px-3 py-1 font-semibold text-slate-700 disabled:opacity-50">
+        다음 페이지
+      </button>
+    </nav>
+  );
+}
 
 export function ListFilter({
   id,
