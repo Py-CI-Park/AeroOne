@@ -62,7 +62,7 @@ export class ApiError extends Error {
 }
 
 async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${getBrowserApiBase()}${path}`, {
+  const response = await fetch(path, {
     credentials: 'include',
     cache: 'no-store',
     ...init,
@@ -312,17 +312,9 @@ export async function getNewsletterDetail(slug: string): Promise<NewsletterDetai
   return fetchNewsletterDetail(slug);
 }
 
-export async function getHtmlContent(path: string): Promise<{ content_type: 'html' | 'markdown'; html: string }> {
-  const response = await fetch(`${getBrowserApiBase()}${path}`, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error('Failed to load html content');
-  }
-  const payload = (await response.json()) as { asset_type: 'html' | 'markdown'; content_html: string };
-  return { content_type: payload.asset_type, html: payload.content_html };
-}
 
 export async function login(username: string, password: string) {
-  return browserFetch<AuthResponse>('/api/v1/auth/login', {
+  return browserFetch<AuthResponse>('/api/frontend/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
@@ -339,31 +331,31 @@ export async function fetchPublicServiceModules(cookieHeader?: string) {
 }
 
 export async function fetchAdminSummary() {
-  return browserFetch<AdminSummary>('/api/v1/admin/dashboard', { method: 'GET' });
+  return browserFetch<AdminSummary>('/api/frontend/admin/dashboard', { method: 'GET' });
 }
 
 
 export async function fetchConnectedUsers() {
-  return browserFetch<ConnectedUsersResponse>('/api/v1/admin/sessions', { method: 'GET' });
+  return browserFetch<ConnectedUsersResponse>('/api/frontend/admin/sessions', { method: 'GET' });
 }
 
 export async function purgeSessions(csrfToken: string) {
-  return browserFetch<SessionPurgeResponse>('/api/v1/admin/sessions/purge', {
+  return browserFetch<SessionPurgeResponse>('/api/frontend/admin/sessions/purge', {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
 export async function fetchAdminUsers() {
-  return browserFetch<AdminUser[]>('/api/v1/admin/users', { method: 'GET' });
+  return browserFetch<AdminUser[]>('/api/frontend/admin/users', { method: 'GET' });
 }
 
 export async function fetchAdminPermissions() {
-  return browserFetch<Permission[]>('/api/v1/admin/permissions', { method: 'GET' });
+  return browserFetch<Permission[]>('/api/frontend/admin/permissions', { method: 'GET' });
 }
 
 export async function createAdminUser(payload: { username: string; password: string; role: string; email?: string | null; is_active?: boolean }, csrfToken: string) {
-  return browserFetch<AdminUser>('/api/v1/admin/users', {
+  return browserFetch<AdminUser>('/api/frontend/admin/users', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -371,7 +363,7 @@ export async function createAdminUser(payload: { username: string; password: str
 }
 
 export async function updateAdminUser(id: number, payload: Partial<Pick<AdminUser, 'email' | 'role' | 'is_active'>> & { permissions?: string[] }, csrfToken: string) {
-  return browserFetch<AdminUser>(`/api/v1/admin/users/${id}`, {
+  return browserFetch<AdminUser>(`/api/frontend/admin/users/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -379,7 +371,7 @@ export async function updateAdminUser(id: number, payload: Partial<Pick<AdminUse
 }
 
 export async function resetAdminUserPassword(id: number, temporaryPassword: string, csrfToken: string) {
-  return browserFetch<AdminUser>(`/api/v1/admin/users/${id}/password-reset`, {
+  return browserFetch<AdminUser>(`/api/frontend/admin/users/${id}/password-reset`, {
     method: 'POST',
     body: JSON.stringify({ temporary_password: temporaryPassword }),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -387,11 +379,11 @@ export async function resetAdminUserPassword(id: number, temporaryPassword: stri
 }
 
 export async function fetchAdminGroups() {
-  return browserFetch<AdminGroup[]>('/api/v1/admin/groups', { method: 'GET' });
+  return browserFetch<AdminGroup[]>('/api/frontend/admin/groups', { method: 'GET' });
 }
 
 export async function upsertAdminGroup(payload: { key: string; name: string; description?: string | null; is_active: boolean; permissions: string[] }, csrfToken: string) {
-  return browserFetch<AdminGroup>('/api/v1/admin/groups', {
+  return browserFetch<AdminGroup>('/api/frontend/admin/groups', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -400,16 +392,16 @@ export async function upsertAdminGroup(payload: { key: string; name: string; des
 
 
 export async function fetchRbacMatrix() {
-  return browserFetch<RbacMatrixUser[]>('/api/v1/admin/rbac-matrix', { method: 'GET' });
+  return browserFetch<RbacMatrixUser[]>('/api/frontend/admin/rbac-matrix', { method: 'GET' });
 }
 
 export async function listResourceGrants(subject?: { subject_type: 'user' | 'group'; subject_id: number }) {
   const query = subject ? `?${new URLSearchParams({ subject_type: subject.subject_type, subject_id: String(subject.subject_id) }).toString()}` : '';
-  return browserFetch<ResourceGrant[]>(`/api/v1/admin/resource-grants${query}`, { method: 'GET' });
+  return browserFetch<ResourceGrant[]>(`/api/frontend/admin/resource-grants${query}`, { method: 'GET' });
 }
 
 export async function createResourceGrant(payload: Omit<ResourceGrant, 'id' | 'created_at'>, csrfToken: string) {
-  return browserFetch<ResourceGrant>('/api/v1/admin/resource-grants', {
+  return browserFetch<ResourceGrant>('/api/frontend/admin/resource-grants', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -417,36 +409,36 @@ export async function createResourceGrant(payload: Omit<ResourceGrant, 'id' | 'c
 }
 
 export async function deleteResourceGrant(id: number, csrfToken: string) {
-  return browserFetch<void>(`/api/v1/admin/resource-grants/${id}`, {
+  return browserFetch<void>(`/api/frontend/admin/resource-grants/${id}`, {
     method: 'DELETE',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
 export async function addUserGroup(userId: number, groupId: number, csrfToken: string) {
-  return browserFetch<AdminUser>(`/api/v1/admin/users/${userId}/groups/${groupId}`, {
+  return browserFetch<AdminUser>(`/api/frontend/admin/users/${userId}/groups/${groupId}`, {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
 export async function removeUserGroup(userId: number, groupId: number, csrfToken: string) {
-  return browserFetch<AdminUser>(`/api/v1/admin/users/${userId}/groups/${groupId}`, {
+  return browserFetch<AdminUser>(`/api/frontend/admin/users/${userId}/groups/${groupId}`, {
     method: 'DELETE',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
 export async function fetchAuditEvents() {
-  return browserFetch<AuditEvent[]>('/api/v1/admin/audit-events', { method: 'GET' });
+  return browserFetch<AuditEvent[]>('/api/frontend/admin/audit-events', { method: 'GET' });
 }
 
 export async function fetchServiceModulesAdmin() {
-  return browserFetch<ServiceModule[]>('/api/v1/admin/service-modules', { method: 'GET' });
+  return browserFetch<ServiceModule[]>('/api/frontend/admin/service-modules', { method: 'GET' });
 }
 
 export async function updateServiceModule(id: number, payload: Partial<ServiceModule>, csrfToken: string) {
-  return browserFetch<ServiceModule>(`/api/v1/admin/service-modules/${id}`, {
+  return browserFetch<ServiceModule>(`/api/frontend/admin/service-modules/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -454,7 +446,7 @@ export async function updateServiceModule(id: number, payload: Partial<ServiceMo
 }
 
 export async function createServiceModule(payload: Partial<ServiceModule> & { key: string; title: string }, csrfToken: string) {
-  return browserFetch<ServiceModule>('/api/v1/admin/service-modules', {
+  return browserFetch<ServiceModule>('/api/frontend/admin/service-modules', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -462,14 +454,14 @@ export async function createServiceModule(payload: Partial<ServiceModule> & { ke
 }
 
 export async function deleteServiceModule(id: number, csrfToken: string) {
-  return browserFetch<void>(`/api/v1/admin/service-modules/${id}`, {
+  return browserFetch<void>(`/api/frontend/admin/service-modules/${id}`, {
     method: 'DELETE',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
 export async function changeOwnPassword(currentPassword: string, newPassword: string, csrfToken: string) {
-  return browserFetch<AuthResponse>('/api/v1/auth/change-password', {
+  return browserFetch<AuthResponse>('/api/frontend/auth/change-password', {
     method: 'POST',
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -477,15 +469,15 @@ export async function changeOwnPassword(currentPassword: string, newPassword: st
 }
 
 export async function fetchAssetHealth() {
-  return browserFetch<AssetHealthResponse>('/api/v1/admin/newsletters/assets/health', { method: 'GET' });
+  return browserFetch<AssetHealthResponse>('/api/frontend/admin/newsletters/assets/health', { method: 'GET' });
 }
 
 export async function fetchConfigHealth() {
-  return browserFetch<ConfigHealthResponse>('/api/v1/admin/config/health', { method: 'GET' });
+  return browserFetch<ConfigHealthResponse>('/api/frontend/admin/config/health', { method: 'GET' });
 }
 
 export async function bulkUpdateNewsletters(ids: number[], action: 'publish' | 'archive' | 'draft', csrfToken: string) {
-  return browserFetch<{ updated: number }>('/api/v1/admin/newsletters/bulk', {
+  return browserFetch<{ updated: number }>('/api/frontend/admin/newsletters/bulk', {
     method: 'POST',
     body: JSON.stringify({ ids, action }),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -493,11 +485,11 @@ export async function bulkUpdateNewsletters(ids: number[], action: 'publish' | '
 }
 
 export async function fetchBackups() {
-  return browserFetch<BackupRecord[]>('/api/v1/admin/backups', { method: 'GET' });
+  return browserFetch<BackupRecord[]>('/api/frontend/admin/backups', { method: 'GET' });
 }
 
 export async function createBackup(csrfToken: string) {
-  return browserFetch<BackupRecord>('/api/v1/admin/backups', {
+  return browserFetch<BackupRecord>('/api/frontend/admin/backups', {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
   });
@@ -505,7 +497,7 @@ export async function createBackup(csrfToken: string) {
 
 export async function validateBackup(id: number, csrfToken: string) {
   return browserFetch<{ filename: string; valid: boolean; issues: string[] }>(
-    `/api/v1/admin/backups/${id}/validate`,
+    `/api/frontend/admin/backups/${id}/validate`,
     {
       method: 'POST',
       headers: { 'X-CSRF-Token': csrfToken },
@@ -514,33 +506,33 @@ export async function validateBackup(id: number, csrfToken: string) {
 }
 
 export async function dryRunRestoreBackup(id: number, csrfToken: string) {
-  return browserFetch<BackupRestoreDryRun>(`/api/v1/admin/backups/${id}/restore/dry-run`, {
+  return browserFetch<BackupRestoreDryRun>(`/api/frontend/admin/backups/${id}/restore/dry-run`, {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
 export async function fetchAdminAiStatus() {
-  return browserFetch<AiAdminStatus>('/api/v1/admin/ai/status', { method: 'GET' });
+  return browserFetch<AiAdminStatus>('/api/frontend/admin/ai/status', { method: 'GET' });
 }
 
 export async function fetchUnifiedSearch(q: string, includeNsa = false) {
   const query = new URLSearchParams({ q, include_nsa: includeNsa ? 'true' : 'false' });
   return browserFetch<{ query: string; results: UnifiedSearchResult[]; degraded: boolean; reason?: string }>(
-    `/api/v1/admin/search?${query.toString()}`,
+    `/api/frontend/search/unified?${query.toString()}`,
     { method: 'GET' },
   );
 }
 export async function fetchAdminNewsletters() {
-  return browserFetch<NewsletterItem[]>('/api/v1/admin/newsletters', { method: 'GET' });
+  return browserFetch<NewsletterItem[]>('/api/frontend/admin/newsletters', { method: 'GET' });
 }
 
 export async function fetchAdminNewsletterDetail(id: number) {
-  return browserFetch<NewsletterDetail>(`/api/v1/admin/newsletters/${id}`, { method: 'GET' });
+  return browserFetch<NewsletterDetail>(`/api/frontend/admin/newsletters/${id}`, { method: 'GET' });
 }
 
 export async function createNewsletter(payload: Record<string, unknown>, csrfToken: string) {
-  return browserFetch<NewsletterDetail>('/api/v1/admin/newsletters', {
+  return browserFetch<NewsletterDetail>('/api/frontend/admin/newsletters', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -548,7 +540,7 @@ export async function createNewsletter(payload: Record<string, unknown>, csrfTok
 }
 
 export async function updateNewsletter(id: number, payload: Record<string, unknown>, csrfToken: string) {
-  return browserFetch<NewsletterDetail>(`/api/v1/admin/newsletters/${id}`, {
+  return browserFetch<NewsletterDetail>(`/api/frontend/admin/newsletters/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -556,7 +548,7 @@ export async function updateNewsletter(id: number, payload: Record<string, unkno
 }
 
 export async function uploadThumbnail(id: number, formData: FormData, csrfToken: string) {
-  return browserFetch<{ thumbnail_path: string }>(`/api/v1/admin/newsletters/${id}/thumbnail`, {
+  return browserFetch<{ thumbnail_path: string }>(`/api/frontend/admin/newsletters/${id}/thumbnail`, {
     method: 'POST',
     body: formData,
     headers: { 'X-CSRF-Token': csrfToken },
@@ -564,18 +556,18 @@ export async function uploadThumbnail(id: number, formData: FormData, csrfToken:
 }
 
 export async function syncNewsletters(csrfToken: string) {
-  return browserFetch<SyncResponse>('/api/v1/admin/newsletters/sync', {
+  return browserFetch<SyncResponse>('/api/frontend/admin/newsletters/sync', {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
 export async function fetchCategories() {
-  return browserFetch<Category[]>('/api/v1/admin/categories', { method: 'GET' });
+  return browserFetch<Category[]>('/api/frontend/admin/categories', { method: 'GET' });
 }
 
 export async function createCategory(payload: { name: string; description?: string | null; sort_order?: number; is_active?: boolean }, csrfToken: string) {
-  return browserFetch<Category>('/api/v1/admin/categories', {
+  return browserFetch<Category>('/api/frontend/admin/categories', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -583,7 +575,7 @@ export async function createCategory(payload: { name: string; description?: stri
 }
 
 export async function updateCategory(id: number, payload: Partial<Category>, csrfToken: string) {
-  return browserFetch<Category>(`/api/v1/admin/categories/${id}`, {
+  return browserFetch<Category>(`/api/frontend/admin/categories/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -591,11 +583,11 @@ export async function updateCategory(id: number, payload: Partial<Category>, csr
 }
 
 export async function fetchTags() {
-  return browserFetch<Tag[]>('/api/v1/admin/tags', { method: 'GET' });
+  return browserFetch<Tag[]>('/api/frontend/admin/tags', { method: 'GET' });
 }
 
 export async function createTag(payload: { name: string; sort_order?: number; is_active?: boolean }, csrfToken: string) {
-  return browserFetch<Tag>('/api/v1/admin/tags', {
+  return browserFetch<Tag>('/api/frontend/admin/tags', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -603,15 +595,16 @@ export async function createTag(payload: { name: string; sort_order?: number; is
 }
 
 export async function updateTag(id: number, payload: Partial<Tag>, csrfToken: string) {
-  return browserFetch<Tag>(`/api/v1/admin/tags/${id}`, {
+  return browserFetch<Tag>(`/api/frontend/admin/tags/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
-// 읽음 비콘 — 브라우저가 백엔드를 "직접" 호출해야 request.client.host 가 독자 LAN IP 가 된다
-// (SSR/프록시 경로는 Next 서버 IP 로 퇴화). body 없음. sendBeacon 우선(페이지 이탈에도 전송 보장),
+// 읽음 비콘 — 예외적으로 same-origin 프록시를 거치지 않고 브라우저가 백엔드를 직접 호출해야 한다.
+// 백엔드가 request.client.host 로 LAN 독자 IP 를 기록하기 때문이며, 프록시/SSR 경로는 Next 서버 IP 로 퇴화한다.
+// body 없음. sendBeacon 우선(페이지 이탈에도 전송 보장),
 // 미지원 환경은 fetch keepalive 폴백. 실패는 읽기 경험에 영향 없으므로 조용히 무시한다.
 export function recordNewsletterRead(newsletterId: number): void {
   const url = `${getBrowserApiBase()}/api/v1/newsletters/${newsletterId}/read`;
@@ -633,12 +626,12 @@ export async function fetchAdminReadEvents(params?: { newsletter_id?: number; ip
   if (params?.newsletter_id != null) query.set('newsletter_id', String(params.newsletter_id));
   if (params?.ip) query.set('ip', params.ip);
   const qs = query.toString();
-  return browserFetch<ReadEventsResponse>(`/api/v1/admin/read-events${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  return browserFetch<ReadEventsResponse>(`/api/frontend/admin/read-events${qs ? `?${qs}` : ''}`, { method: 'GET' });
 }
 
 export async function purgeReadEvents(csrfToken: string, newsletterId?: number) {
   const query = newsletterId != null ? `?newsletter_id=${newsletterId}` : '';
-  return browserFetch<{ deleted: number }>(`/api/v1/admin/read-events/purge${query}`, {
+  return browserFetch<{ deleted: number }>(`/api/frontend/admin/read-events/purge${query}`, {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
   });

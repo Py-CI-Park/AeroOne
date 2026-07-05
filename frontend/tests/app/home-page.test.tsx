@@ -3,10 +3,11 @@ import { render, screen, within } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 
-const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, MODULES } = vi.hoisted(() => ({
+const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClientSessionMock, MODULES } = vi.hoisted(() => ({
   cookieThemeMock: vi.fn<() => string | undefined>(),
   isAdminMock: vi.fn<() => boolean>(),
   fetchPublicServiceModulesMock: vi.fn(),
+  fetchClientSessionMock: vi.fn(),
   MODULES: [
     { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, visibility: 'public' },
     { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, visibility: 'public' },
@@ -36,6 +37,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     fetchPublicServiceModules: fetchPublicServiceModulesMock,
+    fetchClientSession: fetchClientSessionMock,
   };
 });
 
@@ -47,6 +49,7 @@ beforeEach(() => {
   fetchPublicServiceModulesMock.mockImplementation(() =>
     Promise.resolve(isAdminMock() ? MODULES : MODULES.filter((m) => m.visibility === 'public' && !m.required_permission)),
   );
+  fetchClientSessionMock.mockReturnValue(new Promise(() => {}));
 });
 
 afterEach(() => {
@@ -54,6 +57,7 @@ afterEach(() => {
   cookieThemeMock.mockReset();
   isAdminMock.mockReset();
   fetchPublicServiceModulesMock.mockReset();
+  fetchClientSessionMock.mockReset();
 });
 
 test('removes the home hero copy while keeping the Newsletter link and theme selector', async () => {
@@ -97,6 +101,22 @@ test('non-admin fallback dashboard drops required-permission NSA cards', async (
   expect(within(main).queryByRole('link', { name: /NSA/i })).not.toBeInTheDocument();
   expect(screen.getByText(/대시보드 모듈 DB 를 읽지 못해 내장 fallback 목록을 표시합니다/)).toBeInTheDocument();
   expect(screen.getByText('3 active · 0 coming soon')).toBeInTheDocument();
+});
+test('degraded fallback keeps login visible, Admin hidden, and the main nav to 3 items', async () => {
+  fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
+  isAdminMock.mockReturnValue(false);
+
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const nav = screen.getByRole('navigation', { name: '주요 메뉴' });
+  const navLinks = within(nav).getAllByRole('link');
+
+  expect(navLinks).toHaveLength(3);
+  expect(within(nav).getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
+  expect(within(nav).getByRole('link', { name: 'Newsletter' })).toBeInTheDocument();
+  expect(within(nav).getByRole('link', { name: 'Document' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
+  expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
 });
 
 test('adds an active Civil Aircraft Spec Catalog card linking to the report page', async () => {

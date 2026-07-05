@@ -15,6 +15,19 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.11.0',
+    date: '2026-07-05',
+    items: [
+      '관리자 로그인과 관리자 CRUD 를 same-origin `/api/frontend/auth/*`, `/api/frontend/admin/*` 프록시로 통일해 LAN 접속 브라우저가 백엔드 origin 을 직접 가리키지 않아도 쿠키 기반 인증이 안정적으로 동작합니다.',
+      '통합 검색은 전용 `/api/frontend/search/unified` 경로로 분리하고, backend ResourceGrant 는 global/unknown/malformed key 를 거부하도록 방어선을 보강했습니다.',
+      '관리자 콘솔을 모듈·사용자·RBAC·세션·시스템·분류·검색·백업 탭 구조로 재설계하고 ARIA Tabs 키보드 접근성을 적용했습니다.',
+      'RBAC 권한 체크박스 그리드, 리소스 권한 드롭다운 폼과 NSA 열람권 프리셋, 사용자/그룹 선택기, 정의값 기반 모듈 select/validation 과 toast 를 추가했습니다.',
+      '관리자 목록 전반에 검색·정렬·결과 수·빈 상태·로딩·오류 상태를 정리하고, 로그인 진입이 degraded 상태에서도 회복되도록 보강했습니다.',
+      '관리자 로그인 성공 시 화면을 새로 불러와 헤더에 즉시 Admin 이 표시되도록 하고, 로그인 후 재설계된 관리자 콘솔로 이동합니다.',
+      '모듈·리소스 권한·그룹 멤버십 삭제와 세션/로그 정리 등 파괴적 작업에 인앱 확인 다이얼로그를 통일 적용하고, 작업 결과를 자동·수동 해제되는 토스트로 알리며, 저장 시 관련 목록만 다시 불러오도록(스코프드 갱신) 개선했습니다.',
+    ],
+  },
+  {
     version: '1.10.0',
     date: '2026-07-04',
     items: [

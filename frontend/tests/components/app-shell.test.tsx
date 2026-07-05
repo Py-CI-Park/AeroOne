@@ -3,11 +3,24 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { AppShell } from '@/components/layout/app-shell';
+const { fetchClientSessionMock } = vi.hoisted(() => ({
+  fetchClientSessionMock: vi.fn(),
+}));
+
+vi.mock('@/lib/api', () => ({
+  fetchClientSession: fetchClientSessionMock,
+}));
+
+beforeEach(() => {
+  fetchClientSessionMock.mockReset();
+  fetchClientSessionMock.mockReturnValue(new Promise(() => {}));
+});
+
 
 // Claude Design 핸드오프 적용 후 셸 계약:
 // - 테마는 data-theme 속성으로 표현 (토큰 CSS 변수가 색을 스위치).
 // - 헤더 nav 는 Dashboard + Newsletter 영문 라벨 (디자인 시안 기준).
-// - 관리자/로그인 링크는 헤더에 노출하지 않음.
+// - 관리자 링크는 헤더 메인 nav 가 아니라 확인된 관리자용 클라이언트 링크로만 노출한다.
 test('renders the default shell with light data-theme and a theme selector', () => {
   render(
     <AppShell title="Light Shell">
@@ -28,8 +41,8 @@ test('renders the default shell with light data-theme and a theme selector', () 
   const nav = screen.getByRole('navigation');
   expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/');
   expect(within(nav).getByRole('link', { name: 'Newsletter' })).toHaveAttribute('href', '/newsletters');
-  expect(screen.queryByRole('link', { name: '관리자' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '검색' })).not.toBeInTheDocument();
 });

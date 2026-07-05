@@ -28,9 +28,16 @@ ADMIN_PASSWORD=change-me
 `/admin/*` 경로의 모든 mutation 과 sync 기능을 다른 신뢰 경계 뒤로 이동시키지 않은 채 인증을 제거하지 마세요. 이 정책을 우회하거나 완화하는 변경은 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) §6 보안 관련 변경 시 추가 절차를 따릅니다.
 
 
+## 1.11.0 운영 메모
+
+- **같은 origin 으로 접속**: 운영자와 사용자는 로그인과 관리자 콘솔을 모두 frontend 주소 `http://<host>:29501` 에서 엽니다. LAN 클라이언트도 브라우저에 backend 주소(`:18437`)를 직접 넣지 않습니다.
+- **same-origin relay**: 브라우저의 인증/관리자 호출은 `/api/frontend/auth/*`, `/api/frontend/admin/*` 로 들어오고, frontend 서버가 backend 로 relay 합니다. 이 구조가 폐쇄망 LAN 의 cross-origin cookie/CORS 취약 지점을 줄입니다.
+- **탭형 관리자 콘솔**: `/admin` 은 모듈, 사용자, RBAC, 세션, 시스템, 분류, 검색, 백업 탭으로 나뉩니다. RBAC 탭에서 권한 체크박스, ResourceGrant 드롭다운, `NSA 열람권 부여` 프리셋, 사용자/그룹 선택기를 사용합니다.
+- **통합 검색**: 관리자 콘솔 검색 탭은 same-origin `/api/frontend/search/unified` 경로를 사용합니다.
+
 ## 1.10.0 운영 메모
 
-- **NSA 권한 부여**: `/nsa` 는 더 이상 `0000` 비밀번호 가림막을 쓰지 않습니다. 대상 사용자 또는 그룹에 `collections.nsa.read` 권한을 부여하고, 같은 대상에 `collection:nsa` ResourceGrant 를 추가해야 목록·본문·AI 검색이 열립니다.
+- **NSA 권한 부여**: `/nsa` 는 더 이상 `0000` 비밀번호 가림막을 쓰지 않습니다. 서버는 관리자이거나, 대상 사용자/그룹에 전역 `collections.nsa.read`(또는 legacy `search.nsa.read`) 권한이나 `collection:nsa` ResourceGrant 중 하나가 있으면 목록·본문·AI 검색을 엽니다.
 - **모듈 활성화**: `service_modules.required_permission` 이 설정된 카드는 로그인 사용자의 유효 권한에 따라 노출됩니다. 카드가 보이지 않으면 active/visibility 뿐 아니라 required_permission 과 그룹 권한을 함께 확인합니다.
 - **자산 진단**: 관리자 콘솔의 자산/config-health 는 `_database`, storage, 썸네일, DB/마이그레이션 상태를 확인하는 1차 점검표입니다. 누락 경로는 배포 ZIP 또는 운영 백업에서 복구합니다.
 - **접속자 보존/purge**: 접속자 대시보드는 로그인/세션 활동과 익명 IP 읽음 추적만 metadata-only 로 보존합니다. purge 는 감사 로그를 남기고, 현장 개인정보 보존 정책에 맞춰 주기적으로 실행합니다.

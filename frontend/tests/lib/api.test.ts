@@ -10,6 +10,12 @@ import {
   fetchLatestNewsletter,
   getNewsletterProxyPath,
   getPublicNewsletters,
+  login,
+  changeOwnPassword,
+  fetchAdminSummary,
+  fetchConnectedUsers,
+  purgeSessions,
+  fetchUnifiedSearch,
 } from '@/lib/api';
 
 afterEach(() => {
@@ -169,18 +175,40 @@ test('fetchClientSession calls same-origin session route with credentials', asyn
 });
 
 
-test('connected users helpers call session endpoints', async () => {
-  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({ active_sessions: [], active_count: 0, recent_login_events: [], login_failure_count: 0, read_tracking_summary: { rows: 0, total_reads: 0 } }) } as Response);
-  const { fetchConnectedUsers } = await import('@/lib/api');
+test('auth and admin helpers call same-origin frontend proxy paths, never backend origins', async () => {
+  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  } as Response);
+
+  await login('admin', 'secret');
+  await changeOwnPassword('old', 'new', 'csrf-token');
+  await fetchAdminSummary();
   await fetchConnectedUsers();
-  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/admin/sessions'), expect.objectContaining({ method: 'GET', credentials: 'include' }));
+  await fetchUnifiedSearch('jet', true);
+
+  const calledUrls = fetchMock.mock.calls.map((call) => call[0] as string);
+  expect(calledUrls).toEqual([
+    '/api/frontend/auth/login',
+    '/api/frontend/auth/change-password',
+    '/api/frontend/admin/dashboard',
+    '/api/frontend/admin/sessions',
+    '/api/frontend/search/unified?q=jet&include_nsa=true',
+  ]);
+  for (const calledUrl of calledUrls) {
+    expect(calledUrl).toMatch(/^\/api\/frontend\//);
+    expect(calledUrl).not.toContain('localhost');
+    expect(calledUrl).not.toContain('http://');
+    expect(calledUrl).not.toContain('/api/v1/admin');
+    expect(calledUrl).not.toContain('/api/v1/auth');
+  }
   fetchMock.mockRestore();
 });
 
-test('purgeSessions sends csrf header', async () => {
+test('purgeSessions sends csrf header to same-origin admin proxy', async () => {
   const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({ login_events_deleted: 1, session_activity_deleted: 2 }) } as Response);
-  const { purgeSessions } = await import('@/lib/api');
   await purgeSessions('csrf-token');
-  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/admin/sessions/purge'), expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token' }) }));
+  expect(fetchMock).toHaveBeenCalledWith('/api/frontend/admin/sessions/purge', expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token' }) }));
   fetchMock.mockRestore();
 });

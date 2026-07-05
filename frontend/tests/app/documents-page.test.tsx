@@ -19,6 +19,10 @@ vi.mock('@/lib/api', async () => {
   return { ...actual, fetchDocumentList: fetchListMock };
 });
 
+vi.mock('@/components/layout/admin-nav-link', () => ({
+  AdminNavLink: () => null,
+}));
+
 // DocumentsWorkspace 는 fetch effect + iframe 이라, 페이지 테스트에서는 렌더 위임만 확인하는 단순 div 로 대체.
 vi.mock('@/components/documents/documents-workspace', () => ({
   DocumentsWorkspace: ({ documents }: { documents: { path: string }[] }) => (

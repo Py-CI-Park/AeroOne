@@ -22,6 +22,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   };
 });
 
+vi.mock('@/components/layout/admin-nav-link', () => ({
+  AdminNavLink: () => null,
+}));
+
 vi.mock('@/components/documents/documents-workspace', () => ({
   DocumentsWorkspace: ({ documents, collection, initialPath }: { documents: { path: string }[]; collection: string; initialPath?: string }) => (
     <div data-testid="documents-workspace-stub" data-collection={collection} data-initial-path={initialPath ?? ''}>
