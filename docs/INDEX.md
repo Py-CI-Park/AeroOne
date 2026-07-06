@@ -2,7 +2,7 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 버전: `1.11.0` (`관리자 콘솔 UX 재설계/same-origin 인증·관리 프록시 통합`)
+- 기준 버전: `1.12.0` (`관리자 콘솔 UX/UI 개선 — 권한 이해·감사 로그·세션/목록 인체공학·전역 폴리시`)
 - 갱신일: 2026-07-05
 
 ---
@@ -70,6 +70,7 @@
 | 단계 22 | [`reports/phase-22-operator-visibility-and-module-management.md`](reports/phase-22-operator-visibility-and-module-management.md) | 관리자 전용 Admin/개발중(Development)/Coming soon 노출 + 헤더 다크·사용법·Admin 순서 + 모듈 add/delete·노출 대상 관리 + 관리자 비밀번호 변경 + start_offline 마이그레이션 preflight — minor 1.9.0 | `1.9.0-dev` |
 | 단계 23 | [`reports/phase-23-admin-authz-hardening.md`](reports/phase-23-admin-authz-hardening.md) | RBAC 읽기 권한 상승 수정 + NSA 서버측 접근제어 + 사용자별 메뉴 힌트 + 자산 진단 + 사용자/그룹/리소스 권한·RBAC 매트릭스 + 접속자 대시보드 — minor 1.10.0 | `1.10.0-dev` |
 | 단계 24 | [`reports/phase-24-admin-console-proxy-redesign.md`](reports/phase-24-admin-console-proxy-redesign.md) | 관리자 로그인/CRUD same-origin 프록시 통합 + `/admin` 탭형 콘솔 UX/RBAC 입력/목록 상태/ARIA Tabs — minor 1.11.0 | `1.11.0-dev` |
+| 단계 25 | [`reports/phase-25-admin-console-ux-polish.md`](reports/phase-25-admin-console-ux-polish.md) | 권한 이해 카탈로그 + 감사 로그 전용 탭(검색/필터/CSV) + 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션 + 탭 숫자 단축키 1~9·온보딩 도움말 — 프론트-only minor 1.12.0 | `1.12.0-dev` |
 
 ---
 
@@ -132,7 +133,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.11.0 기준 backend 265 passed, frontend Vitest 265 passed(56 파일), `tsc --noEmit`, `next build` 를 수행한다. release gate 에서는 여기에 브라우저 smoke 를 더한다.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.12.0 기준 backend 265 passed, frontend Vitest 310 passed(65 파일), `tsc --noEmit`, `next build` 를 수행한다. release gate 에서는 여기에 브라우저 smoke 를 더한다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|

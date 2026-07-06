@@ -1,6 +1,7 @@
 'use client';
 
 import type { Permission } from '@/lib/types';
+import { groupPermissionsByCategory } from '@/lib/permission-catalog';
 
 type PermissionCheckboxGridProps = {
   permissions: Permission[];
@@ -9,18 +10,10 @@ type PermissionCheckboxGridProps = {
   label?: string;
 };
 
-function groupPermissionKey(key: string): string {
-  return key.split('.')[0] || '기타';
-}
 
 export function PermissionCheckboxGrid({ permissions, value, onChange, label = '권한' }: PermissionCheckboxGridProps) {
   const selected = new Set(value);
-  const groups = permissions.reduce<Record<string, string[]>>((acc, permission) => {
-    const group = groupPermissionKey(permission.key);
-    acc[group] = acc[group] ?? [];
-    acc[group].push(permission.key);
-    return acc;
-  }, {});
+  const groups = groupPermissionsByCategory(permissions.map((permission) => permission.key));
 
   function toggle(key: string, checked: boolean) {
     const next = new Set(selected);
@@ -34,18 +27,23 @@ export function PermissionCheckboxGrid({ permissions, value, onChange, label = '
       <legend className="px-1 text-xs font-semibold text-slate-600">{label}</legend>
       {permissions.length === 0 ? <p className="text-xs text-slate-500">사용 가능한 권한이 없습니다.</p> : null}
       <div className="grid gap-3 md:grid-cols-2">
-        {Object.entries(groups).map(([group, keys]) => (
-          <div key={group} className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase text-slate-400">{group}</p>
-            {keys.sort().map((key) => (
-              <label key={key} className="flex items-center gap-2 text-xs text-slate-700">
+        {groups.map((group) => (
+          <div key={group.category} className="space-y-1">
+            <p className="text-[11px] font-semibold text-slate-500">{group.category}</p>
+            {group.entries.map((entry) => (
+              <label key={entry.key} className="flex items-start gap-2 text-xs text-slate-700" title={entry.description || entry.key}>
                 <input
                   type="checkbox"
-                  checked={selected.has(key)}
-                  onChange={(event) => toggle(key, event.target.checked)}
-                  aria-label={`${label} ${key}`}
+                  checked={selected.has(entry.key)}
+                  onChange={(event) => toggle(entry.key, event.target.checked)}
+                  aria-label={`${label} ${entry.key}`}
+                  className="mt-0.5"
                 />
-                <span className="font-mono">{key}</span>
+                <span>
+                  <span className="block font-semibold text-slate-700">{entry.label}</span>
+                  <span className="block font-mono text-[11px] text-slate-500">{entry.key}</span>
+                  {entry.description ? <span className="block text-[11px] text-slate-500">{entry.description}</span> : null}
+                </span>
               </label>
             ))}
           </div>

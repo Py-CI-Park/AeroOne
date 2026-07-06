@@ -107,5 +107,6 @@ test('admin home console lists config-health roots', async () => {
   fireEvent.click(screen.getByRole('tab', { name: 'RBAC' }));
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
   expect(screen.getAllByText(/operator/).length).toBeGreaterThan(0);
-  expect(screen.getAllByText(/collections.nsa.read \[group:nsa-readers\]/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText('collections.nsa.read').length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/출처 group:nsa-readers/).length).toBeGreaterThan(0);
 });

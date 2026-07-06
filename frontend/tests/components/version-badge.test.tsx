@@ -11,8 +11,8 @@ test('shows the current version label and hides the dialog initially', () => {
   expect(screen.queryByTestId('version-dialog')).not.toBeInTheDocument();
 });
 
-test('tracks the current 1.11.0 release in the dashboard header', () => {
-  expect(APP_VERSION).toBe('1.11.0');
+test('tracks the current 1.12.0 release in the dashboard header', () => {
+  expect(APP_VERSION).toBe('1.12.0');
 });
 
 test('opens the changelog dialog with latest entry and contact info on click', () => {

@@ -68,6 +68,7 @@ import { AdminSystemSection } from './sections/admin-system-section';
 import { AdminTaxonomySection } from './sections/admin-taxonomy-section';
 import { AdminSearchSection } from './sections/admin-search-section';
 import { AdminBackupsSection } from './sections/admin-backups-section';
+import { AdminAuditSection } from './sections/admin-audit-section';
 import { ConfirmProvider, useConfirm } from './widgets/confirm-dialog';
 import { ToastStack, type AdminToast } from './widgets/toast-stack';
 
@@ -222,6 +223,7 @@ const tabs = [
   { key: 'taxonomy', label: '분류' },
   { key: 'search', label: '검색' },
   { key: 'backups', label: '백업' },
+  { key: 'audit', label: '감사' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
@@ -424,6 +426,26 @@ function AdminConsoleTabsContent() {
     event.preventDefault();
     activateTab(tabs[nextIndex].key);
   }
+  useEffect(() => {
+    function isEditableTarget(target: EventTarget | Element | null) {
+      if (!(target instanceof HTMLElement)) return false;
+      return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
+    }
+
+    function handleNumberShortcut(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (!/^[1-9]$/.test(event.key)) return;
+      if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) return;
+      const tab = tabs[Number(event.key) - 1];
+      if (!tab) return;
+      event.preventDefault();
+      activateTab(tab.key);
+    }
+
+    window.addEventListener('keydown', handleNumberShortcut);
+    return () => window.removeEventListener('keydown', handleNumberShortcut);
+  }, []);
+
 
   if (state.error) return <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">{state.error}</div>;
 
@@ -439,6 +461,21 @@ function AdminConsoleTabsContent() {
             <button type="button" onClick={() => void refresh()} className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white">새로고침</button>
           </div>
         </div>
+        <details className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+          <summary className="cursor-pointer font-semibold text-slate-900">콘솔 사용 도움말</summary>
+          <ul className="mt-3 grid gap-1 md:grid-cols-2">
+            <li><span className="font-semibold">모듈</span>: 대시보드 모듈 노출과 정렬을 관리합니다.</li>
+            <li><span className="font-semibold">사용자</span>: 계정 상태와 직접 권한을 점검합니다.</li>
+            <li><span className="font-semibold">RBAC</span>: 그룹, 멤버십, 리소스 권한을 조정합니다.</li>
+            <li><span className="font-semibold">세션</span>: 접속자와 로그인 활동을 확인합니다.</li>
+            <li><span className="font-semibold">시스템</span>: DB, 자산, AI 상태와 비밀번호를 점검합니다.</li>
+            <li><span className="font-semibold">분류</span>: 카테고리와 태그 기준을 관리합니다.</li>
+            <li><span className="font-semibold">검색</span>: 통합 검색과 AI 운영 결과를 확인합니다.</li>
+            <li><span className="font-semibold">백업</span>: 백업 생성, 검증, 복원 점검을 실행합니다.</li>
+            <li><span className="font-semibold">감사</span>: 운영 이벤트와 CSV 내보내기를 확인합니다.</li>
+          </ul>
+          <p className="mt-3 text-xs text-slate-500">입력 필드가 아닌 곳에서는 숫자 키 1~9로 탭을 바로 전환할 수 있습니다.</p>
+        </details>
         <ToastStack toasts={state.toasts} onDismiss={dismissToast} />
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">Version / Mode</p><p className="mt-2 text-2xl font-semibold">v{state.summary?.app_version ?? '-'}</p><p className="text-sm text-slate-500">{state.summary?.app_env ?? '-'}</p></div>
@@ -477,6 +514,7 @@ function AdminConsoleTabsContent() {
           {activeTab === 'taxonomy' ? <AdminTaxonomySection /> : null}
           {activeTab === 'search' ? <AdminSearchSection /> : null}
           {activeTab === 'backups' ? <AdminBackupsSection /> : null}
+          {activeTab === 'audit' ? <AdminAuditSection /> : null}
         </div>
       </div>
     </AdminConsoleContext.Provider>
