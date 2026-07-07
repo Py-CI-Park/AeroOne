@@ -11,9 +11,9 @@ test('shows the current version label and hides the dialog initially', () => {
   expect(screen.queryByTestId('version-dialog')).not.toBeInTheDocument();
 });
 
-test('tracks the current 1.12.1 dashboard version and update date', () => {
-  expect(APP_VERSION).toBe('1.12.1');
-  expect(APP_UPDATED_DATE).toBe('2026-07-06');
+test('tracks the current 1.12.2 dashboard version and update date', () => {
+  expect(APP_VERSION).toBe('1.12.2');
+  expect(APP_UPDATED_DATE).toBe('2026-07-07');
 });
 
 test('opens the changelog dialog with latest entry and contact info on click', () => {

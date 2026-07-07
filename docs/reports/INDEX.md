@@ -187,6 +187,13 @@
 - 코드: `backend/app/modules/{admin,auth}/`, `backend/alembic/versions/20260707_0008_user_display_name.py`, `frontend/components/{admin,layout}/`, `frontend/app/api/frontend/session/route.ts`, `frontend/lib/{api,changelog,types}.ts`
 - 회귀 방지: backend `pytest tests` 268 passed, frontend Vitest 311 passed(65 파일), `tsc --noEmit`, `next build`, live dashboard/admin smoke.
 
+### 1.12.2 patch — 대시보드 시간·로그인 UI 정리
+
+- 분류: patch (`1.12.2`) — 대시보드 날짜 오해 방지와 로그인/세션 화면 가독성 보강.
+- 무엇: 헤더 버전 배지에서 날짜를 즉시 노출하지 않고 클릭한 업데이트 모달에서만 보이게 했으며, 대시보드 상단에 한국 시간을 실시간 표시합니다. 로그인 화면은 중앙 카드형 계정 접속 UI로 재배치하고, 로그인 후 헤더에는 `로그인:` 접두어 없이 아이디만 표시합니다. 세션 탭은 세로 공간을 키워 로그인/로그아웃 목록을 더 쉽게 읽게 했습니다.
+- 코드: `frontend/components/layout/{version-badge,korean-clock,admin-nav-link,app-shell}.tsx`, `frontend/components/auth/login-form.tsx`, `frontend/components/admin/sections/admin-sessions-section.tsx`, `frontend/lib/changelog.ts`
+- 회귀 방지: backend `pytest tests` 268 passed, frontend Vitest 313 passed(66 파일), `tsc --noEmit`, `next build`, live dashboard/admin smoke.
+
 ---
 
 ## 보고서가 다루지 않는 자리

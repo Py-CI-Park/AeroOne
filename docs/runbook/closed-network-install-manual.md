@@ -19,11 +19,11 @@
 
 ---
 
-## 1. 인터넷 PC에서 반입물 모으기 (릴리즈 1.12.1 기준 4가지)
+## 1. 인터넷 PC에서 반입물 모으기 (릴리즈 1.12.2 기준 4가지)
 
 USB 등 **단방향 허용 매체**로 폐쇄망 PC에 복사할 4가지:
 
-1. **AeroOne 오프라인 ZIP** — GitHub Release `1.12.1` 의 `AeroOne-offline-1.12.1-YYYYMMDD-HHMMSS.zip` asset 을 받거나, 인터넷 PC 저장소 루트에서 `offline_package.bat` 실행 → `dist\AeroOne-offline-1.12.1-<스탬프>.zip`
+1. **AeroOne 오프라인 ZIP** — GitHub Release `1.12.2` 의 `AeroOne-offline-1.12.2-YYYYMMDD-HHMMSS.zip` asset 을 받거나, 인터넷 PC 저장소 루트에서 `offline_package.bat` 실행 → `dist\AeroOne-offline-1.12.2-<스탬프>.zip`
    - 소스·wheelhouse·`node_modules`·prebuilt `.next`·옵션 인스톨러 포함. (vendored open-notebook 트리는 의도적으로 제외)
 2. **Open Notebook 번들 ZIP** — 같은 Release 의 `AeroOne-bundle.zip` asset 을 받거나, open-notebook 저장소에서 `airgap\1-online-package.bat` 실행 → `dist\AeroOne-bundle.zip`
    - 자체 Python/uv/Node/SurrealDB/ffmpeg + prebuilt frontend + 자동 프로비저닝 스크립트 포함(자기완결).
