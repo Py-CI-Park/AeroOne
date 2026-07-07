@@ -17,6 +17,7 @@ class UserAdminResponse(BaseModel):
     id: int
     username: str
     email: str | None = None
+    display_name: str | None = None
     role: str
     is_active: bool
     session_version: int = 0
@@ -26,15 +27,17 @@ class UserAdminResponse(BaseModel):
 
 
 class UserCreateRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=256)
     email: str | None = None
+    display_name: str | None = None
     role: Literal['admin', 'user', 'pending'] = 'user'
     is_active: bool = True
 
 
 class UserUpdateRequest(BaseModel):
     email: str | None = None
+    display_name: str | None = None
     role: Literal['admin', 'user', 'pending'] | None = None
     is_active: bool | None = None
     permissions: list[str] | None = None
@@ -203,7 +206,7 @@ class LoginEventResponse(BaseModel):
     username: str
     ip_address: str | None = None
     user_agent: str | None = None
-    status: Literal['success', 'failure']
+    status: Literal['success', 'failure', 'logout']
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

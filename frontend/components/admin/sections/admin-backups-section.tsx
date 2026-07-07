@@ -33,7 +33,7 @@ export function AdminBackupsSection() {
           sortLabel="백업 정렬"
           sortValue={sort}
           onSortChange={setSort}
-          sortOptions={[{ value: 'created-desc', label: 'created 최신순' }, { value: 'created-asc', label: 'created 오래된순' }, { value: 'filename-asc', label: 'filename 오름차순' }, { value: 'size-desc', label: 'size 내림차순' }]}
+          sortOptions={[{ value: 'created-desc', label: '생성일 최신순' }, { value: 'created-asc', label: '생성일 오래된순' }, { value: 'filename-asc', label: '파일명 오름차순' }, { value: 'size-desc', label: '크기 내림차순' }]}
           totalCount={state.backups.length}
           filteredCount={visibleBackups.length}
         />

@@ -63,7 +63,7 @@ test('AdminAuditSection renders audits and narrows by search, status, and period
 
   fireEvent.click(await screen.findByRole('tab', { name: '감사' }));
   expect(await screen.findByRole('heading', { name: '감사 로그' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'CSV 내보내기' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '현재 결과 CSV 내보내기' })).toBeInTheDocument();
   expect(screen.getByLabelText('감사 검색')).toBeInTheDocument();
   expect(screen.getByText('backup.create')).toBeInTheDocument();
   expect(screen.getByText('user.update')).toBeInTheDocument();
@@ -96,7 +96,7 @@ test('AdminAuditSection CSV button exports current filtered audits', async () =>
   fireEvent.click(await screen.findByRole('tab', { name: '감사' }));
   await screen.findByRole('heading', { name: '감사 로그' });
   fireEvent.change(screen.getByLabelText('감사 검색'), { target: { value: 'backup' } });
-  fireEvent.click(screen.getByRole('button', { name: 'CSV 내보내기' }));
+  fireEvent.click(screen.getByRole('button', { name: '현재 결과 CSV 내보내기' }));
 
   await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
   const exportedBlob = createObjectURL.mock.calls[0][0];

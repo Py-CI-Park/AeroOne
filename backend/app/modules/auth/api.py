@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import hashlib
+
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.security import create_access_token, create_csrf_token, hash_password, verify_password
 from app.modules.admin.audit import record_admin_audit
+from app.modules.admin.models import LoginEvent, UserSessionActivity
 from app.modules.admin.permissions import list_user_permission_keys, list_user_resource_grants
-from app.modules.auth.dependencies import get_current_user, get_db, get_settings, require_csrf
+from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf
 from app.modules.auth.schemas import AuthResponse, LoginRequest, PasswordChangeRequest, UserResponse
 from app.modules.auth.services import AuthError, AuthService
 
@@ -52,7 +56,33 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
 
 @router.post('/logout')
-def logout(response: Response, settings: Settings = Depends(get_settings)) -> dict[str, str]:
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_optional_user),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    token = request.cookies.get(settings.admin_session_cookie_name)
+    if current_user is not None:
+        db.add(
+            LoginEvent(
+                user_id=current_user.id,
+                username=current_user.username[:100],
+                ip_address=request.client.host if request.client else None,
+                user_agent=(request.headers.get('user-agent') or '')[:500] or None,
+                status='logout',
+            )
+        )
+        if token:
+            session_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+            db.execute(
+                delete(UserSessionActivity).where(
+                    UserSessionActivity.user_id == current_user.id,
+                    UserSessionActivity.session_hash == session_hash,
+                )
+            )
+        db.flush()
     response.delete_cookie(settings.admin_session_cookie_name, path='/')
     response.delete_cookie(settings.csrf_cookie_name, path='/')
     return {'status': 'ok'}

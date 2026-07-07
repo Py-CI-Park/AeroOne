@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 
 import { Icon } from '@/components/ui/icons';
 import { Btn } from '@/components/ui/primitives';
-import { APP_CONTACT, APP_VERSION, CHANGELOG } from '@/lib/changelog';
+import { APP_CONTACT, APP_UPDATED_DATE, APP_VERSION, CHANGELOG } from '@/lib/changelog';
 
 // 헤더의 버전 라벨. 누르면 릴리스 업데이트 내역과 문의 정보를 모달로 띄운다.
 // AppShell 이 서버 컴포넌트라, 상호작용이 필요한 이 부분만 클라이언트 섬으로 분리한다.
@@ -29,7 +29,7 @@ export function VersionBadge() {
         title="업데이트 내역 보기"
         className="ml-1.5 rounded font-mono text-xs text-ink-3 transition-colors hover:text-accent hover:underline focus-visible:shadow-focus focus-visible:outline-none"
       >
-        v{APP_VERSION}
+        v{APP_VERSION} · {APP_UPDATED_DATE}
       </button>
 
       {open ? (

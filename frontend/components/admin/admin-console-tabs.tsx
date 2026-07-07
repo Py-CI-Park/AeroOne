@@ -73,7 +73,7 @@ import { ConfirmProvider, useConfirm } from './widgets/confirm-dialog';
 import { ToastStack, type AdminToast } from './widgets/toast-stack';
 
 export type ModuleDraft = Pick<ServiceModule, 'title' | 'description' | 'href' | 'section' | 'status' | 'badge' | 'sort_order' | 'is_enabled' | 'is_external' | 'visibility'>;
-export type UserDraft = Pick<AdminUser, 'email' | 'role' | 'is_active'> & { permissions_csv: string };
+export type UserDraft = Pick<AdminUser, 'display_name' | 'email' | 'role' | 'is_active'> & { permissions_csv: string };
 export type TaxonomyDraft = { name: string; description?: string; sort_order: number; is_active: boolean };
 
 type PanelState = {
@@ -144,7 +144,7 @@ export function moduleToDraft(module: ServiceModule): ModuleDraft {
 }
 
 export function userToDraft(user: AdminUser): UserDraft {
-  return { email: user.email ?? '', role: user.role, is_active: user.is_active, permissions_csv: user.permissions.join(', ') };
+  return { display_name: user.display_name ?? '', email: user.email ?? '', role: user.role, is_active: user.is_active, permissions_csv: user.permissions.join(', ') };
 }
 
 export function categoryToDraft(category: Category): TaxonomyDraft {
@@ -168,7 +168,7 @@ type AdminConsoleContextValue = {
   setTagDrafts: React.Dispatch<React.SetStateAction<Record<number, TaxonomyDraft>>>;
   moduleForm: { key: string; title: string; section: string; status: string; href: string; description: string; sort_order: number; is_external: boolean; visibility: string };
   setModuleForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['moduleForm']>>;
-  userForm: { username: string; password: string; email: string; role: string; is_active: boolean };
+  userForm: { username: string; password: string; display_name: string; email: string; role: string; is_active: boolean };
   setUserForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['userForm']>>;
   groupForm: { key: string; name: string; description: string; is_active: boolean; permissions_csv: string };
   setGroupForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['groupForm']>>;
@@ -248,7 +248,7 @@ function AdminConsoleTabsContent() {
   const [categoryDrafts, setCategoryDrafts] = useState<Record<number, TaxonomyDraft>>({});
   const [tagDrafts, setTagDrafts] = useState<Record<number, TaxonomyDraft>>({});
   const [moduleForm, setModuleForm] = useState({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' });
-  const [userForm, setUserForm] = useState({ username: '', password: '', email: '', role: 'user', is_active: true });
+  const [userForm, setUserForm] = useState({ username: '', password: '', display_name: '', email: '', role: 'user', is_active: true });
   const [groupForm, setGroupForm] = useState({ key: '', name: '', description: '', is_active: true, permissions_csv: '' });
   const [grantForm, setGrantForm] = useState({ subject_type: 'user' as 'user' | 'group', subject_id: '', resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' });
   const [membershipForm, setMembershipForm] = useState({ user_id: '', group_id: '' });
@@ -341,11 +341,11 @@ function AdminConsoleTabsContent() {
   }
   async function createUser() {
     if (!userForm.username.trim() || !userForm.password.trim()) return;
-    await runBusy('user-create', ['users', 'rbacMatrix', 'audits'], async () => { await createAdminUser({ ...userForm, email: userForm.email || null }, getCsrfCookie()); setUserForm({ username: '', password: '', email: '', role: 'user', is_active: true }); return '사용자를 생성했습니다.'; });
+    await runBusy('user-create', ['users', 'rbacMatrix', 'audits'], async () => { await createAdminUser({ ...userForm, display_name: userForm.display_name || null, email: userForm.email || null }, getCsrfCookie()); setUserForm({ username: '', password: '', display_name: '', email: '', role: 'user', is_active: true }); return '사용자를 생성했습니다.'; });
   }
   async function saveUser(user: AdminUser) {
     const draft = userDrafts[user.id] ?? userToDraft(user);
-    await runBusy(`user-${user.id}`, ['users', 'rbacMatrix', 'audits'], async () => { await updateAdminUser(user.id, { email: draft.email || null, role: draft.role, is_active: draft.is_active, permissions: parseCsv(draft.permissions_csv) }, getCsrfCookie()); return `${user.username} 사용자를 저장했습니다.`; });
+    await runBusy(`user-${user.id}`, ['users', 'rbacMatrix', 'audits'], async () => { await updateAdminUser(user.id, { display_name: draft.display_name || null, email: draft.email || null, role: draft.role, is_active: draft.is_active, permissions: parseCsv(draft.permissions_csv) }, getCsrfCookie()); return `${user.username} 사용자를 저장했습니다.`; });
   }
   async function resetPassword(user: AdminUser) {
     const result = await confirm({ title: '비밀번호 재설정', message: `${user.username} 사용자의 비밀번호를 임시 비밀번호로 재설정합니다.`, inputLabel: '임시 비밀번호', inputType: 'password', confirmLabel: '재설정', tone: 'danger' });
@@ -447,7 +447,7 @@ function AdminConsoleTabsContent() {
   }, []);
 
 
-  if (state.error) return <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">{state.error}</div>;
+
 
   return (
     <AdminConsoleContext.Provider value={context}>
@@ -461,6 +461,11 @@ function AdminConsoleTabsContent() {
             <button type="button" onClick={() => void refresh()} className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white">새로고침</button>
           </div>
         </div>
+        {state.error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+            {state.error}
+          </div>
+        ) : null}
         <details className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
           <summary className="cursor-pointer font-semibold text-slate-900">콘솔 사용 도움말</summary>
           <ul className="mt-3 grid gap-1 md:grid-cols-2">
@@ -478,10 +483,10 @@ function AdminConsoleTabsContent() {
         </details>
         <ToastStack toasts={state.toasts} onDismiss={dismissToast} />
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">Version / Mode</p><p className="mt-2 text-2xl font-semibold">v{state.summary?.app_version ?? '-'}</p><p className="text-sm text-slate-500">{state.summary?.app_env ?? '-'}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">Newsletters</p><p className="mt-2 text-2xl font-semibold">{state.summary?.newsletter_total ?? 0}</p><p className="text-sm text-slate-500">최근: {state.summary?.latest_newsletter_title ?? '-'}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">Assets</p><p className="mt-2 text-2xl font-semibold">{state.health?.ok ?? 0} OK</p><p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0} · 설정 {state.health?.misconfig ?? 0}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">AI 운영</p><p className="mt-2 text-2xl font-semibold">{String(state.summary?.ai_status?.status ?? '-')}</p><p className="text-sm text-slate-500">logs {state.ai?.request_logs_total ?? 0} · failures {state.ai?.request_failures ?? 0}</p></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">버전 / 모드</p><p className="mt-2 text-2xl font-semibold">v{state.summary?.app_version ?? '-'}</p><p className="text-sm text-slate-500">{state.summary?.app_env ?? '-'}</p></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">뉴스레터</p><p className="mt-2 text-2xl font-semibold">{state.summary?.newsletter_total ?? 0}</p><p className="text-sm text-slate-500">최근: {state.summary?.latest_newsletter_title ?? '-'}</p></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">자산</p><p className="mt-2 text-2xl font-semibold">{state.health?.ok ?? 0} OK</p><p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0} · 설정 {state.health?.misconfig ?? 0}</p></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">AI 운영</p><p className="mt-2 text-2xl font-semibold">{String(state.summary?.ai_status?.status ?? '-')}</p><p className="text-sm text-slate-500">로그 {state.ai?.request_logs_total ?? 0} · 실패 {state.ai?.request_failures ?? 0}</p></div>
         </section>
         <nav className="flex flex-wrap gap-2" aria-label="관리자 콘솔 탭" role="tablist">
           {tabs.map((tab) => {

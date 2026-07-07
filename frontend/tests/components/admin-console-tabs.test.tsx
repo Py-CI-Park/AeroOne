@@ -111,9 +111,9 @@ const parityMatrix = [
       fireEvent.click(screen.getByRole('tab', { name: '세션' }));
       expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '오래된 세션/로그 정리' })).toBeInTheDocument();
-      expect(screen.getByText('Active sessions')).toBeInTheDocument();
-      expect(screen.getByText('Recent login events')).toBeInTheDocument();
-      expect(screen.getByText('Anonymous read tracking')).toBeInTheDocument();
+      expect(screen.getByText('활성 세션')).toBeInTheDocument();
+      expect(screen.getByText('최근 로그인/로그아웃 이벤트')).toBeInTheDocument();
+      expect(screen.getByText('익명 읽음 추적')).toBeInTheDocument();
       expect(screen.getAllByText('operator').length).toBeGreaterThan(0);
     },
   },
@@ -173,7 +173,7 @@ const parityMatrix = [
     assertPresent: async () => {
       fireEvent.click(screen.getByRole('tab', { name: '감사' }));
       expect(await screen.findByRole('heading', { name: '감사 로그' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'CSV 내보내기' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '현재 결과 CSV 내보내기' })).toBeInTheDocument();
       expect(screen.getByLabelText('감사 검색')).toBeInTheDocument();
       expect(screen.getByText('backup.create')).toBeInTheDocument();
     },

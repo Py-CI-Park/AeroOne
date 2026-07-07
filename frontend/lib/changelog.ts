@@ -15,6 +15,17 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.12.1',
+    date: '2026-07-06',
+    items: [
+      '헤더에 현재 로그인한 사용자 아이디와 로그아웃 버튼을 표시하고, 로그아웃 이벤트를 세션/로그 화면과 DB 기록으로 추적합니다.',
+      '계정 등록 화면을 접속 아이디/임시 비밀번호 필수, 이름/사용자 이메일 선택 구조로 재정리했습니다.',
+      '사용자 목록에서 각 사용자 옆의 권한 수정 버튼으로 직접 권한 패널을 열어 수정하도록 가독성을 높였습니다.',
+      '감사 로그 페이지네이션·필터 초기화·현재 결과 CSV 내보내기와 세션 화면 한국어 라벨/15초 자동 새로고침 안내를 추가했습니다.',
+      '헤더 버전 배지에 최신 업데이트 날짜를 함께 표시합니다.',
+    ],
+  },
+  {
     version: '1.12.0',
     date: '2026-07-05',
     items: [
@@ -260,3 +271,4 @@ export const CHANGELOG: ChangelogEntry[] = [
 ];
 
 export const APP_VERSION = CHANGELOG[0].version;
+export const APP_UPDATED_DATE = CHANGELOG[0].date;

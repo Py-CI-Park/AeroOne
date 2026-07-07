@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { AuditEvent } from '@/lib/types';
 import { Badge, useAdminConsoleData } from '../admin-console-tabs';
-import { compareDate, compareText, ListFilter, ListState, matchesListQuery, normalizeListQuery, stableSort } from '../widgets/list-filter';
+import { compareDate, compareText, ListFilter, ListPagination, ListState, matchesListQuery, normalizeListQuery, paginate, stableSort } from '../widgets/list-filter';
 
 const CSV_HEADER = 'id,actor_username,actor_role,action,target_type,target_id,status,ip_address,created_at';
 
@@ -40,6 +40,7 @@ export function AdminAuditSection() {
   const [status, setStatus] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [page, setPage] = useState(0);
 
   const statuses = useMemo(() => {
     return stableSort(Array.from(new Set(state.audits.map((event) => event.status).filter(Boolean))), compareText);
@@ -62,6 +63,25 @@ export function AdminAuditSection() {
     });
   }, [fromDate, search, sort, state.audits, status, toDate]);
 
+  const pageSize = 25;
+  const pagedAudits = paginate(visibleAudits, page, pageSize);
+  const hasActiveFilter = Boolean(search || status || fromDate || toDate);
+
+  useEffect(() => {
+    setPage(0);
+  }, [fromDate, search, status, toDate]);
+
+  useEffect(() => {
+    if (pagedAudits.page !== page) setPage(pagedAudits.page);
+  }, [page, pagedAudits.page]);
+
+  function resetFilters() {
+    setSearch('');
+    setStatus('');
+    setFromDate('');
+    setToDate('');
+  }
+
   function exportCsv() {
     const csv = buildAuditCsv(visibleAudits);
     if (typeof window === 'undefined' || typeof document === 'undefined' || typeof Blob === 'undefined' || !window.URL?.createObjectURL) return;
@@ -80,23 +100,24 @@ export function AdminAuditSection() {
         <div>
           <h2 className="text-lg font-semibold">감사 로그</h2>
           <p className="text-sm text-slate-500">운영 이벤트를 검색·필터링하고 CSV로 내보냅니다.</p>
+          <p className="text-xs text-slate-400">CSV는 현재 검색·필터 결과만 내보냅니다.</p>
         </div>
-        <button type="button" onClick={exportCsv} className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">CSV 내보내기</button>
+        <button type="button" onClick={exportCsv} className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">현재 결과 CSV 내보내기</button>
       </div>
       <ListFilter
         id="admin-audits"
         searchLabel="감사 검색"
-        searchPlaceholder="actor / role / action / target / status / ip"
+        searchPlaceholder="작업자 / 권한 / 작업 / 대상 / 상태 / IP"
         searchValue={search}
         onSearchChange={setSearch}
         sortLabel="감사 정렬"
         sortValue={sort}
         onSortChange={setSort}
-        sortOptions={[{ value: 'created-desc', label: 'created 최신순' }, { value: 'created-asc', label: 'created 오래된순' }, { value: 'action-asc', label: 'action 오름차순' }, { value: 'status-asc', label: 'status 오름차순' }]}
+        sortOptions={[{ value: 'created-desc', label: '생성일 최신순' }, { value: 'created-asc', label: '생성일 오래된순' }, { value: 'action-asc', label: '작업 오름차순' }, { value: 'status-asc', label: '상태 오름차순' }]}
         totalCount={state.audits.length}
         filteredCount={visibleAudits.length}
       />
-      <div className="mb-3 grid gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm md:grid-cols-3">
+      <div className="mb-3 grid gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm md:grid-cols-[1fr_1fr_1fr_auto]">
         <label className="grid gap-1 text-xs font-semibold text-slate-600">
           상태
           <select aria-label="감사 상태 필터" value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-normal text-slate-900">
@@ -112,10 +133,16 @@ export function AdminAuditSection() {
           끝
           <input type="date" aria-label="감사 기간 끝" value={toDate} onChange={(event) => setToDate(event.target.value)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-normal text-slate-900" />
         </label>
+        {hasActiveFilter ? (
+          <button type="button" onClick={resetFilters} className="self-end rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+            필터 초기화
+          </button>
+        ) : null}
       </div>
       <div className="space-y-2">
         <ListState loading={state.busy === 'refresh'} error={state.error} totalCount={state.audits.length} filteredCount={visibleAudits.length} emptyMessage="감사 이벤트가 아직 없습니다." noMatchesMessage="검색 조건에 맞는 감사 이벤트가 없습니다." />
-        {visibleAudits.map((event) => <div key={event.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm"><div className="flex items-center justify-between gap-2"><span className="font-mono text-xs text-slate-500">{event.action}</span><Badge>{event.status}</Badge></div><p className="mt-1 text-slate-600">{event.actor_username ?? 'system'} → {event.target_type} {event.target_id ?? ''}</p><p className="mt-1 text-xs text-slate-400">{event.created_at}</p></div>)}
+        {pagedAudits.pageItems.map((event) => <div key={event.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm"><div className="flex items-center justify-between gap-2"><span className="font-mono text-xs text-slate-500">{event.action}</span><Badge>{event.status}</Badge></div><p className="mt-1 text-slate-600">{event.actor_username ?? 'system'} → {event.target_type} {event.target_id ?? ''}</p><p className="mt-1 text-xs text-slate-400">{event.created_at}</p></div>)}
+        {visibleAudits.length > 0 ? <ListPagination id="admin-audits" page={pagedAudits.page} totalPages={pagedAudits.totalPages} onPageChange={setPage} /> : null}
       </div>
     </section>
   );

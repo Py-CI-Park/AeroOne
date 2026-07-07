@@ -2,9 +2,9 @@
 
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
-- 기준 commit: `1.12.0` (`관리자 콘솔 UX/UI 개선: 권한 이해 카탈로그·감사 로그 전용 탭·세션/목록 인체공학·탭 단축키/온보딩`)
-- 갱신일: 2026-07-05
-- 테스트 상태: backend `pytest tests` **265 passed** (실패 0), frontend Vitest **310 passed** (65 파일), `tsc --noEmit` 및 `next build` 성공
+- 기준 commit: `1.12.1` (`관리자 계정/세션 UX 개선: 헤더 신원·로그아웃·선택 프로필·사용자별 권한 수정·감사/세션 가독성`)
+- 갱신일: 2026-07-06
+- 테스트 상태: backend `pytest tests` **268 passed** (실패 0), frontend Vitest **311 passed** (65 파일), `tsc --noEmit` 및 `next build` 성공
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 ---
@@ -43,7 +43,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.12.0 기준 관리자 콘솔 권한 이해 카탈로그·감사 로그 전용 탭·세션 자동 새로고침, 1.11.0 의 관리자 로그인/CRUD same-origin 프록시·탭형 관리자 콘솔·RBAC/ResourceGrant 입력 UX, 1.10.0 의 NSA 서버측 접근제어까지 backend 265개·frontend 310개 회귀로 검증된 상태입니다.
+**가능합니다.** 단일 PC(`Mode A`) 와 LAN 다중 PC(`Mode B`) 운영 모두 유지되며, 1.12.1 기준 헤더 로그인 사용자 표시·로그아웃 기록·선택 프로필(`display_name`)·사용자별 권한 수정 UX, 1.12.0 의 관리자 콘솔 권한 이해 카탈로그·감사 로그 전용 탭·세션 자동 새로고침, 1.11.0 의 관리자 로그인/CRUD same-origin 프록시·탭형 관리자 콘솔·RBAC/ResourceGrant 입력 UX, 1.10.0 의 NSA 서버측 접근제어까지 유지됩니다.
 
 ---
 
@@ -53,6 +53,7 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
+| `1.12.1` | patch | 헤더 `로그인: <username>`/로그아웃 버튼, `login_events.status='logout'` 기록과 현재 세션 활동 제거, 사용자 생성의 필수 ID/PW·선택 이름/이메일(`users.display_name`, Alembic `20260707_0008`), 사용자 행별 **권한 수정** 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 마지막 갱신/15초 자동 새로고침 안내, 버전 배지 업데이트 날짜 표시 |
 | `1.12.0` | 단계 25 | 권한 키 한국어 라벨·설명·카테고리 카탈로그와 RBAC 매트릭스 pill/유효권한 요약, 감사 로그 전용 탭(작업자/액션/상태/기간 검색·필터·CSV), 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션, 탭 숫자 단축키 1~9·접이식 온보딩 도움말 (프론트-only, 백엔드/스키마 무변경) |
 | `1.11.0` | 단계 24 | 관리자 로그인/CRUD same-origin `/api/frontend/auth/*`, `/api/frontend/admin/*` 프록시 통합, 전용 `/api/frontend/search/unified`, 탭형 `/admin` 콘솔(모듈/사용자/RBAC/세션/시스템/분류/검색/백업), RBAC 입력 위젯, 목록 검색/정렬/상태, ARIA Tabs, ResourceGrant key 방어 |
 | `1.10.0` | 단계 23 | RBAC 읽기 권한 상승 차단, `can_read_collection` 단일 정책, NSA 0000 비밀번호 제거와 서버측 권한/ResourceGrant 적용, 사용자별 메뉴 힌트, 자산/config-health 진단, 사용자·그룹·리소스 권한/RBAC 매트릭스, 접속자·세션 대시보드 |
@@ -79,15 +80,15 @@
 
 ### 3.3 테스트 통계
 
-- backend 전체: **265 passed**
-- frontend 전체: **310 passed / 65 files**
+- backend 전체: **268 passed**
+- frontend 전체: **311 passed / 65 files**
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, `offline_package.bat` packaging 제외 목록, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 탭형 관리자 콘솔/RBAC/목록 UX, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API, 뷰어·Document·AeroAI 프론트 컴포넌트
 
-### 3.4 릴리즈 1.12.0 폐쇄망 반입물
+### 3.4 릴리즈 1.12.1 폐쇄망 반입물
 
 | 반입물 | 릴리즈/생성 위치 | 폐쇄망 배치 | 필수 여부 |
 |---|---|---|---|
-| `AeroOne-offline-1.12.0-YYYYMMDD-HHMMSS.zip` + `.sha256` | AeroOne GitHub Release `1.12.0` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
+| `AeroOne-offline-1.12.1-YYYYMMDD-HHMMSS.zip` + `.sha256` | AeroOne GitHub Release `1.12.1` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
 | `AeroOne-bundle.zip` + `.sha256` | 같은 Release asset 또는 Open Notebook `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 후 `2-airgap-install.bat` | Open Notebook 사용 시 필수 |
 | Ollama 모델 폴더(`manifests\`, `blobs\`) | 인터넷 PC `%USERPROFILE%\.ollama\models` | 폐쇄망 PC `%USERPROFILE%\.ollama\models` | AeroAI/Open Notebook AI 사용 시 필수 |
 | `OllamaSetup.exe` | 인터넷 PC에서 별도 다운로드 | 폐쇄망 PC에 1회 설치 | 폐쇄망 PC에 Ollama 없을 때 필수 |
@@ -313,7 +314,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-기대 출력 예: `265 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+기대 출력 예: `268 passed in <시간>`. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md) 를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
@@ -344,16 +345,16 @@ python -m pytest tests -q
 | 카테고리/태그 정리 | `/admin` 콘솔의 카테고리/태그 관리에서 생성·정렬·비활성화 |
 | Markdown 신규 | 관리자 화면 우측 상단 **새 Markdown** 버튼 |
 | 대시보드 카드 변경 | `http://<host>:29501/admin` 콘솔의 **모듈** 탭에서 `service_modules` 카드 추가·삭제, 활성/비활성, Development/Coming soon, 링크·설명·순서, 노출 대상(public: 모든 사용자 / admin: 관리자 전용)을 조정. 개발중·Coming soon 카드와 Admin 메뉴는 관리자에게만 노출 |
-| 사용자/권한 관리 | `http://<host>:29501/admin` 콘솔의 **사용자/RBAC** 탭에서 admin/user/pending 사용자, 직접 권한, 그룹 권한, 리소스 권한, RBAC 매트릭스를 관리. self-lockout 과 마지막 admin 제거는 API 가 거부 |
+| 사용자/권한 관리 | `http://<host>:29501/admin` 콘솔의 **사용자/RBAC** 탭에서 admin/user/pending 사용자, 접속 아이디/임시 비밀번호, 선택 이름/이메일, 직접 권한, 그룹 권한, 리소스 권한, RBAC 매트릭스를 관리. 사용자 행의 **권한 수정** 버튼으로 직접 권한 패널을 펼치며, self-lockout 과 마지막 admin 제거는 API 가 거부 |
 | 운영 상태 확인 | `http://<host>:29501/admin` 콘솔의 **세션/시스템/검색/백업** 탭에서 버전/DB/뉴스레터/자산/config-health/read/AI/audit/백업 요약, 통합 검색, 백업 생성·검증·복원 점검을 확인 |
 | NSA 권한 부여 | `/admin` 사용자/권한 화면에서 대상 계정 또는 그룹에 전역 `collections.nsa.read`(또는 legacy `search.nsa.read`) 권한이나 `collection:nsa` ResourceGrant 중 하나를 부여합니다. 관리자는 별도 grant 없이 접근할 수 있으며, 이 세 경로 중 하나도 없으면 fail-closed |
-| 접속자/세션 확인 | `/admin` 접속자 대시보드에서 로그인/세션 활동과 익명 IP 읽음 추적을 확인하고 보존 정책에 따라 감사 로그를 남긴 뒤 purge |
+| 접속자/세션 확인 | `/admin` 접속자 대시보드에서 로그인/로그아웃 이벤트, 세션 활동, 익명 IP 읽음 추적을 확인하고 보존 정책에 따라 감사 로그를 남긴 뒤 purge |
 | 자산 진단 | `/admin` 자산 진단/config-health 에서 `_database`, storage, 썸네일, DB/마이그레이션 상태를 확인하고 누락 경로를 배포 산출물 또는 운영 백업에서 복구 |
 | 비밀번호 교체 | `/admin` 콘솔의 **관리자 계정 / 비밀번호** 에서 현재 비밀번호 확인 후 직접 변경(변경 시 다른 세션 로그아웃). 또는 `setup_offline.bat` 재실행으로 `backend\.env` 의 `ADMIN_PASSWORD` 재발급(기존 `.env` 는 `.bak` 자동 백업). 이 배포본 초기 비밀번호는 `27882788` |
 
 ### 9.1 관리자 same-origin 접속 원칙
 
-운영자와 사용자는 로그인(`/login`)과 관리자 콘솔(`/admin`)을 모두 같은 frontend origin 인 `http://<host>:29501` 에서 엽니다. 브라우저는 backend origin(`http://<host>:18437`)을 직접 호출하지 않고 `/api/frontend/auth/*`, `/api/frontend/admin/*`, `/api/frontend/search/unified` same-origin 경로만 호출합니다. frontend 서버가 backend 로 relay 하므로 LAN 클라이언트에서도 쿠키/CORS 경계가 흔들리지 않습니다. `/admin` 콘솔은 모듈/사용자/RBAC/세션/시스템/분류/검색/백업/감사 탭으로 나뉘며, 1.12.0 부터 감사 로그 전용 탭·권한 라벨 카탈로그·세션 자동 새로고침·탭 숫자 단축키를 제공합니다.
+운영자와 사용자는 로그인(`/login`)과 관리자 콘솔(`/admin`)을 모두 같은 frontend origin 인 `http://<host>:29501` 에서 엽니다. 브라우저는 backend origin(`http://<host>:18437`)을 직접 호출하지 않고 `/api/frontend/auth/*`, `/api/frontend/admin/*`, `/api/frontend/search/unified` same-origin 경로만 호출합니다. frontend 서버가 backend 로 relay 하므로 LAN 클라이언트에서도 쿠키/CORS 경계가 흔들리지 않습니다. 로그인 후 헤더는 `로그인: <username>` 과 `로그아웃` 버튼을 표시하고, 로그아웃은 DB 의 `login_events` 에 `logout` 이벤트를 남긴 뒤 현재 세션 쿠키를 제거합니다. `/admin` 콘솔은 모듈/사용자/RBAC/세션/시스템/분류/검색/백업/감사 탭으로 나뉘며, 1.12.0 부터 감사 로그 전용 탭·권한 라벨 카탈로그·세션 자동 새로고침·탭 숫자 단축키를 제공합니다.
 
 ### 9.2 NSA 접근제어 주의
 

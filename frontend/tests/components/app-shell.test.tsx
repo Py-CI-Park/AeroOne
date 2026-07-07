@@ -3,16 +3,19 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { AppShell } from '@/components/layout/app-shell';
-const { fetchClientSessionMock } = vi.hoisted(() => ({
+const { fetchClientSessionMock, logoutMock } = vi.hoisted(() => ({
   fetchClientSessionMock: vi.fn(),
+  logoutMock: vi.fn(),
 }));
 
 vi.mock('@/lib/api', () => ({
   fetchClientSession: fetchClientSessionMock,
+  logout: logoutMock,
 }));
 
 beforeEach(() => {
   fetchClientSessionMock.mockReset();
+  logoutMock.mockReset();
   fetchClientSessionMock.mockReturnValue(new Promise(() => {}));
 });
 

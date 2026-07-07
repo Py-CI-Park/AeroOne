@@ -80,6 +80,7 @@ export interface ClientSessionResourceGrant {
 
 export interface ClientSession {
   authenticated: boolean | null;
+  username?: string | null;
   role: string | null;
   isAdmin: boolean;
   permissions: string[];
@@ -117,7 +118,7 @@ export interface LoginEvent {
   username: string;
   ip_address?: string | null;
   user_agent?: string | null;
-  status: 'success' | 'failure';
+  status: 'success' | 'failure' | 'logout';
   created_at: string;
 }
 
@@ -166,6 +167,7 @@ export interface AuditEvent {
 export interface AdminUser {
   id: number;
   username: string;
+  display_name?: string | null;
   email?: string | null;
   role: string;
   is_active: boolean;

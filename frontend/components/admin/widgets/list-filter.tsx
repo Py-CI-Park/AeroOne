@@ -100,16 +100,26 @@ export function ListFilter({
   return (
     <div className="mb-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm">
       <div className="grid gap-2 md:grid-cols-[1fr_14rem_auto] md:items-end">
-        <label className="grid gap-1 text-xs font-semibold text-slate-600" htmlFor={searchId}>
-          {searchLabel}
-          <input
-            id={searchId}
-            value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder={searchPlaceholder}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-normal text-slate-900"
-          />
-        </label>
+        <div className="grid gap-1">
+          <label className="text-xs font-semibold text-slate-600" htmlFor={searchId}>
+            {searchLabel}
+          </label>
+          <div className="flex gap-2">
+            <input
+              id={searchId}
+              type="search"
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder={searchPlaceholder}
+              className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm font-normal text-slate-900"
+            />
+            {searchValue ? (
+              <button type="button" onClick={() => onSearchChange('')} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600">
+                지우기
+              </button>
+            ) : null}
+          </div>
+        </div>
         <label className="grid gap-1 text-xs font-semibold text-slate-600" htmlFor={sortId}>
           {sortLabel}
           <select

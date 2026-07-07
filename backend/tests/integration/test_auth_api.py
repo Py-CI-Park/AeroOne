@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
 from app.core.security import hash_password
-from app.modules.admin.models import ResourceGrant, UserPermission
+from app.modules.admin.models import LoginEvent, ResourceGrant, UserPermission, UserSessionActivity
 from app.modules.auth.models import User
 import pytest
 
@@ -35,6 +36,31 @@ def test_login_sets_session_and_csrf_cookie(client) -> None:
     assert 'csrf_token' in response.cookies
     set_cookie = response.headers.get('set-cookie', '')
     assert 'httponly' in set_cookie.lower()
+
+
+def test_logout_clears_cookies_records_event_and_removes_session_activity(client, app) -> None:
+    login_response = client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'password'})
+    assert login_response.status_code == 200
+
+    assert client.get('/api/v1/auth/me').status_code == 200
+
+    response = client.post('/api/v1/auth/logout')
+
+    assert response.status_code == 200
+    assert response.json() == {'status': 'ok'}
+    assert 'max-age=0' in response.headers.get('set-cookie', '').lower()
+    assert client.get('/api/v1/auth/me').status_code == 401
+    with app.state.db.session() as session:
+        statuses = session.execute(select(LoginEvent.status).order_by(LoginEvent.id)).scalars().all()
+        active_rows = session.scalar(select(func.count(UserSessionActivity.id)))
+    assert statuses == ['success', 'logout']
+    assert active_rows == 0
+
+    second_login = client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'password'})
+    assert second_login.status_code == 200
+    sessions_response = client.get('/api/v1/admin/sessions')
+    assert sessions_response.status_code == 200
+    assert any(event['status'] == 'logout' for event in sessions_response.json()['recent_login_events'])
 
 
 def test_admin_route_requires_auth(client) -> None:

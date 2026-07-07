@@ -101,7 +101,7 @@ test('admin home console lists config-health roots', async () => {
 
   fireEvent.click(screen.getByRole('tab', { name: '세션' }));
   expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
-  expect(screen.getByText('Anonymous read tracking')).toBeInTheDocument();
+  expect(screen.getByText('익명 읽음 추적')).toBeInTheDocument();
   expect(screen.getByText('IP/뉴스레터 집계 행 2개')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('tab', { name: 'RBAC' }));

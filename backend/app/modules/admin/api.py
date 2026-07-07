@@ -104,6 +104,18 @@ def _serialize_user(db: Session, user: User) -> UserAdminResponse:
     return UserAdminResponse.model_validate(user).model_copy(update={'permissions': sorted(list_user_permission_keys(db, user))})
 
 
+def _optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _required_text(value: str, field_name: str) -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f'{field_name} is required')
+    return cleaned
 
 
 def _serialize_resource_grant(grant: ResourceGrant) -> ResourceGrantResponse:
@@ -448,11 +460,15 @@ def _has_other_active_admin(db: Session, user: User) -> bool:
 
 @router.post('/users', response_model=UserAdminResponse, dependencies=[Depends(require_permission('admin.users.manage')), Depends(require_csrf)])
 def create_user(payload: UserCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> UserAdminResponse:
-    if UserRepository(db).get_by_username(payload.username):
+    username = _required_text(payload.username, 'username')
+    if not payload.password.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='password is required')
+    if UserRepository(db).get_by_username(username):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already exists')
     user = User(
-        username=payload.username,
-        email=payload.email,
+        username=username,
+        email=_optional_text(payload.email),
+        display_name=_optional_text(payload.display_name),
         password_hash=hash_password(payload.password),
         role=payload.role,
         is_active=payload.is_active,
@@ -460,7 +476,15 @@ def create_user(payload: UserCreateRequest, request: Request, db: Session = Depe
     )
     db.add(user)
     db.flush()
-    record_admin_audit(db, actor=actor, action='user.create', target_type='user', target_id=user.id, request=request, after={'username': user.username, 'role': user.role, 'is_active': user.is_active})
+    record_admin_audit(
+        db,
+        actor=actor,
+        action='user.create',
+        target_type='user',
+        target_id=user.id,
+        request=request,
+        after={'username': user.username, 'role': user.role, 'is_active': user.is_active, 'email': user.email, 'display_name': user.display_name},
+    )
     return _serialize_user(db, user)
 
 
@@ -469,7 +493,8 @@ def update_user(user_id: int, payload: UserUpdateRequest, request: Request, db: 
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
-    before = {'role': user.role, 'is_active': user.is_active, 'email': user.email, 'permissions': sorted(list_user_permission_keys(db, user))}
+    before = {'role': user.role, 'is_active': user.is_active, 'email': user.email, 'display_name': user.display_name, 'permissions': sorted(list_user_permission_keys(db, user))}
+    fields_set = payload.model_fields_set
     new_role = payload.role if payload.role is not None else user.role
     new_active = payload.is_active if payload.is_active is not None else user.is_active
     if user.id == actor.id and (not new_active or new_role != user.role):
@@ -477,8 +502,10 @@ def update_user(user_id: int, payload: UserUpdateRequest, request: Request, db: 
     would_remove_admin = user.is_active and user.role == 'admin' and (not new_active or new_role != 'admin')
     if would_remove_admin and not _has_other_active_admin(db, user):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='At least one active admin must remain')
-    if payload.email is not None:
-        user.email = payload.email
+    if 'email' in fields_set:
+        user.email = _optional_text(payload.email)
+    if 'display_name' in fields_set:
+        user.display_name = _optional_text(payload.display_name)
     user.role = new_role
     user.is_active = new_active
     if payload.permissions is not None:
@@ -489,7 +516,7 @@ def update_user(user_id: int, payload: UserUpdateRequest, request: Request, db: 
             db.add(UserPermission(user_id=user.id, permission_key=key))
     user.session_version += 1
     db.flush()
-    after = {'role': user.role, 'is_active': user.is_active, 'email': user.email, 'permissions': sorted(list_user_permission_keys(db, user))}
+    after = {'role': user.role, 'is_active': user.is_active, 'email': user.email, 'display_name': user.display_name, 'permissions': sorted(list_user_permission_keys(db, user))}
     record_admin_audit(db, actor=actor, action='user.update', target_type='user', target_id=user.id, request=request, before=before, after=after)
     return _serialize_user(db, user)
 

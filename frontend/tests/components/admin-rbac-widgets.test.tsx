@@ -122,6 +122,7 @@ test('permission grid selects and serializes user and group permissions without 
   expect(await screen.findByText('사용자/RBAC')).toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: 'operator permissions' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: 'operator' } });
+  fireEvent.click(screen.getByRole('button', { name: '권한 수정' }));
   fireEvent.click(screen.getByLabelText('operator permissions admin.write'));
   fireEvent.click(screen.getByRole('button', { name: '저장' }));
 
