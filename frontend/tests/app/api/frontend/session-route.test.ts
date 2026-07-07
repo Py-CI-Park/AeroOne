@@ -29,7 +29,7 @@ afterEach(() => {
 
 test('GET returns permission and resource hints for authenticated sessions', async () => {
   const fetchMock = vi.spyOn(global, 'fetch')
-    .mockResolvedValueOnce(new Response(JSON.stringify({ role: 'user' }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'analyst', role: 'user' }), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify({
       permissions: ['collections.nsa.read'],
       resources: [
@@ -52,6 +52,7 @@ test('GET returns permission and resource hints for authenticated sessions', asy
   expect(response.status).toBe(200);
   await expect(response.json()).resolves.toEqual({
     authenticated: true,
+    username: 'analyst',
     role: 'user',
     isAdmin: false,
     permissions: ['collections.nsa.read'],
@@ -70,6 +71,7 @@ test('GET returns empty hints for anonymous sessions', async () => {
   expect(response.status).toBe(200);
   await expect(response.json()).resolves.toEqual({
     authenticated: false,
+    username: null,
     role: null,
     isAdmin: false,
     permissions: [],
@@ -86,6 +88,7 @@ test('GET returns unknown identity and empty hints when all upstream bases fail'
   expect(response.status).toBe(200);
   await expect(response.json()).resolves.toEqual({
     authenticated: null,
+    username: null,
     role: null,
     isAdmin: false,
     permissions: [],

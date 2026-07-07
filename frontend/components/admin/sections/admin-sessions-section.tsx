@@ -6,6 +6,13 @@ import { Badge, useAdminConsoleData } from '../admin-console-tabs';
 import { compareDate, compareNumber, compareText, ListFilter, ListPagination, ListState, matchesListQuery, normalizeListQuery, paginate, stableSort } from '../widgets/list-filter';
 import { formatRelativeTime } from '@/lib/relative-time';
 
+function loginEventTone(status: string): 'green' | 'red' | 'blue' | 'slate' {
+  if (status === 'success') return 'green';
+  if (status === 'failure') return 'red';
+  if (status === 'logout') return 'blue';
+  return 'slate';
+}
+
 export function AdminSessionsSection() {
   const { state, refresh, purgeSessionMetadata } = useAdminConsoleData();
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -14,6 +21,7 @@ export function AdminSessionsSection() {
   const [loginSearch, setLoginSearch] = useState('');
   const [loginSort, setLoginSort] = useState('created-desc');
   const [loginPage, setLoginPage] = useState(0);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState('');
   const activeSessions = state.connectedUsers?.active_sessions ?? [];
   const loginEvents = state.connectedUsers?.recent_login_events ?? [];
 
@@ -48,6 +56,10 @@ export function AdminSessionsSection() {
   }, [autoRefresh, refresh]);
 
   useEffect(() => {
+    if (state.connectedUsers) setLastRefreshedAt(new Date().toLocaleTimeString('ko-KR'));
+  }, [state.connectedUsers]);
+
+  useEffect(() => {
     setLoginPage(0);
   }, [loginSearch]);
 
@@ -58,21 +70,21 @@ export function AdminSessionsSection() {
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">접속자/세션</h2><p className="text-sm text-slate-500">로그인 세션 활동과 익명 IP 읽음 집계를 함께 확인합니다.</p></div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} aria-label="세션 자동 새로고침" className="h-4 w-4 rounded border-slate-300" />자동 새로고침</label><button type="button" onClick={() => void purgeSessionMetadata()} disabled={state.busy === 'sessions-purge'} className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">오래된 세션/로그 정리</button></div></div>
+      <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">접속자/세션</h2><p className="text-sm text-slate-500">로그인·로그아웃 이벤트, 세션 활동, 익명 IP 읽음 집계를 함께 확인합니다.</p>{lastRefreshedAt ? <p className="text-xs text-slate-400">마지막 갱신 {lastRefreshedAt}</p> : null}</div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} aria-label="세션 자동 새로고침" className="h-4 w-4 rounded border-slate-300" />자동 새로고침(15초)</label><button type="button" onClick={() => void purgeSessionMetadata()} disabled={state.busy === 'sessions-purge'} className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">오래된 세션/로그 정리</button></div></div>
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-slate-100 p-3">
-          <p className="text-xs font-semibold uppercase text-slate-500">Active sessions</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">활성 세션</p>
           <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.active_count ?? 0}</p>
           <ListFilter
             id="admin-active-sessions"
             searchLabel="활성 세션 검색"
-            searchPlaceholder="username"
+            searchPlaceholder="사용자명"
             searchValue={activeSearch}
             onSearchChange={setActiveSearch}
             sortLabel="활성 세션 정렬"
             sortValue={activeSort}
             onSortChange={setActiveSort}
-            sortOptions={[{ value: 'last-seen-desc', label: 'last seen 최신순' }, { value: 'last-seen-asc', label: 'last seen 오래된순' }, { value: 'username-asc', label: 'username 오름차순' }]}
+            sortOptions={[{ value: 'last-seen-desc', label: '최근 활동 최신순' }, { value: 'last-seen-asc', label: '최근 활동 오래된순' }, { value: 'username-asc', label: '사용자명 오름차순' }]}
             totalCount={activeSessions.length}
             filteredCount={visibleActiveSessions.length}
           />
@@ -86,18 +98,18 @@ export function AdminSessionsSection() {
           </div>
         </div>
         <div className="rounded-lg border border-slate-100 p-3">
-          <p className="text-xs font-semibold uppercase text-slate-500">Recent login events</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">최근 로그인/로그아웃 이벤트</p>
           <p className="mt-1 text-sm text-slate-600">실패 {state.connectedUsers?.login_failure_count ?? 0}건</p>
           <ListFilter
             id="admin-login-events"
             searchLabel="로그인 이벤트 검색"
-            searchPlaceholder="username / status"
+            searchPlaceholder="사용자명 / 상태 / IP / 날짜"
             searchValue={loginSearch}
             onSearchChange={setLoginSearch}
             sortLabel="로그인 이벤트 정렬"
             sortValue={loginSort}
             onSortChange={setLoginSort}
-            sortOptions={[{ value: 'created-desc', label: 'created 최신순' }, { value: 'username-asc', label: 'username 오름차순' }, { value: 'status-asc', label: 'status 오름차순' }]}
+            sortOptions={[{ value: 'created-desc', label: '생성일 최신순' }, { value: 'username-asc', label: '사용자명 오름차순' }, { value: 'status-asc', label: '상태 오름차순' }]}
             totalCount={loginEvents.length}
             filteredCount={visibleLoginEvents.length}
           />
@@ -106,12 +118,12 @@ export function AdminSessionsSection() {
             {pagedLoginEvents.pageItems.map((event) => {
               const absoluteCreated = new Date(event.created_at).toLocaleString('ko-KR');
               const relativeCreated = formatRelativeTime(event.created_at);
-              return <div key={event.id} className="flex items-center justify-between gap-2"><span>{event.username}</span><span className="text-xs text-slate-500">{relativeCreated ? `${relativeCreated} · ${absoluteCreated}` : absoluteCreated}</span><Badge tone={event.status === 'success' ? 'green' : 'red'}>{event.status}</Badge></div>;
+              return <div key={event.id} className="flex items-center justify-between gap-2"><span>{event.username}</span><span className="text-xs text-slate-500">{relativeCreated ? `${relativeCreated} · ${absoluteCreated}` : absoluteCreated}</span><Badge tone={loginEventTone(event.status)}>{event.status}</Badge></div>;
             })}
           </div>
           {visibleLoginEvents.length > 0 ? <ListPagination id="admin-login-events" page={pagedLoginEvents.page} totalPages={pagedLoginEvents.totalPages} onPageChange={setLoginPage} /> : null}
         </div>
-        <div className="rounded-lg border border-slate-100 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Anonymous read tracking</p><p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.read_tracking_summary.total_reads ?? 0}</p><p className="text-sm text-slate-500">IP/뉴스레터 집계 행 {state.connectedUsers?.read_tracking_summary.rows ?? 0}개</p></div>
+        <div className="rounded-lg border border-slate-100 p-3"><p className="text-xs font-semibold uppercase text-slate-500">익명 읽음 추적</p><p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.read_tracking_summary.total_reads ?? 0}</p><p className="text-sm text-slate-500">IP/뉴스레터 집계 행 {state.connectedUsers?.read_tracking_summary.rows ?? 0}개</p></div>
       </div>
     </section>
   );

@@ -319,6 +319,11 @@ export async function login(username: string, password: string) {
     body: JSON.stringify({ username, password }),
   });
 }
+export async function logout() {
+  return browserFetch<{ status: string }>('/api/frontend/auth/logout', {
+    method: 'POST',
+  });
+}
 
 
 export async function fetchPublicServiceModules(cookieHeader?: string) {
@@ -354,7 +359,7 @@ export async function fetchAdminPermissions() {
   return browserFetch<Permission[]>('/api/frontend/admin/permissions', { method: 'GET' });
 }
 
-export async function createAdminUser(payload: { username: string; password: string; role: string; email?: string | null; is_active?: boolean }, csrfToken: string) {
+export async function createAdminUser(payload: { username: string; password: string; role: string; display_name?: string | null; email?: string | null; is_active?: boolean }, csrfToken: string) {
   return browserFetch<AdminUser>('/api/frontend/admin/users', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -362,7 +367,7 @@ export async function createAdminUser(payload: { username: string; password: str
   });
 }
 
-export async function updateAdminUser(id: number, payload: Partial<Pick<AdminUser, 'email' | 'role' | 'is_active'>> & { permissions?: string[] }, csrfToken: string) {
+export async function updateAdminUser(id: number, payload: Partial<Pick<AdminUser, 'display_name' | 'email' | 'role' | 'is_active'>> & { permissions?: string[] }, csrfToken: string) {
   return browserFetch<AdminUser>(`/api/frontend/admin/users/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),

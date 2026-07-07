@@ -180,6 +180,13 @@
 - 코드: `frontend/lib/{permission-catalog,relative-time,changelog}.ts`, `frontend/components/admin/admin-console-tabs.tsx`, `frontend/components/admin/sections/{admin-audit,admin-rbac,admin-sessions,admin-backups}-section.tsx`, `frontend/components/admin/widgets/{permission-checkbox-grid,resource-grant-form,list-filter}.tsx`, `backend/app/core/config.py`(버전 문자열만)
 - 회귀 방지: backend `pytest tests` 265 passed, frontend Vitest 310 passed(65 파일), `tsc --noEmit`, `next build`, alembic head `0007`(스키마 변경 없음), 스토리별 architect CLEAR/APPROVE 및 executor red-team 통과(`artifacts/qa/1.12.0-admin-ux/`).
 
+### 1.12.1 patch — 관리자 계정/세션 UX 보강
+
+- 분류: patch (`1.12.1`) — 관리자 계정 생성/권한 수정 UX, 헤더 신원/로그아웃, 감사·세션 가독성 보강.
+- 무엇: 사용자 생성에서 접속 아이디/임시 비밀번호만 필수로 명확화하고 이름(`display_name`)·이메일은 선택값으로 저장, 사용자별 행의 **권한 수정** 패널, 헤더 `로그인: <username>`·로그아웃 버튼, `login_events.status='logout'` 기록, 버전 배지 업데이트 날짜를 추가.
+- 코드: `backend/app/modules/{admin,auth}/`, `backend/alembic/versions/20260707_0008_user_display_name.py`, `frontend/components/{admin,layout}/`, `frontend/app/api/frontend/session/route.ts`, `frontend/lib/{api,changelog,types}.ts`
+- 회귀 방지: backend `pytest tests` 268 passed, frontend Vitest 311 passed(65 파일), `tsc --noEmit`, `next build`, live dashboard/admin smoke.
+
 ---
 
 ## 보고서가 다루지 않는 자리

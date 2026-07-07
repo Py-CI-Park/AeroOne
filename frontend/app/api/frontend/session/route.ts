@@ -50,21 +50,21 @@ export async function GET(request: NextRequest) {
         signal: AbortSignal.timeout(5000),
       });
       if (upstream.ok) {
-        const user = (await upstream.json()) as { role?: string };
+        const user = (await upstream.json()) as { role?: string; username?: string | null };
         const isAdmin = user?.role === 'admin';
         const hints = await fetchEffectivePermissionHints(base, cookie);
         return NextResponse.json(
-          { authenticated: true, role: user?.role ?? null, isAdmin, ...hints },
+          { authenticated: true, username: user?.username ?? null, role: user?.role ?? null, isAdmin, ...hints },
           { status: 200 },
         );
       }
       if (upstream.status === 401) {
-        return NextResponse.json({ authenticated: false, role: null, isAdmin: false, ...EMPTY_HINTS }, { status: 200 });
+        return NextResponse.json({ authenticated: false, username: null, role: null, isAdmin: false, ...EMPTY_HINTS }, { status: 200 });
       }
     } catch {
       // try the next candidate base
     }
   }
   // 백엔드 미도달: 신원을 단정하지 않는다. 헤더는 로그인 항목만 표시하고 Admin 링크는 숨긴다.
-  return NextResponse.json({ authenticated: null, role: null, isAdmin: false, ...EMPTY_HINTS }, { status: 200 });
+  return NextResponse.json({ authenticated: null, username: null, role: null, isAdmin: false, ...EMPTY_HINTS }, { status: 200 });
 }

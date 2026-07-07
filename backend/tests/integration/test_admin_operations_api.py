@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+import json
+
 from app.core.config import reset_settings_cache
 from app.core.security import hash_file_bytes, hash_password
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter, NewsletterAsset, SourceType
@@ -28,7 +31,7 @@ def test_admin_dashboard_modules_assets_and_backup(csrf_client) -> None:
     summary_response = csrf_client.get('/api/v1/admin/dashboard')
     assert summary_response.status_code == 200
     summary = summary_response.json()
-    assert summary['app_version'] == '1.12.0'
+    assert summary['app_version'] == '1.12.1'
     assert summary['db_ok'] is True
     assert 'asset_health' in summary
 
@@ -62,6 +65,74 @@ def test_admin_dashboard_modules_assets_and_backup(csrf_client) -> None:
     assert dry_run['valid'] is True
     assert dry_run['compatible'] is True
     assert 'sqlite_database' in dry_run['would_restore']
+
+
+def test_admin_user_optional_profile_metadata(csrf_client) -> None:
+    create_response = csrf_client.post(
+        '/api/v1/admin/users',
+        json={'username': 'profile-user', 'password': 'profile-password'},
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+    assert created['username'] == 'profile-user'
+    assert created['email'] is None
+    assert created['display_name'] is None
+    assert created['role'] == 'user'
+    assert {'search.use', 'ai.use', 'ai.history.manage_own'} <= set(created['permissions'])
+
+    update_response = csrf_client.patch(
+        f"/api/v1/admin/users/{created['id']}",
+        json={'display_name': 'Profile User', 'email': 'profile-user@example.test'},
+    )
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated['display_name'] == 'Profile User'
+    assert updated['email'] == 'profile-user@example.test'
+    assert updated['username'] == 'profile-user'
+    assert updated['role'] == 'user'
+    assert {'search.use', 'ai.use', 'ai.history.manage_own'} <= set(updated['permissions'])
+
+    login_response = csrf_client.post('/api/v1/auth/login', json={'username': 'profile-user', 'password': 'profile-password'})
+    assert login_response.status_code == 200
+    admin_login = csrf_client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'password'})
+    assert admin_login.status_code == 200
+    csrf_client.headers.update({'x-csrf-token': admin_login.json()['csrf_token']})
+
+    audit_events = csrf_client.get('/api/v1/admin/audit-events').json()
+    create_event = next(event for event in audit_events if event['action'] == 'user.create' and event['target_id'] == str(created['id']))
+    update_event = next(event for event in audit_events if event['action'] == 'user.update' and event['target_id'] == str(created['id']))
+    create_after = json.loads(create_event['after_json'])
+    update_before = json.loads(update_event['before_json'])
+    update_after = json.loads(update_event['after_json'])
+    assert create_after['display_name'] is None
+    assert create_after['email'] is None
+    assert update_before['display_name'] is None
+    assert update_before['email'] is None
+    assert update_after['display_name'] == 'Profile User'
+    assert update_after['email'] == 'profile-user@example.test'
+
+    clear_response = csrf_client.patch(
+        f"/api/v1/admin/users/{created['id']}",
+        json={'display_name': ' ', 'email': ''},
+    )
+    assert clear_response.status_code == 200
+    cleared = clear_response.json()
+    assert cleared['display_name'] is None
+    assert cleared['email'] is None
+
+
+def test_admin_user_create_rejects_blank_login_id_or_password(csrf_client) -> None:
+    blank_username = csrf_client.post('/api/v1/admin/users', json={'username': '   ', 'password': 'profile-password'})
+    assert blank_username.status_code == 400
+    assert blank_username.json()['detail'] == 'username is required'
+
+    blank_password = csrf_client.post('/api/v1/admin/users', json={'username': 'blank-password-user', 'password': '   '})
+    assert blank_password.status_code == 400
+    assert blank_password.json()['detail'] == 'password is required'
+
+    trimmed_username = csrf_client.post('/api/v1/admin/users', json={'username': '  trimmed-user  ', 'password': 'trimmed-password'})
+    assert trimmed_username.status_code == 200
+    assert trimmed_username.json()['username'] == 'trimmed-user'
 
 
 def test_admin_user_rbac_self_lockout_and_non_admin_forbidden(csrf_client) -> None:

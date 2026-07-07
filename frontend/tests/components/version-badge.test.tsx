@@ -2,23 +2,24 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { VersionBadge } from '@/components/layout/version-badge';
-import { APP_CONTACT, APP_VERSION, CHANGELOG } from '@/lib/changelog';
+import { APP_CONTACT, APP_UPDATED_DATE, APP_VERSION, CHANGELOG } from '@/lib/changelog';
 
 test('shows the current version label and hides the dialog initially', () => {
   render(<VersionBadge />);
 
-  expect(screen.getByRole('button', { name: `v${APP_VERSION}` })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: `v${APP_VERSION} · ${APP_UPDATED_DATE}` })).toBeInTheDocument();
   expect(screen.queryByTestId('version-dialog')).not.toBeInTheDocument();
 });
 
-test('tracks the current 1.12.0 release in the dashboard header', () => {
-  expect(APP_VERSION).toBe('1.12.0');
+test('tracks the current 1.12.1 dashboard version and update date', () => {
+  expect(APP_VERSION).toBe('1.12.1');
+  expect(APP_UPDATED_DATE).toBe('2026-07-06');
 });
 
 test('opens the changelog dialog with latest entry and contact info on click', () => {
   render(<VersionBadge />);
 
-  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION}` }));
+  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION} · ${APP_UPDATED_DATE}` }));
 
   expect(screen.getByTestId('version-dialog')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: '업데이트 내역' })).toBeInTheDocument();
@@ -33,7 +34,7 @@ test('opens the changelog dialog with latest entry and contact info on click', (
 test('closes the dialog with a close control', () => {
   render(<VersionBadge />);
 
-  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION}` }));
+  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION} · ${APP_UPDATED_DATE}` }));
   expect(screen.getByTestId('version-dialog')).toBeInTheDocument();
 
   // 헤더의 X 와 하단 버튼 둘 다 "닫기" — 아무거나 누르면 닫힌다.
