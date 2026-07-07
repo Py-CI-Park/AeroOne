@@ -9,7 +9,7 @@ type SessionState =
   | { status: 'unknown' | 'anon' }
   | { status: 'auth'; username: string; isAdmin: boolean };
 
-// 헤더의 로그인/Admin/로그아웃 링크. 확인된 세션은 로그인 사용자 아이디를 표시하고,
+// 헤더의 로그인/Admin/로그아웃 링크. 확인된 세션은 사용자 아이디만 표시하고,
 // 관리자는 Admin 바로가기까지 노출한다. same-origin /api/frontend/session 을 써서
 // CORS/LAN 에 흔들리지 않게 신원을 확인한다. AppShell 은 서버 컴포넌트로 두고 이 섬만 클라이언트다.
 const navLinkClass =
@@ -75,7 +75,7 @@ export function AdminNavLink({ active = false }: { active?: boolean }) {
           aria-label={`현재 로그인 사용자 ${session.username}`}
           className="rounded-full border border-line-subtle bg-surface-sunken px-3 py-1 text-sm text-ink-2"
         >
-          로그인: <strong className="font-semibold text-ink-1">{session.username}</strong>
+          <strong className="font-semibold text-ink-1">{session.username}</strong>
         </span>
         <button
           type="button"

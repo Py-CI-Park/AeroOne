@@ -2,8 +2,8 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 버전: `1.12.1` (`관리자 계정/세션 UX 개선 — 헤더 신원·로그아웃·선택 프로필·사용자별 권한 수정·감사/세션 가독성`)
-- 갱신일: 2026-07-06
+- 기준 버전: `1.12.2` (`대시보드 시간·버전 날짜 표시·로그인 카드 UI 정리`)
+- 갱신일: 2026-07-07
 
 ---
 
@@ -72,6 +72,7 @@
 | 단계 24 | [`reports/phase-24-admin-console-proxy-redesign.md`](reports/phase-24-admin-console-proxy-redesign.md) | 관리자 로그인/CRUD same-origin 프록시 통합 + `/admin` 탭형 콘솔 UX/RBAC 입력/목록 상태/ARIA Tabs — minor 1.11.0 | `1.11.0-dev` |
 | 단계 25 | [`reports/phase-25-admin-console-ux-polish.md`](reports/phase-25-admin-console-ux-polish.md) | 권한 이해 카탈로그 + 감사 로그 전용 탭(검색/필터/CSV) + 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션 + 탭 숫자 단축키 1~9·온보딩 도움말 — 프론트-only minor 1.12.0 | `1.12.0-dev` |
 | 1.12.1 patch | — | 헤더 로그인 사용자 아이디/로그아웃, `users.display_name` 선택 프로필, 사용자 행별 권한 수정 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 15초 갱신 안내, 버전 배지 업데이트 날짜 표시 | `1.12.1` |
+| 1.12.2 patch | — | 헤더 버전 날짜 즉시 노출 제거(클릭 모달에만 표시), 대시보드 한국 시간 실시간 표시, 로그인 중앙 카드 UI, 로그인 후 아이디 단독 표시, 세션 탭 세로 가독성 보강 | `1.12.2` |
 
 ---
 
@@ -134,7 +135,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.12.1 기준 backend 268 passed, frontend Vitest 311 passed(65 파일), `tsc --noEmit`, `next build` 를 수행한다. release gate 에서는 여기에 브라우저 smoke 를 더한다.
+최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.12.2 기준 backend 268 passed, frontend Vitest 313 passed(66 파일), `tsc --noEmit`, `next build` 를 수행한다. release gate 에서는 여기에 브라우저 smoke 를 더한다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|

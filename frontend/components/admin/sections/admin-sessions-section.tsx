@@ -69,10 +69,23 @@ export function AdminSessionsSection() {
 
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">접속자/세션</h2><p className="text-sm text-slate-500">로그인·로그아웃 이벤트, 세션 활동, 익명 IP 읽음 집계를 함께 확인합니다.</p>{lastRefreshedAt ? <p className="text-xs text-slate-400">마지막 갱신 {lastRefreshedAt}</p> : null}</div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} aria-label="세션 자동 새로고침" className="h-4 w-4 rounded border-slate-300" />자동 새로고침(15초)</label><button type="button" onClick={() => void purgeSessionMetadata()} disabled={state.busy === 'sessions-purge'} className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">오래된 세션/로그 정리</button></div></div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border border-slate-100 p-3">
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">접속자/세션</h2>
+          <p className="text-sm text-slate-500">로그인·로그아웃 이벤트, 세션 활동, 익명 IP 읽음 집계를 함께 확인합니다.</p>
+          {lastRefreshedAt ? <p className="text-xs text-slate-400">마지막 갱신 {lastRefreshedAt}</p> : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+            <input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} aria-label="세션 자동 새로고침" className="h-4 w-4 rounded border-slate-300" />
+            자동 새로고침(15초)
+          </label>
+          <button type="button" onClick={() => void purgeSessionMetadata()} disabled={state.busy === 'sessions-purge'} className="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">오래된 세션/로그 정리</button>
+        </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_minmax(260px,0.8fr)]">
+        <div className="min-h-[24rem] rounded-lg border border-slate-100 p-3">
           <p className="text-xs font-semibold uppercase text-slate-500">활성 세션</p>
           <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.active_count ?? 0}</p>
           <ListFilter
@@ -88,16 +101,16 @@ export function AdminSessionsSection() {
             totalCount={activeSessions.length}
             filteredCount={visibleActiveSessions.length}
           />
-          <div className="mt-3 space-y-2 text-sm">
+          <div className="mt-3 max-h-72 space-y-2 overflow-auto text-sm">
             <ListState loading={state.busy === 'refresh'} error={state.error} totalCount={activeSessions.length} filteredCount={visibleActiveSessions.length} emptyMessage="활성 로그인 세션 없음" noMatchesMessage="검색 조건에 맞는 활성 세션이 없습니다." />
             {visibleActiveSessions.map((session) => {
               const absoluteLastSeen = new Date(session.last_seen_at).toLocaleString('ko-KR');
               const relativeLastSeen = formatRelativeTime(session.last_seen_at);
-              return <div key={`${session.user_id}-${session.last_seen_at}`} className="flex items-center justify-between gap-2"><span className="font-medium text-slate-700">{session.username}</span><span className="text-xs text-slate-500">{relativeLastSeen ? `${relativeLastSeen} · ${absoluteLastSeen}` : absoluteLastSeen}</span></div>;
+              return <div key={`${session.user_id}-${session.last_seen_at}`} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-2 py-1.5"><span className="font-medium text-slate-700">{session.username}</span><span className="text-xs text-slate-500">{relativeLastSeen ? `${relativeLastSeen} · ${absoluteLastSeen}` : absoluteLastSeen}</span></div>;
             })}
           </div>
         </div>
-        <div className="rounded-lg border border-slate-100 p-3">
+        <div className="min-h-[24rem] rounded-lg border border-slate-100 p-3">
           <p className="text-xs font-semibold uppercase text-slate-500">최근 로그인/로그아웃 이벤트</p>
           <p className="mt-1 text-sm text-slate-600">실패 {state.connectedUsers?.login_failure_count ?? 0}건</p>
           <ListFilter
@@ -113,17 +126,17 @@ export function AdminSessionsSection() {
             totalCount={loginEvents.length}
             filteredCount={visibleLoginEvents.length}
           />
-          <div className="mt-3 max-h-40 space-y-2 overflow-auto text-sm">
+          <div className="mt-3 max-h-96 space-y-2 overflow-auto text-sm">
             <ListState loading={state.busy === 'refresh'} error={state.error} totalCount={loginEvents.length} filteredCount={visibleLoginEvents.length} emptyMessage="로그인 이벤트가 없습니다." noMatchesMessage="검색 조건에 맞는 로그인 이벤트가 없습니다." />
             {pagedLoginEvents.pageItems.map((event) => {
               const absoluteCreated = new Date(event.created_at).toLocaleString('ko-KR');
               const relativeCreated = formatRelativeTime(event.created_at);
-              return <div key={event.id} className="flex items-center justify-between gap-2"><span>{event.username}</span><span className="text-xs text-slate-500">{relativeCreated ? `${relativeCreated} · ${absoluteCreated}` : absoluteCreated}</span><Badge tone={loginEventTone(event.status)}>{event.status}</Badge></div>;
+              return <div key={event.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-md bg-slate-50 px-2 py-1.5"><span>{event.username}</span><span className="text-xs text-slate-500">{relativeCreated ? `${relativeCreated} · ${absoluteCreated}` : absoluteCreated}</span><Badge tone={loginEventTone(event.status)}>{event.status}</Badge></div>;
             })}
           </div>
           {visibleLoginEvents.length > 0 ? <ListPagination id="admin-login-events" page={pagedLoginEvents.page} totalPages={pagedLoginEvents.totalPages} onPageChange={setLoginPage} /> : null}
         </div>
-        <div className="rounded-lg border border-slate-100 p-3"><p className="text-xs font-semibold uppercase text-slate-500">익명 읽음 추적</p><p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.read_tracking_summary.total_reads ?? 0}</p><p className="text-sm text-slate-500">IP/뉴스레터 집계 행 {state.connectedUsers?.read_tracking_summary.rows ?? 0}개</p></div>
+        <div className="min-h-[24rem] rounded-lg border border-slate-100 p-3"><p className="text-xs font-semibold uppercase text-slate-500">익명 읽음 추적</p><p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.read_tracking_summary.total_reads ?? 0}</p><p className="text-sm text-slate-500">IP/뉴스레터 집계 행 {state.connectedUsers?.read_tracking_summary.rows ?? 0}개</p></div>
       </div>
     </section>
   );

@@ -30,6 +30,9 @@ test('does not prefill the default administrator password', () => {
 
   expect(screen.getByPlaceholderText('아이디')).toHaveValue('admin');
   expect(screen.getByPlaceholderText('비밀번호')).toHaveValue('');
+  expect(screen.getByRole('form', { name: 'AeroOne 접속' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: '계정 접속' })).toBeInTheDocument();
+  expect(screen.queryByText('관리자 로그인')).not.toBeInTheDocument();
 });
 
 test('redirects to the admin console after successful login', async () => {

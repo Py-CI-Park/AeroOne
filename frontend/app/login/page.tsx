@@ -15,7 +15,7 @@ export default async function LoginPage({
   const theme = await getAppTheme(params.theme);
 
   return (
-    <AppShell title="관리자 로그인" theme={theme} themePath="/login">
+    <AppShell title="로그인" theme={theme} themePath="/login" contentClassName="max-w-5xl" hideTitle>
       <LoginForm />
     </AppShell>
   );

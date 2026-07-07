@@ -6,6 +6,7 @@ import { AdminNavLink } from '@/components/layout/admin-nav-link';
 import { Icon } from '@/components/ui/icons';
 import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
 import { VersionBadge } from '@/components/layout/version-badge';
+import { KoreanClock } from '@/components/layout/korean-clock';
 import { HelpManualButton } from '@/components/layout/help-manual-button';
 import type { NewsletterTheme } from '@/lib/theme';
 
@@ -28,6 +29,7 @@ export function AppShell({
   breadcrumb,
   titleMeta,
   titleActions,
+  hideTitle = false,
 }: {
   title: string;
   children: ReactNode;
@@ -39,7 +41,10 @@ export function AppShell({
   breadcrumb?: string[];
   titleMeta?: ReactNode;
   titleActions?: ReactNode;
+  hideTitle?: boolean;
 }) {
+  const showTitleBlock = !hideTitle || Boolean(titleMeta) || Boolean(titleActions);
+
   return (
     <div
       data-testid="app-shell"
@@ -92,6 +97,7 @@ export function AppShell({
         ) : null}
 
         <div className="ml-auto flex items-center gap-2">
+          {active === 'dashboard' ? <KoreanClock /> : null}
           {showThemeSelector ? <NewsletterThemeSelector theme={theme} currentPath={themePath} /> : null}
           <HelpManualButton />
           <AdminNavLink active={active === 'admin'} />
@@ -99,13 +105,15 @@ export function AppShell({
       </header>
 
       <main className={`mx-auto px-8 py-7 ${contentClassName}`}>
-        <div className="mb-6 flex items-baseline justify-between gap-3">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-3xl font-semibold tracking-tightest text-ink-1">{title}</h1>
-            {titleMeta ? <span className="font-mono text-sm text-ink-3">{titleMeta}</span> : null}
+        {showTitleBlock ? (
+          <div className="mb-6 flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline gap-3">
+              {!hideTitle ? <h1 className="text-3xl font-semibold tracking-tightest text-ink-1">{title}</h1> : null}
+              {titleMeta ? <span className="font-mono text-sm text-ink-3">{titleMeta}</span> : null}
+            </div>
+            {titleActions ? <div className="flex gap-2">{titleActions}</div> : null}
           </div>
-          {titleActions ? <div className="flex gap-2">{titleActions}</div> : null}
-        </div>
+        ) : null}
         {children}
       </main>
     </div>

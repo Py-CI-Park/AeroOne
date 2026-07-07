@@ -7,22 +7,23 @@ import { APP_CONTACT, APP_UPDATED_DATE, APP_VERSION, CHANGELOG } from '@/lib/cha
 test('shows the current version label and hides the dialog initially', () => {
   render(<VersionBadge />);
 
-  expect(screen.getByRole('button', { name: `v${APP_VERSION} · ${APP_UPDATED_DATE}` })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: `v${APP_VERSION}` })).not.toHaveTextContent(APP_UPDATED_DATE);
   expect(screen.queryByTestId('version-dialog')).not.toBeInTheDocument();
 });
 
-test('tracks the current 1.12.1 dashboard version and update date', () => {
-  expect(APP_VERSION).toBe('1.12.1');
-  expect(APP_UPDATED_DATE).toBe('2026-07-06');
+test('tracks the current 1.12.2 dashboard version and update date', () => {
+  expect(APP_VERSION).toBe('1.12.2');
+  expect(APP_UPDATED_DATE).toBe('2026-07-07');
 });
 
 test('opens the changelog dialog with latest entry and contact info on click', () => {
   render(<VersionBadge />);
 
-  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION} · ${APP_UPDATED_DATE}` }));
+  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION}` }));
 
   expect(screen.getByTestId('version-dialog')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: '업데이트 내역' })).toBeInTheDocument();
+  expect(screen.getByText(APP_UPDATED_DATE)).toBeInTheDocument();
   // 최신 릴리스의 첫 항목 본문이 보인다.
   expect(screen.getByText(CHANGELOG[0].items[0])).toBeInTheDocument();
   // 문의 정보는 이름만 노출(이메일/링크 없음).
@@ -34,7 +35,7 @@ test('opens the changelog dialog with latest entry and contact info on click', (
 test('closes the dialog with a close control', () => {
   render(<VersionBadge />);
 
-  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION} · ${APP_UPDATED_DATE}` }));
+  fireEvent.click(screen.getByRole('button', { name: `v${APP_VERSION}` }));
   expect(screen.getByTestId('version-dialog')).toBeInTheDocument();
 
   // 헤더의 X 와 하단 버튼 둘 다 "닫기" — 아무거나 누르면 닫힌다.
