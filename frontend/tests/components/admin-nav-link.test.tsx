@@ -86,6 +86,7 @@ test('renders Admin only when the session is confirmed admin', async () => {
 
   const admin = await screen.findByRole('link', { name: 'Admin' });
   expect(screen.getByText('admin')).toBeInTheDocument();
+  expect(screen.queryByText(/로그인:/)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '로그아웃' })).toBeInTheDocument();
   expect(admin).toHaveAttribute('href', '/admin');
   expect(admin).toHaveAttribute('aria-current', 'page');
@@ -106,6 +107,7 @@ test('renders login identity and logout for authenticated non-admin sessions wit
 
   await waitFor(() => expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument());
   expect(screen.getByText('analyst')).toBeInTheDocument();
+  expect(screen.queryByText(/로그인:/)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '로그아웃' })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
 });
