@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "active_work_id": "v1-13-0-operator-experience-plan",
+  "works": {
+    "v1-13-0-operator-experience-plan": {
+      "work_id": "v1-13-0-operator-experience-plan",
+      "active_plan": ".omo/plans/v1-13-0-operator-experience-plan.md",
+      "plan_name": "v1-13-0-operator-experience-plan",
+      "session_ids": [
+        "codex:019f3b73-4187-7d80-9bd2-9dca5ed36c6b"
+      ],
+      "status": "blocked",
+      "worktree_path": "C:/Users/KAI/Chanil_Park/Project/AeroOne/.worktrees/1.13.0-dev"
+    }
+  }
+}
