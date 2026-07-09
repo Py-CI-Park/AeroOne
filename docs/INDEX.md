@@ -3,7 +3,7 @@
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
 - 기준 버전: `1.12.2` (`대시보드 시간·버전 날짜 표시·로그인 카드 UI 정리`)
-- 갱신일: 2026-07-07
+- 갱신일: 2026-07-09
 
 ---
 
@@ -14,7 +14,7 @@
 | **시스템을 처음 보는 사람** | [`README.md`](../README.md) (시스템 정체성, 빠른 시작) | §2 운영 매뉴얼 |
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
-| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | §6 코드 진실 원천 |
+| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | §6 코드 진실 원천 |
 
 ---
 
@@ -42,6 +42,7 @@
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
+| [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | **AI 에이전트 핸드오프** — 1.12.2 안정판, 1.13.0-dev 계획/blocked 상태, 다음 작업 순서, guardrail, 검증/커밋 규칙을 Codex/Claude/GJC 공통 문맥으로 정리 | 중간 |
 
 ---
 

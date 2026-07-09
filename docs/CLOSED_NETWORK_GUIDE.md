@@ -3,7 +3,7 @@
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
 - 기준 commit: `1.12.2` (`대시보드 시간·버전 날짜 표시·로그인 카드 UI 정리`)
-- 갱신일: 2026-07-07
+- 갱신일: 2026-07-09
 - 테스트 상태: backend `pytest tests` **268 passed** (실패 0), frontend Vitest **313 passed** (66 파일), `tsc --noEmit` 및 `next build` 성공
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
@@ -506,6 +506,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 4. **DB 분기 로직** — 본 문서 §11.3 + `backend/scripts/ensure_db_state.py` 의 모듈/함수 docstring (단계 9에서 본문에 새겨 둠)
 5. **회귀 테스트 위치** — 본 문서 §13 표
 6. **변경 이력 의도** — 본 문서 §3 표 + `docs/reports/INDEX.md` 및 각 `docs/reports/phase-*.md`
+7. **AI 에이전트 핸드오프** — [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) (1.12.2 안정판 + 1.13.0-dev 이어받기 상태)
 
 ### 14.1 변경을 가할 때 따라야 할 순서
 
@@ -544,6 +545,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 - [`docs/runbook/local-dev.md`](runbook/local-dev.md) — 개발자 로컬 실행
 - [`docs/runbook/admin-auth.md`](runbook/admin-auth.md) — 관리자 인증 정책
 - [`AGENTS.md`](../AGENTS.md), [`CLAUDE.md`](../CLAUDE.md) — 한국어 커밋·PR 규칙
+- [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) — Codex/Claude/GJC 등 AI code agent 가 1.12.2 안정판과 1.13.0-dev 계획/다음 작업을 이어받는 핸드오프
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 기여 가이드
 
 ### 15.3 단계별 변경 보고서 (의도와 합의안)
