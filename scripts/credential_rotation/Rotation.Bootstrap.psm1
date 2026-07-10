@@ -91,10 +91,11 @@ function Get-BootstrapOwnedFiles {
                 throw 'unexpected-secure-output'
             }
             $null = Assert-SinglePhysicalFile -Path $fullPath
+            Assert-SecureAcl -Path $fullPath
             $files += $fullPath
         }
     }
-    return ,$files
+    return $files
 }
 
 function Remove-BootstrapTree {

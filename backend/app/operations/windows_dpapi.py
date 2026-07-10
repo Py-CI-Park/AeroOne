@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from ctypes import POINTER, Structure, WinDLL, byref, get_last_error, memset, string_at
+from ctypes import (
+    POINTER,
+    Structure,
+    WinDLL,
+    byref,
+    c_size_t,
+    c_void_p,
+    get_last_error,
+    memset,
+    string_at,
+)
 from ctypes.wintypes import BOOL, BYTE, DWORD, HLOCAL, LPCWSTR
 from enum import StrEnum, unique
 import hashlib
@@ -46,6 +56,7 @@ class DpapiError(Exception):
 
 _crypt32 = WinDLL("crypt32", use_last_error=True)
 _kernel32 = WinDLL("kernel32", use_last_error=True)
+_ntdll = WinDLL("ntdll", use_last_error=True)
 _crypt32.CryptProtectData.argtypes = [
     POINTER(_DataBlob),
     LPCWSTR,
@@ -68,6 +79,19 @@ _crypt32.CryptUnprotectData.argtypes = [
 _crypt32.CryptUnprotectData.restype = BOOL
 _kernel32.LocalFree.argtypes = [HLOCAL]
 _kernel32.LocalFree.restype = HLOCAL
+_ntdll.RtlZeroMemory.argtypes = [c_void_p, c_size_t]
+_ntdll.RtlZeroMemory.restype = None
+
+
+def _zero_and_free(output: _DataBlob) -> None:
+    data = cast(HLOCAL, output.data)
+    size = cast(int, output.size)
+    try:
+        if data and size > 0:
+            _ntdll.RtlZeroMemory(data, size)
+    finally:
+        if data:
+            _ = cast(HLOCAL, _kernel32.LocalFree(data))
 
 
 def _copy_and_free(output: _DataBlob) -> bytes:
@@ -76,7 +100,7 @@ def _copy_and_free(output: _DataBlob) -> bytes:
     try:
         return string_at(data, size)
     finally:
-        _ = cast(HLOCAL, _kernel32.LocalFree(data))
+        _zero_and_free(output)
 
 
 def _entropy(purpose: DpapiPurpose) -> bytes:
@@ -90,24 +114,28 @@ def protect_for_current_user(payload: bytes, purpose: DpapiPurpose) -> bytes:
     input_blob = _DataBlob(len(payload), input_buffer)
     entropy_blob = _DataBlob(len(entropy), entropy_buffer)
     output_blob = _DataBlob()
-    succeeded = bool(
-        cast(
-            int,
-            _crypt32.CryptProtectData(
-                byref(input_blob),
-                purpose.value,
-                byref(entropy_blob),
-                None,
-                None,
-                _CRYPTPROTECT_UI_FORBIDDEN,
-                byref(output_blob),
-            ),
+    try:
+        succeeded = bool(
+            cast(
+                int,
+                _crypt32.CryptProtectData(
+                    byref(input_blob),
+                    purpose.value,
+                    byref(entropy_blob),
+                    None,
+                    None,
+                    _CRYPTPROTECT_UI_FORBIDDEN,
+                    byref(output_blob),
+                ),
+            )
         )
-    )
-    _ = memset(input_buffer, 0, len(payload))
-    _ = memset(entropy_buffer, 0, len(entropy))
+        error_code = get_last_error() if not succeeded else 0
+    finally:
+        _ = memset(input_buffer, 0, len(payload))
+        _ = memset(entropy_buffer, 0, len(entropy))
     if not succeeded:
-        raise DpapiError(operation="protect", error_code=get_last_error())
+        _zero_and_free(output_blob)
+        raise DpapiError(operation="protect", error_code=error_code)
     return _copy_and_free(output_blob)
 
 
@@ -118,22 +146,26 @@ def unprotect_for_current_user(payload: bytes, purpose: DpapiPurpose) -> bytes:
     input_blob = _DataBlob(len(payload), input_buffer)
     entropy_blob = _DataBlob(len(entropy), entropy_buffer)
     output_blob = _DataBlob()
-    succeeded = bool(
-        cast(
-            int,
-            _crypt32.CryptUnprotectData(
-                byref(input_blob),
-                None,
-                byref(entropy_blob),
-                None,
-                None,
-                _CRYPTPROTECT_UI_FORBIDDEN,
-                byref(output_blob),
-            ),
+    try:
+        succeeded = bool(
+            cast(
+                int,
+                _crypt32.CryptUnprotectData(
+                    byref(input_blob),
+                    None,
+                    byref(entropy_blob),
+                    None,
+                    None,
+                    _CRYPTPROTECT_UI_FORBIDDEN,
+                    byref(output_blob),
+                ),
+            )
         )
-    )
-    _ = memset(input_buffer, 0, len(payload))
-    _ = memset(entropy_buffer, 0, len(entropy))
+        error_code = get_last_error() if not succeeded else 0
+    finally:
+        _ = memset(input_buffer, 0, len(payload))
+        _ = memset(entropy_buffer, 0, len(entropy))
     if not succeeded:
-        raise DpapiError(operation="unprotect", error_code=get_last_error())
+        _zero_and_free(output_blob)
+        raise DpapiError(operation="unprotect", error_code=error_code)
     return _copy_and_free(output_blob)

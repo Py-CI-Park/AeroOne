@@ -3,9 +3,129 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 
 from tests.rotation_harness import create_synthetic_workspace, invoke_rotation
+
+
+def _acl_sddl(path: Path) -> str:
+    process_environment = os.environ.copy()
+    process_environment["AEROONE_ACL_PATH"] = str(path)
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "(Get-Acl -LiteralPath $env:AEROONE_ACL_PATH).Sddl",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=process_environment,
+        timeout=30,
+    )
+    return completed.stdout.strip()
+
+
+def _database_rotation_state(database_path: Path) -> tuple[str, int, int]:
+    with sqlite3.connect(database_path) as connection:
+        user = connection.execute(
+            "SELECT password_hash, session_version FROM users WHERE username = 'admin'",
+        ).fetchone()
+        ledger_count = connection.execute(
+            "SELECT COUNT(*) FROM credential_rotation_ledger",
+        ).fetchone()
+    assert user is not None
+    assert ledger_count is not None
+    return str(user[0]), int(user[1]), int(ledger_count[0])
+
+
+def _rotation_snapshot(
+    root_environment: Path,
+    backend_environment: Path,
+    database_path: Path,
+) -> tuple[bytes, bytes, tuple[str, int, int], str, str, str]:
+    return (
+        root_environment.read_bytes(),
+        backend_environment.read_bytes(),
+        _database_rotation_state(database_path),
+        _acl_sddl(root_environment),
+        _acl_sddl(backend_environment),
+        _acl_sddl(database_path),
+    )
+
+
+def test_root_environment_hardlink_is_rejected_without_mutation(tmp_path: Path) -> None:
+    # Given: the live root environment is a hardlink and all mutable state is snapshotted.
+    workspace = create_synthetic_workspace(tmp_path)
+    root_environment = workspace.root / ".env"
+    backend_environment = workspace.root / "backend" / ".env"
+    database_path = Path(workspace.database_url.removeprefix("sqlite:///"))
+    outside_environment = tmp_path / "outside-root.env"
+    root_environment.replace(outside_environment)
+    os.link(outside_environment, root_environment)
+    before = _rotation_snapshot(root_environment, backend_environment, database_path)
+
+    # When: an ordinary rotation evaluates the live environments.
+    completed = invoke_rotation(workspace)
+
+    # Then: physical preflight rejects before any filesystem, ACL, or DB mutation.
+    assert completed.returncode != 0
+    assert "hardlink-forbidden" in completed.stderr
+    assert not (workspace.root / ".rotation-secure").exists()
+    assert before == _rotation_snapshot(root_environment, backend_environment, database_path)
+
+
+def test_backend_environment_hardlink_is_rejected_without_mutation(tmp_path: Path) -> None:
+    # Given: the live backend environment is a hardlink and all mutable state is snapshotted.
+    workspace = create_synthetic_workspace(tmp_path)
+    root_environment = workspace.root / ".env"
+    backend_environment = workspace.root / "backend" / ".env"
+    database_path = Path(workspace.database_url.removeprefix("sqlite:///"))
+    outside_environment = tmp_path / "outside-backend.env"
+    backend_environment.replace(outside_environment)
+    os.link(outside_environment, backend_environment)
+    before = _rotation_snapshot(root_environment, backend_environment, database_path)
+
+    # When: an ordinary rotation evaluates the live environments.
+    completed = invoke_rotation(workspace)
+
+    # Then: physical preflight rejects before any filesystem, ACL, or DB mutation.
+    assert completed.returncode != 0
+    assert "hardlink-forbidden" in completed.stderr
+    assert not (workspace.root / ".rotation-secure").exists()
+    assert before == _rotation_snapshot(root_environment, backend_environment, database_path)
+
+
+def test_backend_environment_junction_is_rejected_without_mutation(tmp_path: Path) -> None:
+    # Given: the backend environment and database are reached through a directory junction.
+    workspace = create_synthetic_workspace(tmp_path)
+    backend_directory = workspace.root / "backend"
+    outside_backend = tmp_path / "outside-backend"
+    backend_directory.replace(outside_backend)
+    linked = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(backend_directory), str(outside_backend)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert linked.returncode == 0
+    root_environment = workspace.root / ".env"
+    backend_environment = backend_directory / ".env"
+    database_path = backend_directory / "data" / "aeroone.db"
+    before = _rotation_snapshot(root_environment, backend_environment, database_path)
+
+    # When: an ordinary rotation evaluates the live environments.
+    completed = invoke_rotation(workspace)
+
+    # Then: component reparse preflight rejects before any mutable state changes.
+    assert completed.returncode != 0
+    assert "reparse-forbidden" in completed.stderr
+    assert not (workspace.root / ".rotation-secure").exists()
+    assert before == _rotation_snapshot(root_environment, backend_environment, database_path)
 
 
 def test_canonical_database_hardlink_is_rejected_before_inspection(tmp_path: Path) -> None:

@@ -6,8 +6,10 @@ function Assert-RotationArchiveBindings {
     if ([string]$Context.Journal.phase -cne 'complete') {
         throw 'restore-completed-state-required'
     }
-    Assert-SecureAcl -Path $Context.QuarantineManifestPath
-    $manifest = [IO.File]::ReadAllText($Context.QuarantineManifestPath) | ConvertFrom-Json
+    $manifest = Read-ValidatedQuarantineManifest `
+        -Path $Context.QuarantineManifestPath `
+        -RotationId ([string]$Context.Journal.rotation_id) `
+        -DatabaseId ([string]$Context.Journal.database_id)
     if ($manifest.retention -cne $Context.Retention -or @($manifest.entries).Count -ne 2) {
         throw 'quarantine-manifest-mismatch'
     }

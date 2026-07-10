@@ -189,7 +189,7 @@
 
 ### 1.12.2 patch — 대시보드 시간·로그인 UI 정리
 
-- 분류: patch (`1.12.2`) — 대시보드 날짜 오해 방지와 로그인/세션 화면 가독성 보강.
+- 분류: patch (`1.12.2`, **배포 철회**) — 화면 변경 이력은 보존하지만 Release asset/오프라인 ZIP은 신규 설치·재배포 금지.
 - 무엇: 헤더 버전 배지에서 날짜를 즉시 노출하지 않고 클릭한 업데이트 모달에서만 보이게 했으며, 대시보드 상단에 한국 시간을 실시간 표시합니다. 로그인 화면은 중앙 카드형 계정 접속 UI로 재배치하고, 로그인 후 헤더에는 `로그인:` 접두어 없이 아이디만 표시합니다. 세션 탭은 세로 공간을 키워 로그인/로그아웃 목록을 더 쉽게 읽게 했습니다.
 - 코드: `frontend/components/layout/{version-badge,korean-clock,admin-nav-link,app-shell}.tsx`, `frontend/components/auth/login-form.tsx`, `frontend/components/admin/sections/admin-sessions-section.tsx`, `frontend/lib/changelog.ts`
 - 회귀 방지: backend `pytest tests` 268 passed, frontend Vitest 313 passed(66 파일), `tsc --noEmit`, `next build`, live dashboard/admin smoke.
@@ -198,9 +198,9 @@
 
 - 파일: [`phase-26-credential-rotation-hardening.md`](phase-26-credential-rotation-hardening.md)
 - 분류: minor (`1.13.0`) — DB 전체 사용자·세션을 포함하는 별도 사고 대응 경계와 복구 계약 추가.
-- 무엇: setup-only 오해를 제거하고 production 물리 provenance, exact env/ACL/single-link 검증, SQLite `BEGIN IMMEDIATE` 전체 자격·세션 회전과 unique ledger, WAL-safe DPAPI recovery, strict current/previous journal, actual process-kill 재개, DB 복원 뒤 old secure root archive→새 rotation 2단계 계약을 구현.
-- 코드: `scripts/rotate_aeroone_credentials.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/sqlite_recovery.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
-- 회귀 방지: Task3 focused 56 passed(경고 3), production changed Python ruff PASS·basedpyright 0 errors/0 warnings, PowerShell AST PASS·함수 50 LOC 이하, actual old admin 401/new admin 200.
+- 무엇: setup-only 오해를 제거하고 service/listener preflight, production 물리 provenance, exact env/ACL/single-link, recovery→commit 연속 SQLite writer lock, unique ledger, DPAPI recovery, strict journal/quarantine manifest, actual process-kill 재개, ordinary backup 복원 뒤 old secure root archive→새 rotation, current-SID WPF 자격 인계를 구현.
+- 코드: `scripts/{rotate_aeroone_credentials,view_aeroone_credentials}.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/{sqlite_recovery,windows_dpapi}.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
+- 회귀 방지: backend full 347 passed, credential focused 79 passed, frontend 313 passed(66 파일), ruff·basedpyright·compileall, PowerShell AST, `tsc --noEmit`, `next build`, old 401/new 200. 실제 WPF 창 시각 조작과 web 브라우저 smoke는 미실행.
 
 ---
 

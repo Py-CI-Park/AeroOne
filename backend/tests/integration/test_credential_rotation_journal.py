@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import sqlite3
 
 from fastapi.testclient import TestClient
 import pytest
@@ -13,7 +14,6 @@ from app.db.session import reset_db_caches
 from app.main import create_app
 from app.modules.auth.models import User
 from app.operations.credential_bundle import load_credential_bundle
-from app.operations.sqlite_recovery import load_database_recovery
 from tests.rotation_harness import (
     create_synthetic_workspace,
     env_value,
@@ -68,7 +68,7 @@ def test_missing_live_root_after_quarantine_is_reconciled_from_journal(tmp_path:
 def test_process_crash_after_credential_move_reconciles_final_artifact(tmp_path: Path) -> None:
     # Given: the process is killed after the credential bundle move but before journal advance.
     workspace = create_synthetic_workspace(tmp_path)
-    crashed = invoke_rotation(workspace, ("-Failpoint", "crash_after_credentials_move"))
+    crashed = invoke_rotation(workspace, internal_crashpoint="crash_after_credentials_move")
     secure_root = workspace.root / ".rotation-secure"
     pending = secure_root / "pending" / "credentials.dpapi"
     final = secure_root / "1.12.3-credentials.dpapi"
@@ -92,7 +92,7 @@ def test_process_crash_after_quarantine_finalize_preserves_source_until_verified
     original = root_env.read_bytes()
     crashed = invoke_rotation(
         workspace,
-        ("-Failpoint", "crash_after_root_quarantine_finalize"),
+        internal_crashpoint="crash_after_root_quarantine_finalize",
     )
     quarantined = (
         workspace.root
@@ -121,7 +121,7 @@ def test_process_crash_during_quarantine_copy_removes_only_verified_orphan_temp(
     original = root_env.read_bytes()
     crashed = invoke_rotation(
         workspace,
-        ("-Failpoint", "crash_during_root_quarantine_copy"),
+        internal_crashpoint="crash_during_root_quarantine_copy",
     )
     quarantine_directory = workspace.root / ".rotation-secure" / "quarantine" / "environment"
     orphaned = tuple(quarantine_directory.glob(".aeroone-rotation-*.tmp"))
@@ -160,7 +160,7 @@ def test_existing_final_credential_blocks_before_database_or_environment_mutatio
 def test_process_crash_before_initial_journal_recovers_owned_secure_root(tmp_path: Path) -> None:
     workspace = create_synthetic_workspace(tmp_path)
 
-    crashed = invoke_rotation(workspace, ("-Failpoint", "crash_after_secure_root_init"))
+    crashed = invoke_rotation(workspace, internal_crashpoint="crash_after_secure_root_init")
     resumed = invoke_rotation(workspace)
 
     assert crashed.returncode != 0
@@ -209,27 +209,34 @@ def test_restored_pre_rotation_database_cannot_reuse_completed_rotation_artifact
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace = create_synthetic_workspace(tmp_path)
+    database_path = Path(workspace.database_url.removeprefix("sqlite:///"))
+    prepared = invoke_rotation(workspace, ("-Failpoint", "before_db_commit"))
+    assert prepared.returncode != 0
+    assert "python-test-failpoint" in prepared.stderr
+    ordinary_backup = tmp_path / "ordinary-pre-rotation-backup.db"
+    with (
+        sqlite3.connect(database_path) as source,
+        sqlite3.connect(ordinary_backup) as destination,
+    ):
+        source.backup(destination)
     completed = invoke_rotation(workspace)
     assert completed.returncode == 0, completed.stderr
     secure_root = workspace.root / ".rotation-secure"
     final_bundle = load_credential_bundle(secure_root / "1.12.3-credentials.dpapi")
-    snapshot = load_database_recovery(
-        secure_root / "recovery" / "aeroone-db-before-rotation.dpapi",
-        final_bundle.rotation_id,
-        final_bundle.database_id,
+    final_admin = next(
+        credential
+        for credential in final_bundle.users
+        if credential.username == final_bundle.admin_username
     )
-    database_path = Path(workspace.database_url.removeprefix("sqlite:///"))
     before_root_env = (workspace.root / ".env").read_bytes()
-    try:
-        for suffix in ("-wal", "-shm"):
-            database_path.with_name(database_path.name + suffix).unlink(missing_ok=True)
-        database_path.write_bytes(snapshot)
-    finally:
-        snapshot[:] = b"\0" * len(snapshot)
+    for suffix in ("-wal", "-shm"):
+        database_path.with_name(database_path.name + suffix).unlink(missing_ok=True)
+    database_path.write_bytes(ordinary_backup.read_bytes())
 
     rerun = invoke_rotation(workspace)
 
     assert rerun.returncode != 0
+    assert "python-invariant-violation" in rerun.stderr
     assert (workspace.root / ".env").read_bytes() == before_root_env
     with Session(create_engine(workspace.database_url)) as session:
         assert session.scalar(select(User.session_version)) == 2
@@ -283,6 +290,13 @@ def test_restored_pre_rotation_database_cannot_reuse_completed_rotation_artifact
                 "password": workspace.admin_password,
             },
         )
+        archived_login = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": replacement_bundle.admin_username,
+                "password": final_admin.password,
+            },
+        )
         new_login = client.post(
             "/api/v1/auth/login",
             json={
@@ -291,6 +305,7 @@ def test_restored_pre_rotation_database_cannot_reuse_completed_rotation_artifact
             },
         )
     assert old_login.status_code == 401
+    assert archived_login.status_code == 401
     assert new_login.status_code == 200
     reset_settings_cache()
     reset_db_caches()

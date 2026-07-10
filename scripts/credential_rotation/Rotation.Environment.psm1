@@ -59,13 +59,18 @@ function Get-AdminCredential {
 }
 
 function Promote-ProtectedEnvironment {
-    param([string]$PendingPath, [string]$DestinationPath, [string]$Purpose)
+    param(
+        [string]$PendingPath,
+        [string]$DestinationPath,
+        [string]$Purpose,
+        [switch]$CrashAfterPartialWrite
+    )
 
     Assert-SecureAcl -Path $PendingPath
     $protected = [IO.File]::ReadAllBytes($PendingPath)
     $plaintext = Unprotect-ForCurrentUser -Bytes $protected -Purpose $Purpose
     try {
-        Publish-RotationSecureBytes -Bytes $plaintext -DestinationPath $DestinationPath
+        Publish-RotationSecureBytes -Bytes $plaintext -DestinationPath $DestinationPath -CrashAfterPartialWrite:$CrashAfterPartialWrite
     } finally {
         [Array]::Clear($protected, 0, $protected.Length)
         [Array]::Clear($plaintext, 0, $plaintext.Length)

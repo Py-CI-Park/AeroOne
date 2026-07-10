@@ -26,6 +26,7 @@ class RecoveryErrorCode(StrEnum):
     BINDING_MISMATCH = "recovery-binding-mismatch"
     RESTORE_STATE_MISMATCH = "recovery-restore-state-mismatch"
     RESTORE_SIDECAR_PRESENT = "recovery-restore-sidecar-present"
+    DRIVER_INVALID = "recovery-driver-invalid"
 
 
 class SqliteRecoveryError(Exception):
@@ -48,23 +49,60 @@ class DatabaseRecoveryEnvelope(BaseModel):
     snapshot_base64: str = Field(repr=False)
 
 
+def _snapshot_connection(source: sqlite3.Connection) -> bytearray:
+    serialized = bytearray(source.serialize())
+    try:
+        serialized[18] = 1
+        serialized[19] = 1
+        with sqlite3.connect(":memory:") as destination:
+            destination.deserialize(serialized)
+            destination.execute("PRAGMA journal_mode=DELETE").close()
+            destination.execute("PRAGMA schema_version=0").close()
+            destination.execute("VACUUM").close()
+            snapshot = bytearray(destination.serialize())
+        verified_snapshot = False
+        try:
+            canonical_counter = (1).to_bytes(4, byteorder="big")
+            snapshot[24:28] = canonical_counter
+            snapshot[92:96] = canonical_counter
+            with sqlite3.connect(":memory:") as verified:
+                verified.deserialize(snapshot)
+                if verified.execute("PRAGMA integrity_check").fetchone() != ("ok",):
+                    raise SqliteRecoveryError(RecoveryErrorCode.INTEGRITY_FAILURE)
+            verified_snapshot = True
+            return snapshot
+        finally:
+            if not verified_snapshot:
+                snapshot[:] = b"\0" * len(snapshot)
+    finally:
+        serialized[:] = b"\0" * len(serialized)
+
+
 def _snapshot_bytes(database_path: Path) -> bytearray:
     source_uri = f"{database_path.resolve().as_uri()}?mode=ro"
     with sqlite3.connect(source_uri, uri=True, timeout=5) as source:
-        with sqlite3.connect(":memory:") as destination:
-            source.backup(destination)
-            destination.execute("PRAGMA journal_mode=DELETE").close()
-            destination.execute("VACUUM").close()
-            if destination.execute("PRAGMA integrity_check").fetchone() != ("ok",):
-                raise SqliteRecoveryError(RecoveryErrorCode.INTEGRITY_FAILURE)
-            return bytearray(destination.serialize())
+        return _snapshot_connection(source)
 
 
-def _write_new_durable(path: Path, payload: bytes) -> None:
+def _write_new_durable(path: Path, payload: bytes | bytearray) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_BINARY"):
         flags |= os.O_BINARY
     descriptor = os.open(path, flags, 0o600)
+    with os.fdopen(descriptor, "wb") as stream:
+        _ = stream.write(payload)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def _write_precreated_durable(path: Path, payload: bytes | bytearray) -> None:
+    file_state = path.stat()
+    if file_state.st_size != 0 or file_state.st_nlink != 1:
+        raise SqliteRecoveryError(RecoveryErrorCode.ARTIFACT_INVALID)
+    flags = os.O_WRONLY | os.O_TRUNC
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    descriptor = os.open(path, flags)
     with os.fdopen(descriptor, "wb") as stream:
         _ = stream.write(payload)
         stream.flush()
@@ -78,6 +116,17 @@ def create_database_recovery(
     database_id: UUID,
 ) -> None:
     snapshot = _snapshot_bytes(database_path)
+    _ = _write_database_recovery(snapshot, recovery_path, rotation_id, database_id)
+
+
+def _write_database_recovery(
+    snapshot: bytearray,
+    recovery_path: Path,
+    rotation_id: UUID,
+    database_id: UUID,
+    *,
+    precreated: bool = False,
+) -> str:
     try:
         envelope = DatabaseRecoveryEnvelope(
             rotation_id=rotation_id,
@@ -88,15 +137,40 @@ def create_database_recovery(
         )
         plaintext = bytearray(envelope.model_dump_json().encode("utf-8"))
         try:
-            protected = protect_for_current_user(
-                bytes(plaintext),
-                DpapiPurpose.DATABASE_RECOVERY,
+            protected = bytearray(
+                protect_for_current_user(
+                    bytes(plaintext),
+                    DpapiPurpose.DATABASE_RECOVERY,
+                )
             )
-            _write_new_durable(recovery_path, protected)
+            try:
+                if precreated:
+                    _write_precreated_durable(recovery_path, protected)
+                else:
+                    _write_new_durable(recovery_path, protected)
+                return hashlib.sha256(protected).hexdigest()
+            finally:
+                protected[:] = b"\0" * len(protected)
         finally:
             plaintext[:] = b"\0" * len(plaintext)
     finally:
         snapshot[:] = b"\0" * len(snapshot)
+
+
+def create_database_recovery_from_connection(
+    source: sqlite3.Connection,
+    recovery_path: Path,
+    rotation_id: UUID,
+    database_id: UUID,
+) -> str:
+    snapshot = _snapshot_connection(source)
+    return _write_database_recovery(
+        snapshot,
+        recovery_path,
+        rotation_id,
+        database_id,
+        precreated=True,
+    )
 
 
 def load_database_recovery(

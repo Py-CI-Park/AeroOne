@@ -6,7 +6,8 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.12.2-1f6feb)
+![version](https://img.shields.io/badge/version-1.12.2%20withdrawn-b42318)
+![target](https://img.shields.io/badge/target-1.13.0--dev-f59e0b)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
@@ -15,6 +16,9 @@
 ![Use](https://img.shields.io/badge/use-internal%20deployment-lightgrey)
 
 </div>
+
+> [!CAUTION]
+> **1.12.2 배포본은 철회되었습니다.** 1.13.0의 자격 증명 사고 대응 강화가 반영되지 않은 `1.12.2` ZIP·Release asset을 신규 설치나 재배포에 사용하지 마세요. 이미 반입했다면 AeroOne 서비스를 중지한 상태로 1.13.0 정식 배포본으로 교체하고 [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md)의 전체 회전 절차를 수행해야 합니다. 현재 개발 기준은 `1.13.0-dev`이며 정식 asset 게시 전까지 새 폐쇄망 반입을 보류합니다.
 
 <table>
   <tr>
@@ -72,7 +76,7 @@
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | backend pytest + httpx (268 passed), frontend Vitest + Testing Library (313 passed, 66 파일), `tsc --noEmit` exit 0, `next build` 성공, release gate 에서 브라우저 smoke |
+| 검증 | 1.13.0-dev backend **347 passed**, 자격 증명 회전 focused **79 passed**, frontend **313 passed / 66 files**, `tsc --noEmit`, `next build`; WPF는 `-ValidateOnly`·보안 계약 검증 완료 |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -117,11 +121,13 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
                                                  scripts\run_all.bat
 ```
 
-### 릴리즈 1.12.2 반입 파일
+### 릴리즈 1.13.0 반입 파일
+
+`1.12.2` 반입물은 철회되어 사용할 수 없습니다. 아래 이름의 `1.13.0` 정식 GitHub Release asset과 SHA-256이 게시된 뒤에만 반입합니다. 현재 `1.13.0-dev` 소스나 로컬 중간 ZIP은 운영 배포본이 아닙니다.
 
 | 파일 | 어디서 받는가 | 폐쇄망에서 놓을 위치 | 역할 |
 |---|---|---|---|
-| `AeroOne-offline-1.12.2-YYYYMMDD-HHMMSS.zip` | GitHub Release `1.12.2` asset 또는 온라인 PC `dist\` | `D:\AeroOne\` 로 압축 해제 | AeroOne 본체, backend/frontend, wheelhouse, prebuilt `.next`, 문서/뉴스레터 스냅샷 |
+| `AeroOne-offline-1.13.0-YYYYMMDD-HHMMSS.zip` + `.sha256` | 정식 GitHub Release `1.13.0` asset | `D:\AeroOne\` 로 압축 해제 | AeroOne 본체, backend/frontend, wheelhouse, prebuilt `.next`, 문서/뉴스레터 스냅샷 |
 | `AeroOne-bundle.zip` | 같은 Release asset 또는 Open Notebook 저장소 `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 | Open Notebook 별도 앱(Frontend 8502, API 5055, SurrealDB 8000), 자체 Python/Node/uv/ffmpeg/SurrealDB 포함 |
 | `%USERPROFILE%\.ollama\models\manifests`, `blobs` | 인터넷 PC 에서 `ollama pull gemma4:12b`, `ollama pull nomic-embed-text` 후 복사 | 폐쇄망 PC 같은 경로 | AeroAI/Open Notebook 공용 LLM·임베딩 모델 |
 | `OllamaSetup.exe` | Ollama 공식 설치 파일 | 폐쇄망 PC에서 1회 설치 | `127.0.0.1:11434` 로 두 앱이 공유하는 모델 서버 |
@@ -300,7 +306,7 @@ npm run typecheck
 npm run build
 ```
 
-릴리스 1.12.2 기준 backend `pytest tests` 결과 **268 passed** (실패 0), frontend Vitest **313 passed** (66 파일), `tsc --noEmit` exit 0, `next build` 성공. release gate 에서 대시보드·관리자 콘솔·뉴스레터 브라우저 smoke 를 추가로 수행합니다. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md) 의 단계별 보고서를 거꾸로 읽어 어느 단계의 회귀인지 진단합니다.
+`1.13.0-dev` PR 직전 게이트에서 backend 전체 **347 passed**, 자격 증명 회전 focused **79 passed**, frontend **313 passed / 66 files**, `tsc --noEmit`, `next build`를 확인했습니다. WPF 자격 뷰어는 `-ValidateOnly` 실제 프로세스와 보안 계약을 검증했으며, 실제 창 시각 조작과 web 브라우저 smoke는 이 보안 변경에서 수행하지 않았습니다. `1.12.2`의 **268 passed / 313 passed** 기록은 철회 배포본의 과거 기준이며 현재 배포 승인 근거가 아닙니다. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7 테스트 인벤토리와 [`docs/reports/INDEX.md`](docs/reports/INDEX.md)의 단계별 보고서를 거꾸로 읽어 진단합니다.
 
 ---
 
@@ -310,7 +316,7 @@ npm run build
 - HTTPS 종단을 두면 `production` 에서 `secure cookie` 가 자동 활성화됩니다. HTTP-only 폐쇄망은 `closed_network` 로 둬야 쿠키가 살아 있으면서 검증도 켜집니다.
 - **1.0.22+ 기본이 LAN** 이라 backend / frontend 를 `0.0.0.0` 으로 노출합니다(이 PC 의 LAN IP 자동 감지). **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. LAN 노출을 원치 않으면 `--local` 로 localhost 전용 실행이 가능합니다. 다른 PC 접속은 `scripts\allow_lan_firewall.cmd`(관리자, 로컬 서브넷 한정)로 허용하고, Windows 방화벽에서 `18437` / `29501` 두 포트의 LAN **외부** 차단 규칙을 함께 두세요. 인터넷 노출 production 으로 사용 금지.
 - `_database/newsletter` 와 `storage/` 는 운영 PC에 한정해 두고, 백업·접근 권한은 사내 정책에 맞춰 분리하세요.
-- 단일 관리자 비밀번호의 일상 변경은 `/admin` 콘솔을 사용합니다. 자격 증명 노출이 의심되는 사고에서는 setup 배치를 재실행하지 말고 서비스를 중지한 뒤 [`scripts\rotate_aeroone_credentials.ps1`](scripts/rotate_aeroone_credentials.ps1)을 실행합니다. setup은 설치·환경 파일·초기 시드 도구이며 기존 DB의 모든 사용자 비밀번호와 세션을 일괄 회전하지 않습니다. 상세 절차: [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md).
+- 단일 관리자 비밀번호의 일상 변경은 `/admin` 콘솔을 사용합니다. 자격 증명 노출이 의심되면 setup 배치를 재실행하지 말고 서비스를 중지한 뒤 [`scripts\rotate_aeroone_credentials.ps1`](scripts/rotate_aeroone_credentials.ps1)을 실행합니다. 도구도 알려진 AeroOne Windows 서비스와 설정 포트 listener가 남아 있으면 파일·DB 변경 전에 거부합니다. 회전 후 자격은 current Windows SID 전용 [`scripts\view_aeroone_credentials.ps1`](scripts/view_aeroone_credentials.ps1)로 확인하며 기본 마스킹과 30초 clipboard 자동 삭제를 사용합니다. 상세 절차: [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md).
 - 관리자 인증은 `/admin/*` 모든 mutation/sync 엔드포인트의 신뢰 경계입니다. 정책 배경: [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md)
 
 ---

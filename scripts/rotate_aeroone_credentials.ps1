@@ -5,7 +5,7 @@ param(
     [string]$TestWorkspaceRoot,
     [ValidateSet('', 'ARCHIVE_COMPLETED_ROTATION_AND_START_NEW')]
     [string]$RestoreConfirmation = '',
-    [ValidateSet('', 'before_db_commit', 'after_db_commit', 'after_root_env_promote', 'before_credentials_promote', 'crash_after_secure_root_init', 'crash_during_root_quarantine_copy', 'crash_after_root_quarantine_finalize', 'crash_after_credentials_move')]
+    [ValidateSet('before_db_commit', 'after_db_commit', 'after_root_env_promote', 'before_credentials_promote')]
     [string]$Failpoint = ''
 )
 
@@ -24,10 +24,42 @@ Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Journal.psm
 Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Quarantine.psm1') -Force -DisableNameChecking
 Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Archive.psm1') -Force -DisableNameChecking
 Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Reconciliation.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.DatabaseTransaction.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.ServicePreflight.psm1') -Force -DisableNameChecking
 
 $ProductionWorkspace = 'D:\Chanil_Park\Project\Programming\AeroOne'
 $ProductRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$AllowedEnvironmentKeys = @(
+$RootAllowedEnvironmentKeys = @(
+    'APP_ENV',
+    'APP_NAME',
+    'BACKEND_PORT',
+    'FRONTEND_PORT',
+    'DATABASE_URL',
+    'JWT_SECRET_KEY',
+    'ADMIN_SESSION_COOKIE_NAME',
+    'ACCESS_TOKEN_TTL_MINUTES',
+    'ADMIN_USERNAME',
+    'ADMIN_PASSWORD',
+    'CSRF_COOKIE_NAME',
+    'NEWSLETTER_IMPORT_ROOT_HOST',
+    'NEWSLETTER_IMPORT_ROOT_CONTAINER',
+    'CIVIL_AIRCRAFT_ROOT_HOST',
+    'CIVIL_AIRCRAFT_ROOT',
+    'DOCUMENT_ROOT',
+    'NSA_ROOT',
+    'STORAGE_ROOT',
+    'THUMBNAILS_DIR_NAME',
+    'ATTACHMENTS_DIR_NAME',
+    'MARKDOWN_DIR_NAME',
+    'CORS_ORIGINS',
+    'NEXT_PUBLIC_API_BASE_URL',
+    'SERVER_API_BASE_URL',
+    'AI_FEATURES_ENABLED',
+    'OLLAMA_BASE_URL',
+    'OLLAMA_DEFAULT_MODEL',
+    'LAN_HOST'
+)
+$BackendAllowedEnvironmentKeys = @(
     'APP_ENV',
     'APP_NAME',
     'BACKEND_PORT',
@@ -55,7 +87,9 @@ $AllowedEnvironmentKeys = @(
     'OLLAMA_DEFAULT_MODEL',
     'LAN_HOST'
 )
-$RequiredKeys = @('DATABASE_URL', 'JWT_SECRET_KEY', 'ADMIN_USERNAME', 'ADMIN_PASSWORD')
+$RequiredEnvironmentKeys = @(
+    'APP_ENV', 'DATABASE_URL', 'JWT_SECRET_KEY', 'ADMIN_USERNAME', 'ADMIN_PASSWORD'
+)
 $Retention = '2027-07-10T00:00:00+09:00'
 $PhaseOrder = @{
     prepared = 0
@@ -66,6 +100,7 @@ $PhaseOrder = @{
     complete = 5
 }
 $CurrentStage = 'validate'
+$RotationTransaction = $null
 
 Initialize-RotationRuntime -Configuration @{
     TestMode = [bool]$TestMode
@@ -74,11 +109,18 @@ Initialize-RotationRuntime -Configuration @{
     ProductRoot = $ProductRoot
     ScriptPath = $PSCommandPath
     PythonOverride = $env:AEROONE_ROTATION_PYTHON
-    AllowedEnvironmentKeys = $AllowedEnvironmentKeys
-    RequiredKeys = $RequiredKeys
+    EnvironmentProfiles = @{
+        root = @{
+            AllowedKeys = $RootAllowedEnvironmentKeys
+            RequiredKeys = $RequiredEnvironmentKeys
+        }
+        backend = @{
+            AllowedKeys = $BackendAllowedEnvironmentKeys
+            RequiredKeys = $RequiredEnvironmentKeys
+        }
+    }
 }
 Initialize-RotationJournal -PhaseOrder $PhaseOrder
-Initialize-RotationQuarantine -Retention $Retention -Failpoint $Failpoint
 
 function Stop-Rotation {
     param([string]$Code)
@@ -101,20 +143,140 @@ function Invoke-TestFailpoint {
 function Invoke-TestCrashpoint {
     param([string]$Expected)
 
-    if ($Failpoint -ceq $Expected) {
+    if ($InternalCrashpoint -ceq $Expected) {
         [Diagnostics.Process]::GetCurrentProcess().Kill()
         [Environment]::Exit(97)
     }
 }
 
+function Invoke-TestDatabaseBarrier {
+    param(
+        [Parameter(Mandatory = $true)][string]$WorkspaceRoot,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Barrier
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Barrier)) {
+        return
+    }
+    $readyPath = Join-Path $WorkspaceRoot '.aeroone-rotation-db-barrier-ready'
+    $releasePath = Join-Path $WorkspaceRoot '.aeroone-rotation-db-barrier-release'
+    if ((Test-Path -LiteralPath $readyPath) -or (Test-Path -LiteralPath $releasePath)) {
+        throw 'internal-db-barrier-stale'
+    }
+    $encoding = New-Object Text.UTF8Encoding($false)
+    [IO.File]::WriteAllText($readyPath, 'ready', $encoding)
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    try {
+        while (-not (Test-Path -LiteralPath $releasePath -PathType Leaf)) {
+            if ([DateTime]::UtcNow -ge $deadline) {
+                throw 'internal-db-barrier-timeout'
+            }
+            Start-Sleep -Milliseconds 50
+        }
+        if ([IO.File]::ReadAllText($releasePath, $encoding) -cne 'release') {
+            throw 'internal-db-barrier-invalid-release'
+        }
+    } finally {
+        Remove-Item -LiteralPath $readyPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $releasePath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Get-ValidatedRotationScope {
+    param([Parameter(Mandatory = $true)][hashtable]$Context)
+
+    $rootEnvironment = Read-ExactEnv -Path $Context.RootEnvironmentPath -Profile 'root'
+    $backendEnvironment = Read-ExactEnv -Path $Context.BackendEnvironmentPath -Profile 'backend'
+    $matchingKeys = @('APP_ENV', 'DATABASE_URL', 'ADMIN_USERNAME')
+    if ($Context.RequireCredentialMatch) {
+        $matchingKeys += @('JWT_SECRET_KEY', 'ADMIN_PASSWORD')
+    }
+    foreach ($key in $matchingKeys) {
+        if ($rootEnvironment[$key] -cne $backendEnvironment[$key]) {
+            throw 'env-scope-mismatch'
+        }
+    }
+    $databasePath = Resolve-CanonicalDatabase -DatabaseUrl $rootEnvironment['DATABASE_URL'] -WorkspaceRoot $Context.Workspace
+    $backendDatabasePath = Resolve-CanonicalDatabase -DatabaseUrl $backendEnvironment['DATABASE_URL'] -WorkspaceRoot $Context.Workspace
+    if (-not $databasePath.Equals($backendDatabasePath, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'database-scope-mismatch'
+    }
+    $databaseUrl = 'sqlite:///' + $databasePath.Replace('\', '/')
+    $inspection = Invoke-RotationPython -WorkspaceRoot $Context.Workspace -Request @{
+        action = 'inspect'
+        database_url = $databaseUrl
+        admin_username = $rootEnvironment['ADMIN_USERNAME']
+    }
+    return [PSCustomObject]@{
+        root_environment = $rootEnvironment
+        backend_environment = $backendEnvironment
+        database_path = $databasePath
+        database_url = $databaseUrl
+        inspection = $inspection
+    }
+}
+
 try {
+    if (-not $TestMode -and -not [string]::IsNullOrWhiteSpace([string]$env:AEROONE_ROTATION_INTERNAL_CRASH)) {
+        throw 'internal-crashpoint-forbidden'
+    }
+    if (-not $TestMode -and -not [string]::IsNullOrWhiteSpace([string]$env:AEROONE_ROTATION_INTERNAL_DB_BARRIER)) {
+        throw 'internal-db-barrier-forbidden'
+    }
     if (-not $TestMode -and -not [string]::IsNullOrWhiteSpace($Failpoint)) {
         throw 'failpoint-forbidden'
     }
     $workspace = Get-WorkspaceRoot
+    $InternalCrashpoint = Get-RotationInternalCrashpoint -WorkspaceRoot $workspace
+    $InternalDatabaseBarrier = Get-RotationInternalDatabaseBarrier -WorkspaceRoot $workspace
+    Initialize-RotationQuarantine -Retention $Retention -InternalCrashpoint $InternalCrashpoint
     $RotationMutex = Enter-RotationMutex -WorkspaceRoot $workspace
     if ($null -eq $RotationMutex) {
         throw 'rotation-already-running'
+    }
+    $rootEnvPath = Join-Path $workspace '.env'
+    $backendEnvPath = Join-Path $workspace 'backend\.env'
+    $environmentBindings = Get-LiveEnvironmentBindings `
+        -WorkspaceRoot $workspace `
+        -RootEnvironmentPath $rootEnvPath `
+        -BackendEnvironmentPath $backendEnvPath `
+        -AllowMissing
+    $preflightSecureRoot = if ($TestMode) {
+        Join-Path $workspace '.rotation-secure'
+    } else {
+        Join-Path $env:USERPROFILE 'AeroOne-secure\incident-20260710'
+    }
+    $preflightResume = (
+        (Test-Path -LiteralPath (Join-Path $preflightSecureRoot 'rotation-state.json.dpapi') -PathType Leaf) -or
+        (Test-Path -LiteralPath (Join-Path $preflightSecureRoot 'rotation-state.previous.json.dpapi') -PathType Leaf)
+    )
+    $rootEnvironmentExists = Test-Path -LiteralPath $rootEnvPath -PathType Leaf
+    $backendEnvironmentExists = Test-Path -LiteralPath $backendEnvPath -PathType Leaf
+    if ($rootEnvironmentExists -and $backendEnvironmentExists) {
+        $preflightRootEnvironment = Read-ExactEnv -Path $rootEnvPath -Profile 'root'
+        $preflightBackendEnvironment = Read-ExactEnv -Path $backendEnvPath -Profile 'backend'
+    } elseif ($preflightResume -and $rootEnvironmentExists) {
+        $preflightRootEnvironment = Read-ExactEnv -Path $rootEnvPath -Profile 'root'
+        $preflightBackendEnvironment = $preflightRootEnvironment
+    } elseif ($preflightResume -and $backendEnvironmentExists) {
+        $preflightBackendEnvironment = Read-ExactEnv -Path $backendEnvPath -Profile 'backend'
+        $preflightRootEnvironment = $preflightBackendEnvironment
+    } else {
+        throw 'env-missing'
+    }
+    Assert-AeroOneServicesStopped `
+        -RootEnvironment $preflightRootEnvironment `
+        -BackendEnvironment $preflightBackendEnvironment `
+        -CheckWindowsServices:(-not $TestMode)
+    if ($DryRun) {
+        $scope = Get-ValidatedRotationScope -Context @{
+            Workspace = $workspace
+            RootEnvironmentPath = $rootEnvPath
+            BackendEnvironmentPath = $backendEnvPath
+            RequireCredentialMatch = $true
+        }
+        [Console]::Out.WriteLine("status=dry-run scope=valid users=$($scope.inspection.user_count_before)")
+        exit 0
     }
     if ($TestMode) {
         $secureBase = $workspace
@@ -141,8 +303,6 @@ try {
         (Test-Path -LiteralPath $journalPath -PathType Leaf) -or
         (Test-Path -LiteralPath $journalPreviousPath -PathType Leaf)
     )
-    $rootEnvPath = Join-Path $workspace '.env'
-    $backendEnvPath = Join-Path $workspace 'backend\.env'
     $recoveryDirectory = Join-Path $secureRoot 'recovery'
     $pendingDirectory = Join-Path $secureRoot 'pending'
     $quarantineDirectory = Join-Path $secureRoot 'quarantine'
@@ -198,6 +358,8 @@ try {
                 NewPhase = 'root_env_promoted'
                 AmbiguousCode = 'root-env-state-ambiguous'
                 BeforeSha256Field = 'root_before_sha256'
+                AfterSha256Field = 'root_after_sha256'
+                PhaseOrder = $PhaseOrder
                 JournalPath = $journalPath
                 JournalPreviousPath = $journalPreviousPath
                 Workspace = $workspace
@@ -213,6 +375,8 @@ try {
                 NewPhase = 'backend_env_promoted'
                 AmbiguousCode = 'backend-env-state-ambiguous'
                 BeforeSha256Field = 'backend_before_sha256'
+                AfterSha256Field = 'backend_after_sha256'
+                PhaseOrder = $PhaseOrder
                 JournalPath = $journalPath
                 JournalPreviousPath = $journalPreviousPath
                 Workspace = $workspace
@@ -222,32 +386,21 @@ try {
         $resumePhase = [string]$reconciled.phase
         $secureInitialized = $true
     }
-    $rootEnv = Read-ExactEnv -Path $rootEnvPath
-    $backendEnv = Read-ExactEnv -Path $backendEnvPath
-    $matchingKeys = @('DATABASE_URL', 'ADMIN_USERNAME')
-    if (-not $resume) {
-        $matchingKeys += @('JWT_SECRET_KEY', 'ADMIN_PASSWORD')
+    $environmentBindings = Assert-LiveEnvironmentBindings `
+        -Expected $environmentBindings `
+        -RootEnvironmentPath $rootEnvPath `
+        -BackendEnvironmentPath $backendEnvPath
+    $scope = Get-ValidatedRotationScope -Context @{
+        Workspace = $workspace
+        RootEnvironmentPath = $rootEnvPath
+        BackendEnvironmentPath = $backendEnvPath
+        RequireCredentialMatch = (-not $resume)
     }
-    foreach ($key in $matchingKeys) {
-        if ($rootEnv[$key] -cne $backendEnv[$key]) {
-            throw 'env-scope-mismatch'
-        }
-    }
-    $databasePath = Resolve-CanonicalDatabase -DatabaseUrl $rootEnv['DATABASE_URL'] -WorkspaceRoot $workspace
-    $backendDatabasePath = Resolve-CanonicalDatabase -DatabaseUrl $backendEnv['DATABASE_URL'] -WorkspaceRoot $workspace
-    if (-not $databasePath.Equals($backendDatabasePath, [StringComparison]::OrdinalIgnoreCase)) {
-        throw 'database-scope-mismatch'
-    }
-    $databaseUrl = 'sqlite:///' + $databasePath.Replace('\', '/')
-    $inspection = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
-        action = 'inspect'
-        database_url = $databaseUrl
-        admin_username = $rootEnv['ADMIN_USERNAME']
-    }
-    if ($DryRun) {
-        [Console]::Out.WriteLine("status=dry-run scope=valid users=$($inspection.user_count_before)")
-        exit 0
-    }
+    $rootEnv = $scope.root_environment
+    $backendEnv = $scope.backend_environment
+    $databasePath = [string]$scope.database_path
+    $databaseUrl = [string]$scope.database_url
+    $inspection = $scope.inspection
 
     $CurrentStage = 'secure_acl'
     if (-not $secureInitialized) {
@@ -271,19 +424,32 @@ try {
         Assert-SecureAcl -Path $pendingCredentialPath
         $bundle = Read-CredentialBundle -Path $pendingCredentialPath
         $adminCredential = Get-AdminCredential -Bundle $bundle
-        $CurrentStage = 'recovery'
-        $null = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
-            action = 'backup'
-            database_path = $databasePath
-            recovery_path = $recoveryPath
-            rotation_id = [string]$bundle.rotation_id
-            database_id = [string]$bundle.database_id
-        }
-        Set-SecureFileAcl -Path $recoveryPath
-        Assert-SecureAcl -Path $recoveryPath
         $CurrentStage = 'pending_env'
         Write-PendingEnvironment -SourcePath $rootEnvPath -PendingPath $pendingRootEnvPath -JwtSecret $bundle.jwt_secret_key -AdminPassword $adminCredential.password -Purpose 'pending-root-environment'
         Write-PendingEnvironment -SourcePath $backendEnvPath -PendingPath $pendingBackendEnvPath -JwtSecret $bundle.jwt_secret_key -AdminPassword $adminCredential.password -Purpose 'pending-backend-environment'
+        $CurrentStage = 'recovery'
+        Publish-RotationSecureBytes -Bytes (New-Object byte[] 0) -DestinationPath $recoveryPath
+        $transactionPython = if ($TestMode) {
+            [IO.Path]::GetFullPath([string]$env:AEROONE_ROTATION_PYTHON)
+        } else {
+            Join-Path $workspace 'backend\.venv\Scripts\python.exe'
+        }
+        $RotationTransaction = Start-RotationDatabaseTransaction `
+            -PythonPath $transactionPython `
+            -WorkingDirectory (Join-Path $ProductRoot 'backend') `
+            -Request @{
+                action = 'begin'
+                database_url = $databaseUrl
+                bundle_path = $pendingCredentialPath
+                recovery_path = $recoveryPath
+                fail_before_commit = ($Failpoint -ceq 'before_db_commit')
+            }
+        if ([int]$RotationTransaction.ready.user_count_before -ne [int]$prepared.user_count_before) {
+            throw 'prepare-drift-detected'
+        }
+        Set-SecureFileAcl -Path $recoveryPath
+        Assert-SecureAcl -Path $recoveryPath
+        Assert-FileSha256 -Path $recoveryPath -Expected ([string]$RotationTransaction.ready.recovery_sha256)
         $sealed = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
             action = 'journal_seal'
             journal = @{
@@ -295,7 +461,7 @@ try {
                 user_count = [int]$prepared.user_count_before
                 retention = $Retention
                 bundle_sha256 = Get-FileSha256 -Path $pendingCredentialPath
-                recovery_sha256 = Get-FileSha256 -Path $recoveryPath
+                recovery_sha256 = [string]$RotationTransaction.ready.recovery_sha256
                 pending_root_sha256 = Get-FileSha256 -Path $pendingRootEnvPath
                 pending_backend_sha256 = Get-FileSha256 -Path $pendingBackendEnvPath
                 root_before_sha256 = Get-FileSha256 -Path $rootEnvPath
@@ -306,6 +472,10 @@ try {
         }
         $journal = $sealed.journal
         Write-ProtectedJson -Value $journal -Path $journalPath -Purpose 'rotation-journal' -BackupPath $journalPreviousPath
+        $environmentBindings = Assert-LiveEnvironmentBindings `
+            -Expected $environmentBindings `
+            -RootEnvironmentPath $rootEnvPath `
+            -BackendEnvironmentPath $backendEnvPath
         Set-SecureFileAcl -Path $rootEnvPath
         Assert-SecureAcl -Path $rootEnvPath
         Set-SecureFileAcl -Path $backendEnvPath
@@ -344,12 +514,57 @@ try {
     $phase = [string]$journal.phase
     if ($PhaseOrder[$phase] -lt $PhaseOrder['db_committed']) {
         $CurrentStage = 'db_commit'
+        $environmentBindings = Assert-LiveEnvironmentBindings `
+            -Expected $environmentBindings `
+            -RootEnvironmentPath $rootEnvPath `
+            -BackendEnvironmentPath $backendEnvPath
         Assert-SecureAcl -Path $pendingCredentialPath
-        $committed = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
-            action = 'commit'
-            database_url = $databaseUrl
-            bundle_path = $pendingCredentialPath
-            fail_before_commit = ($Failpoint -ceq 'before_db_commit')
+        if ($null -eq $RotationTransaction) {
+            Assert-SecureAcl -Path $recoveryPath
+            Assert-FileSha256 -Path $recoveryPath -Expected ([string]$journal.recovery_sha256)
+            Remove-Item -LiteralPath $recoveryPath -Force
+            Publish-RotationSecureBytes -Bytes (New-Object byte[] 0) -DestinationPath $recoveryPath
+            $transactionPython = if ($TestMode) {
+                [IO.Path]::GetFullPath([string]$env:AEROONE_ROTATION_PYTHON)
+            } else {
+                Join-Path $workspace 'backend\.venv\Scripts\python.exe'
+            }
+            $RotationTransaction = Start-RotationDatabaseTransaction `
+                -PythonPath $transactionPython `
+                -WorkingDirectory (Join-Path $ProductRoot 'backend') `
+                -Request @{
+                    action = 'begin'
+                    database_url = $databaseUrl
+                    bundle_path = $pendingCredentialPath
+                    recovery_path = $recoveryPath
+                    fail_before_commit = ($Failpoint -ceq 'before_db_commit')
+                }
+            if ([int]$RotationTransaction.ready.user_count_before -ne [int]$journal.user_count) {
+                throw 'prepare-drift-detected'
+            }
+            Set-SecureFileAcl -Path $recoveryPath
+            Assert-SecureAcl -Path $recoveryPath
+            Assert-FileSha256 -Path $recoveryPath -Expected ([string]$RotationTransaction.ready.recovery_sha256)
+            $journalPayload = @{}
+            foreach ($property in $journal.PSObject.Properties) {
+                if ($property.Name -cne 'checksum_sha256') {
+                    $journalPayload[$property.Name] = $property.Value
+                }
+            }
+            $journalPayload['sequence'] = [int]$journal.sequence + 1
+            $journalPayload['recovery_sha256'] = [string]$RotationTransaction.ready.recovery_sha256
+            $resealed = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
+                action = 'journal_seal'
+                journal = $journalPayload
+            }
+            $journal = $resealed.journal
+            Write-ProtectedJson -Value $journal -Path $journalPath -Purpose 'rotation-journal' -BackupPath $journalPreviousPath
+        }
+        try {
+            Invoke-TestDatabaseBarrier -WorkspaceRoot $workspace -Barrier $InternalDatabaseBarrier
+            $committed = Complete-RotationDatabaseTransaction -Transaction $RotationTransaction
+        } finally {
+            $RotationTransaction = $null
         }
         if ([int]$committed.user_count_after -ne [int]$journal.user_count -or [int]$committed.password_count_changed -ne [int]$journal.user_count) {
             throw 'database-commit-count-mismatch'
@@ -361,8 +576,15 @@ try {
 
     if ($PhaseOrder[$phase] -lt $PhaseOrder['root_env_promoted']) {
         $CurrentStage = 'root_env_promote'
-        Copy-EnvironmentToQuarantine -SourcePath $rootEnvPath -SourceLabel '.env' -DestinationPath $quarantineRootEnvPath -ManifestPath $quarantineManifestPath
-        Promote-ProtectedEnvironment -PendingPath $pendingRootEnvPath -DestinationPath $rootEnvPath -Purpose 'pending-root-environment'
+        Copy-EnvironmentToQuarantine `
+            -SourcePath $rootEnvPath `
+            -SourceLabel '.env' `
+            -DestinationPath $quarantineRootEnvPath `
+            -ManifestPath $quarantineManifestPath `
+            -RotationId ([string]$journal.rotation_id) `
+            -DatabaseId ([string]$journal.database_id)
+        Promote-ProtectedEnvironment -PendingPath $pendingRootEnvPath -DestinationPath $rootEnvPath -Purpose 'pending-root-environment' -CrashAfterPartialWrite:($InternalCrashpoint -ceq 'crash_during_root_env_temp_write')
+        Invoke-TestCrashpoint -Expected 'crash_after_root_env_publish'
         $journal = Write-JournalPhase -Journal $journal -Phase 'root_env_promoted' -JournalPath $journalPath -PreviousPath $journalPreviousPath -WorkspaceRoot $workspace
         $phase = 'root_env_promoted'
     }
@@ -370,9 +592,16 @@ try {
 
     if ($PhaseOrder[$phase] -lt $PhaseOrder['backend_env_promoted']) {
         $CurrentStage = 'backend_env_quarantine'
-        Copy-EnvironmentToQuarantine -SourcePath $backendEnvPath -SourceLabel 'backend/.env' -DestinationPath $quarantineBackendEnvPath -ManifestPath $quarantineManifestPath
+        Copy-EnvironmentToQuarantine `
+            -SourcePath $backendEnvPath `
+            -SourceLabel 'backend/.env' `
+            -DestinationPath $quarantineBackendEnvPath `
+            -ManifestPath $quarantineManifestPath `
+            -RotationId ([string]$journal.rotation_id) `
+            -DatabaseId ([string]$journal.database_id)
         $CurrentStage = 'backend_env_write'
         Promote-ProtectedEnvironment -PendingPath $pendingBackendEnvPath -DestinationPath $backendEnvPath -Purpose 'pending-backend-environment'
+        Invoke-TestCrashpoint -Expected 'crash_after_backend_env_publish'
         $CurrentStage = 'backend_env_journal'
         $journal = Write-JournalPhase -Journal $journal -Phase 'backend_env_promoted' -JournalPath $journalPath -PreviousPath $journalPreviousPath -WorkspaceRoot $workspace
         $phase = 'backend_env_promoted'
@@ -395,8 +624,8 @@ try {
     $CurrentStage = 'verify'
     $finalBundle = Read-CredentialBundle -Path $finalCredentialPath
     $finalAdminCredential = Get-AdminCredential -Bundle $finalBundle
-    $finalRootEnv = Read-ExactEnv -Path $rootEnvPath
-    $finalBackendEnv = Read-ExactEnv -Path $backendEnvPath
+    $finalRootEnv = Read-ExactEnv -Path $rootEnvPath -Profile 'root'
+    $finalBackendEnv = Read-ExactEnv -Path $backendEnvPath -Profile 'backend'
     if ($finalRootEnv['JWT_SECRET_KEY'] -cne $finalBundle.jwt_secret_key -or $finalBackendEnv['JWT_SECRET_KEY'] -cne $finalBundle.jwt_secret_key) {
         throw 'jwt-promotion-mismatch'
     }
@@ -411,8 +640,10 @@ try {
     if ([int]$verified.password_count_changed -ne [int]$journal.user_count -or [int]$verified.session_count_after -ne 0) {
         throw 'database-verification-mismatch'
     }
-    Assert-SecureAcl -Path $quarantineManifestPath
-    $manifest = [IO.File]::ReadAllText($quarantineManifestPath) | ConvertFrom-Json
+    $manifest = Read-ValidatedQuarantineManifest `
+        -Path $quarantineManifestPath `
+        -RotationId ([string]$journal.rotation_id) `
+        -DatabaseId ([string]$journal.database_id)
     if ($manifest.retention -cne $Retention -or @($manifest.entries).Count -ne 2) {
         throw 'quarantine-manifest-mismatch'
     }
@@ -424,7 +655,9 @@ try {
     [Console]::Out.WriteLine("status=complete scope=valid users=$($verified.user_count_after)")
     exit 0
 } catch {
-    $failureCode = $_.Exception.Message
+    $capturedFailure = $_
+    Stop-RotationDatabaseTransaction -Transaction $RotationTransaction
+    $failureCode = $capturedFailure.Exception.Message
     if ($failureCode -notmatch '^[a-z0-9_-]+$') {
         $failureCode = "stage_$CurrentStage"
     }

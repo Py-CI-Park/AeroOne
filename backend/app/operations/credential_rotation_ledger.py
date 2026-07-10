@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, delete, func, select
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
@@ -25,6 +27,12 @@ from app.operations.credential_rotation_models import (
     CredentialRotationLedger,
 )
 from app.operations.credential_rotation_fingerprints import material_fingerprint, state_fingerprint
+
+
+@dataclass(frozen=True, slots=True)
+class RotationTransactionPreflight:
+    user_count: int
+    session_count: int
 
 
 def _database_state(session: Session, bundle: CredentialBundle) -> CredentialRotationDatabaseState:
@@ -94,6 +102,43 @@ def _rotate_in_transaction(session: Session, request: RotationRequest) -> Rotati
         raise CredentialRotationError(RotationErrorCode.CREDENTIAL_MATERIAL_REUSED)
     _ = _database_state(session, bundle)
     return _apply_rotation(session, request, users, session_count, bundle_fingerprint)
+
+
+def validate_rotation_transaction(
+    session: Session,
+    request: RotationRequest,
+) -> RotationTransactionPreflight:
+    users = list(session.scalars(select(User).order_by(User.id)).all())
+    session_count = int(session.scalar(select(func.count()).select_from(UserSessionActivity)) or 0)
+    _validate_rotation_scope(
+        users,
+        request.bundle,
+        {credential.username: credential for credential in request.bundle.users},
+    )
+    state = session.get(CredentialRotationDatabaseState, 1)
+    if state is None or state.database_id != str(request.bundle.database_id):
+        raise CredentialRotationError(RotationErrorCode.DATABASE_IDENTITY_MISMATCH)
+    return RotationTransactionPreflight(
+        user_count=len(users),
+        session_count=session_count,
+    )
+
+
+def rotate_credentials_on_connection(
+    connection: Connection,
+    request: RotationRequest,
+) -> RotationResult:
+    with Session(bind=connection) as session:
+        return rotate_credentials_in_session(session, request)
+
+
+def rotate_credentials_in_session(
+    session: Session,
+    request: RotationRequest,
+) -> RotationResult:
+    result = _rotate_in_transaction(session, request)
+    session.flush()
+    return result
 
 
 def _apply_rotation(
@@ -181,9 +226,7 @@ def rotate_all_credentials(request: RotationRequest) -> RotationResult:
     engine = create_engine(request.database_url)
     with engine.connect() as connection:
         _ = connection.exec_driver_sql("BEGIN IMMEDIATE")
-        with Session(bind=connection) as session:
-            result = _rotate_in_transaction(session, request)
-            session.flush()
+        result = rotate_credentials_on_connection(connection, request)
         connection.commit()
     return result
 

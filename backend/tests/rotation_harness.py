@@ -84,9 +84,17 @@ def create_synthetic_workspace(tmp_path: Path) -> SyntheticWorkspace:
 def invoke_rotation(
     workspace: SyntheticWorkspace,
     extra_arguments: tuple[str, ...] = (),
+    *,
+    internal_crashpoint: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     process_environment = os.environ.copy()
+    for key in tuple(process_environment):
+        if key.startswith("AEROONE_ROTATION_"):
+            del process_environment[key]
     process_environment["AEROONE_ROTATION_PYTHON"] = sys.executable
+    if internal_crashpoint is not None:
+        nonce = workspace.root.name.removeprefix("aeroone-rotation-test-")
+        process_environment["AEROONE_ROTATION_INTERNAL_CRASH"] = f"{nonce}:{internal_crashpoint}"
     process_environment["TEMP"] = str(workspace.root.parent)
     process_environment["TMP"] = str(workspace.root.parent)
     script = Path(__file__).resolve().parents[2] / "scripts" / "rotate_aeroone_credentials.ps1"

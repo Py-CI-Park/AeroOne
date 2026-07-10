@@ -85,7 +85,34 @@ function Repair-MissingRotationEnvironment {
     param($Journal, [string]$Phase, [Parameter(Mandatory = $true)][hashtable]$Repair)
 
     if (Test-Path -LiteralPath $Repair.ActivePath -PathType Leaf) {
-        return [PSCustomObject]@{ journal = $Journal; phase = $Phase }
+        $activeIdentity = Assert-SinglePhysicalFile -Path $Repair.ActivePath
+        $workspaceIdentity = Get-PhysicalPathIdentity -Path $Repair.Workspace
+        Assert-PhysicalContainment -RootIdentity $workspaceIdentity -ChildIdentity $activeIdentity
+        Assert-SecureAcl -Path $Repair.ActivePath
+        $actualDigest = Get-FileSha256 -Path $Repair.ActivePath
+        $oldDigest = [string]$Journal.($Repair.BeforeSha256Field)
+        $newDigest = [string]$Journal.($Repair.AfterSha256Field)
+        if ($Repair.PhaseOrder[$Phase] -ge $Repair.PhaseOrder[$Repair.NewPhase]) {
+            if ($actualDigest -cne $newDigest) {
+                throw $Repair.AmbiguousCode
+            }
+            return [PSCustomObject]@{ journal = $Journal; phase = $Phase }
+        }
+        if ($actualDigest -ceq $oldDigest) {
+            return [PSCustomObject]@{ journal = $Journal; phase = $Phase }
+        }
+        if ($Phase -cne $Repair.ExpectedPhase) {
+            throw $Repair.AmbiguousCode
+        }
+        if ($actualDigest -cne $newDigest -or
+            -not (Test-Path -LiteralPath $Repair.QuarantinePath -PathType Leaf)) {
+            throw $Repair.AmbiguousCode
+        }
+        $null = Assert-SinglePhysicalFile -Path $Repair.QuarantinePath
+        Assert-SecureAcl -Path $Repair.QuarantinePath
+        Assert-FileSha256 -Path $Repair.QuarantinePath -Expected $oldDigest
+        $Journal = Write-JournalPhase -Journal $Journal -Phase $Repair.NewPhase -JournalPath $Repair.JournalPath -PreviousPath $Repair.JournalPreviousPath -WorkspaceRoot $Repair.Workspace
+        return [PSCustomObject]@{ journal = $Journal; phase = $Repair.NewPhase }
     }
     if ($Phase -cne $Repair.ExpectedPhase -or
         -not (Test-Path -LiteralPath $Repair.QuarantinePath -PathType Leaf)) {
@@ -93,9 +120,15 @@ function Repair-MissingRotationEnvironment {
     }
     $null = Assert-SinglePhysicalFile -Path $Repair.QuarantinePath
     $expectedDigest = [string]$Journal.($Repair.BeforeSha256Field)
+    Assert-SecureAcl -Path $Repair.QuarantinePath
     Assert-FileSha256 -Path $Repair.QuarantinePath -Expected $expectedDigest
-    Set-SecureFileAcl -Path $Repair.QuarantinePath
-    Copy-EnvironmentToQuarantine -SourcePath $Repair.ActivePath -SourceLabel $Repair.SourceLabel -DestinationPath $Repair.QuarantinePath -ManifestPath $Repair.ManifestPath
+    Copy-EnvironmentToQuarantine `
+        -SourcePath $Repair.ActivePath `
+        -SourceLabel $Repair.SourceLabel `
+        -DestinationPath $Repair.QuarantinePath `
+        -ManifestPath $Repair.ManifestPath `
+        -RotationId ([string]$Journal.rotation_id) `
+        -DatabaseId ([string]$Journal.database_id)
     Promote-ProtectedEnvironment -PendingPath $Repair.PendingPath -DestinationPath $Repair.ActivePath -Purpose $Repair.Purpose
     $Journal = Write-JournalPhase -Journal $Journal -Phase $Repair.NewPhase -JournalPath $Repair.JournalPath -PreviousPath $Repair.JournalPreviousPath -WorkspaceRoot $Repair.Workspace
     return [PSCustomObject]@{ journal = $Journal; phase = $Repair.NewPhase }
@@ -110,9 +143,22 @@ function Invoke-RotationReconciliation {
         -not $Context.PhaseOrder.ContainsKey([string]$journal.phase)) {
         throw 'journal-invalid'
     }
+    $phase = [string]$journal.phase
+    $plaintextTempParents = @()
+    if ($phase -ceq 'db_committed' -and
+        -not (Test-Path -LiteralPath $Context.RootRepair.ActivePath -PathType Leaf)) {
+        $plaintextTempParents += $Context.Workspace
+    }
+    if ($phase -ceq 'root_env_promoted' -and
+        -not (Test-Path -LiteralPath $Context.BackendRepair.ActivePath -PathType Leaf)) {
+        $plaintextTempParents += (Split-Path -Parent $Context.BackendRepair.ActivePath)
+    }
+    if ($plaintextTempParents.Count -gt 0) {
+        Remove-RotationPlaintextOrphanTemps -Directories $plaintextTempParents
+    }
     Assert-SecureAcl -Path $Context.RecoveryPath
     Assert-FileSha256 -Path $Context.RecoveryPath -Expected ([string]$journal.recovery_sha256)
-    $resolved = Resolve-RotationResumeBundle -Journal $journal -Phase ([string]$journal.phase) -Context $Context
+    $resolved = Resolve-RotationResumeBundle -Journal $journal -Phase $phase -Context $Context
     $journal = $resolved.journal
     $phase = $resolved.phase
     Assert-RotationPendingEnvironments -Journal $journal -Phase $phase -Context $Context

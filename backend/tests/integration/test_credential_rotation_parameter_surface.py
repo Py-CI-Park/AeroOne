@@ -1,10 +1,42 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
+import subprocess
 
 import pytest
 
 from tests.rotation_harness import SyntheticWorkspace, create_synthetic_workspace, invoke_rotation
+
+
+def test_public_failpoint_validate_set_contains_only_original_four() -> None:
+    # Given: the checked-in PowerShell entrypoint is inspected without execution.
+    script = Path(__file__).resolve().parents[3] / "scripts" / "rotate_aeroone_credentials.ps1"
+    process_environment = os.environ.copy()
+    process_environment["AEROONE_ROTATION_SCRIPT"] = str(script)
+    command = (
+        "$parameter=(Get-Command -Name $env:AEROONE_ROTATION_SCRIPT).Parameters['Failpoint'];"
+        "$attribute=@($parameter.Attributes | Where-Object {$_ -is [Management.Automation.ValidateSetAttribute]})[0];"
+        "$attribute.ValidValues | Sort-Object"
+    )
+
+    # When: PowerShell reports the accepted public values.
+    completed = subprocess.run(
+        ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=process_environment,
+        timeout=30,
+    )
+
+    # Then: only the four documented deterministic failpoints are public.
+    assert completed.stdout.split() == [
+        "after_db_commit",
+        "after_root_env_promote",
+        "before_credentials_promote",
+        "before_db_commit",
+    ]
 
 
 @pytest.mark.parametrize(

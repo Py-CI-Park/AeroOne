@@ -90,8 +90,8 @@ function Assert-RotationSecureFileAcl {
 
 function Assert-RotationBytesEqual {
     param(
-        [Parameter(Mandatory = $true)][byte[]]$Expected,
-        [Parameter(Mandatory = $true)][byte[]]$Actual
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][byte[]]$Expected,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][byte[]]$Actual
     )
 
     if ($Expected.Length -ne $Actual.Length) {
@@ -109,7 +109,7 @@ function Assert-RotationBytesEqual {
 function Write-AndVerifyRotationBytes {
     param(
         [Parameter(Mandatory = $true)][IO.FileStream]$Stream,
-        [Parameter(Mandatory = $true)][byte[]]$Bytes,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][byte[]]$Bytes,
         [switch]$CrashAfterPartialWrite
     )
 
@@ -167,7 +167,7 @@ function Complete-RotationSecurePublish {
 
 function Publish-RotationSecureBytes {
     param(
-        [Parameter(Mandatory = $true)][byte[]]$Bytes,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][byte[]]$Bytes,
         [Parameter(Mandatory = $true)][string]$DestinationPath,
         [string]$BackupPath = '',
         [switch]$CrashAfterPartialWrite
@@ -221,9 +221,47 @@ function Remove-RotationOrphanTemps {
     }
 }
 
+function Remove-RotationPlaintextOrphanTemps {
+    param([Parameter(Mandatory = $true)][string[]]$Directories)
+
+    foreach ($directory in $Directories) {
+        foreach ($candidate in @(Get-ChildItem -LiteralPath $directory -File -Force)) {
+            if ($candidate.Name -notmatch '^\.aeroone-rotation-[a-f0-9]{32}\.tmp$') {
+                continue
+            }
+            $null = Assert-SinglePhysicalFile -Path $candidate.FullName
+            Assert-RotationSecureFileAcl -Path $candidate.FullName
+            $stream = [IO.FileStream]::new(
+                $candidate.FullName,
+                [IO.FileMode]::Open,
+                [IO.FileAccess]::Write,
+                [IO.FileShare]::None,
+                4096,
+                [IO.FileOptions]::WriteThrough
+            )
+            $zeroes = New-Object byte[] 4096
+            try {
+                $remaining = $stream.Length
+                $stream.Position = 0
+                while ($remaining -gt 0) {
+                    $count = [Math]::Min($zeroes.Length, $remaining)
+                    $stream.Write($zeroes, 0, $count)
+                    $remaining -= $count
+                }
+                $stream.Flush($true)
+            } finally {
+                [Array]::Clear($zeroes, 0, $zeroes.Length)
+                $stream.Dispose()
+            }
+            Remove-Item -LiteralPath $candidate.FullName -Force
+        }
+    }
+}
+
 Export-ModuleMember -Function @(
     'Assert-RotationSecureFileAcl',
     'New-RotationSecureDirectory',
     'Publish-RotationSecureBytes',
-    'Remove-RotationOrphanTemps'
+    'Remove-RotationOrphanTemps',
+    'Remove-RotationPlaintextOrphanTemps'
 )
