@@ -310,7 +310,7 @@ npm run build
 - HTTPS 종단을 두면 `production` 에서 `secure cookie` 가 자동 활성화됩니다. HTTP-only 폐쇄망은 `closed_network` 로 둬야 쿠키가 살아 있으면서 검증도 켜집니다.
 - **1.0.22+ 기본이 LAN** 이라 backend / frontend 를 `0.0.0.0` 으로 노출합니다(이 PC 의 LAN IP 자동 감지). **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. LAN 노출을 원치 않으면 `--local` 로 localhost 전용 실행이 가능합니다. 다른 PC 접속은 `scripts\allow_lan_firewall.cmd`(관리자, 로컬 서브넷 한정)로 허용하고, Windows 방화벽에서 `18437` / `29501` 두 포트의 LAN **외부** 차단 규칙을 함께 두세요. 인터넷 노출 production 으로 사용 금지.
 - `_database/newsletter` 와 `storage/` 는 운영 PC에 한정해 두고, 백업·접근 권한은 사내 정책에 맞춰 분리하세요.
-- 관리자 비밀번호 노출이 의심되면 `setup.bat` 또는 `setup_offline.bat` 을 다시 실행하세요. 새 랜덤 값으로 교체되며 기존 `.env` 는 `.bak` 로 자동 백업됩니다.
+- 단일 관리자 비밀번호의 일상 변경은 `/admin` 콘솔을 사용합니다. 자격 증명 노출이 의심되는 사고에서는 setup 배치를 재실행하지 말고 서비스를 중지한 뒤 [`scripts\rotate_aeroone_credentials.ps1`](scripts/rotate_aeroone_credentials.ps1)을 실행합니다. setup은 설치·환경 파일·초기 시드 도구이며 기존 DB의 모든 사용자 비밀번호와 세션을 일괄 회전하지 않습니다. 상세 절차: [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md).
 - 관리자 인증은 `/admin/*` 모든 mutation/sync 엔드포인트의 신뢰 경계입니다. 정책 배경: [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md)
 
 ---
@@ -328,6 +328,7 @@ npm run build
 | 폐쇄망 실행 런북 | [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md) (가장 깊은 세부) |
 | 로컬 개발 런북 | [`docs/runbook/local-dev.md`](docs/runbook/local-dev.md) |
 | 관리자 인증 정책 | [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md) |
+| 자격 증명 사고 대응 회전 | [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md) |
 | 단계별 변경 보고서 (closed_network / --allow-host / 시뮬레이션 / docstring) | [`docs/reports/INDEX.md`](docs/reports/INDEX.md) |
 | 설계 산출물 (plan + spec) | [`docs/superpowers/INDEX.md`](docs/superpowers/INDEX.md) |
 | 개발 계획 (MVP) | [`docs/dev_plan/20260327_newsletter_platform_mvp.md`](docs/dev_plan/20260327_newsletter_platform_mvp.md) |

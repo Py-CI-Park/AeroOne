@@ -124,7 +124,8 @@ cd D:\AeroOne-bundle && 3-run.bat --local
 |---|---|
 | 기동 / 정지 | `scripts\run_all.bat` / `scripts\stop_all.bat` |
 | 뉴스레터·문서 추가 | `_database\*` 에 파일 복사 후 해당 페이지 새로고침 ([`windows-offline.md`](windows-offline.md) §7) |
-| 관리자 비밀번호 교체 | `setup_offline.bat` 재실행 (`.env` 는 `.bak` 백업) |
+| 단일 관리자 비밀번호 변경 | `/admin` 콘솔의 **관리자 계정 / 비밀번호** 사용 |
+| 자격 증명 노출 사고 | AeroOne 서비스를 중지한 뒤 `scripts\rotate_aeroone_credentials.ps1` 실행. setup 재실행은 DB 전체 사용자·세션 회전을 대신하지 않음 ([`credential-rotation.md`](credential-rotation.md)) |
 | Open Notebook 데이터 | `D:\AeroOne-bundle\data\` (surrealdb / uploads / sqlite-db). 백업·업그레이드 시 보존 |
 | AI 모델 추가/변경 | Ollama 에 모델 적재 후 ON `Models` 화면에서 등록·할당 |
 

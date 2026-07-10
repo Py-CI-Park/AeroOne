@@ -3,17 +3,58 @@ param(
     [switch]$DryRun,
     [switch]$TestMode,
     [string]$TestWorkspaceRoot,
-    [ValidateSet('', 'before_db_commit', 'after_db_commit', 'after_root_env_promote', 'before_credentials_promote')]
+    [ValidateSet('', 'ARCHIVE_COMPLETED_ROTATION_AND_START_NEW')]
+    [string]$RestoreConfirmation = '',
+    [ValidateSet('', 'before_db_commit', 'after_db_commit', 'after_root_env_promote', 'before_credentials_promote', 'crash_after_secure_root_init', 'crash_during_root_quarantine_copy', 'crash_after_root_quarantine_finalize', 'crash_after_credentials_move')]
     [string]$Failpoint = ''
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 Add-Type -AssemblyName System.Security
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.PathSecurity.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.ProcessLock.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.SecureIO.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Security.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Crypto.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Runtime.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Environment.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Bootstrap.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Journal.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Quarantine.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Archive.psm1') -Force -DisableNameChecking
+Import-Module (Join-Path $PSScriptRoot 'credential_rotation\Rotation.Reconciliation.psm1') -Force -DisableNameChecking
 
 $ProductionWorkspace = 'D:\Chanil_Park\Project\Programming\AeroOne'
 $ProductRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$AllowedCredentialKeys = @('JWT_SECRET_KEY', 'ADMIN_PASSWORD')
+$AllowedEnvironmentKeys = @(
+    'APP_ENV',
+    'APP_NAME',
+    'BACKEND_PORT',
+    'FRONTEND_PORT',
+    'DATABASE_URL',
+    'JWT_SECRET_KEY',
+    'ADMIN_SESSION_COOKIE_NAME',
+    'ACCESS_TOKEN_TTL_MINUTES',
+    'ADMIN_USERNAME',
+    'ADMIN_PASSWORD',
+    'CSRF_COOKIE_NAME',
+    'NEWSLETTER_IMPORT_ROOT_CONTAINER',
+    'CIVIL_AIRCRAFT_ROOT',
+    'DOCUMENT_ROOT',
+    'NSA_ROOT',
+    'STORAGE_ROOT',
+    'THUMBNAILS_DIR_NAME',
+    'ATTACHMENTS_DIR_NAME',
+    'MARKDOWN_DIR_NAME',
+    'CORS_ORIGINS',
+    'NEXT_PUBLIC_API_BASE_URL',
+    'SERVER_API_BASE_URL',
+    'AI_FEATURES_ENABLED',
+    'OLLAMA_BASE_URL',
+    'OLLAMA_DEFAULT_MODEL',
+    'LAN_HOST'
+)
 $RequiredKeys = @('DATABASE_URL', 'JWT_SECRET_KEY', 'ADMIN_USERNAME', 'ADMIN_PASSWORD')
 $Retention = '2027-07-10T00:00:00+09:00'
 $PhaseOrder = @{
@@ -26,6 +67,19 @@ $PhaseOrder = @{
 }
 $CurrentStage = 'validate'
 
+Initialize-RotationRuntime -Configuration @{
+    TestMode = [bool]$TestMode
+    TestWorkspaceRoot = $TestWorkspaceRoot
+    ProductionWorkspace = $ProductionWorkspace
+    ProductRoot = $ProductRoot
+    ScriptPath = $PSCommandPath
+    PythonOverride = $env:AEROONE_ROTATION_PYTHON
+    AllowedEnvironmentKeys = $AllowedEnvironmentKeys
+    RequiredKeys = $RequiredKeys
+}
+Initialize-RotationJournal -PhaseOrder $PhaseOrder
+Initialize-RotationQuarantine -Retention $Retention -Failpoint $Failpoint
+
 function Stop-Rotation {
     param([string]$Code)
 
@@ -36,492 +90,6 @@ function Stop-Rotation {
     exit 1
 }
 
-function Get-WorkspaceRoot {
-    if ($TestMode) {
-        if ([string]::IsNullOrWhiteSpace($TestWorkspaceRoot)) {
-            throw 'test-root-required'
-        }
-        $candidate = [IO.Path]::GetFullPath($TestWorkspaceRoot)
-        if (-not (Test-Path -LiteralPath (Join-Path $candidate '.aeroone-rotation-test-root') -PathType Leaf)) {
-            throw 'unknown-test-root'
-        }
-        return $candidate.TrimEnd('\')
-    }
-    if (-not [string]::IsNullOrWhiteSpace($TestWorkspaceRoot)) {
-        throw 'test-root-forbidden'
-    }
-    $candidate = [IO.Path]::GetFullPath($ProductionWorkspace)
-    if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
-        throw 'production-root-missing'
-    }
-    return $candidate.TrimEnd('\')
-}
-
-function Read-ExactEnv {
-    param([string]$Path)
-
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw 'env-missing'
-    }
-    $values = @{}
-    foreach ($line in [IO.File]::ReadAllLines($Path)) {
-        $trimmed = $line.Trim()
-        if ($trimmed.Length -eq 0 -or $trimmed.StartsWith('#')) {
-            continue
-        }
-        $separator = $line.IndexOf('=')
-        if ($separator -le 0) {
-            throw 'env-malformed'
-        }
-        $key = $line.Substring(0, $separator).Trim()
-        if ($values.ContainsKey($key)) {
-            throw 'env-duplicate-key'
-        }
-        $values[$key] = $line.Substring($separator + 1)
-    }
-    foreach ($required in $RequiredKeys) {
-        if (-not $values.ContainsKey($required) -or [string]::IsNullOrWhiteSpace($values[$required])) {
-            throw 'env-required-key-missing'
-        }
-    }
-    foreach ($key in $values.Keys) {
-        if ($key -match '(?i)(_SECRET_KEY|_PASSWORD|_TOKEN|_API_KEY|_PRIVATE_KEY|_ACCESS_KEY)$' -and $key -notin $AllowedCredentialKeys) {
-            throw 'unknown-credential-key'
-        }
-    }
-    return $values
-}
-
-function Resolve-CanonicalDatabase {
-    param([string]$DatabaseUrl, [string]$WorkspaceRoot)
-
-    if (-not $DatabaseUrl.StartsWith('sqlite:///', [StringComparison]::Ordinal)) {
-        throw 'database-provider-forbidden'
-    }
-    $rawPath = $DatabaseUrl.Substring('sqlite:///'.Length).Replace('/', '\')
-    if ([IO.Path]::IsPathRooted($rawPath)) {
-        $resolved = [IO.Path]::GetFullPath($rawPath)
-    } else {
-        $resolved = [IO.Path]::GetFullPath((Join-Path $WorkspaceRoot $rawPath))
-    }
-    $expected = [IO.Path]::GetFullPath((Join-Path $WorkspaceRoot 'backend\data\aeroone.db'))
-    if (-not $resolved.Equals($expected, [StringComparison]::OrdinalIgnoreCase)) {
-        throw 'database-path-forbidden'
-    }
-    if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
-        throw 'database-missing'
-    }
-    return $resolved
-}
-
-function Invoke-RotationPython {
-    param([hashtable]$Request, [string]$WorkspaceRoot)
-
-    $python = Join-Path $WorkspaceRoot 'backend\.venv\Scripts\python.exe'
-    if ($TestMode -and -not [string]::IsNullOrWhiteSpace($env:AEROONE_ROTATION_PYTHON)) {
-        $python = [IO.Path]::GetFullPath($env:AEROONE_ROTATION_PYTHON)
-    }
-    if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
-        throw 'python-runtime-missing'
-    }
-    $startInfo = New-Object Diagnostics.ProcessStartInfo
-    $startInfo.FileName = $python
-    $startInfo.Arguments = '-m app.commands.rotate_credentials'
-    $startInfo.WorkingDirectory = Join-Path $ProductRoot 'backend'
-    $startInfo.UseShellExecute = $false
-    $startInfo.CreateNoWindow = $true
-    $startInfo.RedirectStandardInput = $true
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    $startInfo.EnvironmentVariables['PYTHONPATH'] = $startInfo.WorkingDirectory
-    $process = New-Object Diagnostics.Process
-    $process.StartInfo = $startInfo
-    if (-not $process.Start()) {
-        throw 'python-start-failed'
-    }
-    $requestBytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($Request | ConvertTo-Json -Compress))
-    $process.StandardInput.BaseStream.Write($requestBytes, 0, $requestBytes.Length)
-    $process.StandardInput.BaseStream.Close()
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $null = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
-    $response = $null
-    if (-not [string]::IsNullOrWhiteSpace($stdout)) {
-        $response = $stdout | ConvertFrom-Json
-    }
-    if ($process.ExitCode -ne 0) {
-        if ($null -ne $response -and $response.status -eq 'error' -and $response.code -match '^[a-z-]+$') {
-            throw "python-$($response.code)"
-        }
-        throw 'python-command-failed'
-    }
-    if ($null -eq $response) {
-        throw 'python-empty-response'
-    }
-    if ($response.status -ne 'ok') {
-        throw 'python-command-rejected'
-    }
-    return $response
-}
-
-function Get-CurrentUserSid {
-    return [Security.Principal.WindowsIdentity]::GetCurrent().User
-}
-
-function Set-SecureDirectoryAcl {
-    param([string]$Path)
-
-    $currentSid = Get-CurrentUserSid
-    $systemSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
-    $acl = New-Object Security.AccessControl.DirectorySecurity
-    $acl.SetOwner($currentSid)
-    $acl.SetAccessRuleProtection($true, $false)
-    $inheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
-    $propagation = [Security.AccessControl.PropagationFlags]::None
-    $allow = [Security.AccessControl.AccessControlType]::Allow
-    $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($currentSid, 'FullControl', $inheritance, $propagation, $allow)))
-    $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($systemSid, 'FullControl', $inheritance, $propagation, $allow)))
-    Set-Acl -LiteralPath $Path -AclObject $acl
-}
-
-function Set-SecureFileAcl {
-    param([string]$Path)
-
-    $currentSid = Get-CurrentUserSid
-    $systemSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
-    $acl = New-Object Security.AccessControl.FileSecurity
-    $acl.SetOwner($currentSid)
-    $acl.SetAccessRuleProtection($true, $false)
-    $allow = [Security.AccessControl.AccessControlType]::Allow
-    $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($currentSid, 'FullControl', $allow)))
-    $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($systemSid, 'FullControl', $allow)))
-    Set-Acl -LiteralPath $Path -AclObject $acl
-}
-
-function Convert-IdentityToSid {
-    param([string]$Identity)
-
-    if ($Identity.StartsWith('S-', [StringComparison]::OrdinalIgnoreCase)) {
-        return (New-Object Security.Principal.SecurityIdentifier($Identity)).Value
-    }
-    return (New-Object Security.Principal.NTAccount($Identity)).Translate([Security.Principal.SecurityIdentifier]).Value
-}
-
-function Assert-SecureAcl {
-    param([string]$Path)
-
-    if (-not (Test-Path -LiteralPath $Path)) {
-        throw 'secure-output-missing'
-    }
-    $acl = Get-Acl -LiteralPath $Path
-    $currentSid = (Get-CurrentUserSid).Value
-    $allowedSids = @($currentSid, 'S-1-5-18')
-    if (-not $acl.AreAccessRulesProtected -or (Convert-IdentityToSid -Identity $acl.Owner) -ne $currentSid) {
-        throw 'insecure-acl'
-    }
-    $rules = @($acl.GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier]))
-    if ($rules.Count -ne 2) {
-        throw 'insecure-acl'
-    }
-    foreach ($rule in $rules) {
-        if ($rule.IdentityReference.Value -notin $allowedSids) {
-            throw 'insecure-acl'
-        }
-        if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) {
-            throw 'insecure-acl'
-        }
-        if (($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -ne [Security.AccessControl.FileSystemRights]::FullControl) {
-            throw 'insecure-acl'
-        }
-    }
-}
-
-function Initialize-SecureDirectory {
-    param([string]$Path, [bool]$Resume)
-
-    if (Test-Path -LiteralPath $Path) {
-        if ($Resume) {
-            Assert-SecureAcl -Path $Path
-        } else {
-            throw 'secure-root-already-exists'
-        }
-        return
-    }
-    $null = New-Item -ItemType Directory -Path $Path
-    Set-SecureDirectoryAcl -Path $Path
-    Assert-SecureAcl -Path $Path
-}
-
-function Protect-ForCurrentUser {
-    param([byte[]]$Bytes)
-
-    return ,[Security.Cryptography.ProtectedData]::Protect(
-        $Bytes,
-        $null,
-        [Security.Cryptography.DataProtectionScope]::CurrentUser
-    )
-}
-
-function Unprotect-ForCurrentUser {
-    param([byte[]]$Bytes)
-
-    return ,[Security.Cryptography.ProtectedData]::Unprotect(
-        $Bytes,
-        $null,
-        [Security.Cryptography.DataProtectionScope]::CurrentUser
-    )
-}
-
-function Write-ProtectedBytes {
-    param([byte[]]$Bytes, [string]$Path)
-
-    $protected = Protect-ForCurrentUser -Bytes $Bytes
-    [IO.File]::WriteAllBytes($Path, $protected)
-    Set-SecureFileAcl -Path $Path
-    Assert-SecureAcl -Path $Path
-    [Array]::Clear($protected, 0, $protected.Length)
-}
-
-function Write-ProtectedJson {
-    param($Value, [string]$Path)
-
-    $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($Value | ConvertTo-Json -Compress -Depth 8))
-    try {
-        Write-ProtectedBytes -Bytes $bytes -Path $Path
-    } finally {
-        [Array]::Clear($bytes, 0, $bytes.Length)
-    }
-}
-
-function Read-ProtectedJson {
-    param([string]$Path)
-
-    Assert-SecureAcl -Path $Path
-    $protected = [IO.File]::ReadAllBytes($Path)
-    $plaintext = Unprotect-ForCurrentUser -Bytes $protected
-    try {
-        return (New-Object Text.UTF8Encoding($false)).GetString($plaintext) | ConvertFrom-Json
-    } finally {
-        [Array]::Clear($protected, 0, $protected.Length)
-        [Array]::Clear($plaintext, 0, $plaintext.Length)
-    }
-}
-
-function Write-DatabaseRecovery {
-    param([string]$DatabasePath, [string]$RecoveryPath)
-
-    $script:CurrentStage = 'recovery_open'
-    $stream = [IO.File]::Open(
-        $DatabasePath,
-        [IO.FileMode]::Open,
-        [IO.FileAccess]::Read,
-        [IO.FileShare]::None
-    )
-    $memory = New-Object IO.MemoryStream
-    try {
-        $script:CurrentStage = 'recovery_read'
-        $stream.CopyTo($memory)
-        $bytes = $memory.ToArray()
-        try {
-            $script:CurrentStage = 'recovery_protect'
-            Write-ProtectedBytes -Bytes $bytes -Path $RecoveryPath
-        } finally {
-            [Array]::Clear($bytes, 0, $bytes.Length)
-        }
-    } finally {
-        $memory.Dispose()
-        $stream.Dispose()
-    }
-}
-
-function New-UpdatedEnvText {
-    param([string]$Path, [string]$JwtSecret, [string]$AdminPassword)
-
-    $jwtCount = 0
-    $passwordCount = 0
-    $updated = New-Object Collections.Generic.List[string]
-    foreach ($line in [IO.File]::ReadAllLines($Path)) {
-        if ($line.StartsWith('JWT_SECRET_KEY=', [StringComparison]::Ordinal)) {
-            $updated.Add("JWT_SECRET_KEY=$JwtSecret")
-            $jwtCount += 1
-        } elseif ($line.StartsWith('ADMIN_PASSWORD=', [StringComparison]::Ordinal)) {
-            $updated.Add("ADMIN_PASSWORD=$AdminPassword")
-            $passwordCount += 1
-        } else {
-            $updated.Add($line)
-        }
-    }
-    if ($jwtCount -ne 1 -or $passwordCount -ne 1) {
-        throw 'env-rotation-key-mismatch'
-    }
-    return [string]::Join([Environment]::NewLine, $updated) + [Environment]::NewLine
-}
-
-function Write-PendingEnvironment {
-    param(
-        [string]$SourcePath,
-        [string]$PendingPath,
-        [string]$JwtSecret,
-        [string]$AdminPassword
-    )
-
-    $text = New-UpdatedEnvText -Path $SourcePath -JwtSecret $JwtSecret -AdminPassword $AdminPassword
-    $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes($text)
-    try {
-        Write-ProtectedBytes -Bytes $bytes -Path $PendingPath
-    } finally {
-        [Array]::Clear($bytes, 0, $bytes.Length)
-        $text = $null
-    }
-}
-
-function Read-CredentialBundle {
-    param([string]$Path)
-
-    return Read-ProtectedJson -Path $Path
-}
-
-function Get-AdminCredential {
-    param($Bundle)
-
-    $matches = @($Bundle.users | Where-Object { $_.username -ceq $Bundle.admin_username })
-    if ($matches.Count -ne 1) {
-        throw 'admin-credential-mismatch'
-    }
-    return $matches[0]
-}
-
-function Write-QuarantineManifest {
-    param($Manifest, [string]$Path)
-
-    $temporary = "$Path.pending"
-    $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($Manifest | ConvertTo-Json -Depth 8))
-    try {
-        $script:CurrentStage = 'manifest_temp_write'
-        [IO.File]::WriteAllBytes($temporary, $bytes)
-        Set-SecureFileAcl -Path $temporary
-        if (Test-Path -LiteralPath $Path) {
-            $script:CurrentStage = 'manifest_replace'
-            $backup = "$Path.previous"
-            if (Test-Path -LiteralPath $backup) {
-                throw 'manifest-backup-exists'
-            }
-            [IO.File]::Replace($temporary, $Path, $backup)
-            Set-SecureFileAcl -Path $backup
-            Assert-SecureAcl -Path $backup
-        } else {
-            [IO.File]::Move($temporary, $Path)
-        }
-        $script:CurrentStage = 'manifest_acl'
-        Set-SecureFileAcl -Path $Path
-        Assert-SecureAcl -Path $Path
-    } finally {
-        [Array]::Clear($bytes, 0, $bytes.Length)
-        if (Test-Path -LiteralPath $temporary) {
-            Remove-Item -LiteralPath $temporary -Force
-        }
-    }
-}
-
-function Move-EnvironmentToQuarantine {
-    param(
-        [string]$SourcePath,
-        [string]$SourceLabel,
-        [string]$DestinationPath,
-        [string]$ManifestPath
-    )
-
-    if (Test-Path -LiteralPath $ManifestPath) {
-        $script:CurrentStage = 'quarantine_manifest_read'
-        Assert-SecureAcl -Path $ManifestPath
-        $manifest = [IO.File]::ReadAllText($ManifestPath) | ConvertFrom-Json
-    } else {
-        $manifest = [PSCustomObject]@{
-            version = 1
-            retention = $Retention
-            entries = @()
-        }
-    }
-    $manifestChanged = $false
-    $existingEntry = @($manifest.entries | Where-Object { $_.source -ceq $SourceLabel })
-    if (-not (Test-Path -LiteralPath $DestinationPath)) {
-        $script:CurrentStage = 'quarantine_move'
-        if (-not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) {
-            throw 'env-source-missing'
-        }
-        $source = Get-Item -LiteralPath $SourcePath
-        $digest = (Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
-        Move-Item -LiteralPath $SourcePath -Destination $DestinationPath
-        Set-SecureFileAcl -Path $DestinationPath
-        $script:CurrentStage = 'quarantine_append'
-        $entry = [PSCustomObject]@{
-            source = $SourceLabel
-            category = 'environment'
-            size = $source.Length
-            sha256 = $digest
-            moved_at = [DateTimeOffset]::Now.ToString('o')
-            retention = $Retention
-        }
-        $manifest.entries = @($manifest.entries) + @($entry)
-        $manifestChanged = $true
-    } elseif ($existingEntry.Count -eq 0) {
-        Assert-SecureAcl -Path $DestinationPath
-        $destination = Get-Item -LiteralPath $DestinationPath
-        $entry = [PSCustomObject]@{
-            source = $SourceLabel
-            category = 'environment'
-            size = $destination.Length
-            sha256 = (Get-FileHash -LiteralPath $DestinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
-            moved_at = [DateTimeOffset]::Now.ToString('o')
-            retention = $Retention
-        }
-        $manifest.entries = @($manifest.entries) + @($entry)
-        $manifestChanged = $true
-    }
-    if (@($manifest.entries | Where-Object { $_.source -ceq $SourceLabel }).Count -ne 1) {
-        throw 'quarantine-manifest-mismatch'
-    }
-    if ($manifestChanged) {
-        $script:CurrentStage = 'quarantine_manifest_write'
-        Write-QuarantineManifest -Manifest $manifest -Path $ManifestPath
-    }
-}
-
-function Promote-ProtectedEnvironment {
-    param([string]$PendingPath, [string]$DestinationPath)
-
-    Assert-SecureAcl -Path $PendingPath
-    $protected = [IO.File]::ReadAllBytes($PendingPath)
-    $plaintext = Unprotect-ForCurrentUser -Bytes $protected
-    $temporary = "$DestinationPath.rotation-pending"
-    try {
-        [IO.File]::WriteAllBytes($temporary, $plaintext)
-        Set-SecureFileAcl -Path $temporary
-        if (Test-Path -LiteralPath $DestinationPath) {
-            [IO.File]::Replace($temporary, $DestinationPath, $null)
-        } else {
-            [IO.File]::Move($temporary, $DestinationPath)
-        }
-        Set-SecureFileAcl -Path $DestinationPath
-    } finally {
-        [Array]::Clear($protected, 0, $protected.Length)
-        [Array]::Clear($plaintext, 0, $plaintext.Length)
-        if (Test-Path -LiteralPath $temporary) {
-            Remove-Item -LiteralPath $temporary -Force
-        }
-    }
-}
-
-function Write-JournalPhase {
-    param($Journal, [string]$Phase, [string]$JournalPath)
-
-    if (-not $PhaseOrder.ContainsKey($Phase)) {
-        throw 'journal-phase-invalid'
-    }
-    $Journal.phase = $Phase
-    Write-ProtectedJson -Value $Journal -Path $JournalPath
-}
-
 function Invoke-TestFailpoint {
     param([string]$Expected)
 
@@ -530,27 +98,130 @@ function Invoke-TestFailpoint {
     }
 }
 
+function Invoke-TestCrashpoint {
+    param([string]$Expected)
+
+    if ($Failpoint -ceq $Expected) {
+        [Diagnostics.Process]::GetCurrentProcess().Kill()
+        [Environment]::Exit(97)
+    }
+}
+
 try {
     if (-not $TestMode -and -not [string]::IsNullOrWhiteSpace($Failpoint)) {
         throw 'failpoint-forbidden'
     }
     $workspace = Get-WorkspaceRoot
+    $RotationMutex = Enter-RotationMutex -WorkspaceRoot $workspace
+    if ($null -eq $RotationMutex) {
+        throw 'rotation-already-running'
+    }
     if ($TestMode) {
+        $secureBase = $workspace
         $secureRoot = Join-Path $workspace '.rotation-secure'
-        $finalCredentialPath = Join-Path $secureRoot '1.12.3-credentials.dpapi'
+        $historyRoot = Join-Path $workspace '.rotation-history'
     } else {
         $secureBase = Join-Path $env:USERPROFILE 'AeroOne-secure'
         if (-not (Test-Path -LiteralPath $secureBase)) {
-            $null = New-Item -ItemType Directory -Path $secureBase
-            Set-SecureDirectoryAcl -Path $secureBase
+            New-RotationSecureDirectory -Path $secureBase
+        } else {
+            $secureBaseIdentity = Get-PhysicalPathIdentity -Path $secureBase
+            if (-not $secureBaseIdentity.IsDirectory) {
+                throw 'secure-directory-invalid'
+            }
         }
+        Assert-SecureAcl -Path $secureBase
         $secureRoot = Join-Path $secureBase 'incident-20260710'
-        $finalCredentialPath = Join-Path $secureBase '1.12.3-credentials.dpapi'
+        $historyRoot = Join-Path $secureBase 'history'
     }
+    $finalCredentialPath = Join-Path $secureRoot '1.12.3-credentials.dpapi'
     $journalPath = Join-Path $secureRoot 'rotation-state.json.dpapi'
-    $resume = Test-Path -LiteralPath $journalPath -PathType Leaf
+    $journalPreviousPath = Join-Path $secureRoot 'rotation-state.previous.json.dpapi'
+    $resume = (
+        (Test-Path -LiteralPath $journalPath -PathType Leaf) -or
+        (Test-Path -LiteralPath $journalPreviousPath -PathType Leaf)
+    )
     $rootEnvPath = Join-Path $workspace '.env'
     $backendEnvPath = Join-Path $workspace 'backend\.env'
+    $recoveryDirectory = Join-Path $secureRoot 'recovery'
+    $pendingDirectory = Join-Path $secureRoot 'pending'
+    $quarantineDirectory = Join-Path $secureRoot 'quarantine'
+    $quarantineEnvDirectory = Join-Path $quarantineDirectory 'environment'
+    $recoveryPath = Join-Path $recoveryDirectory 'aeroone-db-before-rotation.dpapi'
+    $pendingCredentialPath = Join-Path $pendingDirectory 'credentials.dpapi'
+    $pendingRootEnvPath = Join-Path $pendingDirectory 'root-env.dpapi'
+    $pendingBackendEnvPath = Join-Path $pendingDirectory 'backend-env.dpapi'
+    $quarantineRootEnvPath = Join-Path $quarantineEnvDirectory 'root.env.before-rotation'
+    $quarantineBackendEnvPath = Join-Path $quarantineEnvDirectory 'backend.env.before-rotation'
+    $quarantineManifestPath = Join-Path $quarantineDirectory 'quarantine-manifest.json'
+    $bootstrapMarkerPath = Join-Path $secureRoot 'bootstrap-marker.json.dpapi'
+    $secureInitialized = $false
+
+    if (-not [string]::IsNullOrWhiteSpace($RestoreConfirmation) -and -not $resume) {
+        throw 'restore-completed-state-required'
+    }
+
+    if (-not $resume -and (Test-Path -LiteralPath $finalCredentialPath)) {
+        throw 'credential-destination-exists'
+    }
+    if (-not $resume -and (Test-Path -LiteralPath $secureRoot -PathType Container)) {
+        Reset-AbandonedBootstrapRoot -SecureRoot $secureRoot -WorkspaceRoot $workspace
+    }
+
+    if ($resume) {
+        $CurrentStage = 'resume_preflight'
+        $reconciled = Invoke-RotationReconciliation -Context @{
+            Workspace = $workspace
+            Retention = $Retention
+            PhaseOrder = $PhaseOrder
+            SecureRoot = $secureRoot
+            RecoveryDirectory = $recoveryDirectory
+            PendingDirectory = $pendingDirectory
+            QuarantineDirectory = $quarantineDirectory
+            QuarantineEnvDirectory = $quarantineEnvDirectory
+            BootstrapMarkerPath = $bootstrapMarkerPath
+            JournalPath = $journalPath
+            JournalPreviousPath = $journalPreviousPath
+            RecoveryPath = $recoveryPath
+            PendingCredentialPath = $pendingCredentialPath
+            FinalCredentialPath = $finalCredentialPath
+            PendingRootEnvPath = $pendingRootEnvPath
+            PendingBackendEnvPath = $pendingBackendEnvPath
+            RootRepair = @{
+                ActivePath = $rootEnvPath
+                QuarantinePath = $quarantineRootEnvPath
+                PendingPath = $pendingRootEnvPath
+                ManifestPath = $quarantineManifestPath
+                SourceLabel = '.env'
+                Purpose = 'pending-root-environment'
+                ExpectedPhase = 'db_committed'
+                NewPhase = 'root_env_promoted'
+                AmbiguousCode = 'root-env-state-ambiguous'
+                BeforeSha256Field = 'root_before_sha256'
+                JournalPath = $journalPath
+                JournalPreviousPath = $journalPreviousPath
+                Workspace = $workspace
+            }
+            BackendRepair = @{
+                ActivePath = $backendEnvPath
+                QuarantinePath = $quarantineBackendEnvPath
+                PendingPath = $pendingBackendEnvPath
+                ManifestPath = $quarantineManifestPath
+                SourceLabel = 'backend/.env'
+                Purpose = 'pending-backend-environment'
+                ExpectedPhase = 'root_env_promoted'
+                NewPhase = 'backend_env_promoted'
+                AmbiguousCode = 'backend-env-state-ambiguous'
+                BeforeSha256Field = 'backend_before_sha256'
+                JournalPath = $journalPath
+                JournalPreviousPath = $journalPreviousPath
+                Workspace = $workspace
+            }
+        }
+        $journal = $reconciled.journal
+        $resumePhase = [string]$reconciled.phase
+        $secureInitialized = $true
+    }
     $rootEnv = Read-ExactEnv -Path $rootEnvPath
     $backendEnv = Read-ExactEnv -Path $backendEnvPath
     $matchingKeys = @('DATABASE_URL', 'ADMIN_USERNAME')
@@ -579,25 +250,16 @@ try {
     }
 
     $CurrentStage = 'secure_acl'
-    Initialize-SecureDirectory -Path $secureRoot -Resume $resume
-    $recoveryDirectory = Join-Path $secureRoot 'recovery'
-    $pendingDirectory = Join-Path $secureRoot 'pending'
-    $quarantineDirectory = Join-Path $secureRoot 'quarantine'
-    $quarantineEnvDirectory = Join-Path $quarantineDirectory 'environment'
-    foreach ($directory in @($recoveryDirectory, $pendingDirectory, $quarantineDirectory, $quarantineEnvDirectory)) {
-        Initialize-SecureDirectory -Path $directory -Resume $resume
+    if (-not $secureInitialized) {
+        Initialize-SecureDirectory -Path $secureRoot -Resume $resume
+        foreach ($directory in @($recoveryDirectory, $pendingDirectory, $quarantineDirectory, $quarantineEnvDirectory)) {
+            Initialize-SecureDirectory -Path $directory -Resume $resume
+        }
+        Write-RotationBootstrapMarker -Path $bootstrapMarkerPath -WorkspaceRoot $workspace
+        Invoke-TestCrashpoint -Expected 'crash_after_secure_root_init'
     }
-    $recoveryPath = Join-Path $recoveryDirectory 'aeroone-db-before-rotation.dpapi'
-    $pendingCredentialPath = Join-Path $pendingDirectory 'credentials.dpapi'
-    $pendingRootEnvPath = Join-Path $pendingDirectory 'root-env.dpapi'
-    $pendingBackendEnvPath = Join-Path $pendingDirectory 'backend-env.dpapi'
-    $quarantineRootEnvPath = Join-Path $quarantineEnvDirectory 'root.env.before-rotation'
-    $quarantineBackendEnvPath = Join-Path $quarantineEnvDirectory 'backend.env.before-rotation'
-    $quarantineManifestPath = Join-Path $quarantineDirectory 'quarantine-manifest.json'
 
     if (-not $resume) {
-        $CurrentStage = 'recovery'
-        Write-DatabaseRecovery -DatabasePath $databasePath -RecoveryPath $recoveryPath
         $CurrentStage = 'prepare'
         $prepared = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
             action = 'prepare'
@@ -609,39 +271,74 @@ try {
         Assert-SecureAcl -Path $pendingCredentialPath
         $bundle = Read-CredentialBundle -Path $pendingCredentialPath
         $adminCredential = Get-AdminCredential -Bundle $bundle
-        $CurrentStage = 'pending_env'
-        Write-PendingEnvironment -SourcePath $rootEnvPath -PendingPath $pendingRootEnvPath -JwtSecret $bundle.jwt_secret_key -AdminPassword $adminCredential.password
-        Write-PendingEnvironment -SourcePath $backendEnvPath -PendingPath $pendingBackendEnvPath -JwtSecret $bundle.jwt_secret_key -AdminPassword $adminCredential.password
-        $journal = [PSCustomObject]@{
-            version = 1
-            phase = 'prepared'
-            user_count = [int]$prepared.user_count_before
-            retention = $Retention
+        $CurrentStage = 'recovery'
+        $null = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
+            action = 'backup'
+            database_path = $databasePath
+            recovery_path = $recoveryPath
+            rotation_id = [string]$bundle.rotation_id
+            database_id = [string]$bundle.database_id
         }
-        Write-ProtectedJson -Value $journal -Path $journalPath
+        Set-SecureFileAcl -Path $recoveryPath
+        Assert-SecureAcl -Path $recoveryPath
+        $CurrentStage = 'pending_env'
+        Write-PendingEnvironment -SourcePath $rootEnvPath -PendingPath $pendingRootEnvPath -JwtSecret $bundle.jwt_secret_key -AdminPassword $adminCredential.password -Purpose 'pending-root-environment'
+        Write-PendingEnvironment -SourcePath $backendEnvPath -PendingPath $pendingBackendEnvPath -JwtSecret $bundle.jwt_secret_key -AdminPassword $adminCredential.password -Purpose 'pending-backend-environment'
+        $sealed = Invoke-RotationPython -WorkspaceRoot $workspace -Request @{
+            action = 'journal_seal'
+            journal = @{
+                schema_version = 1
+                sequence = 0
+                phase = 'prepared'
+                rotation_id = [string]$bundle.rotation_id
+                database_id = [string]$bundle.database_id
+                user_count = [int]$prepared.user_count_before
+                retention = $Retention
+                bundle_sha256 = Get-FileSha256 -Path $pendingCredentialPath
+                recovery_sha256 = Get-FileSha256 -Path $recoveryPath
+                pending_root_sha256 = Get-FileSha256 -Path $pendingRootEnvPath
+                pending_backend_sha256 = Get-FileSha256 -Path $pendingBackendEnvPath
+                root_before_sha256 = Get-FileSha256 -Path $rootEnvPath
+                backend_before_sha256 = Get-FileSha256 -Path $backendEnvPath
+                root_after_sha256 = Get-ProtectedPayloadSha256 -Path $pendingRootEnvPath -Purpose 'pending-root-environment'
+                backend_after_sha256 = Get-ProtectedPayloadSha256 -Path $pendingBackendEnvPath -Purpose 'pending-backend-environment'
+            }
+        }
+        $journal = $sealed.journal
+        Write-ProtectedJson -Value $journal -Path $journalPath -Purpose 'rotation-journal' -BackupPath $journalPreviousPath
+        Set-SecureFileAcl -Path $rootEnvPath
+        Assert-SecureAcl -Path $rootEnvPath
+        Set-SecureFileAcl -Path $backendEnvPath
+        Assert-SecureAcl -Path $backendEnvPath
         $bundle = $null
         $adminCredential = $null
     } else {
-        foreach ($sensitivePath in @($journalPath, $recoveryPath)) {
-            Assert-SecureAcl -Path $sensitivePath
-        }
-        $journal = Read-ProtectedJson -Path $journalPath
-        if ($journal.version -ne 1 -or $journal.retention -cne $Retention -or -not $PhaseOrder.ContainsKey([string]$journal.phase)) {
-            throw 'journal-invalid'
-        }
         if ([int]$journal.user_count -ne [int]$inspection.user_count_before) {
             throw 'journal-user-count-mismatch'
         }
         $resumePhase = [string]$journal.phase
-        if ($PhaseOrder[$resumePhase] -lt $PhaseOrder['credentials_promoted']) {
-            Assert-SecureAcl -Path $pendingCredentialPath
+        if ($PhaseOrder[$resumePhase] -ge $PhaseOrder['root_env_promoted']) {
+            Assert-FileSha256 -Path $rootEnvPath -Expected ([string]$journal.root_after_sha256)
         }
-        if ($PhaseOrder[$resumePhase] -lt $PhaseOrder['root_env_promoted']) {
-            Assert-SecureAcl -Path $pendingRootEnvPath
+        if ($PhaseOrder[$resumePhase] -ge $PhaseOrder['backend_env_promoted']) {
+            Assert-FileSha256 -Path $backendEnvPath -Expected ([string]$journal.backend_after_sha256)
         }
-        if ($PhaseOrder[$resumePhase] -lt $PhaseOrder['backend_env_promoted']) {
-            Assert-SecureAcl -Path $pendingBackendEnvPath
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($RestoreConfirmation)) {
+        Invoke-RotationArchive -Context @{
+            Journal = $journal
+            Retention = $Retention
+            Workspace = $workspace
+            DatabasePath = $databasePath
+            RecoveryPath = $recoveryPath
+            SecureRoot = $secureRoot
+            HistoryRoot = $historyRoot
+            QuarantineManifestPath = $quarantineManifestPath
+            QuarantineRootEnvPath = $quarantineRootEnvPath
+            QuarantineBackendEnvPath = $quarantineBackendEnvPath
         }
+        exit 0
     }
 
     $phase = [string]$journal.phase
@@ -657,27 +354,27 @@ try {
         if ([int]$committed.user_count_after -ne [int]$journal.user_count -or [int]$committed.password_count_changed -ne [int]$journal.user_count) {
             throw 'database-commit-count-mismatch'
         }
-        Write-JournalPhase -Journal $journal -Phase 'db_committed' -JournalPath $journalPath
+        $journal = Write-JournalPhase -Journal $journal -Phase 'db_committed' -JournalPath $journalPath -PreviousPath $journalPreviousPath -WorkspaceRoot $workspace
         $phase = 'db_committed'
     }
     Invoke-TestFailpoint -Expected 'after_db_commit'
 
     if ($PhaseOrder[$phase] -lt $PhaseOrder['root_env_promoted']) {
         $CurrentStage = 'root_env_promote'
-        Move-EnvironmentToQuarantine -SourcePath $rootEnvPath -SourceLabel '.env' -DestinationPath $quarantineRootEnvPath -ManifestPath $quarantineManifestPath
-        Promote-ProtectedEnvironment -PendingPath $pendingRootEnvPath -DestinationPath $rootEnvPath
-        Write-JournalPhase -Journal $journal -Phase 'root_env_promoted' -JournalPath $journalPath
+        Copy-EnvironmentToQuarantine -SourcePath $rootEnvPath -SourceLabel '.env' -DestinationPath $quarantineRootEnvPath -ManifestPath $quarantineManifestPath
+        Promote-ProtectedEnvironment -PendingPath $pendingRootEnvPath -DestinationPath $rootEnvPath -Purpose 'pending-root-environment'
+        $journal = Write-JournalPhase -Journal $journal -Phase 'root_env_promoted' -JournalPath $journalPath -PreviousPath $journalPreviousPath -WorkspaceRoot $workspace
         $phase = 'root_env_promoted'
     }
     Invoke-TestFailpoint -Expected 'after_root_env_promote'
 
     if ($PhaseOrder[$phase] -lt $PhaseOrder['backend_env_promoted']) {
         $CurrentStage = 'backend_env_quarantine'
-        Move-EnvironmentToQuarantine -SourcePath $backendEnvPath -SourceLabel 'backend/.env' -DestinationPath $quarantineBackendEnvPath -ManifestPath $quarantineManifestPath
+        Copy-EnvironmentToQuarantine -SourcePath $backendEnvPath -SourceLabel 'backend/.env' -DestinationPath $quarantineBackendEnvPath -ManifestPath $quarantineManifestPath
         $CurrentStage = 'backend_env_write'
-        Promote-ProtectedEnvironment -PendingPath $pendingBackendEnvPath -DestinationPath $backendEnvPath
+        Promote-ProtectedEnvironment -PendingPath $pendingBackendEnvPath -DestinationPath $backendEnvPath -Purpose 'pending-backend-environment'
         $CurrentStage = 'backend_env_journal'
-        Write-JournalPhase -Journal $journal -Phase 'backend_env_promoted' -JournalPath $journalPath
+        $journal = Write-JournalPhase -Journal $journal -Phase 'backend_env_promoted' -JournalPath $journalPath -PreviousPath $journalPreviousPath -WorkspaceRoot $workspace
         $phase = 'backend_env_promoted'
     }
     Invoke-TestFailpoint -Expected 'before_credentials_promote'
@@ -690,7 +387,8 @@ try {
         Move-Item -LiteralPath $pendingCredentialPath -Destination $finalCredentialPath
         Set-SecureFileAcl -Path $finalCredentialPath
         Assert-SecureAcl -Path $finalCredentialPath
-        Write-JournalPhase -Journal $journal -Phase 'credentials_promoted' -JournalPath $journalPath
+        Invoke-TestCrashpoint -Expected 'crash_after_credentials_move'
+        $journal = Write-JournalPhase -Journal $journal -Phase 'credentials_promoted' -JournalPath $journalPath -PreviousPath $journalPreviousPath -WorkspaceRoot $workspace
         $phase = 'credentials_promoted'
     }
 
@@ -721,7 +419,7 @@ try {
     $finalBundle = $null
     $finalAdminCredential = $null
     if ($phase -ne 'complete') {
-        Write-JournalPhase -Journal $journal -Phase 'complete' -JournalPath $journalPath
+        $journal = Write-JournalPhase -Journal $journal -Phase 'complete' -JournalPath $journalPath -PreviousPath $journalPreviousPath -WorkspaceRoot $workspace
     }
     [Console]::Out.WriteLine("status=complete scope=valid users=$($verified.user_count_after)")
     exit 0

@@ -60,3 +60,18 @@
 
 - 실제 운영 자격증명 회전은 Task 4에서 서비스를 중지한 뒤 수행한다.
 - 별도 Windows 사용자 계정에서의 DPAPI 복호화는 수행하지 않았다. current-user 범위의 성공과 보호 경계는 검증했다.
+
+## Round 1 차단점 교정 후 최종 재검증
+
+최초 완료 판정 뒤 독립 검토에서 확인된 15개 차단점은 [`task-3-review-fix.md`](task-3-review-fix.md)의 RED→GREEN 근거로 교정했습니다.
+
+- focused: 56 passed, 3 warnings
+- backend 전체: 324 passed, 3 warnings
+- frontend credential literal 회귀: 313 passed / 66 files, typecheck와 production build PASS
+- Ruff: PASS
+- basedpyright production+새 migration test: 0 errors, 0 warnings, 0 notes
+- PowerShell: 13개 ps1/psm1 AST PASS, 함수 최대 43줄, main 432줄
+- 문서 상대 링크 11개 PASS, 공개 고정 credential literal과 JWT-like literal 0건
+- 실제 운영 환경/DB는 회전하지 않았으며 production 기본 경로를 실행하지 않았다.
+
+375px 실제 렌더의 부분 증거와 미완료 visual gate는 [`task-3-visual-qa/README.md`](task-3-visual-qa/README.md)에 별도로 기록했습니다.

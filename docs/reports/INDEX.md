@@ -153,7 +153,7 @@
 - 분류: minor (`1.9.0`) — 관리자(서버 실행자) 전용 노출 제어와 대시보드 운영 편의 강화.
 - 무엇: `service_modules.visibility`(public/admin) 신설로 개발중(Development)·Coming soon 카드와 Admin 메뉴를 관리자에게만 노출, 헤더를 다크·사용법·Admin 순서로 정리, `/admin` 에서 모듈 추가·삭제·노출 대상 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight 로 stale-DB 500 예방, `개발중` 섹션 라벨 영어(Development)화.
 - 코드: `backend/alembic/versions/20260703_0005_service_module_visibility.py`, `backend/app/modules/admin/{models,schemas,api}.py`, `backend/app/modules/auth/{api,schemas,dependencies}.py`, `frontend/components/layout/{app-shell,admin-nav-link,help-manual-button}.tsx`, `frontend/app/page.tsx`, `frontend/components/admin/admin-home-console.tsx`, `frontend/lib/{api,types,server-auth,changelog}.ts`, `start_offline.bat`
-- 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 10개·`27882788` 로그인).
+- 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 자격 로그인·관리자 10개 공개 카드).
 
 
 ### 단계 23 — 관리자 권한 강화·NSA 서버측 접근제어·접속자 대시보드 (1.10.0)
@@ -193,6 +193,14 @@
 - 무엇: 헤더 버전 배지에서 날짜를 즉시 노출하지 않고 클릭한 업데이트 모달에서만 보이게 했으며, 대시보드 상단에 한국 시간을 실시간 표시합니다. 로그인 화면은 중앙 카드형 계정 접속 UI로 재배치하고, 로그인 후 헤더에는 `로그인:` 접두어 없이 아이디만 표시합니다. 세션 탭은 세로 공간을 키워 로그인/로그아웃 목록을 더 쉽게 읽게 했습니다.
 - 코드: `frontend/components/layout/{version-badge,korean-clock,admin-nav-link,app-shell}.tsx`, `frontend/components/auth/login-form.tsx`, `frontend/components/admin/sections/admin-sessions-section.tsx`, `frontend/lib/changelog.ts`
 - 회귀 방지: backend `pytest tests` 268 passed, frontend Vitest 313 passed(66 파일), `tsc --noEmit`, `next build`, live dashboard/admin smoke.
+
+### 단계 26 — 자격 증명 사고 대응 회전 강화 (1.13.0)
+
+- 파일: [`phase-26-credential-rotation-hardening.md`](phase-26-credential-rotation-hardening.md)
+- 분류: minor (`1.13.0`) — DB 전체 사용자·세션을 포함하는 별도 사고 대응 경계와 복구 계약 추가.
+- 무엇: setup-only 오해를 제거하고 production 물리 provenance, exact env/ACL/single-link 검증, SQLite `BEGIN IMMEDIATE` 전체 자격·세션 회전과 unique ledger, WAL-safe DPAPI recovery, strict current/previous journal, actual process-kill 재개, DB 복원 뒤 old secure root archive→새 rotation 2단계 계약을 구현.
+- 코드: `scripts/rotate_aeroone_credentials.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/sqlite_recovery.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
+- 회귀 방지: Task3 focused 56 passed(경고 3), production changed Python ruff PASS·basedpyright 0 errors/0 warnings, PowerShell AST PASS·함수 50 LOC 이하, actual old admin 401/new admin 200.
 
 ---
 

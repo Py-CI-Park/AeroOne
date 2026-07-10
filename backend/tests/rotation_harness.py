@@ -15,6 +15,7 @@ from app.core.security import hash_password
 from app.db.base import Base
 from app.modules.admin.models import UserSessionActivity
 from app.modules.auth.models import User
+from app.operations import credential_rotation_models  # noqa: F401  (create_all model registration)
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,33 +27,37 @@ class SyntheticWorkspace:
 
 
 def create_synthetic_workspace(tmp_path: Path) -> SyntheticWorkspace:
-    root = tmp_path / 'AeroOne'
-    backend = root / 'backend'
-    database_path = backend / 'data' / 'aeroone.db'
+    test_nonce = secrets.token_hex(16)
+    root = tmp_path / f"aeroone-rotation-test-{test_nonce}"
+    backend = root / "backend"
+    database_path = backend / "data" / "aeroone.db"
     database_path.parent.mkdir(parents=True)
-    (root / '.aeroone-rotation-test-root').write_text('test-only', encoding='utf-8')
+    (root / ".aeroone-rotation-test-root").write_text(
+        f"aeroone-rotation-test-v1:{test_nonce}",
+        encoding="utf-8",
+    )
     database_url = f"sqlite:///{database_path.as_posix()}"
     jwt_secret = secrets.token_hex(32)
     admin_password = secrets.token_urlsafe(24)
-    env_text = '\n'.join(
+    env_text = "\n".join(
         (
-            'APP_ENV=test',
-            f'DATABASE_URL={database_url}',
-            f'JWT_SECRET_KEY={jwt_secret}',
-            'ADMIN_USERNAME=admin',
-            f'ADMIN_PASSWORD={admin_password}',
-            '',
+            "APP_ENV=test",
+            f"DATABASE_URL={database_url}",
+            f"JWT_SECRET_KEY={jwt_secret}",
+            "ADMIN_USERNAME=admin",
+            f"ADMIN_PASSWORD={admin_password}",
+            "",
         )
     )
-    (root / '.env').write_text(env_text, encoding='utf-8')
-    (backend / '.env').write_text(env_text, encoding='utf-8')
+    (root / ".env").write_text(env_text, encoding="utf-8")
+    (backend / ".env").write_text(env_text, encoding="utf-8")
     engine = create_engine(database_url)
     Base.metadata.create_all(engine)
     with Session(engine) as session, session.begin():
         admin = User(
-            username='admin',
+            username="admin",
             password_hash=hash_password(admin_password),
-            role='admin',
+            role="admin",
             is_active=True,
             session_version=2,
         )
@@ -81,20 +86,22 @@ def invoke_rotation(
     extra_arguments: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess[str]:
     process_environment = os.environ.copy()
-    process_environment['AEROONE_ROTATION_PYTHON'] = sys.executable
-    script = Path(__file__).resolve().parents[2] / 'scripts' / 'rotate_aeroone_credentials.ps1'
+    process_environment["AEROONE_ROTATION_PYTHON"] = sys.executable
+    process_environment["TEMP"] = str(workspace.root.parent)
+    process_environment["TMP"] = str(workspace.root.parent)
+    script = Path(__file__).resolve().parents[2] / "scripts" / "rotate_aeroone_credentials.ps1"
     return subprocess.run(
         [
-            'powershell.exe',
-            '-NoLogo',
-            '-NoProfile',
-            '-NonInteractive',
-            '-ExecutionPolicy',
-            'Bypass',
-            '-File',
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
             str(script),
-            '-TestMode',
-            '-TestWorkspaceRoot',
+            "-TestMode",
+            "-TestWorkspaceRoot",
             str(workspace.root),
             *extra_arguments,
         ],
@@ -106,10 +113,10 @@ def invoke_rotation(
 
 
 def env_value(path: Path, key: str) -> str:
-    prefix = f'{key}='
+    prefix = f"{key}="
     matches = [
-        line[len(prefix):]
-        for line in path.read_text(encoding='utf-8').splitlines()
+        line[len(prefix) :]
+        for line in path.read_text(encoding="utf-8").splitlines()
         if line.startswith(prefix)
     ]
     assert len(matches) == 1
@@ -130,9 +137,9 @@ def has_exact_secure_acl(path: Path) -> bool:
         "$difference.Count -eq 0){exit 0}else{exit 1}"
     )
     process_environment = os.environ.copy()
-    process_environment['AEROONE_ACL_TEST_PATH'] = str(path)
+    process_environment["AEROONE_ACL_TEST_PATH"] = str(path)
     completed = subprocess.run(
-        ['powershell.exe', '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command],
+        ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
         check=False,
         capture_output=True,
         text=True,

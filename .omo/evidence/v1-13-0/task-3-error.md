@@ -26,3 +26,17 @@
 ## 민감정보 원칙
 
 - 본 증적에는 암호, JWT 비밀, 암호 해시, 환경 파일 원문, DPAPI payload 또는 실제 운영 데이터가 포함되지 않는다.
+
+## Round 1 독립 검토 이후 상태 — superseded
+
+위의 “미해결 오류 없음”은 최초 구현 commit `ca9ce3e`의 자체 검증 시점 기록입니다. 이후 독립 `task-3-review-round-1.md`가 corrupt pending resume 시 active `.env`를 먼저 격리하는 P0와 15개 차단 범위를 재현했으므로 최초 판정은 승인 근거로 사용하지 않습니다.
+
+후속 교정은 [`task-3-review-fix.md`](task-3-review-fix.md)에 blocker별 RED→GREEN 근거로 기록했습니다. 최종 상태는 다음과 같습니다.
+
+- Task3 focused: 56 passed, 실패 0
+- backend 전체: 324 passed, 실패 0
+- production changed Python: Ruff PASS, basedpyright 0 errors / 0 warnings
+- PowerShell: 13개 파일 AST PASS, 함수 최대 43줄
+- 공개 고정 credential literal: 저장소 전체 0건
+- 실제 운영 `.env`, `backend\.env`, `backend\data\aeroone.db`: 작업 시작 이전 수정시각 유지
+- visual QA: 375px 부분 증거만 확보했으며 1280px·console zero·dual reviewer는 미완료로 명시

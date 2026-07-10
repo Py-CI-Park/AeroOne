@@ -40,6 +40,7 @@
 | [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 13장) | 375줄 |
 | [`runbook/local-dev.md`](runbook/local-dev.md) | 개발자 로컬 실행 가이드 (worktree 주의 포함) | 92줄 |
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
+| [`runbook/credential-rotation.md`](runbook/credential-rotation.md) | 자격 증명 노출 사고 시 JWT·전체 사용자 비밀번호·세션 회전, 중단 재개, DB 복원 뒤 신규 회전, 보존·삭제 책임 | 중간 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
 
@@ -73,6 +74,7 @@
 | 단계 25 | [`reports/phase-25-admin-console-ux-polish.md`](reports/phase-25-admin-console-ux-polish.md) | 권한 이해 카탈로그 + 감사 로그 전용 탭(검색/필터/CSV) + 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션 + 탭 숫자 단축키 1~9·온보딩 도움말 — 프론트-only minor 1.12.0 | `1.12.0-dev` |
 | 1.12.1 patch | — | 헤더 로그인 사용자 아이디/로그아웃, `users.display_name` 선택 프로필, 사용자 행별 권한 수정 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 15초 갱신 안내, 버전 배지 업데이트 날짜 표시 | `1.12.1` |
 | 1.12.2 patch | — | 헤더 버전 날짜 즉시 노출 제거(클릭 모달에만 표시), 대시보드 한국 시간 실시간 표시, 로그인 중앙 카드 UI, 로그인 후 아이디 단독 표시, 세션 탭 세로 가독성 보강 | `1.12.2` |
+| 단계 26 | [`reports/phase-26-credential-rotation-hardening.md`](reports/phase-26-credential-rotation-hardening.md) | setup-only 오해를 제거하고 DB 기준 전체 자격·세션 회전, WAL-safe recovery, strict journal/ledger, crash 재개, 복원 뒤 명시적 신규 회전을 구현 — minor 1.13.0 | `1.13.0-dev` |
 
 ---
 
@@ -111,6 +113,7 @@
 | secret 강도 검증 | `backend/app/core/config.py:85-95` | `validate_runtime_security` (production / closed_network 에서 강제) |
 | 부팅 검증 호출 | `backend/app/main.py:18` | startup 시 1회 호출 |
 | DB 분기 (배치용) | `backend/scripts/ensure_db_state.py` | 종료 코드 0/1/2/3, docstring 에 의미 직접 기재 |
+| 자격 증명 사고 대응 회전 | `scripts/rotate_aeroone_credentials.ps1`, `scripts/credential_rotation/`, `backend/app/commands/credential_rotation_commands.py`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/sqlite_recovery.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py` | production 물리 경로·ACL·single-link를 검증하고 JWT/전체 사용자 비밀번호/session version/live session을 ledger와 함께 원자 회전. DPAPI recovery/journal/bundle, crash 재개, DB 복원 뒤 old root archive→새 rotation 계약은 [`runbook/credential-rotation.md`](runbook/credential-rotation.md) 참조 |
 | 폐쇄망 LAN 옵션 / 기본 바인딩 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | **1.0.22+ 기본 = LAN**: 옵션 없으면 `ALLOW_HOST=auto` → `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(미감지 시 loopback 폴백, 0.0.0.0 바인딩). `--local` 로 loopback 전용, `--allow-host=<IP>` 로 호스트 고정, `AEROONE_ALLOW_HOST` env 도 인식 |
 | 패키징 제외 목록 | `offline_package.bat:46` | robocopy `/XD` + `/XF` 인자. `.git` 디렉터리/파일, `.gjc`, `.omc`, `.worktrees`, venv/node_modules/build/cache/vendor/artifacts 트리와 `.ug-*` scratch 파일은 ZIP 에 넣지 않음 |
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
@@ -153,6 +156,7 @@
 | `backend/tests/integration/test_documents_api.py` | 8 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / HTML 다운로드 / 404 / 디렉토리 이탈 400 |
 | `backend/tests/integration/test_ai_api.py` | 9 | AI status/chat, 기본 document/civil scope, 명시 NSA scope, FTS unavailable degrade, unknown collection validation, Ollama 빈 답변 재시도 |
 | `backend/tests/integration/test_admin_operations_api.py` | 2 | 관리자 대시보드/service_modules/asset health/backup validate/audit, 사용자 RBAC self-lockout·비관리자 403·비밀번호 reset 감사 redaction |
+| `backend/tests/{unit,integration}/test_credential_rotation*.py` | 56 | strict command/ledger/artifact 계약, production provenance·reparse/hardlink·exact ACL, WAL recovery, mutex, secure IO, journal/crash 재개, DB 복원→archive→신규 회전, old 401/new 200 |
 | 그 외 unit / integration | 85+ | 인증 API, 뉴스레터 public/admin/imports/content API, 컬렉션 다운로드, seed 등 |
 
 프론트엔드 Vitest: `frontend/tests/components/app-shell.test.tsx` 는 Admin 상단 네비를 포함하고, `frontend/tests/app/home-page.test.tsx` 는 `service_modules` API 실패 시 fallback 대시보드가 기존 카드/개발중/Coming soon 구성을 유지하는지 확인한다. 그 밖에 read-beacon/read-events, 민간 항공기 보고서, 문서 보관소, AI workspace/proxy, NSA 서버측 권한, 사다리, 뉴스레터 날짜 aria-label 테스트가 포함된다.

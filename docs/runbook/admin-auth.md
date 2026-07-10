@@ -27,6 +27,16 @@ ADMIN_PASSWORD=change-me
 
 `/admin/*` 경로의 모든 mutation 과 sync 기능을 다른 신뢰 경계 뒤로 이동시키지 않은 채 인증을 제거하지 마세요. 이 정책을 우회하거나 완화하는 변경은 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) §6 보안 관련 변경 시 추가 절차를 따릅니다.
 
+## 1.13.0 자격 증명 사고 대응 계약
+
+- `/admin`의 비밀번호 변경·재설정은 선택한 계정의 일상 운영 경로입니다. 자격 증명 노출 사고의 전체 회전과 동일하지 않습니다.
+- `setup.bat`과 `setup_offline.bat`은 설치·환경 파일·초기 시드 도구입니다. 환경 파일 값을 다시 만들 수는 있지만 기존 DB 전체 사용자의 비밀번호, `session_version`, live session을 하나의 트랜잭션으로 회전하지 않습니다.
+- 사고 대응은 서비스를 중지하고 `scripts\rotate_aeroone_credentials.ps1`을 사용합니다. configured admin은 prepare와 commit 시점 모두 `role=admin`, `is_active=true`여야 하며 최소 한 명의 활성 관리자가 남아 있어야 합니다.
+- 전체 회전은 사용자의 role과 활성 상태를 바꾸지 않습니다. 비활성 계정 로그인은 계정 존재·상태를 노출하지 않는 기존 인증 정책대로 **401**이며 403으로 바꾸지 않습니다.
+- 완료 뒤 DB를 recovery snapshot으로 복원하면 old completed bundle을 재사용하지 않습니다. exact confirmation으로 old secure root를 history에 보존한 다음 별도 일반 실행으로 새 rotation을 시작합니다.
+
+운영 명령, DPAPI 산출물 경로, 중단 재개, history retention과 삭제 승인 책임은 [`credential-rotation.md`](credential-rotation.md)를 따릅니다.
+
 
 ## 1.11.0 운영 메모
 
