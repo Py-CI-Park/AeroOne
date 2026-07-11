@@ -84,9 +84,15 @@ function Get-GitState {
         $headCommit = (git rev-parse HEAD).Trim()
 
         $exactTag = $null
-        $describeOutput = git describe --tags --exact-match HEAD 2>$null
-        if ($LASTEXITCODE -eq 0 -and $describeOutput) {
-            $exactTag = $describeOutput.Trim()
+        $previousEap = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        try {
+            $describeOutput = git describe --tags --exact-match HEAD 2>$null
+            if ($LASTEXITCODE -eq 0 -and $describeOutput) {
+                $exactTag = ([string]$describeOutput).Trim()
+            }
+        } finally {
+            $ErrorActionPreference = $previousEap
         }
 
         return [PSCustomObject]@{
