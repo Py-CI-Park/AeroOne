@@ -704,6 +704,28 @@ def test_run_all_passes_network_mode_to_open_notebook_bundle() -> None:
     assert '3-run.bat" --local' in result.stdout
 
 
+def test_run_all_dry_run_plans_leantime_codeploy_hook() -> None:
+    # Leantime 동거 훅: launcher 가 없으면 dry-run 에서 통합면만 제공(운영자 설치 필요)을
+    # 출력하고, 포트 8081 preflight 를 warn 으로 계획한다. AeroOne 흐름은 막지 않는다.
+    result = _run_cmd(REPO_ROOT, r"scripts\run_all.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "Leantime" in combined
+    assert "8081" in combined
+    lines = _non_empty_lines(result.stdout)
+    assert any("Leantime" in line and ("launcher" in line or "integration surface" in line) for line in lines)
+
+
+def test_run_all_help_documents_leantime_launcher_env() -> None:
+    result = _run_cmd(REPO_ROOT, r"scripts\run_all.bat", "--help")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "AEROONE_LEANTIME_LAUNCHER" in combined
+    assert "Leantime co-deploy" in combined
+
+
 def test_offline_package_excludes_workflow_state_from_zip_stage() -> None:
     result = _run_cmd(REPO_ROOT, "offline_package.bat", "--dry-run")
 
