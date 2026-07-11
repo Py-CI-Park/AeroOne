@@ -260,12 +260,21 @@ function Invoke-BackendWheelhouse {
 function Copy-RequiredInstallers {
     param(
         [Parameter(Mandatory = $true)] [string]$InstallerSourceDir,
-        [Parameter(Mandatory = $true)] [string]$StageRoot
+        [Parameter(Mandatory = $true)] [string]$StageRoot,
+        [Parameter(Mandatory = $true)] [string]$PolicyPath
     )
     $destination = Join-Path $StageRoot 'offline_assets\installers'
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
-    if (Test-Path -LiteralPath $InstallerSourceDir) {
-        robocopy $InstallerSourceDir $destination /E /R:1 /W:1 /NFL /NDL /NJH /NJS | Out-Null
+    $policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
+
+    foreach ($installer in $policy.required_installers) {
+        $filename = [string]$installer.filename
+        $source = Join-Path $InstallerSourceDir $filename
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw 'installer-missing'
+        }
+        Copy-Item -LiteralPath $source -Destination (Join-Path $destination $filename)
+        "offline_assets/installers/$filename"
     }
 }
 
@@ -328,12 +337,12 @@ try {
 
     Invoke-BackendWheelhouse -RequirementsPath (Join-Path $stageRoot 'backend\requirements.txt') -WheelDir (Join-Path $stageRoot 'offline_assets\python-wheels')
 
-    Copy-RequiredInstallers -InstallerSourceDir (Join-Path $RepoRoot 'offline_installers') -StageRoot $stageRoot
-
     $generatedPaths = @(
-        'offline_assets\installers\python-3.12.7-amd64.exe',
-        'offline_assets\installers\node-v20.18.0-x64.msi'
-    ) | ForEach-Object { $_ -replace '\\', '/' }
+        Copy-RequiredInstallers `
+            -InstallerSourceDir (Join-Path $RepoRoot 'offline_installers') `
+            -StageRoot $stageRoot `
+            -PolicyPath $PolicyPath
+    )
     $frontendGeneratedPaths = Get-ChildItem -LiteralPath (Join-Path $stageRoot 'frontend\node_modules'), (Join-Path $stageRoot 'frontend\.next') -Recurse -File -ErrorAction SilentlyContinue |
         ForEach-Object { ($_.FullName.Substring($stageRoot.Length + 1)) -replace '\\', '/' }
     $wheelGeneratedPaths = Get-ChildItem -LiteralPath (Join-Path $stageRoot 'offline_assets\python-wheels') -Recurse -File -ErrorAction SilentlyContinue |

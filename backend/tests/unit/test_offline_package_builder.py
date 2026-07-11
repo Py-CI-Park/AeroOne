@@ -52,6 +52,9 @@ def test_powershell_builder_writes_python_inputs_without_utf8_bom() -> None:
     assert "$verifyTag" not in script
     assert "foreach ($cachePath in @('.next\\cache', 'node_modules\\.cache'))" in script
     assert "Remove-Item -LiteralPath $cachePath -Recurse -Force" in script
+    assert "foreach ($installer in $policy.required_installers)" in script
+    assert "Copy-Item -LiteralPath $source" in script
+    assert "robocopy $InstallerSourceDir" not in script
 
 
 def _policy() -> PolicyDocument:
