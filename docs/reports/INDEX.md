@@ -4,6 +4,8 @@
 
 ---
 
+> **보안 사고 대응 기록**: [`incident-2026-07-10-offline-asset-containment.md`](incident-2026-07-10-offline-asset-containment.md) — 공개 배포 ZIP의 운영 자산 노출을 봉쇄하고 재발 방지 도구(자격증명 회전·패키지 verifier·내부 번들 경계·builder)를 구축한 사고 대응 보고서(redacted, exact 식별자·비밀 미기재).
+
 ## 권장 읽기 순서
 
 1. [단계 8 — 시뮬레이션](phase-8-offline-simulation.md) — 변경 직전 운영 신뢰도 확보
