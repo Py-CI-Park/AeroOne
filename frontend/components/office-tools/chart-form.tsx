@@ -3,15 +3,25 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 
-import { generateChart, inspectChartData } from '@/lib/api';
+import { fetchOfficeSample, generateChart, inspectChartData } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 import type { ChartGenerateResponse, ChartInspectResponse, ChartType } from '@/lib/types';
+import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
 
 // echarts 렌더는 SSR 비호환이라 미리보기를 클라이언트 전용 dynamic import 로 로드한다.
 const ChartPreview = dynamic(
   () => import('@/components/office-tools/chart-preview').then((mod) => mod.ChartPreview),
   { ssr: false, loading: () => <p className="text-sm text-ink-3">미리보기 로딩 중…</p> },
 );
+
+const CHART_STEPS: ProcessStep[] = [
+  { label: '데이터 업로드', detail: '.csv·.xlsx·.json' },
+  { label: '프로파일 점검', detail: '행·열·유형·결측 확인' },
+  { label: 'AI / 규칙 스펙', detail: '허용된 ChartSpec 만 제안' },
+  { label: 'pandas 집계', detail: '서버에서 실제 계산' },
+  { label: 'ECharts 렌더', detail: '브라우저에서 그리기' },
+  { label: '산출물', detail: 'option·집계 CSV·zip' },
+];
 
 const CHART_TYPES: { value: ChartType | ''; label: string }[] = [
   { value: '', label: '자동 (목적 문장/데이터로 추천)' },
@@ -32,6 +42,28 @@ export function ChartForm() {
   const [result, setResult] = React.useState<ChartGenerateResponse | null>(null);
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
+
+  const engineNote = result
+    ? result.warnings.some((warning) => warning.includes('규칙'))
+      ? '규칙 기반 폴백'
+      : aiAssist
+        ? 'AI 제안 사용'
+        : '규칙 기반'
+    : undefined;
+
+  async function loadSample() {
+    try {
+      const sample = await fetchOfficeSample('chart');
+      setDataFile(new File([sample.content], sample.filename, { type: sample.media_type }));
+      setProfile(null);
+      setResult(null);
+      if (typeof sample.hints.prompt === 'string') setPrompt(sample.hints.prompt);
+      if (typeof sample.hints.chart_type === 'string') setChartType(sample.hints.chart_type as ChartType | '');
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '예제를 불러오지 못했습니다.');
+    }
+  }
 
   async function handleInspect() {
     if (!dataFile || busy) return;
@@ -80,6 +112,7 @@ export function ChartForm() {
             }}
             className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
           />
+          {dataFile ? <span className="text-xs text-ink-3">선택됨: {dataFile.name}</span> : null}
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -114,7 +147,15 @@ export function ChartForm() {
           <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 추천)</span>
         </label>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadSample}
+            disabled={busy}
+            className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
+          >
+            예제 불러오기
+          </button>
           <button
             type="button"
             onClick={handleInspect}
@@ -132,6 +173,8 @@ export function ChartForm() {
           </button>
         </div>
       </form>
+
+      <ProcessSteps steps={CHART_STEPS} done={!!result} engineNote={engineNote} />
 
       {error ? (
         <p className="rounded-md border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-500" role="alert">

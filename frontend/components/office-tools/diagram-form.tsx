@@ -3,15 +3,24 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 
-import { generateDiagram } from '@/lib/api';
+import { fetchOfficeSample, generateDiagram } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 import type { DiagramGenerateResponse, DiagramType } from '@/lib/types';
+import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
 
 // mermaid 렌더는 SSR 비호환이라 미리보기를 클라이언트 전용 dynamic import 로 로드한다.
 const DiagramPreview = dynamic(
   () => import('@/components/office-tools/diagram-preview').then((mod) => mod.DiagramPreview),
   { ssr: false, loading: () => <p className="text-sm text-ink-3">미리보기 로딩 중…</p> },
 );
+
+const DIAGRAM_STEPS: ProcessStep[] = [
+  { label: '설명 입력', detail: '단계·관계를 자연어로 작성' },
+  { label: 'AI 제안 / 규칙', detail: 'LLM 연결이 있으면 제안, 없으면 규칙 생성' },
+  { label: '서버 검증', detail: 'script·click 등 금지 지시어 차단' },
+  { label: '브라우저 렌더', detail: 'Mermaid strict 모드로 그리기' },
+  { label: '산출물', detail: '.mmd·SVG·PNG 다운로드' },
+];
 
 const DIAGRAM_TYPES: { value: DiagramType; label: string; hint: string }[] = [
   { value: 'flowchart', label: '플로우차트', hint: '단계를 화살표(->)나 줄바꿈으로 구분하세요.' },
@@ -30,6 +39,25 @@ export function DiagramForm() {
   const [busy, setBusy] = React.useState(false);
 
   const activeHint = DIAGRAM_TYPES.find((item) => item.value === diagramType)?.hint ?? '';
+  const engineNote = result
+    ? result.warnings.some((warning) => warning.includes('규칙'))
+      ? '규칙 기반 폴백'
+      : aiAssist
+        ? 'AI 제안 사용'
+        : '규칙 기반'
+    : undefined;
+
+  async function loadSample() {
+    try {
+      const sample = await fetchOfficeSample('diagram');
+      setDescription(sample.content.trim());
+      if (typeof sample.hints.diagram_type === 'string') setDiagramType(sample.hints.diagram_type as DiagramType);
+      if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '예제를 불러오지 못했습니다.');
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,14 +127,26 @@ export function DiagramForm() {
           <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 생성)</span>
         </label>
 
-        <button
-          type="submit"
-          disabled={busy || !description.trim()}
-          className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-        >
-          {busy ? '생성 중…' : '다이어그램 생성'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadSample}
+            disabled={busy}
+            className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
+          >
+            예제 불러오기
+          </button>
+          <button
+            type="submit"
+            disabled={busy || !description.trim()}
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
+          >
+            {busy ? '생성 중…' : '다이어그램 생성'}
+          </button>
+        </div>
       </form>
+
+      <ProcessSteps steps={DIAGRAM_STEPS} done={!!result} engineNote={engineNote} />
 
       {error ? (
         <p className="rounded-md border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-500" role="alert">

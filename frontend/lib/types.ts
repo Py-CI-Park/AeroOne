@@ -475,6 +475,17 @@ export interface LlmConnectionUpdatePayload {
 // office-tools 다이어그램 스튜디오(svc03). 서버는 Mermaid 소스만 만들고 브라우저가 렌더한다.
 export type DiagramType = 'flowchart' | 'sequence' | 'state' | 'gantt';
 
+// office-tools 샘플 예제 — 각 스튜디오 '예제 불러오기'가 받는 내용 + 폼 프리필 힌트.
+export interface OfficeSample {
+  tool: 'report' | 'chart' | 'diagram';
+  filename: string;
+  media_type: string;
+  title: string;
+  description: string;
+  content: string;
+  hints: Record<string, unknown>;
+}
+
 export interface DiagramGenerateRequest {
   description: string;
   diagram_type: DiagramType;

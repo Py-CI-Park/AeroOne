@@ -2,9 +2,18 @@
 
 import React from 'react';
 
-import { generateReport } from '@/lib/api';
+import { fetchOfficeSample, generateReport } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 import type { ReportAiMode, ReportGenerateResponse } from '@/lib/types';
+import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
+
+const REPORT_STEPS: ProcessStep[] = [
+  { label: 'Markdown 업로드', detail: '.md·.markdown·.txt' },
+  { label: '서버 sanitize', detail: '안전한 HTML 만 허용' },
+  { label: '이미지 임베드', detail: 'base64 로 내장(외부 요청 0)' },
+  { label: 'AI 편집 / 변환만', detail: '원문 수치는 보존' },
+  { label: '자립형 HTML', detail: 'HTML·zip 다운로드' },
+];
 
 const AI_MODES: { value: ReportAiMode; label: string; hint: string }[] = [
   { value: 'none', label: '변환만', hint: 'AI 편집 없이 Markdown 을 그대로 HTML 로 변환합니다.' },
@@ -25,6 +34,27 @@ export function ReportForm() {
   const [busy, setBusy] = React.useState(false);
 
   const activeHint = AI_MODES.find((item) => item.value === aiMode)?.hint ?? '';
+  const engineNote = result
+    ? aiMode === 'none'
+      ? '변환만 (AI 미사용)'
+      : result.warnings.some((warning) => warning.includes('원문') || warning.includes('연결') || warning.includes('LLM'))
+        ? 'AI 미연결 — 원문 유지'
+        : 'AI 편집 사용'
+    : undefined;
+
+  async function loadSample() {
+    try {
+      const sample = await fetchOfficeSample('report');
+      setMarkdownFile(new File([sample.content], sample.filename, { type: sample.media_type }));
+      setResult(null);
+      if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
+      if (typeof sample.hints.subtitle === 'string') setSubtitle(sample.hints.subtitle);
+      if (typeof sample.hints.ai_mode === 'string') setAiMode(sample.hints.ai_mode as ReportAiMode);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '예제를 불러오지 못했습니다.');
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,6 +86,7 @@ export function ReportForm() {
             onChange={(event) => setMarkdownFile(event.target.files?.[0] ?? null)}
             className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
           />
+          {markdownFile ? <span className="text-xs text-ink-3">선택됨: {markdownFile.name}</span> : null}
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -130,14 +161,26 @@ export function ReportForm() {
           <span className="text-xs text-ink-3">{activeHint}</span>
         </label>
 
-        <button
-          type="submit"
-          disabled={busy || !markdownFile}
-          className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-        >
-          {busy ? '생성 중…' : '보고서 생성'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadSample}
+            disabled={busy}
+            className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
+          >
+            예제 불러오기
+          </button>
+          <button
+            type="submit"
+            disabled={busy || !markdownFile}
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
+          >
+            {busy ? '생성 중…' : '보고서 생성'}
+          </button>
+        </div>
       </form>
+
+      <ProcessSteps steps={REPORT_STEPS} done={!!result} engineNote={engineNote} />
 
       {error ? (
         <p className="rounded-md border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-500" role="alert">

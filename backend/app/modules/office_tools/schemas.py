@@ -31,6 +31,18 @@ MAX_CHART_DATA_ROWS = 100_000
 CHART_DATA_SUFFIXES = ('.csv', '.xlsx', '.xlsm', '.json')
 
 
+class OfficeSampleResponse(BaseModel):
+    """각 스튜디오의 '예제 불러오기'용 샘플 데이터 + 폼 프리필 힌트."""
+
+    tool: Literal['report', 'chart', 'diagram']
+    filename: str
+    media_type: str
+    title: str
+    description: str
+    content: str
+    hints: dict[str, Any] = Field(default_factory=dict)
+
+
 class OfficeHealth(BaseModel):
     status: str
     service: str

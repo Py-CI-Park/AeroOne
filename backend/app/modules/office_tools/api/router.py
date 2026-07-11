@@ -17,11 +17,12 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from app.modules.auth.dependencies import get_current_user
-from app.modules.office_tools.api import charts, diagrams, jobs, reports, system
+from app.modules.office_tools.api import charts, diagrams, jobs, reports, samples, system
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
 router.include_router(system.router)
+router.include_router(samples.router, prefix='/samples')
 router.include_router(jobs.router, prefix='/jobs')
 router.include_router(reports.router, prefix='/reports')
 router.include_router(charts.router, prefix='/charts')

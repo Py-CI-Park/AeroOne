@@ -19,10 +19,8 @@ const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClient
     { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, visibility: 'admin' },
     { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, visibility: 'admin' },
     { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, visibility: 'admin' },
-    { id: 11, key: 'office-report', title: '보고서 스튜디오', description: 'Markdown 을 사내 표준 HTML 보고서로 변환.', href: '/office-tools/report', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, visibility: 'admin' },
-    { id: 12, key: 'office-chart', title: '차트 스튜디오', description: 'CSV·표 데이터를 ECharts 차트로 시각화.', href: '/office-tools/chart', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 120, is_external: false, visibility: 'admin' },
-    { id: 13, key: 'office-diagram', title: '다이어그램 스튜디오', description: '설명을 Mermaid 다이어그램으로 생성.', href: '/office-tools/diagram', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 130, is_external: false, visibility: 'admin' },
-    { id: 14, key: 'leantime', title: 'Leantime', description: '프로젝트 관리(외부 폐쇄망 앱). 운영자 설치 필요.', href: 'http://localhost:8081', badge: 'External', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: true, visibility: 'admin' },
+    { id: 11, key: 'office-tools', title: '오피스 도구', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, visibility: 'admin' },
+    { id: 12, key: 'leantime', title: 'Leantime', description: '프로젝트 관리(외부 폐쇄망 앱). 운영자 설치 필요.', href: 'http://localhost:8081', badge: 'External', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: true, visibility: 'admin' },
   ],
 }));
 
@@ -161,30 +159,24 @@ test('operator dashboard groups cards into ordered sections and keeps coming-soo
   expect(screen.queryByRole('link', { name: /Announcement/i })).not.toBeInTheDocument();
   expect(announcement.closest('[aria-disabled="true"]')).not.toBeNull();
   expect(schedule.closest('[aria-disabled="true"]')).toHaveTextContent('Coming soon');
-  expect(screen.getByText('12 active · 2 coming soon')).toBeInTheDocument();
+  expect(screen.getByText('10 active · 2 coming soon')).toBeInTheDocument();
 });
 
-test('operator dashboard shows the three office-tools cards in Development', async () => {
+test('operator dashboard shows the unified office-tools hub card in Development', async () => {
   isAdminMock.mockReturnValue(true);
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   const main = screen.getByRole('main');
-  const reportLink = within(main).getByRole('link', { name: /보고서 스튜디오/ });
-  const chartLink = within(main).getByRole('link', { name: /차트 스튜디오/ });
-  const diagramLink = within(main).getByRole('link', { name: /다이어그램 스튜디오/ });
+  const hubLink = within(main).getByRole('link', { name: /오피스 도구/ });
 
-  expect(reportLink).toHaveAttribute('href', '/office-tools/report');
-  expect(chartLink).toHaveAttribute('href', '/office-tools/chart');
-  expect(diagramLink).toHaveAttribute('href', '/office-tools/diagram');
+  expect(hubLink).toHaveAttribute('href', '/office-tools');
 });
 
-test('non-admin dashboard hides the admin-only office-tools cards', async () => {
+test('non-admin dashboard hides the admin-only office-tools hub card', async () => {
   isAdminMock.mockReturnValue(false);
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.queryByRole('link', { name: /보고서 스튜디오/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /차트 스튜디오/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: /다이어그램 스튜디오/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /오피스 도구/ })).not.toBeInTheDocument();
 });
 
 test('operator dashboard shows an external Leantime card opening the co-deploy app on port 8081', async () => {

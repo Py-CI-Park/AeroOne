@@ -25,6 +25,7 @@ import type {
   ChartType,
   DiagramGenerateRequest,
   DiagramGenerateResponse,
+  OfficeSample,
   DocumentListItem,
   ReportGenerateResponse,
   LlmConnection,
@@ -770,4 +771,9 @@ export async function generateChart(input: ChartGenerateInput, csrfToken: string
     body: form,
     headers: { 'X-CSRF-Token': csrfToken },
   });
+}
+
+// office-tools 샘플 예제: 각 스튜디오의 '예제 불러오기'가 내용 + 폼 프리필 힌트를 받아온다.
+export async function fetchOfficeSample(tool: 'report' | 'chart' | 'diagram'): Promise<OfficeSample> {
+  return browserFetch<OfficeSample>(`/api/frontend/office-tools/samples/${tool}`, { method: 'GET' });
 }
