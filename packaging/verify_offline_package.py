@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     pre_stage.add_argument("--manifest", required=True)
     pre_stage.add_argument("--policy", required=True)
     pre_stage.add_argument("--origin", required=True)
-    pre_stage.add_argument("--tag", required=True)
+    pre_stage.add_argument("--tag", required=False, default="")
     pre_stage.add_argument("--commit", required=True)
     pre_stage.add_argument("--policy-label", required=True)
     pre_stage.add_argument("--signatures", required=True)

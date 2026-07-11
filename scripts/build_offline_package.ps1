@@ -343,11 +343,19 @@ try {
     $digestsPath = [System.IO.Path]::GetTempFileName() + '.json'
     try {
         Write-Utf8NoBom -Path $signaturesPath -Value ($signatureMap | ConvertTo-Json -Depth 4)
-        $verifyTag = if ($gitState.HeadTag) { $gitState.HeadTag } else { '' }
-        & $PythonExecutable $VerifierCli pre-stage `
-            --stage-root $stageRoot --manifest $manifestPath --policy $PolicyPath `
-            --origin AeroOne --tag $verifyTag --commit $gitState.HeadCommit `
-            --policy-label release-qa@1 --signatures $signaturesPath --digests-out $digestsPath
+        $verifyArgs = @(
+            $VerifierCli, 'pre-stage',
+            '--stage-root', $stageRoot,
+            '--manifest', $manifestPath,
+            '--policy', $PolicyPath,
+            '--origin', 'AeroOne',
+            '--commit', $gitState.HeadCommit,
+            '--policy-label', 'release-qa@1',
+            '--signatures', $signaturesPath,
+            '--digests-out', $digestsPath
+        )
+        if ($gitState.HeadTag) { $verifyArgs += @('--tag', $gitState.HeadTag) }
+        & $PythonExecutable @verifyArgs
         $preStageExit = $LASTEXITCODE
         if ($preStageExit -ne 0) { throw 'pre-stage-verification-failed' }
 

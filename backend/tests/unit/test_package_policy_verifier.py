@@ -42,6 +42,7 @@ _NODE_THUMBPRINT = "22222222222222222222222222222222222222BB"
 _PY_SUBJECT = "Fixture Python Foundation"
 _NODE_SUBJECT = "Fixture OpenJS Foundation"
 _VERIFIER_MODULE = Path(__file__).parents[3] / "scripts" / "packaging" / "Verify-OfflinePackage.psm1"
+_VERIFIER_CLI = Path(__file__).parents[3] / "packaging" / "verify_offline_package.py"
 
 
 def test_powershell_verifier_handles_single_installer_matches_and_writes_bom_free_json() -> None:
@@ -51,6 +52,10 @@ def test_powershell_verifier_handles_single_installer_matches_and_writes_bom_fre
     assert "New-Object Text.UTF8Encoding($false)" in module
     assert "Write-Utf8NoBom -Path $signaturesPath" in module
     assert "Set-Content -LiteralPath $signaturesPath" not in module
+    assert "if ($Tag) { $verifyArgs += @('--tag', $Tag) }" in module
+
+    cli = _VERIFIER_CLI.read_text(encoding="utf-8")
+    assert 'pre_stage.add_argument("--tag", required=False, default="")' in cli
 
 
 @dataclass

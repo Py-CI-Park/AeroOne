@@ -109,16 +109,19 @@ function Invoke-OfflinePackagePreStageVerification {
         Write-Utf8NoBom -Path $signaturesPath -Value ($signatureMap | ConvertTo-Json -Depth 4)
 
         $scriptPath = Join-Path $PSScriptRoot '..\..\packaging\verify_offline_package.py'
-        $output = & $PythonExecutable $scriptPath pre-stage `
-            --stage-root $StageRoot `
-            --manifest $ManifestPath `
-            --policy $PolicyPath `
-            --origin $Origin `
-            --tag $Tag `
-            --commit $Commit `
-            --policy-label $PolicyLabel `
-            --signatures $signaturesPath `
-            --digests-out $DigestsOutPath
+        $verifyArgs = @(
+            $scriptPath, 'pre-stage',
+            '--stage-root', $StageRoot,
+            '--manifest', $ManifestPath,
+            '--policy', $PolicyPath,
+            '--origin', $Origin,
+            '--commit', $Commit,
+            '--policy-label', $PolicyLabel,
+            '--signatures', $signaturesPath,
+            '--digests-out', $DigestsOutPath
+        )
+        if ($Tag) { $verifyArgs += @('--tag', $Tag) }
+        $output = & $PythonExecutable @verifyArgs
         $exitCode = $LASTEXITCODE
 
         $result = $output | ConvertFrom-Json
