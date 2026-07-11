@@ -6,6 +6,15 @@ Set-StrictMode -Version Latest
 # manifest, allow-list, and hash logic all live in
 # backend\app\operations\package_policy_verifier.py, invoked here via
 # packaging\verify_offline_package.py.
+function Write-Utf8NoBom {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [Parameter(Mandatory = $true)] [string]$Value
+    )
+    $encoding = New-Object Text.UTF8Encoding($false)
+    [IO.File]::WriteAllText($Path, $Value, $encoding)
+}
+
 
 function Get-AuthenticodeSignatureInfo {
     [CmdletBinding()]
@@ -63,7 +72,7 @@ function Get-RequiredInstallerSignatureMap {
     foreach ($installer in $policy.required_installers) {
         $filename = [string]$installer.filename
         $matches = Get-ChildItem -LiteralPath $StageRoot -Recurse -File -Filter $filename -ErrorAction SilentlyContinue
-        if (-not $matches -or $matches.Count -eq 0) {
+        if (@($matches).Count -eq 0) {
             throw "installer-missing"
         }
         $candidate = $matches | Select-Object -First 1
@@ -97,7 +106,7 @@ function Invoke-OfflinePackagePreStageVerification {
     $signatureMap = Get-RequiredInstallerSignatureMap -PolicyPath $PolicyPath -StageRoot $StageRoot
     $signaturesPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName() + '.json')
     try {
-        ($signatureMap | ConvertTo-Json -Depth 4) | Set-Content -LiteralPath $signaturesPath -Encoding utf8
+        Write-Utf8NoBom -Path $signaturesPath -Value ($signatureMap | ConvertTo-Json -Depth 4)
 
         $scriptPath = Join-Path $PSScriptRoot '..\..\packaging\verify_offline_package.py'
         $output = & $PythonExecutable $scriptPath pre-stage `
