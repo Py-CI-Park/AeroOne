@@ -50,6 +50,8 @@ def test_powershell_builder_writes_python_inputs_without_utf8_bom() -> None:
     assert "Set-Content -LiteralPath $signaturesPath" not in script
     assert "if ($gitState.HeadTag) { $verifyArgs += @('--tag', $gitState.HeadTag) }" in script
     assert "$verifyTag" not in script
+    assert "foreach ($cachePath in @('.next\\cache', 'node_modules\\.cache'))" in script
+    assert "Remove-Item -LiteralPath $cachePath -Recurse -Force" in script
 
 
 def _policy() -> PolicyDocument:

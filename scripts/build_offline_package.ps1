@@ -223,6 +223,12 @@ function Invoke-FrontendBuild {
 
         & $NpmExecutable prune --omit=dev
         if ($LASTEXITCODE -ne 0) { throw 'npm-prune-failed' }
+
+        foreach ($cachePath in @('.next\cache', 'node_modules\.cache')) {
+            if (Test-Path -LiteralPath $cachePath) {
+                Remove-Item -LiteralPath $cachePath -Recurse -Force
+            }
+        }
     }
     finally {
         Pop-Location
