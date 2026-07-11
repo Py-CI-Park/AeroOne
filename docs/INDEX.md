@@ -15,6 +15,7 @@
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
 | **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | §6 코드 진실 원천 |
+| **이 워크트리(`feature/dashboard-enhancements`)를 이어받는 에이전트** | [`docs/runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md`](runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md) | §2 운영 매뉴얼 + §6 코드 진실 원천 |
 
 ---
 
@@ -43,6 +44,7 @@
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
 | [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | **AI 에이전트 핸드오프** — 1.12.2 안정판, 1.13.0-dev 계획/blocked 상태, 다음 작업 순서, guardrail, 검증/커밋 규칙을 Codex/Claude/GJC 공통 문맥으로 정리 | 중간 |
+| [`runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md`](runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md) | **`feature/dashboard-enhancements` 워크트리 핸드오프** — 이 브랜치가 v1.13.0-dev 활성 계획(Wave 0 Task 3 리뷰 실패 중)과 왜/어떻게 독립인지, 병합 보류 조건, 대시보드 코드 진실 원천 지도 | 짧음 |
 
 ---
 
