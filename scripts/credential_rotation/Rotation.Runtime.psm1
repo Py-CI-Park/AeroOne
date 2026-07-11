@@ -3,6 +3,8 @@ Set-StrictMode -Version Latest
 $script:Runtime = @{}
 $script:InternalCrashpoints = @(
     'crash_after_secure_root_init',
+    'crash_after_recovery_publish',
+    'crash_after_database_commit',
     'crash_during_root_quarantine_copy',
     'crash_after_root_quarantine_finalize',
     'crash_after_root_env_publish',
@@ -15,6 +17,16 @@ function Initialize-RotationRuntime {
     param([Parameter(Mandatory = $true)][hashtable]$Configuration)
 
     $script:Runtime = $Configuration.Clone()
+}
+
+function Stop-Rotation {
+    param([string]$Code)
+
+    if ($Code -notmatch '^[a-z0-9_-]+$') {
+        $Code = 'operation-failed'
+    }
+    [Console]::Error.WriteLine("status=error code=$Code")
+    exit 1
 }
 
 function Get-WorkspaceRoot {
@@ -50,7 +62,11 @@ function Get-WorkspaceRoot {
     if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
         throw 'production-root-missing'
     }
-    Assert-ProductionProvenance -WorkspaceRoot $candidate -ProductRoot $script:Runtime.ProductRoot -ScriptPath $script:Runtime.ScriptPath
+    Assert-ProductionProvenance `
+        -WorkspaceRoot $candidate `
+        -ProductRoot $script:Runtime.ProductRoot `
+        -ScriptPath $script:Runtime.ScriptPath `
+        -ExpectedEntryPoint $script:Runtime.ExpectedEntryPoint
     return $candidate.TrimEnd('\')
 }
 
@@ -92,7 +108,7 @@ function Get-RotationInternalDatabaseBarrier {
     }
     $parts = @($raw.Split([char]':'))
     if ($parts.Count -ne 2 -or $parts[0] -cne $Matches[1] -or
-        $parts[1] -cne 'hold_after_recovery') {
+        $parts[1] -notin @('hold_after_recovery', 'hold_after_restore_confirmation')) {
         throw 'internal-db-barrier-forbidden'
     }
     return $parts[1]
@@ -186,8 +202,11 @@ function Assert-LiveEnvironmentBindings {
     $current = Get-LiveEnvironmentBindings `
         -WorkspaceRoot $Expected.workspace.FinalPath `
         -RootEnvironmentPath $RootEnvironmentPath `
-        -BackendEnvironmentPath $BackendEnvironmentPath
+        -BackendEnvironmentPath $BackendEnvironmentPath `
+        -AllowMissing
     if (-not (Test-SamePhysicalObject -Left $Expected.workspace -Right $current.workspace) -or
+        (($null -eq $Expected.root) -ne ($null -eq $current.root)) -or
+        (($null -eq $Expected.backend) -ne ($null -eq $current.backend)) -or
         ($null -ne $Expected.root -and
             -not (Test-SamePhysicalObject -Left $Expected.root -Right $current.root)) -or
         ($null -ne $Expected.backend -and
@@ -222,58 +241,14 @@ function Resolve-CanonicalDatabase {
     return $resolved
 }
 
-function Invoke-RotationPython {
-    param([hashtable]$Request, [string]$WorkspaceRoot)
-
-    $python = Join-Path $WorkspaceRoot 'backend\.venv\Scripts\python.exe'
-    if ($script:Runtime.TestMode -and -not [string]::IsNullOrWhiteSpace($script:Runtime.PythonOverride)) {
-        $python = [IO.Path]::GetFullPath([string]$script:Runtime.PythonOverride)
-    }
-    if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
-        throw 'python-runtime-missing'
-    }
-    $startInfo = New-Object Diagnostics.ProcessStartInfo
-    $startInfo.FileName = $python
-    $startInfo.Arguments = '-m app.commands.rotate_credentials'
-    $startInfo.WorkingDirectory = Join-Path $script:Runtime.ProductRoot 'backend'
-    $startInfo.UseShellExecute = $false
-    $startInfo.CreateNoWindow = $true
-    $startInfo.RedirectStandardInput = $true
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    $startInfo.EnvironmentVariables['PYTHONPATH'] = $startInfo.WorkingDirectory
-    $process = New-Object Diagnostics.Process
-    $process.StartInfo = $startInfo
-    if (-not $process.Start()) {
-        throw 'python-start-failed'
-    }
-    $requestBytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($Request | ConvertTo-Json -Compress))
-    $process.StandardInput.BaseStream.Write($requestBytes, 0, $requestBytes.Length)
-    $process.StandardInput.BaseStream.Close()
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $null = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
-    $response = if ([string]::IsNullOrWhiteSpace($stdout)) { $null } else { $stdout | ConvertFrom-Json }
-    if ($process.ExitCode -ne 0) {
-        if ($null -ne $response -and $response.status -eq 'error' -and $response.code -match '^[a-z-]+$') {
-            throw "python-$($response.code)"
-        }
-        throw 'python-command-failed'
-    }
-    if ($null -eq $response -or $response.status -ne 'ok') {
-        throw 'python-command-rejected'
-    }
-    return $response
-}
-
 Export-ModuleMember -Function @(
     'Initialize-RotationRuntime',
+    'Stop-Rotation',
     'Get-WorkspaceRoot',
     'Get-RotationInternalCrashpoint',
     'Get-RotationInternalDatabaseBarrier',
     'Get-LiveEnvironmentBindings',
     'Assert-LiveEnvironmentBindings',
     'Read-ExactEnv',
-    'Resolve-CanonicalDatabase',
-    'Invoke-RotationPython'
+    'Resolve-CanonicalDatabase'
 )

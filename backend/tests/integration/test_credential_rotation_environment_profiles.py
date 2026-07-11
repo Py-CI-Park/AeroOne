@@ -120,14 +120,9 @@ def test_production_like_dry_run_leaves_user_profile_tree_byte_identical(
     shutil.copytree(repository_root / "scripts", workspace.root / "scripts")
     shutil.copytree(repository_root / "backend" / "app", workspace.root / "backend" / "app")
     script = workspace.root / "scripts" / "rotate_aeroone_credentials.ps1"
-    script.write_text(
-        script.read_text(encoding="utf-8").replace(
-            "$ProductionWorkspace = 'D:\\Chanil_Park\\Project\\Programming\\AeroOne'",
-            f"$ProductionWorkspace = '{workspace.root}'",
-        ),
-        encoding="utf-8",
+    runtime_module = (
+        workspace.root / "scripts" / "credential_rotation" / "Rotation.PythonCommand.psm1"
     )
-    runtime_module = workspace.root / "scripts" / "credential_rotation" / "Rotation.Runtime.psm1"
     runtime_module.write_text(
         runtime_module.read_text(encoding="utf-8").replace(
             "$python = Join-Path $WorkspaceRoot 'backend\\.venv\\Scripts\\python.exe'",

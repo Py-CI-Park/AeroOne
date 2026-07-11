@@ -447,14 +447,14 @@ xcopy /Y /E /I _database D:\backup\AeroOne\_database
 
 노출이 의심되면 서비스를 중지하고 [`scripts\rotate_aeroone_credentials.ps1`](../scripts/rotate_aeroone_credentials.ps1)을 사용합니다. 도구는 알려진 AeroOne Windows 서비스와 root/backend 환경에 설정된 포트 listener를 변경 전에 확인하며, 남아 있으면 자동 종료하지 않고 fail closed 합니다. configured admin과 활성 admin을 prepare/commit 양쪽에서 검증하고, recovery 생성부터 commit까지 하나의 `BEGIN IMMEDIATE` writer lock을 유지하면서 전체 사용자 비밀번호·session version·live session·ledger를 원자 반영합니다. 비활성 사용자는 활성화하지 않으며 로그인 실패는 기존 정책대로 **401**입니다.
 
-완료된 bundle은 먼저 headless 검증한 뒤 같은 Windows 사용자 세션의 WPF 뷰어로 확인합니다. 임의 경로 인자는 없고 current SID의 DPAPI, exact secure path·ACL·schema를 모두 통과해야 합니다.
+완료된 bundle은 먼저 headless 검증한 뒤 같은 Windows 사용자 세션의 WPF 뷰어로 확인합니다. 임의 경로 인자는 없고 current SID의 DPAPI, exact secure path·ACL·schema를 모두 통과해야 합니다. setup 재실행으로 환경 파일의 초기 시드 값이 바뀌어도 기존 DB의 비밀번호 해시·세션은 교체되지 않으므로 이 뷰어와 회전 도구를 대체할 수 없습니다.
 
 ```powershell
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\view_aeroone_credentials.ps1 -ValidateOnly
 powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File scripts\view_aeroone_credentials.ps1
 ```
 
-비밀번호는 기본 마스킹이며 명시적으로 표시하거나 복사합니다. 복사한 값이 그대로 남아 있을 때만 30초 후 clipboard를 지우므로, 운영자가 이후 복사한 다른 내용은 삭제하지 않습니다.
+비밀번호는 기본 마스킹이며 명시적으로 표시하거나 복사합니다. 복사 시 Windows clipboard history·cloud roaming 제외 형식을 함께 게시하고, 복사한 값이 그대로 남아 있을 때만 원자적으로 지우므로 이후 복사한 다른 내용은 삭제하지 않습니다. 30초 후 삭제가 일시적으로 실패하면 최대 5회 재시도하고 소유 상태를 유지합니다. 마지막 실패 뒤에는 명시적 재시도 버튼을 표시하며, 해당 비밀번호가 남아 있는 동안 창 닫기를 거부합니다.
 
 중단 재개, DPAPI 보호 산출물, DB 복원 뒤 old completed 상태 보존과 명시적 신규 회전, retention 이후 삭제 책임은 [`runbook/credential-rotation.md`](runbook/credential-rotation.md)를 단일 진실 원천으로 따릅니다.
 

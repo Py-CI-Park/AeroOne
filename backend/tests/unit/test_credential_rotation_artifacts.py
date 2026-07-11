@@ -19,6 +19,7 @@ def _payload() -> RotationJournalPayload:
     return RotationJournalPayload(
         sequence=0,
         phase=RotationPhase.PREPARED,
+        root_environment_present=True,
         rotation_id=uuid4(),
         database_id=uuid4(),
         user_count=1,
@@ -53,3 +54,23 @@ def test_journal_only_advances_one_phase_and_increments_sequence() -> None:
     assert advanced.phase is RotationPhase.DB_COMMITTED
     with pytest.raises(ValueError, match="phase transition"):
         advance_rotation_journal(advanced, RotationPhase.PREPARED)
+
+
+def test_journal_binds_absent_root_environment_without_placeholder_digests() -> None:
+    # Given: a prepared journal payload for an installer topology with no root .env.
+    values = _payload().model_dump()
+    values.update(
+        root_environment_present=False,
+        pending_root_sha256=None,
+        root_before_sha256=None,
+        root_after_sha256=None,
+    )
+
+    # When: the strict journal boundary parses and seals the topology.
+    payload = RotationJournalPayload.model_validate(values)
+    journal = seal_rotation_journal(payload)
+
+    # Then: absence is explicit, checksum-bound, and carries no synthetic root digest.
+    assert journal.schema_version == 2
+    assert journal.root_environment_present is False
+    assert journal.pending_root_sha256 is None

@@ -74,7 +74,7 @@ function Get-ExactCredentialViewerPath {
         throw 'credential-viewer-root-invalid'
     }
     Assert-SecureAcl -Path $secureRoot
-    $credentialPath = Join-Path $secureRoot '1.12.3-credentials.dpapi'
+    $credentialPath = Join-Path $secureRoot 'credentials.dpapi'
     $credentialIdentity = Assert-SinglePhysicalFile -Path $credentialPath
     Assert-PhysicalContainment -RootIdentity $rootIdentity -ChildIdentity $credentialIdentity
     Assert-SecureAcl -Path $credentialPath
@@ -89,24 +89,6 @@ function Read-ValidatedCredentialViewerBundle {
     return $bundle
 }
 
-function Clear-RotationOwnedClipboard {
-    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Expected)
-
-    if ([string]::IsNullOrEmpty($Expected)) {
-        return $true
-    }
-    try {
-        if (-not [Windows.Clipboard]::ContainsText() -or
-            [Windows.Clipboard]::GetText() -cne $Expected) {
-            return $true
-        }
-        [Windows.Clipboard]::Clear()
-        return $true
-    } catch {
-        return $false
-    }
-}
-
 function Show-CredentialViewerWindow {
     param([Parameter(Mandatory = $true)]$Bundle)
 
@@ -116,7 +98,7 @@ function Show-CredentialViewerWindow {
     $xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AeroOne Credential Handoff" Width="620" Height="430"
+        Title="AeroOne Credential Handoff" Width="620" Height="580"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
         Background="#F3F6FA" FontFamily="Segoe UI">
   <Grid Margin="32">
@@ -135,6 +117,7 @@ function Show-CredentialViewerWindow {
           <CheckBox x:Name="RevealPassword" Content="Reveal password" VerticalAlignment="Center" />
           <Button x:Name="CopyPassword" Content="Copy password" DockPanel.Dock="Right" Width="132" Height="34" HorizontalAlignment="Right" Background="#1769E0" Foreground="White" BorderThickness="0" />
         </DockPanel>
+        <Button x:Name="RetryClipboardClear" Content="Retry clipboard clear" Height="32" Margin="0,0,0,12" Visibility="Collapsed" />
         <Border Background="#FFF6E5" BorderBrush="#F4D18A" BorderThickness="1" CornerRadius="8" Padding="12">
           <TextBlock Text="The clipboard is cleared after 30 seconds if it still contains the copied password." TextWrapping="Wrap" FontSize="12" Foreground="#6A4A10" />
         </Border>
@@ -150,6 +133,7 @@ function Show-CredentialViewerWindow {
     $revealedPassword = $window.FindName('RevealedPassword')
     $revealPassword = $window.FindName('RevealPassword')
     $copyPassword = $window.FindName('CopyPassword')
+    $retryClipboardClear = $window.FindName('RetryClipboardClear')
     $statusText = $window.FindName('StatusText')
     $credentials = @{}
     foreach ($credential in @($Bundle.users)) {
@@ -158,21 +142,32 @@ function Show-CredentialViewerWindow {
     $state = [PSCustomObject]@{ ClipboardText = ''; ClearAttempts = 0 }
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromSeconds(30)
-    $timer.Add_Tick({
-        if (Clear-RotationOwnedClipboard -Expected $state.ClipboardText) {
+    $attemptClipboardClear = {
+        $result = Clear-RotationOwnedClipboard -Expected $state.ClipboardText
+        $state.ClearAttempts += 1
+        $decision = Resolve-RotationClipboardDecision `
+            -Result $result -Attempt $state.ClearAttempts -MaximumAttempts 5
+        if (-not $decision.KeepOwnership) {
             $timer.Stop()
             $state.ClipboardText = ''
-            $statusText.Text = 'Clipboard cleared.'
+            $retryClipboardClear.Visibility = [Windows.Visibility]::Collapsed
+            $statusText.Text = if ($result -eq 'Cleared') {
+                'Clipboard cleared.'
+            } else {
+                'Clipboard changed; the newer clipboard item was preserved.'
+            }
         } else {
-            $state.ClearAttempts += 1
-            $timer.Interval = [TimeSpan]::FromSeconds(1)
-            if ($state.ClearAttempts -ge 5) {
+            if ($decision.ScheduleRetry) {
+                $timer.Interval = [TimeSpan]::FromSeconds(1)
+                $statusText.Text = 'Clipboard still contains the password. Retrying the clear operation.'
+            } else {
                 $timer.Stop()
-                $state.ClipboardText = ''
-                $statusText.Text = 'Clipboard could not be cleared automatically.'
+                $retryClipboardClear.Visibility = [Windows.Visibility]::Visible
+                $statusText.Text = 'Clipboard still contains the password. Retry clearing before closing.'
             }
         }
-    })
+    }
+    $timer.Add_Tick({ & $attemptClipboardClear })
     $accountSelector.ItemsSource = @($Bundle.users | ForEach-Object { [string]$_.username })
     $accountSelector.Add_SelectionChanged({
         $selected = [string]$accountSelector.SelectedItem
@@ -195,19 +190,50 @@ function Show-CredentialViewerWindow {
     $copyPassword.Add_Click({
         $selected = [string]$accountSelector.SelectedItem
         $password = [string]$credentials[$selected]
-        [Windows.Clipboard]::SetText($password)
+        try {
+            Set-RotationSecureClipboard -Text $password
+        } catch {
+            $clearResult = Clear-RotationOwnedClipboard -Expected $password
+            if ($clearResult -eq 'Failed') {
+                $state.ClipboardText = $password
+                $retryClipboardClear.Visibility = [Windows.Visibility]::Visible
+                $statusText.Text = 'Secure copy failed and the password may remain. Retry clearing before closing.'
+            } else {
+                $statusText.Text = 'Secure copy failed. Clipboard was not changed or was cleared.'
+            }
+            return
+        }
         $state.ClipboardText = $password
         $state.ClearAttempts = 0
+        $retryClipboardClear.Visibility = [Windows.Visibility]::Collapsed
         $timer.Interval = [TimeSpan]::FromSeconds(30)
         $timer.Start()
-        $statusText.Text = 'Copied. Clipboard clear scheduled.'
+        $statusText.Text = 'Copied without clipboard history or cloud sync. Clear scheduled.'
+    })
+    $retryClipboardClear.Add_Click({
+        $state.ClearAttempts = 0
+        $timer.Interval = [TimeSpan]::FromSeconds(1)
+        & $attemptClipboardClear
+        if (-not [string]::IsNullOrEmpty($state.ClipboardText) -and $state.ClearAttempts -lt 5) {
+            $timer.Start()
+        }
+    })
+    $window.Add_Closing({
+        param($sender, $eventArgs)
+        $timer.Stop()
+        $result = Clear-RotationOwnedClipboard -Expected $state.ClipboardText
+        if ($result -eq 'Failed') {
+            $eventArgs.Cancel = $true
+            $retryClipboardClear.Visibility = [Windows.Visibility]::Visible
+            $statusText.Text = 'Window cannot close while the copied password remains. Retry clipboard clear.'
+        } else {
+            $state.ClipboardText = ''
+        }
     })
     $window.Add_Closed({
         $timer.Stop()
-        $null = Clear-RotationOwnedClipboard -Expected $state.ClipboardText
         $maskedPassword.Password = ''
         $revealedPassword.Text = ''
-        $state.ClipboardText = ''
         $credentials.Clear()
     })
     $accountSelector.SelectedItem = [string]$Bundle.admin_username

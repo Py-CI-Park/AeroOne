@@ -48,7 +48,7 @@ function New-BootstrapScopes {
         },
         [PSCustomObject]@{
             path = $recovery
-            files = @((Join-Path $recovery 'aeroone-db-before-rotation.dpapi'))
+            files = @()
             directories = @()
         },
         [PSCustomObject]@{

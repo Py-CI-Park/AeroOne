@@ -18,6 +18,10 @@ from app.modules.auth.models import User
 from app.operations import credential_rotation_models  # noqa: F401  (create_all model registration)
 
 
+ROTATION_PROCESS_TIMEOUT_SECONDS = 180
+ACL_PROCESS_TIMEOUT_SECONDS = 30
+
+
 @dataclass(frozen=True, slots=True)
 class SyntheticWorkspace:
     root: Path
@@ -117,6 +121,7 @@ def invoke_rotation(
         capture_output=True,
         text=True,
         env=process_environment,
+        timeout=ROTATION_PROCESS_TIMEOUT_SECONDS,
     )
 
 
@@ -152,5 +157,6 @@ def has_exact_secure_acl(path: Path) -> bool:
         capture_output=True,
         text=True,
         env=process_environment,
+        timeout=ACL_PROCESS_TIMEOUT_SECONDS,
     )
     return completed.returncode == 0

@@ -104,6 +104,28 @@ def _rotate_in_transaction(session: Session, request: RotationRequest) -> Rotati
     return _apply_rotation(session, request, users, session_count, bundle_fingerprint)
 
 
+def find_existing_rotation_result(
+    session: Session,
+    request: RotationRequest,
+) -> RotationResult | None:
+    bundle = request.bundle
+    users = list(session.scalars(select(User).order_by(User.id)).all())
+    session_count = int(session.scalar(select(func.count()).select_from(UserSessionActivity)) or 0)
+    ledger = session.get(CredentialRotationLedger, str(bundle.rotation_id))
+    if ledger is None:
+        return None
+    state = session.get(CredentialRotationDatabaseState, 1)
+    if state is None or state.database_id != str(bundle.database_id):
+        raise CredentialRotationError(RotationErrorCode.DATABASE_IDENTITY_MISMATCH)
+    return _existing_result(
+        ledger,
+        bundle,
+        material_fingerprint(bundle),
+        users,
+        session_count,
+    )
+
+
 def validate_rotation_transaction(
     session: Session,
     request: RotationRequest,

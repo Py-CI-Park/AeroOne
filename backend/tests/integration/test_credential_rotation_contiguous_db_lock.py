@@ -62,7 +62,9 @@ def test_external_writer_cannot_begin_between_recovery_ready_and_commit(
         time.sleep(0.05)
 
     secure_root = workspace.root / ".rotation-secure"
-    recovery = secure_root / "recovery" / "aeroone-db-before-rotation.dpapi"
+    recoveries = tuple((secure_root / "recovery").glob("aeroone-db-before-rotation.*.dpapi"))
+    assert len(recoveries) == 1
+    recovery = recoveries[0]
     journal = secure_root / "rotation-state.json.dpapi"
     assert recovery.stat().st_size > 0
     assert journal.is_file()

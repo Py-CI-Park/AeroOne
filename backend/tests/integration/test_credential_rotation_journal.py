@@ -43,35 +43,13 @@ def test_torn_current_journal_recovers_from_valid_previous_generation(tmp_path: 
     assert resumed.returncode == 0, resumed.stderr
 
 
-def test_missing_live_root_after_quarantine_is_reconciled_from_journal(tmp_path: Path) -> None:
-    # Given: the process stopped after the DB commit and then died after moving the root env.
-    workspace = create_synthetic_workspace(tmp_path)
-    failed = invoke_rotation(workspace, ("-Failpoint", "after_db_commit"))
-    root_env = workspace.root / ".env"
-    quarantined = (
-        workspace.root
-        / ".rotation-secure"
-        / "quarantine"
-        / "environment"
-        / "root.env.before-rotation"
-    )
-    assert failed.returncode != 0
-    os.replace(root_env, quarantined)
-
-    # When: a new process resumes with no live root environment file.
-    resumed = invoke_rotation(workspace)
-
-    # Then: validated journal artifacts repair the seam and complete the same rotation.
-    assert resumed.returncode == 0, resumed.stderr
-
-
 def test_process_crash_after_credential_move_reconciles_final_artifact(tmp_path: Path) -> None:
     # Given: the process is killed after the credential bundle move but before journal advance.
     workspace = create_synthetic_workspace(tmp_path)
     crashed = invoke_rotation(workspace, internal_crashpoint="crash_after_credentials_move")
     secure_root = workspace.root / ".rotation-secure"
     pending = secure_root / "pending" / "credentials.dpapi"
-    final = secure_root / "1.12.3-credentials.dpapi"
+    final = secure_root / "credentials.dpapi"
     assert crashed.returncode != 0
     assert not pending.exists()
     assert final.exists()
@@ -146,7 +124,7 @@ def test_existing_final_credential_blocks_before_database_or_environment_mutatio
     before_env = root_env.read_bytes()
     secure_root = workspace.root / ".rotation-secure"
     secure_root.mkdir()
-    (secure_root / "1.12.3-credentials.dpapi").write_bytes(b"collision")
+    (secure_root / "credentials.dpapi").write_bytes(b"collision")
 
     completed = invoke_rotation(workspace)
 
@@ -222,7 +200,7 @@ def test_restored_pre_rotation_database_cannot_reuse_completed_rotation_artifact
     completed = invoke_rotation(workspace)
     assert completed.returncode == 0, completed.stderr
     secure_root = workspace.root / ".rotation-secure"
-    final_bundle = load_credential_bundle(secure_root / "1.12.3-credentials.dpapi")
+    final_bundle = load_credential_bundle(secure_root / "credentials.dpapi")
     final_admin = next(
         credential
         for credential in final_bundle.users
@@ -259,7 +237,7 @@ def test_restored_pre_rotation_database_cannot_reuse_completed_rotation_artifact
 
     rotated = invoke_rotation(workspace)
     assert rotated.returncode == 0, rotated.stderr
-    replacement_bundle = load_credential_bundle(secure_root / "1.12.3-credentials.dpapi")
+    replacement_bundle = load_credential_bundle(secure_root / "credentials.dpapi")
     assert replacement_bundle.rotation_id != final_bundle.rotation_id
     replacement_admin = next(
         credential

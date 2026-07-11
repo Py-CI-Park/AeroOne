@@ -4,6 +4,15 @@ chcp 65001 >nul
 
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
+if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" (
+  if "%~1"=="" (
+    powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%~f0"
+  ) else (
+    powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%~f0" -RawBatchArguments "%*"
+  )
+  exit /b !errorlevel!
+)
+set "AEROONE_MAINTENANCE_GATE_HELD="
 set "ROOT_FWD=%ROOT:\=/%"
 set "BACKEND_DIR=%ROOT%\backend"
 set "FRONTEND_DIR=%ROOT%\frontend"

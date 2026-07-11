@@ -41,9 +41,9 @@ def test_actual_aeroone_listener_blocks_before_rotation_mutation(tmp_path: Path)
     database_path = workspace.root / "backend" / "data" / "aeroone.db"
     database_before = database_path.read_bytes()
 
-    # When: dry-run reaches the same stopped-service preflight used by a live rotation.
+    # When: a live rotation reaches stopped-service preflight before creating secure output.
     try:
-        completed = invoke_rotation(workspace, ("-DryRun",))
+        completed = invoke_rotation(workspace)
     finally:
         assert listener.stdin is not None
         listener.stdin.write("x")

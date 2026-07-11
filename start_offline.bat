@@ -6,6 +6,7 @@ if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "DRY_RUN="
 set "OPEN_BROWSER="
 set "LOCAL_ONLY="
+set "MAINTENANCE_PREFLIGHT="
 set "ALLOW_HOST=%AEROONE_ALLOW_HOST%"
 REM 비대화형(run_all 등)에서 pause 가 흐름을 막지 않도록 --no-pause / AEROONE_NO_PAUSE 지원.
 set "NO_PAUSE=%AEROONE_NO_PAUSE%"
@@ -16,6 +17,7 @@ if /I "%~1"=="--dry-run" (set "DRY_RUN=1" & shift & goto :parse_args)
 if /I "%~1"=="--open-browser" (set "OPEN_BROWSER=1" & shift & goto :parse_args)
 if /I "%~1"=="--local" (set "LOCAL_ONLY=1" & shift & goto :parse_args)
 if /I "%~1"=="--no-pause" (set "NO_PAUSE=1" & shift & goto :parse_args)
+if /I "%~1"=="--maintenance-preflight" (set "MAINTENANCE_PREFLIGHT=1" & shift & goto :parse_args)
 if /I "%~1"=="--help" goto :help
 if /I "%~1"=="--allow-host" (shift & goto :capture_host)
 echo %~1 | findstr /B /I /C:"--allow-host=" >nul
@@ -89,11 +91,24 @@ exit /b 0
 
 :real_run
 
+if defined MAINTENANCE_PREFLIGHT goto :maintenance_preflight
+powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%~f0" -RawBatchArguments "--maintenance-preflight"
+if errorlevel 1 exit /b 1
+goto :maintenance_preflight_complete
+
+:maintenance_preflight
+if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" (
+  echo [ERROR] Internal maintenance preflight must run under the workspace gate.
+  exit /b 1
+)
 call :ensure_port_free %BACKEND_PORT% "offline backend"
 if errorlevel 1 exit /b 1
 call :ensure_port_free %FRONTEND_PORT% "offline frontend"
 if errorlevel 1 exit /b 1
 call :ensure_db_migrated
+exit /b !errorlevel!
+
+:maintenance_preflight_complete
 
 if defined ALLOW_HOST (
   set "AEROONE_ALLOW_HOST=%ALLOW_HOST%"

@@ -75,7 +75,10 @@ function Assert-RotationMutexSecurity {
 }
 
 function Enter-RotationMutex {
-    param([Parameter(Mandatory = $true)][string]$WorkspaceRoot)
+    param(
+        [Parameter(Mandatory = $true)][string]$WorkspaceRoot,
+        [ValidateRange(0, 600000)][int]$WaitMilliseconds = 0
+    )
 
     $name = Get-RotationMutexName -WorkspaceRoot $WorkspaceRoot
     $createdNew = $false
@@ -91,7 +94,7 @@ function Enter-RotationMutex {
     }
     try {
         Assert-RotationMutexSecurity -Mutex $mutex
-        if (-not $mutex.WaitOne(0)) {
+        if (-not $mutex.WaitOne($WaitMilliseconds)) {
             $mutex.Dispose()
             return $null
         }
@@ -104,8 +107,20 @@ function Enter-RotationMutex {
     return $mutex
 }
 
+function Enter-AeroOneMaintenanceGate {
+    param(
+        [Parameter(Mandatory = $true)][string]$WorkspaceRoot,
+        [ValidateRange(0, 600000)][int]$WaitMilliseconds = 0
+    )
+
+    return Enter-RotationMutex `
+        -WorkspaceRoot $WorkspaceRoot `
+        -WaitMilliseconds $WaitMilliseconds
+}
+
 Export-ModuleMember -Function @(
     'Get-RotationMutexName',
     'Assert-RotationMutexSecurity',
-    'Enter-RotationMutex'
+    'Enter-RotationMutex',
+    'Enter-AeroOneMaintenanceGate'
 )

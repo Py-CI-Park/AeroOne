@@ -198,7 +198,10 @@ function Assert-ProductionProvenance {
     param(
         [Parameter(Mandatory = $true)][string]$WorkspaceRoot,
         [Parameter(Mandatory = $true)][string]$ProductRoot,
-        [Parameter(Mandatory = $true)][string]$ScriptPath
+        [Parameter(Mandatory = $true)][string]$ScriptPath,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('scripts\rotate_aeroone_credentials.ps1', 'scripts\view_aeroone_credentials.ps1')]
+        [string]$ExpectedEntryPoint
     )
 
     $workspaceIdentity = Get-PhysicalPathIdentity -Path $WorkspaceRoot
@@ -206,7 +209,7 @@ function Assert-ProductionProvenance {
     if (-not (Test-SamePhysicalObject -Left $workspaceIdentity -Right $productIdentity)) {
         throw 'provenance-root-mismatch'
     }
-    $canonicalScript = Join-Path $WorkspaceRoot 'scripts\rotate_aeroone_credentials.ps1'
+    $canonicalScript = Join-Path $WorkspaceRoot $ExpectedEntryPoint
     $canonicalIdentity = Assert-SinglePhysicalFile -Path $canonicalScript
     $scriptIdentity = Assert-SinglePhysicalFile -Path $ScriptPath
     if (-not (Test-SamePhysicalObject -Left $canonicalIdentity -Right $scriptIdentity)) {

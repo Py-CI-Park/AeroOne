@@ -8,6 +8,7 @@ from typing import ClassVar, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 
 _SHA256_PATTERN = r"^[a-f0-9]{64}$"
@@ -29,21 +30,41 @@ _PHASE_SEQUENCE = tuple(RotationPhase)
 class RotationJournalPayload(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, strict=True, extra="forbid")
 
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     sequence: int = Field(ge=0)
     phase: RotationPhase
+    root_environment_present: bool
     rotation_id: UUID
     database_id: UUID
     user_count: int = Field(gt=0)
     retention: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T.*[+-]\d{2}:\d{2}$")
     bundle_sha256: str = Field(pattern=_SHA256_PATTERN)
     recovery_sha256: str = Field(pattern=_SHA256_PATTERN)
-    pending_root_sha256: str = Field(pattern=_SHA256_PATTERN)
+    pending_root_sha256: str | None = Field(pattern=_SHA256_PATTERN)
     pending_backend_sha256: str = Field(pattern=_SHA256_PATTERN)
-    root_before_sha256: str = Field(pattern=_SHA256_PATTERN)
+    root_before_sha256: str | None = Field(pattern=_SHA256_PATTERN)
     backend_before_sha256: str = Field(pattern=_SHA256_PATTERN)
-    root_after_sha256: str = Field(pattern=_SHA256_PATTERN)
+    root_after_sha256: str | None = Field(pattern=_SHA256_PATTERN)
     backend_after_sha256: str = Field(pattern=_SHA256_PATTERN)
+
+    @model_validator(mode="after")
+    def validate_root_environment_topology(self) -> RotationJournalPayload:
+        root_digests = (
+            self.pending_root_sha256,
+            self.root_before_sha256,
+            self.root_after_sha256,
+        )
+        if self.root_environment_present and any(digest is None for digest in root_digests):
+            raise PydanticCustomError(
+                "journal_root_topology",
+                "present root environment requires bound digests",
+            )
+        if not self.root_environment_present and any(digest is not None for digest in root_digests):
+            raise PydanticCustomError(
+                "journal_root_topology",
+                "absent root environment forbids root digests",
+            )
+        return self
 
     def checksum(self) -> str:
         canonical = json.dumps(

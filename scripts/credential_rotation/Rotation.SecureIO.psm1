@@ -1,4 +1,5 @@
 Set-StrictMode -Version Latest
+Import-Module (Join-Path $PSScriptRoot 'Rotation.NativeFile.psm1') -Force -DisableNameChecking
 
 function Get-RotationCurrentUserSid {
     return [Security.Principal.WindowsIdentity]::GetCurrent().User
@@ -156,7 +157,7 @@ function Complete-RotationSecurePublish {
             $null = Assert-SinglePhysicalFile -Path $BackupPath
             Assert-RotationSecureFileAcl -Path $BackupPath
         } else {
-            [IO.File]::Replace($TemporaryPath, $DestinationPath, $null)
+            Move-RotationFileAtomically -SourcePath $TemporaryPath -DestinationPath $DestinationPath
         }
     } else {
         [IO.File]::Move($TemporaryPath, $DestinationPath)
@@ -260,6 +261,7 @@ function Remove-RotationPlaintextOrphanTemps {
 
 Export-ModuleMember -Function @(
     'Assert-RotationSecureFileAcl',
+    'Complete-RotationSecurePublish',
     'New-RotationSecureDirectory',
     'Publish-RotationSecureBytes',
     'Remove-RotationOrphanTemps',

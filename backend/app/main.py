@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.core.maintenance_gate_bootstrap import maintenance_gate_ready as _maintenance_gate_ready
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +22,8 @@ from app.modules.read_tracking.api.admin import router as read_events_admin_rout
 from app.modules.read_tracking.api.public import router as read_beacon_router
 from app.modules.reports.api.public import router as reports_router
 from app.modules.render.api import router as render_router
+
+assert _maintenance_gate_ready
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

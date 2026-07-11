@@ -9,6 +9,33 @@ import pytest
 from tests.rotation_harness import SyntheticWorkspace, create_synthetic_workspace, invoke_rotation
 
 
+def test_runtime_error_boundary_sanitizes_untrusted_code() -> None:
+    # Given: the reusable runtime module and an unsafe internal error token.
+    root = Path(__file__).resolve().parents[3]
+    runtime_module = root / "scripts" / "credential_rotation" / "Rotation.Runtime.psm1"
+    process_environment = os.environ.copy()
+    process_environment["AEROONE_RUNTIME_MODULE"] = str(runtime_module)
+    command = (
+        "Import-Module $env:AEROONE_RUNTIME_MODULE -Force -DisableNameChecking;"
+        "Stop-Rotation -Code '../unsafe'"
+    )
+
+    # When: the boundary renders the error and terminates the child.
+    completed = subprocess.run(
+        ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=process_environment,
+        timeout=30,
+    )
+
+    # Then: only the normalized status contract crosses stderr.
+    assert completed.returncode == 1
+    assert completed.stdout == ""
+    assert completed.stderr.strip() == "status=error code=operation-failed"
+
+
 def test_public_failpoint_validate_set_contains_only_original_four() -> None:
     # Given: the checked-in PowerShell entrypoint is inspected without execution.
     script = Path(__file__).resolve().parents[3] / "scripts" / "rotate_aeroone_credentials.ps1"

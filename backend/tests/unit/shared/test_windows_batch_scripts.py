@@ -48,6 +48,13 @@ def _write_stub_command(path: Path) -> None:
     )
 
 
+def _make_stub_open_notebook_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "AeroOne-bundle"
+    bundle.mkdir()
+    (bundle / "3-run.bat").write_text("@echo off\r\nexit /b 0\r\n", encoding="utf-8")
+    return bundle
+
+
 def _write_frontend_dev_delegate_stub(path: Path) -> str:
     marker = "[STUB][FRONTEND-DEV] start_frontend_dev.cmd invoked"
     path.write_text(
@@ -382,7 +389,7 @@ def test_start_frontend_dev_preserves_caches_without_clean(tmp_path: Path) -> No
         line.startswith("npm.cmd run dev")
         for line in log_file.read_text(encoding="utf-8").splitlines()
     )
-    contents = (scripts_dir := repo_root / "scripts" / "start_frontend_dev.cmd").read_text(encoding="utf-8")
+    contents = (repo_root / "scripts" / "start_frontend_dev.cmd").read_text(encoding="utf-8")
     assert 'set "NEXT_PUBLIC_API_BASE_URL=http://localhost:18437"' in contents
     assert 'set "SERVER_API_BASE_URL=http://127.0.0.1:18437"' in contents
 
@@ -671,13 +678,14 @@ def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     assert "-BackendTimeoutSeconds 20" in invocation
     assert "-FrontendTimeoutSeconds 60" in invocation
 
-def test_run_all_dry_run_waits_for_open_notebook_readiness() -> None:
+def test_run_all_dry_run_waits_for_open_notebook_readiness(tmp_path: Path) -> None:
+    bundle = _make_stub_open_notebook_bundle(tmp_path)
     result = _run_cmd(
         REPO_ROOT,
         r"scripts\run_all.bat",
         "--dry-run",
         "--on-bundle",
-        str(REPO_ROOT.parent / "AeroOne-bundle"),
+        str(bundle),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -689,13 +697,14 @@ def test_run_all_dry_run_waits_for_open_notebook_readiness() -> None:
     assert any('would call "' in line and "3-run.bat" in line for line in lines)
 
 
-def test_run_all_passes_network_mode_to_open_notebook_bundle() -> None:
+def test_run_all_passes_network_mode_to_open_notebook_bundle(tmp_path: Path) -> None:
+    bundle = _make_stub_open_notebook_bundle(tmp_path)
     result = _run_cmd(
         REPO_ROOT,
         r"scripts\run_all.bat",
         "--dry-run",
         "--on-bundle",
-        str(REPO_ROOT.parent / "AeroOne-bundle"),
+        str(bundle),
         "--local",
     )
 

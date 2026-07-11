@@ -15,7 +15,7 @@ function Set-SecureFileAcl {
     $allow = [Security.AccessControl.AccessControlType]::Allow
     $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($currentSid, 'FullControl', $allow)))
     $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($systemSid, 'FullControl', $allow)))
-    Set-Acl -LiteralPath $Path -AclObject $acl
+    (Get-Item -LiteralPath $Path -Force).SetAccessControl($acl)
 }
 
 function Convert-IdentityToSid {

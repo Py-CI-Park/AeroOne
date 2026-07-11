@@ -29,13 +29,17 @@ def test_database_recovery_snapshot_includes_committed_wal_frames(tmp_path: Path
 
         # When: execution prepares recovery and stops before the credential commit.
         completed = invoke_rotation(workspace, ("-Failpoint", "before_db_commit"))
-        recovery_path = (
-            workspace.root / ".rotation-secure" / "recovery" / "aeroone-db-before-rotation.dpapi"
-        )
-        assert recovery_path.exists(), completed.stderr
         bundle = load_credential_bundle(
             workspace.root / ".rotation-secure" / "pending" / "credentials.dpapi"
         )
+        recovery_paths = tuple(
+            (workspace.root / ".rotation-secure" / "recovery").glob(
+                "aeroone-db-before-rotation.*.dpapi"
+            )
+        )
+        assert len(recovery_paths) == 1, completed.stderr
+        recovery_path = recovery_paths[0]
+        assert recovery_path.name == f"aeroone-db-before-rotation.{bundle.rotation_id}.dpapi"
         snapshot = load_database_recovery(
             recovery_path,
             bundle.rotation_id,

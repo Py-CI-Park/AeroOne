@@ -1,5 +1,16 @@
 Set-StrictMode -Version Latest
 
+function Resolve-VersionedRecoveryPath {
+    param([Parameter(Mandatory = $true)][string]$RecoveryDirectory)
+
+    $candidates = @(Get-ChildItem -LiteralPath $RecoveryDirectory -File -Force)
+    if ($candidates.Count -ne 1 -or
+        $candidates[0].Name -notmatch '^aeroone-db-before-rotation\.[a-f0-9-]{36}\.dpapi$') {
+        throw 'unexpected-secure-output'
+    }
+    return [IO.Path]::GetFullPath($candidates[0].FullName)
+}
+
 function Initialize-RotationResumeTree {
     param([Parameter(Mandatory = $true)][hashtable]$Context)
 
@@ -15,14 +26,15 @@ function Initialize-RotationResumeTree {
     }
     Remove-RotationOrphanTemps -Directories (@($Context.SecureRoot) + $directories)
     Assert-RotationBootstrapMarker -Path $Context.BootstrapMarkerPath -WorkspaceRoot $Context.Workspace
+    $recoveryPath = Resolve-VersionedRecoveryPath -RecoveryDirectory $Context.RecoveryDirectory
     Assert-SecureDirectoryInventory -Path $Context.SecureRoot -AllowedNames @(
         'recovery', 'pending', 'quarantine', 'bootstrap-marker.json.dpapi',
         'rotation-state.json.dpapi', 'rotation-state.previous.json.dpapi',
-        '1.12.3-credentials.dpapi'
+        'credentials.dpapi'
     )
-    Assert-SecureDirectoryInventory -Path $Context.RecoveryDirectory -AllowedNames @(
-        'aeroone-db-before-rotation.dpapi'
-    )
+    Assert-SecureDirectoryInventory `
+        -Path $Context.RecoveryDirectory `
+        -AllowedNames @((Split-Path -Leaf $recoveryPath))
     Assert-SecureDirectoryInventory -Path $Context.PendingDirectory -AllowedNames @(
         'credentials.dpapi', 'root-env.dpapi', 'backend-env.dpapi'
     )
@@ -32,6 +44,7 @@ function Initialize-RotationResumeTree {
     Assert-SecureDirectoryInventory -Path $Context.QuarantineEnvDirectory -AllowedNames @(
         'root.env.before-rotation', 'backend.env.before-rotation'
     )
+    return $recoveryPath
 }
 
 function Resolve-RotationResumeBundle {
@@ -71,7 +84,8 @@ function Resolve-RotationResumeBundle {
 function Assert-RotationPendingEnvironments {
     param($Journal, [string]$Phase, [Parameter(Mandatory = $true)][hashtable]$Context)
 
-    if ($Context.PhaseOrder[$Phase] -lt $Context.PhaseOrder['root_env_promoted']) {
+    if ($Journal.root_environment_present -and
+        $Context.PhaseOrder[$Phase] -lt $Context.PhaseOrder['root_env_promoted']) {
         Assert-ProtectedBytesReadable -Path $Context.PendingRootEnvPath -Purpose 'pending-root-environment'
         Assert-FileSha256 -Path $Context.PendingRootEnvPath -Expected ([string]$Journal.pending_root_sha256)
     }
@@ -137,15 +151,27 @@ function Repair-MissingRotationEnvironment {
 function Invoke-RotationReconciliation {
     param([Parameter(Mandatory = $true)][hashtable]$Context)
 
-    Initialize-RotationResumeTree -Context $Context
+    $inventoryRecoveryPath = Initialize-RotationResumeTree -Context $Context
     $journal = Read-RotationJournal -CurrentPath $Context.JournalPath -PreviousPath $Context.JournalPreviousPath -WorkspaceRoot $Context.Workspace
     if ($journal.retention -cne $Context.Retention -or
         -not $Context.PhaseOrder.ContainsKey([string]$journal.phase)) {
         throw 'journal-invalid'
     }
     $phase = [string]$journal.phase
+    if (-not $journal.root_environment_present -and $Context.RootEnvironmentPresent) {
+        throw 'env-topology-changed'
+    }
+    $recoveryPath = Join-Path `
+        $Context.RecoveryDirectory `
+        ("aeroone-db-before-rotation.$([string]$journal.rotation_id).dpapi")
+    if (-not ([IO.Path]::GetFullPath($recoveryPath)).Equals(
+        $inventoryRecoveryPath,
+        [StringComparison]::OrdinalIgnoreCase
+    )) {
+        throw 'journal-binding-mismatch'
+    }
     $plaintextTempParents = @()
-    if ($phase -ceq 'db_committed' -and
+    if ($journal.root_environment_present -and $phase -ceq 'db_committed' -and
         -not (Test-Path -LiteralPath $Context.RootRepair.ActivePath -PathType Leaf)) {
         $plaintextTempParents += $Context.Workspace
     }
@@ -156,15 +182,35 @@ function Invoke-RotationReconciliation {
     if ($plaintextTempParents.Count -gt 0) {
         Remove-RotationPlaintextOrphanTemps -Directories $plaintextTempParents
     }
-    Assert-SecureAcl -Path $Context.RecoveryPath
-    Assert-FileSha256 -Path $Context.RecoveryPath -Expected ([string]$journal.recovery_sha256)
+    Assert-SecureAcl -Path $recoveryPath
+    Assert-FileSha256 -Path $recoveryPath -Expected ([string]$journal.recovery_sha256)
     $resolved = Resolve-RotationResumeBundle -Journal $journal -Phase $phase -Context $Context
     $journal = $resolved.journal
     $phase = $resolved.phase
     Assert-RotationPendingEnvironments -Journal $journal -Phase $phase -Context $Context
-    $root = Repair-MissingRotationEnvironment -Journal $journal -Phase $phase -Repair $Context.RootRepair
-    $backend = Repair-MissingRotationEnvironment -Journal $root.journal -Phase $root.phase -Repair $Context.BackendRepair
-    return [PSCustomObject]@{ journal = $backend.journal; phase = $backend.phase }
+    if ($journal.root_environment_present) {
+        $root = Repair-MissingRotationEnvironment -Journal $journal -Phase $phase -Repair $Context.RootRepair
+    } else {
+        if ((Test-Path -LiteralPath $Context.RootRepair.ActivePath) -or
+            (Test-Path -LiteralPath $Context.RootRepair.PendingPath) -or
+            (Test-Path -LiteralPath $Context.RootRepair.QuarantinePath)) {
+            throw 'root-env-state-ambiguous'
+        }
+        $root = [PSCustomObject]@{ journal = $journal; phase = $phase }
+    }
+    $backend = Repair-MissingRotationEnvironment `
+        -Journal $root.journal `
+        -Phase $root.phase `
+        -Repair $Context.BackendRepair
+    return [PSCustomObject]@{
+        journal = $backend.journal
+        phase = $backend.phase
+        recovery_path = $recoveryPath
+    }
 }
 
-Export-ModuleMember -Function 'Invoke-RotationReconciliation'
+Export-ModuleMember -Function @(
+    'Initialize-RotationResumeTree',
+    'Invoke-RotationReconciliation',
+    'Resolve-VersionedRecoveryPath'
+)

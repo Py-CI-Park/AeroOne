@@ -3,11 +3,16 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 
 from app.operations.credential_bundle import load_credential_bundle
 from app.operations.windows_dpapi import DpapiPurpose, protect_for_current_user
 from tests.rotation_harness import create_synthetic_workspace, invoke_rotation
+
+
+VIEWER_PROCESS_TIMEOUT_SECONDS = 30
+ACL_PROCESS_TIMEOUT_SECONDS = 30
 
 
 def _invoke_viewer(workspace_root: Path) -> subprocess.CompletedProcess[str]:
@@ -37,7 +42,7 @@ def _invoke_viewer(workspace_root: Path) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
         env=process_environment,
-        timeout=30,
+        timeout=VIEWER_PROCESS_TIMEOUT_SECONDS,
     )
 
 
@@ -52,7 +57,7 @@ def test_validate_only_enforces_purpose_schema_acl_and_leaves_no_output(
     workspace = create_synthetic_workspace(tmp_path)
     rotated = invoke_rotation(workspace)
     assert rotated.returncode == 0, rotated.stderr
-    bundle_path = workspace.root / ".rotation-secure" / "1.12.3-credentials.dpapi"
+    bundle_path = workspace.root / ".rotation-secure" / "credentials.dpapi"
     original_protected = bundle_path.read_bytes()
     bundle = load_credential_bundle(bundle_path)
     secret_values = [bundle.jwt_secret_key, *(item.password for item in bundle.users)]
@@ -81,6 +86,7 @@ def test_validate_only_enforces_purpose_schema_acl_and_leaves_no_output(
         check=False,
         capture_output=True,
         text=True,
+        timeout=ACL_PROCESS_TIMEOUT_SECONDS,
     )
     assert acl_changed.returncode == 0
     acl_rejected = _invoke_viewer(workspace.root)
@@ -103,9 +109,12 @@ def test_wpf_viewer_contract_is_masked_and_clipboard_owned() -> None:
     viewer = (
         root / "scripts" / "credential_rotation" / "Rotation.CredentialViewer.psm1"
     ).read_text(encoding="utf-8")
+    clipboard = (
+        root / "scripts" / "credential_rotation" / "Rotation.Clipboard.psm1"
+    ).read_text(encoding="utf-8")
 
     # When: the security-sensitive UI and output surface are enumerated statically.
-    combined = entrypoint + viewer
+    combined = entrypoint + viewer + clipboard
 
     # Then: masking, account selection, owned clipboard clearing, and no plaintext sinks remain.
     for required in (
@@ -116,8 +125,17 @@ def test_wpf_viewer_contract_is_masked_and_clipboard_owned() -> None:
         "DispatcherTimer",
         "FromSeconds(30)",
         "Clipboard",
-        "GetText",
+        "GetData",
         "Clear",
+        "ExcludeClipboardContentFromMonitorProcessing",
+        "CanIncludeInClipboardHistory",
+        "CanUploadToCloudClipboard",
+        "Add_Closing",
+        "RetryClipboardClear",
+        "Set-RotationSecureClipboard",
+        "Rotation.Clipboard.psm1",
+        'Height="580"',
+        'Visibility="Collapsed"',
     ):
         assert required in combined
     for forbidden in (
@@ -129,3 +147,42 @@ def test_wpf_viewer_contract_is_masked_and_clipboard_owned() -> None:
         "Add-Content",
     ):
         assert forbidden not in combined
+
+
+def test_copied_viewer_validate_only_proves_its_own_canonical_entrypoint(
+    tmp_path: Path,
+) -> None:
+    # Given: a production-like copied script tree and an empty synthetic user profile.
+    repository_root = Path(__file__).resolve().parents[3]
+    copied_root = tmp_path / "copied-tree"
+    shutil.copytree(repository_root / "scripts", copied_root / "scripts")
+    copied_viewer = copied_root / "scripts" / "view_aeroone_credentials.ps1"
+    user_profile = tmp_path / "profile"
+    user_profile.mkdir()
+    process_environment = os.environ.copy()
+    process_environment["USERPROFILE"] = str(user_profile)
+
+    # When: ValidateOnly enters through the copied canonical viewer path.
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(copied_viewer),
+            "-ValidateOnly",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=process_environment,
+        timeout=VIEWER_PROCESS_TIMEOUT_SECONDS,
+    )
+
+    # Then: viewer provenance passes before the expected absent credential root is reported.
+    assert completed.returncode != 0
+    assert "credential-viewer-root-missing" in completed.stderr
+    assert "provenance-" not in completed.stderr

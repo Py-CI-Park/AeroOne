@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import base64
 import binascii
-from enum import StrEnum, unique
 import hashlib
+import hmac
 import os
 from pathlib import Path
 import sqlite3
@@ -12,30 +12,18 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.operations.sqlite_recovery_snapshot import (
+    RecoveryErrorCode,
+    SqliteRecoveryError,
+    snapshot_bytes,
+    snapshot_connection,
+)
+
 from app.operations.windows_dpapi import (
     DpapiPurpose,
     protect_for_current_user,
     unprotect_for_current_user,
 )
-
-
-@unique
-class RecoveryErrorCode(StrEnum):
-    INTEGRITY_FAILURE = "recovery-integrity-failure"
-    ARTIFACT_INVALID = "recovery-artifact-invalid"
-    BINDING_MISMATCH = "recovery-binding-mismatch"
-    RESTORE_STATE_MISMATCH = "recovery-restore-state-mismatch"
-    RESTORE_SIDECAR_PRESENT = "recovery-restore-sidecar-present"
-    DRIVER_INVALID = "recovery-driver-invalid"
-
-
-class SqliteRecoveryError(Exception):
-    code: RecoveryErrorCode
-
-    def __init__(self, code: RecoveryErrorCode) -> None:
-        self.code = code
-        super().__init__(code.value)
-
 
 class DatabaseRecoveryEnvelope(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, strict=True, extra="forbid")
@@ -47,41 +35,6 @@ class DatabaseRecoveryEnvelope(BaseModel):
     snapshot_size: int = Field(ge=1)
     snapshot_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     snapshot_base64: str = Field(repr=False)
-
-
-def _snapshot_connection(source: sqlite3.Connection) -> bytearray:
-    serialized = bytearray(source.serialize())
-    try:
-        serialized[18] = 1
-        serialized[19] = 1
-        with sqlite3.connect(":memory:") as destination:
-            destination.deserialize(serialized)
-            destination.execute("PRAGMA journal_mode=DELETE").close()
-            destination.execute("PRAGMA schema_version=0").close()
-            destination.execute("VACUUM").close()
-            snapshot = bytearray(destination.serialize())
-        verified_snapshot = False
-        try:
-            canonical_counter = (1).to_bytes(4, byteorder="big")
-            snapshot[24:28] = canonical_counter
-            snapshot[92:96] = canonical_counter
-            with sqlite3.connect(":memory:") as verified:
-                verified.deserialize(snapshot)
-                if verified.execute("PRAGMA integrity_check").fetchone() != ("ok",):
-                    raise SqliteRecoveryError(RecoveryErrorCode.INTEGRITY_FAILURE)
-            verified_snapshot = True
-            return snapshot
-        finally:
-            if not verified_snapshot:
-                snapshot[:] = b"\0" * len(snapshot)
-    finally:
-        serialized[:] = b"\0" * len(serialized)
-
-
-def _snapshot_bytes(database_path: Path) -> bytearray:
-    source_uri = f"{database_path.resolve().as_uri()}?mode=ro"
-    with sqlite3.connect(source_uri, uri=True, timeout=5) as source:
-        return _snapshot_connection(source)
 
 
 def _write_new_durable(path: Path, payload: bytes | bytearray) -> None:
@@ -115,7 +68,7 @@ def create_database_recovery(
     rotation_id: UUID,
     database_id: UUID,
 ) -> None:
-    snapshot = _snapshot_bytes(database_path)
+    snapshot = snapshot_bytes(database_path)
     _ = _write_database_recovery(snapshot, recovery_path, rotation_id, database_id)
 
 
@@ -163,7 +116,7 @@ def create_database_recovery_from_connection(
     rotation_id: UUID,
     database_id: UUID,
 ) -> str:
-    snapshot = _snapshot_connection(source)
+    snapshot = snapshot_connection(source)
     return _write_database_recovery(
         snapshot,
         recovery_path,
@@ -211,6 +164,68 @@ def load_database_recovery(
     return snapshot
 
 
+def _assert_snapshot_precedes_rotation(snapshot: bytearray, rotation_id: UUID) -> None:
+    with sqlite3.connect(":memory:") as recovered:
+        recovered.deserialize(snapshot)
+        if (
+            recovered.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'credential_rotation_ledger'"
+            ).fetchone()
+            is None
+        ):
+            return
+        if (
+            recovered.execute(
+                "SELECT 1 FROM credential_rotation_ledger WHERE rotation_id = ? LIMIT 1",
+                (str(rotation_id),),
+            ).fetchone()
+            is not None
+        ):
+            raise SqliteRecoveryError(RecoveryErrorCode.RESTORE_STATE_MISMATCH)
+
+
+def _assert_recovery_digest(recovery_path: Path, expected_sha256: str) -> None:
+    actual = hashlib.sha256(recovery_path.read_bytes()).hexdigest()
+    if not hmac.compare_digest(actual, expected_sha256):
+        raise SqliteRecoveryError(RecoveryErrorCode.ARTIFACT_INVALID)
+
+
+def confirm_connection_matches_recovery(
+    source: sqlite3.Connection,
+    recovery_path: Path,
+    rotation_id: UUID,
+    database_id: UUID,
+    expected_sha256: str,
+) -> None:
+    _assert_recovery_digest(recovery_path, expected_sha256)
+    expected = load_database_recovery(recovery_path, rotation_id, database_id)
+    actual = snapshot_connection(source)
+    try:
+        _assert_snapshot_precedes_rotation(expected, rotation_id)
+        if len(expected) != len(actual) or not hmac.compare_digest(
+            hashlib.sha256(expected).digest(),
+            hashlib.sha256(actual).digest(),
+        ):
+            raise SqliteRecoveryError(RecoveryErrorCode.RESTORE_STATE_MISMATCH)
+    finally:
+        expected[:] = b"\0" * len(expected)
+        actual[:] = b"\0" * len(actual)
+
+
+def validate_pre_rotation_recovery(
+    recovery_path: Path,
+    rotation_id: UUID,
+    database_id: UUID,
+    expected_sha256: str,
+) -> None:
+    _assert_recovery_digest(recovery_path, expected_sha256)
+    snapshot = load_database_recovery(recovery_path, rotation_id, database_id)
+    try:
+        _assert_snapshot_precedes_rotation(snapshot, rotation_id)
+    finally:
+        snapshot[:] = b"\0" * len(snapshot)
+
+
 def confirm_database_matches_recovery(
     database_path: Path,
     recovery_path: Path,
@@ -224,11 +239,15 @@ def confirm_database_matches_recovery(
     if any(path.exists() for path in sidecars):
         raise SqliteRecoveryError(RecoveryErrorCode.RESTORE_SIDECAR_PRESENT)
     expected = load_database_recovery(recovery_path, rotation_id, database_id)
-    actual = _snapshot_bytes(database_path)
+    actual = snapshot_bytes(database_path)
     try:
+        _assert_snapshot_precedes_rotation(expected, rotation_id)
         if (
             len(expected) != len(actual)
-            or not hashlib.sha256(expected).digest() == hashlib.sha256(actual).digest()
+            or not hmac.compare_digest(
+                hashlib.sha256(expected).digest(),
+                hashlib.sha256(actual).digest(),
+            )
         ):
             raise SqliteRecoveryError(RecoveryErrorCode.RESTORE_STATE_MISMATCH)
     finally:

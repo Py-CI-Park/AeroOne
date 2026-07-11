@@ -185,14 +185,18 @@ def test_database_parent_junction_is_rejected_before_inspection(tmp_path: Path) 
     assert not (workspace.root / ".rotation-secure").exists()
 
 
-def test_copied_script_cannot_target_the_production_workspace(tmp_path: Path) -> None:
-    # Given: the reviewed script tree is copied outside the production workspace.
+def test_copied_rotation_entry_derives_its_own_trusted_product_root(tmp_path: Path) -> None:
+    # Given: the reviewed script tree is copied into a production-like root with no live environment.
     repository_root = Path(__file__).resolve().parents[3]
     copied_root = tmp_path / "copied-tree"
     shutil.copytree(repository_root / "scripts", copied_root / "scripts")
     copied_script = copied_root / "scripts" / "rotate_aeroone_credentials.ps1"
+    user_profile = tmp_path / "profile"
+    user_profile.mkdir()
+    process_environment = os.environ.copy()
+    process_environment["USERPROFILE"] = str(user_profile)
 
-    # When: the copied script is invoked in production mode.
+    # When: the copied canonical rotation entry is invoked in production-mode dry-run.
     completed = subprocess.run(
         [
             "powershell.exe",
@@ -208,9 +212,11 @@ def test_copied_script_cannot_target_the_production_workspace(tmp_path: Path) ->
         check=False,
         capture_output=True,
         text=True,
+        env=process_environment,
         timeout=30,
     )
 
-    # Then: physical provenance fails before environment or database discovery.
+    # Then: self-provenance succeeds and the next missing-environment boundary rejects.
     assert completed.returncode != 0
-    assert "provenance-root-mismatch" in completed.stderr
+    assert "env-missing" in completed.stderr
+    assert "provenance-" not in completed.stderr
