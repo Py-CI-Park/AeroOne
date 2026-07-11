@@ -20,7 +20,17 @@ import type {
   ClientSession,
   CollectionSearchResponse,
   ConnectedUsersResponse,
+  ChartGenerateResponse,
+  ChartInspectResponse,
+  ChartType,
+  DiagramGenerateRequest,
+  DiagramGenerateResponse,
   DocumentListItem,
+  ReportGenerateResponse,
+  LlmConnection,
+  LlmConnectionCreatePayload,
+  LlmConnectionUpdatePayload,
+  LlmVerifyResponse,
   NewsletterCalendarEntry,
   NewsletterDetail,
   NewsletterItem,
@@ -638,6 +648,126 @@ export async function purgeReadEvents(csrfToken: string, newsletterId?: number) 
   const query = newsletterId != null ? `?newsletter_id=${newsletterId}` : '';
   return browserFetch<{ deleted: number }>(`/api/frontend/admin/read-events/purge${query}`, {
     method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// === LLM 연결 레지스트리 (산출물 A) — /api/v1/admin/llm-connections 를 admin 프록시로 중계 ===
+
+export async function fetchLlmConnections() {
+  return browserFetch<LlmConnection[]>('/api/frontend/admin/llm-connections', { method: 'GET' });
+}
+
+export async function createLlmConnection(payload: LlmConnectionCreatePayload, csrfToken: string) {
+  return browserFetch<LlmConnection>('/api/frontend/admin/llm-connections', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateLlmConnection(id: number, payload: LlmConnectionUpdatePayload, csrfToken: string) {
+  return browserFetch<LlmConnection>(`/api/frontend/admin/llm-connections/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteLlmConnection(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/admin/llm-connections/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function setDefaultLlmConnection(id: number, csrfToken: string) {
+  return browserFetch<LlmConnection>(`/api/frontend/admin/llm-connections/${id}/default`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function verifyLlmConnection(id: number, csrfToken: string) {
+  return browserFetch<LlmVerifyResponse>(`/api/frontend/admin/llm-connections/${id}/verify`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchLlmConnectionModels(id: number) {
+  return browserFetch<LlmVerifyResponse>(`/api/frontend/admin/llm-connections/${id}/models`, { method: 'GET' });
+}
+
+// office-tools 다이어그램 스튜디오: 설명 → Mermaid 소스. 렌더는 브라우저에서 한다.
+export async function generateDiagram(payload: DiagramGenerateRequest, csrfToken: string) {
+  return browserFetch<DiagramGenerateResponse>('/api/frontend/office-tools/diagrams/generate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// office-tools 보고서 스튜디오: Markdown 파일(+이미지/ZIP) 업로드 → sanitize HTML 보고서.
+// multipart FormData 를 그대로 전달한다(browserFetch 가 FormData 면 Content-Type 을 생략).
+export interface ReportGenerateInput {
+  markdownFile: File;
+  assets?: File[];
+  title?: string;
+  subtitle?: string;
+  documentVersion?: string;
+  tags?: string;
+  aiMode?: 'none' | 'polish' | 'executive';
+}
+
+export async function generateReport(input: ReportGenerateInput, csrfToken: string) {
+  const form = new FormData();
+  form.append('markdown_file', input.markdownFile);
+  for (const asset of input.assets ?? []) {
+    form.append('assets', asset);
+  }
+  form.append('title', input.title ?? '');
+  form.append('subtitle', input.subtitle ?? '');
+  form.append('document_version', input.documentVersion ?? '');
+  form.append('tags', input.tags ?? '');
+  form.append('ai_mode', input.aiMode ?? 'none');
+  return browserFetch<ReportGenerateResponse>('/api/frontend/office-tools/reports/generate', {
+    method: 'POST',
+    body: form,
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// office-tools 차트 스튜디오: 데이터 파일 → 프로필. job 을 만들지 않고 미리보기만 돌려준다.
+export async function inspectChartData(dataFile: File, csrfToken: string) {
+  const form = new FormData();
+  form.append('data_file', dataFile);
+  return browserFetch<ChartInspectResponse>('/api/frontend/office-tools/charts/inspect', {
+    method: 'POST',
+    body: form,
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// office-tools 차트 스튜디오: 데이터 + 목적 → ECharts option. 렌더는 브라우저에서 한다.
+export interface ChartGenerateInput {
+  dataFile: File;
+  prompt?: string;
+  aiAssist?: boolean;
+  chartType?: ChartType | '';
+  manualSpecJson?: string;
+}
+
+export async function generateChart(input: ChartGenerateInput, csrfToken: string) {
+  const form = new FormData();
+  form.append('data_file', input.dataFile);
+  form.append('prompt', input.prompt ?? '');
+  form.append('ai_assist', String(input.aiAssist ?? true));
+  if (input.chartType) form.append('chart_type', input.chartType);
+  if (input.manualSpecJson) form.append('manual_spec_json', input.manualSpecJson);
+  return browserFetch<ChartGenerateResponse>('/api/frontend/office-tools/charts/generate', {
+    method: 'POST',
+    body: form,
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }

@@ -10,6 +10,7 @@ from app.db.session import Database, get_engine
 from app.modules.auth.api import router as auth_router
 from app.modules.admin.api import router as operations_admin_router
 from app.modules.ai.api.public import router as ai_router
+from app.modules.ai.api.admin import router as ai_admin_router
 from app.modules.newsletter.api.admin import router as newsletter_admin_router
 from app.modules.newsletter.api.imports import router as imports_router
 from app.modules.newsletter.api.public import router as public_router
@@ -20,6 +21,7 @@ from app.modules.read_tracking.api.admin import router as read_events_admin_rout
 from app.modules.read_tracking.api.public import router as read_beacon_router
 from app.modules.reports.api.public import router as reports_router
 from app.modules.render.api import router as render_router
+from app.modules.office_tools.api.router import router as office_tools_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -75,8 +77,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(collections_router, prefix='/api/v1/collections')
     # 폐쇄망 Ollama AI — 브라우저는 same-origin 프록시만 호출하고, 백엔드가 Ollama 와 통신한다.
     app.include_router(ai_router, prefix='/api/v1/ai')
+    # LLM 연결 레지스트리(관리자) — OpenAI 호환 엔드포인트 등록/암호화/검증. admin 프록시 재사용을 위해 /api/v1/admin.
+    app.include_router(ai_admin_router, prefix='/api/v1/admin')
     # stateless 렌더 — 원본 텍스트(markdown/html)를 서버 sanitize HTML 로 변환한다. 저장소/경로 접근 없음.
     app.include_router(render_router, prefix='/api/v1/render')
+    # office-tools(보고서/차트/다이어그램) — 로그인 필수. 산출물은 파일 JobStore 에 사용자 스코프로 저장.
+    app.include_router(office_tools_router, prefix='/api/v1/office-tools')
     return app
 
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge, useAdminConsoleData } from '../admin-console-tabs';
+import { AdminLlmConnectionsCard } from './admin-llm-connections-card';
 
 export function AdminSystemSection() {
   const { state, passwordForm, setPasswordForm, changePassword } = useAdminConsoleData();
@@ -20,6 +21,7 @@ export function AdminSystemSection() {
         <div className="grid gap-2 md:grid-cols-3"><input type="password" value={passwordForm.current} onChange={(event) => setPasswordForm((current) => ({ ...current, current: event.target.value }))} placeholder="현재 비밀번호" className="rounded-md border border-slate-300 px-2 py-1" aria-label="current password" /><input type="password" value={passwordForm.next} onChange={(event) => setPasswordForm((current) => ({ ...current, next: event.target.value }))} placeholder="새 비밀번호 (8자 이상)" className="rounded-md border border-slate-300 px-2 py-1" aria-label="new password" /><input type="password" value={passwordForm.confirm} onChange={(event) => setPasswordForm((current) => ({ ...current, confirm: event.target.value }))} placeholder="새 비밀번호 확인" className="rounded-md border border-slate-300 px-2 py-1" aria-label="confirm password" /></div>
         <button type="button" disabled={state.busy === 'password-change'} onClick={() => void changePassword()} className="mt-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">비밀번호 변경</button>
       </div>
+      <AdminLlmConnectionsCard />
     </section>
   );
 }
