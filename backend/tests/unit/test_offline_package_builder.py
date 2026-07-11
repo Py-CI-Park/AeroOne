@@ -35,6 +35,19 @@ from app.operations.package_policy_verifier import compute_sha256, verify_post_z
 _VERSION = "1.13.0"
 _PY_INSTALLER = "python-3.12.7-amd64.exe"
 _NODE_INSTALLER = "node-v20.18.0-x64.msi"
+_BUILDER_SCRIPT = Path(__file__).parents[3] / "scripts" / "build_offline_package.ps1"
+
+
+def test_powershell_builder_writes_python_inputs_without_utf8_bom() -> None:
+    script = _BUILDER_SCRIPT.read_text(encoding="utf-8")
+
+    assert "New-Object Text.UTF8Encoding($false)" in script
+    assert "Write-Utf8NoBom -Path $trackedPathsFile" in script
+    assert "Write-Utf8NoBom -Path $selectedFile" in script
+    assert "Write-Utf8NoBom -Path $signaturesPath" in script
+    assert "Set-Content -LiteralPath $trackedPathsFile" not in script
+    assert "Set-Content -LiteralPath $selectedFile" not in script
+    assert "Set-Content -LiteralPath $signaturesPath" not in script
 
 
 def _policy() -> PolicyDocument:

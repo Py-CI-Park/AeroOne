@@ -68,6 +68,15 @@ $PlanCli = Join-Path $RepoRoot 'packaging\build_offline_package_plan.py'
 $PolicyPath = Join-Path $RepoRoot 'packaging\installer-policy.json'
 $VerifierModule = Join-Path $RepoRoot 'scripts\packaging\Verify-OfflinePackage.psm1'
 $VerifierCli = Join-Path $RepoRoot 'packaging\verify_offline_package.py'
+function Write-Utf8NoBom {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [Parameter(Mandatory = $true)] [string]$Value
+    )
+    $encoding = New-Object Text.UTF8Encoding($false)
+    [IO.File]::WriteAllText($Path, $Value, $encoding)
+}
+
 
 function Get-GitState {
     <#
@@ -263,7 +272,7 @@ function New-PackageManifest {
     )
     $selectedFile = [System.IO.Path]::GetTempFileName()
     try {
-        Set-Content -LiteralPath $selectedFile -Value ($AllPaths -join "`n") -Encoding utf8
+        Write-Utf8NoBom -Path $selectedFile -Value ($AllPaths -join "`n")
         $manifestArgs = @(
             $PlanCli, 'manifest',
             '--stage-root', $StageRoot,
@@ -289,7 +298,7 @@ $gitState = Get-GitState
 $trackedPathsFile = [System.IO.Path]::GetTempFileName()
 $selectedOutFile = [System.IO.Path]::GetTempFileName()
 try {
-    Set-Content -LiteralPath $trackedPathsFile -Value ((Get-TrackedPaths) -join "`n") -Encoding utf8
+    Write-Utf8NoBom -Path $trackedPathsFile -Value ((Get-TrackedPaths) -join "`n")
 
     $plan = Invoke-BuildPlan -Version $Version -GitState $gitState -TrackedPathsFile $trackedPathsFile -SelectedOutFile $selectedOutFile
     $selectedPaths = Get-Content -LiteralPath $selectedOutFile
@@ -333,7 +342,7 @@ try {
     $signaturesPath = [System.IO.Path]::GetTempFileName() + '.json'
     $digestsPath = [System.IO.Path]::GetTempFileName() + '.json'
     try {
-        ($signatureMap | ConvertTo-Json -Depth 4) | Set-Content -LiteralPath $signaturesPath -Encoding utf8
+        Write-Utf8NoBom -Path $signaturesPath -Value ($signatureMap | ConvertTo-Json -Depth 4)
         $verifyTag = if ($gitState.HeadTag) { $gitState.HeadTag } else { '' }
         & $PythonExecutable $VerifierCli pre-stage `
             --stage-root $stageRoot --manifest $manifestPath --policy $PolicyPath `
