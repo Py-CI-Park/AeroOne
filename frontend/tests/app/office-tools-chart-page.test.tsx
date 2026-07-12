@@ -13,6 +13,7 @@ const { generateChartMock, inspectChartDataMock } = vi.hoisted(() => ({
 vi.mock('@/lib/api', () => ({
   generateChart: generateChartMock,
   inspectChartData: inspectChartDataMock,
+  fetchOfficeSamples: () => Promise.resolve([]),
 }));
 
 vi.mock('@/lib/cookies', () => ({

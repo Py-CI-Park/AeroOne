@@ -11,6 +11,7 @@ const { generateReportMock } = vi.hoisted(() => ({
 
 vi.mock('@/lib/api', () => ({
   generateReport: generateReportMock,
+  fetchOfficeSamples: () => Promise.resolve([]),
 }));
 
 vi.mock('@/lib/cookies', () => ({

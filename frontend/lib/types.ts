@@ -477,6 +477,7 @@ export type DiagramType = 'flowchart' | 'sequence' | 'state' | 'gantt';
 
 // office-tools 샘플 예제 — 각 스튜디오 '예제 불러오기'가 받는 내용 + 폼 프리필 힌트.
 export interface OfficeSample {
+  key: string;
   tool: 'report' | 'chart' | 'diagram';
   filename: string;
   media_type: string;

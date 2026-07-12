@@ -3,10 +3,11 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 
-import { fetchOfficeSample, generateChart, inspectChartData } from '@/lib/api';
+import { generateChart, inspectChartData } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
-import type { ChartGenerateResponse, ChartInspectResponse, ChartType } from '@/lib/types';
+import type { ChartGenerateResponse, ChartInspectResponse, ChartType, OfficeSample } from '@/lib/types';
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
+import { SamplePicker } from '@/components/office-tools/sample-picker';
 
 // echarts 렌더는 SSR 비호환이라 미리보기를 클라이언트 전용 dynamic import 로 로드한다.
 const ChartPreview = dynamic(
@@ -51,18 +52,13 @@ export function ChartForm() {
         : '규칙 기반'
     : undefined;
 
-  async function loadSample() {
-    try {
-      const sample = await fetchOfficeSample('chart');
-      setDataFile(new File([sample.content], sample.filename, { type: sample.media_type }));
-      setProfile(null);
-      setResult(null);
-      if (typeof sample.hints.prompt === 'string') setPrompt(sample.hints.prompt);
-      if (typeof sample.hints.chart_type === 'string') setChartType(sample.hints.chart_type as ChartType | '');
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '예제를 불러오지 못했습니다.');
-    }
+  function applySample(sample: OfficeSample) {
+    setDataFile(new File([sample.content], sample.filename, { type: sample.media_type }));
+    setProfile(null);
+    setResult(null);
+    if (typeof sample.hints.prompt === 'string') setPrompt(sample.hints.prompt);
+    if (typeof sample.hints.chart_type === 'string') setChartType(sample.hints.chart_type as ChartType | '');
+    setError('');
   }
 
   async function handleInspect() {
@@ -147,15 +143,9 @@ export function ChartForm() {
           <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 추천)</span>
         </label>
 
+        <SamplePicker tool="chart" onPick={applySample} disabled={busy} />
+
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={loadSample}
-            disabled={busy}
-            className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
-          >
-            예제 불러오기
-          </button>
           <button
             type="button"
             onClick={handleInspect}

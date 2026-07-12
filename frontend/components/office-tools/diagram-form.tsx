@@ -3,10 +3,11 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 
-import { fetchOfficeSample, generateDiagram } from '@/lib/api';
+import { generateDiagram } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
-import type { DiagramGenerateResponse, DiagramType } from '@/lib/types';
+import type { DiagramGenerateResponse, DiagramType, OfficeSample } from '@/lib/types';
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
+import { SamplePicker } from '@/components/office-tools/sample-picker';
 
 // mermaid 렌더는 SSR 비호환이라 미리보기를 클라이언트 전용 dynamic import 로 로드한다.
 const DiagramPreview = dynamic(
@@ -47,16 +48,12 @@ export function DiagramForm() {
         : '규칙 기반'
     : undefined;
 
-  async function loadSample() {
-    try {
-      const sample = await fetchOfficeSample('diagram');
-      setDescription(sample.content.trim());
-      if (typeof sample.hints.diagram_type === 'string') setDiagramType(sample.hints.diagram_type as DiagramType);
-      if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '예제를 불러오지 못했습니다.');
-    }
+  function applySample(sample: OfficeSample) {
+    setDescription(sample.content.trim());
+    if (typeof sample.hints.diagram_type === 'string') setDiagramType(sample.hints.diagram_type as DiagramType);
+    if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
+    setResult(null);
+    setError('');
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -127,23 +124,15 @@ export function DiagramForm() {
           <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 생성)</span>
         </label>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={loadSample}
-            disabled={busy}
-            className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
-          >
-            예제 불러오기
-          </button>
-          <button
-            type="submit"
-            disabled={busy || !description.trim()}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-          >
-            {busy ? '생성 중…' : '다이어그램 생성'}
-          </button>
-        </div>
+        <SamplePicker tool="diagram" onPick={applySample} disabled={busy} />
+
+        <button
+          type="submit"
+          disabled={busy || !description.trim()}
+          className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
+        >
+          {busy ? '생성 중…' : '다이어그램 생성'}
+        </button>
       </form>
 
       <ProcessSteps steps={DIAGRAM_STEPS} done={!!result} engineNote={engineNote} />

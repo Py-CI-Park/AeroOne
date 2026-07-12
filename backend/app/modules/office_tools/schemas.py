@@ -34,6 +34,7 @@ CHART_DATA_SUFFIXES = ('.csv', '.xlsx', '.xlsm', '.json')
 class OfficeSampleResponse(BaseModel):
     """각 스튜디오의 '예제 불러오기'용 샘플 데이터 + 폼 프리필 힌트."""
 
+    key: str
     tool: Literal['report', 'chart', 'diagram']
     filename: str
     media_type: str

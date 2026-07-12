@@ -11,6 +11,7 @@ const { generateDiagramMock } = vi.hoisted(() => ({
 
 vi.mock('@/lib/api', () => ({
   generateDiagram: generateDiagramMock,
+  fetchOfficeSamples: () => Promise.resolve([]),
 }));
 
 vi.mock('@/lib/cookies', () => ({

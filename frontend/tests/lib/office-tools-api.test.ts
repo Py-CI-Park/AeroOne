@@ -1,4 +1,4 @@
-import { generateChart, generateDiagram, generateReport, inspectChartData } from '@/lib/api';
+import { fetchOfficeSamples, generateChart, generateDiagram, generateReport, inspectChartData } from '@/lib/api';
 import type { DiagramGenerateRequest } from '@/lib/types';
 
 const fetchMock = vi.fn();
@@ -118,4 +118,18 @@ test('generateChart omits chart_type when auto (empty string)', async () => {
   expect(form.has('chart_type')).toBe(false);
   // 기본 aiAssist 는 true 로 직렬화된다.
   expect(form.get('ai_assist')).toBe('true');
+});
+
+test('fetchOfficeSamples GETs the samples list from the office-tools proxy', async () => {
+  const samples = [
+    { key: 'diagram-flow', tool: 'diagram', filename: 'f.txt', media_type: 'text/plain', title: '흐름', description: '', content: 'A -> B', hints: {} },
+  ];
+  fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => samples });
+
+  const result = await fetchOfficeSamples();
+
+  expect(result).toEqual(samples);
+  const [path, init] = fetchMock.mock.calls[0];
+  expect(path).toBe('/api/frontend/office-tools/samples');
+  expect(init.method).toBe('GET');
 });

@@ -2,10 +2,11 @@
 
 import React from 'react';
 
-import { fetchOfficeSample, generateReport } from '@/lib/api';
+import { generateReport } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
-import type { ReportAiMode, ReportGenerateResponse } from '@/lib/types';
+import type { OfficeSample, ReportAiMode, ReportGenerateResponse } from '@/lib/types';
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
+import { SamplePicker } from '@/components/office-tools/sample-picker';
 
 const REPORT_STEPS: ProcessStep[] = [
   { label: 'Markdown 업로드', detail: '.md·.markdown·.txt' },
@@ -42,18 +43,13 @@ export function ReportForm() {
         : 'AI 편집 사용'
     : undefined;
 
-  async function loadSample() {
-    try {
-      const sample = await fetchOfficeSample('report');
-      setMarkdownFile(new File([sample.content], sample.filename, { type: sample.media_type }));
-      setResult(null);
-      if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
-      if (typeof sample.hints.subtitle === 'string') setSubtitle(sample.hints.subtitle);
-      if (typeof sample.hints.ai_mode === 'string') setAiMode(sample.hints.ai_mode as ReportAiMode);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '예제를 불러오지 못했습니다.');
-    }
+  function applySample(sample: OfficeSample) {
+    setMarkdownFile(new File([sample.content], sample.filename, { type: sample.media_type }));
+    setResult(null);
+    if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
+    if (typeof sample.hints.subtitle === 'string') setSubtitle(sample.hints.subtitle);
+    if (typeof sample.hints.ai_mode === 'string') setAiMode(sample.hints.ai_mode as ReportAiMode);
+    setError('');
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -161,23 +157,15 @@ export function ReportForm() {
           <span className="text-xs text-ink-3">{activeHint}</span>
         </label>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={loadSample}
-            disabled={busy}
-            className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
-          >
-            예제 불러오기
-          </button>
-          <button
-            type="submit"
-            disabled={busy || !markdownFile}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-          >
-            {busy ? '생성 중…' : '보고서 생성'}
-          </button>
-        </div>
+        <SamplePicker tool="report" onPick={applySample} disabled={busy} />
+
+        <button
+          type="submit"
+          disabled={busy || !markdownFile}
+          className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
+        >
+          {busy ? '생성 중…' : '보고서 생성'}
+        </button>
       </form>
 
       <ProcessSteps steps={REPORT_STEPS} done={!!result} engineNote={engineNote} />

@@ -773,7 +773,8 @@ export async function generateChart(input: ChartGenerateInput, csrfToken: string
   });
 }
 
-// office-tools 샘플 예제: 각 스튜디오의 '예제 불러오기'가 내용 + 폼 프리필 힌트를 받아온다.
-export async function fetchOfficeSample(tool: 'report' | 'chart' | 'diagram'): Promise<OfficeSample> {
-  return browserFetch<OfficeSample>(`/api/frontend/office-tools/samples/${tool}`, { method: 'GET' });
+// office-tools 샘플 예제: 도구별 여러 종의 내용 + 폼 프리필 힌트를 한 번에 받아온다.
+// 프런트는 이 목록을 도구별 '예제' 칩으로 보여 주고, 고르면 해당 내용으로 폼을 채운다.
+export async function fetchOfficeSamples(): Promise<OfficeSample[]> {
+  return browserFetch<OfficeSample[]>('/api/frontend/office-tools/samples', { method: 'GET' });
 }

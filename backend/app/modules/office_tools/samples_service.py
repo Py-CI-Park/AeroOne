@@ -1,8 +1,12 @@
-"""office-tools 샘플 예제 제공 — 각 스튜디오의 즉시 체험용 샘플 데이터.
+"""office-tools 샘플 예제 제공 — 각 스튜디오의 즉시 체험용 샘플 데이터(도구별 여러 종).
 
-``samples/`` 디렉터리에 실제 샘플 파일(sample_flow.txt / sample_metrics.csv /
-sample_report.md)을 번들로 두고, 이 모듈이 그 내용과 폼 프리필 힌트를 함께 돌려준다.
-프런트의 '예제 불러오기' 버튼이 이 값을 받아 폼을 채우고 바로 실행할 수 있게 한다.
+``samples/`` 디렉터리에 실제 샘플 파일을 번들로 두고, 이 모듈이 도구별 여러 예제의
+내용과 폼 프리필 힌트를 함께 돌려준다. 프런트는 '예제' 칩 목록으로 보여 주고, 사용자가
+고르면 폼을 채워 바로 실행할 수 있게 한다.
+
+- 다이어그램: 플로우 / 시퀀스 / 상태 / 간트 (Mermaid 유형별)
+- 차트: 막대 / 선(추세) / 파이(비중) / 산점(상관) / 히스토그램(분포)
+- 보고서: 매출 보고 / 장애 사후분석 / 주간 업무보고
 
 번들 파일만 읽으므로 사용자 입력 경로가 개입하지 않는다(경로 탈출 표면 없음).
 """
@@ -16,49 +20,136 @@ SampleTool = Literal['report', 'chart', 'diagram']
 
 _SAMPLES_DIR = Path(__file__).resolve().parent / 'samples'
 
-# tool -> (파일명, media_type, 제목, 설명, 폼 프리필 힌트)
-_SAMPLES: dict[SampleTool, dict[str, object]] = {
-    'diagram': {
+# key -> (tool, 파일명, media_type, 칩 라벨, 설명, 폼 프리필 힌트)
+_SAMPLES: dict[str, dict[str, object]] = {
+    # ---- 다이어그램 ----
+    'diagram-flow': {
+        'tool': 'diagram',
         'filename': 'sample_flow.txt',
         'media_type': 'text/plain',
-        'title': '방문자 처리 흐름',
-        'description': '접속부터 산출물 다운로드까지의 단계 흐름 예시입니다.',
+        'title': '처리 흐름(플로우)',
+        'description': '접속부터 산출물 다운로드까지의 단계 흐름.',
         'hints': {'diagram_type': 'flowchart', 'title': '방문자 처리 흐름', 'ai_assist': True},
     },
-    'chart': {
+    'diagram-sequence': {
+        'tool': 'diagram',
+        'filename': 'sample_diagram_sequence.txt',
+        'media_type': 'text/plain',
+        'title': '로그인 시퀀스',
+        'description': '사용자·웹서버·인증서버·DB 간 메시지 흐름.',
+        'hints': {'diagram_type': 'sequence', 'title': '로그인 시퀀스', 'ai_assist': True},
+    },
+    'diagram-state': {
+        'tool': 'diagram',
+        'filename': 'sample_diagram_state.txt',
+        'media_type': 'text/plain',
+        'title': '상태 전이',
+        'description': '접수부터 완료까지의 승인 상태 전이.',
+        'hints': {'diagram_type': 'state', 'title': '승인 상태 전이', 'ai_assist': True},
+    },
+    'diagram-gantt': {
+        'tool': 'diagram',
+        'filename': 'sample_diagram_gantt.txt',
+        'media_type': 'text/plain',
+        'title': '프로젝트 간트',
+        'description': '요구 분석~배포까지의 일정(업무 | 시작일 | 기간).',
+        'hints': {'diagram_type': 'gantt', 'title': '프로젝트 일정', 'ai_assist': True},
+    },
+    # ---- 차트 ----
+    'chart-region-bar': {
+        'tool': 'chart',
         'filename': 'sample_metrics.csv',
         'media_type': 'text/csv',
-        'title': '지역별 월 매출',
-        'description': '지역·월별 매출/주문 수 표본 데이터입니다.',
-        'hints': {'prompt': '지역별 2월 매출을 크기순으로 비교', 'chart_type': 'bar', 'ai_assist': True},
+        'title': '지역 매출(막대)',
+        'description': '지역·월별 매출/주문 표본 → 지역별 막대.',
+        'hints': {'prompt': '지역별 매출을 크기순으로 비교', 'chart_type': 'bar', 'ai_assist': True},
     },
-    'report': {
+    'chart-visitors-line': {
+        'tool': 'chart',
+        'filename': 'sample_chart_visitors.csv',
+        'media_type': 'text/csv',
+        'title': '월별 추세(선)',
+        'description': '12개월 방문자 시계열 → 선형 추세.',
+        'hints': {'prompt': '월별 방문자 추세', 'chart_type': 'line', 'ai_assist': True},
+    },
+    'chart-channel-pie': {
+        'tool': 'chart',
+        'filename': 'sample_chart_channel.csv',
+        'media_type': 'text/csv',
+        'title': '채널 비중(파이)',
+        'description': '판매 채널별 매출 구성비 → 파이.',
+        'hints': {'prompt': '채널별 매출 비중', 'chart_type': 'pie', 'ai_assist': True},
+    },
+    'chart-adspend-scatter': {
+        'tool': 'chart',
+        'filename': 'sample_chart_adspend.csv',
+        'media_type': 'text/csv',
+        'title': '광고비-매출(산점)',
+        'description': '광고비와 매출 두 지표의 상관 → 산점도.',
+        'hints': {'prompt': '광고비와 매출의 상관', 'chart_type': 'scatter', 'ai_assist': True},
+    },
+    'chart-latency-hist': {
+        'tool': 'chart',
+        'filename': 'sample_chart_latency.csv',
+        'media_type': 'text/csv',
+        'title': '응답시간 분포(히스토그램)',
+        'description': '응답시간(ms) 표본 → 분포 히스토그램.',
+        'hints': {'prompt': '응답시간 분포', 'chart_type': 'histogram', 'ai_assist': True},
+    },
+    # ---- 보고서 ----
+    'report-sales': {
+        'tool': 'report',
         'filename': 'sample_report.md',
         'media_type': 'text/markdown',
-        'title': '2026년 2월 지역별 매출 보고',
-        'description': '표와 요약이 포함된 Markdown 보고서 예시입니다.',
+        'title': '매출 보고',
+        'description': '표와 요약이 있는 지역별 매출 보고.',
         'hints': {'title': '2026년 2월 지역별 매출 보고', 'subtitle': '요약과 지역별 실적', 'ai_mode': 'none'},
+    },
+    'report-postmortem': {
+        'tool': 'report',
+        'filename': 'sample_report_postmortem.md',
+        'media_type': 'text/markdown',
+        'title': '장애 사후분석',
+        'description': '표·코드블록·체크리스트가 있는 포스트모템.',
+        'hints': {'title': '장애 사후 분석 — 결제 승인 지연', 'subtitle': '원인·영향·재발 방지', 'ai_mode': 'none'},
+    },
+    'report-weekly': {
+        'tool': 'report',
+        'filename': 'sample_report_weekly.md',
+        'media_type': 'text/markdown',
+        'title': '주간 업무보고',
+        'description': '완료·진행·계획·지표로 구성한 주간 보고.',
+        'hints': {'title': '주간 업무 보고', 'subtitle': '완료·진행·계획', 'ai_mode': 'none'},
     },
 }
 
 
-def available_tools() -> list[SampleTool]:
-    return list(_SAMPLES.keys())
+def _read(meta: dict[str, object]) -> str:
+    return (_SAMPLES_DIR / str(meta['filename'])).read_text(encoding='utf-8')
 
 
-def get_sample(tool: str) -> dict[str, object]:
-    """도구의 샘플 메타 + 내용을 돌려준다. 미지원 도구는 KeyError."""
-
-    if tool not in _SAMPLES:
-        raise KeyError(tool)
-    meta = _SAMPLES[tool]  # type: ignore[index]
-    content = (_SAMPLES_DIR / str(meta['filename'])).read_text(encoding='utf-8')
+def _to_payload(key: str, meta: dict[str, object]) -> dict[str, object]:
     return {
-        'tool': tool,
+        'key': key,
+        'tool': meta['tool'],
         'filename': meta['filename'],
         'media_type': meta['media_type'],
         'title': meta['title'],
         'description': meta['description'],
-        'content': content,
+        'content': _read(meta),
         'hints': meta['hints'],
     }
+
+
+def all_samples() -> list[dict[str, object]]:
+    """모든 도구의 모든 샘플(내용·힌트 포함)을 등록 순서대로 돌려준다."""
+
+    return [_to_payload(key, meta) for key, meta in _SAMPLES.items()]
+
+
+def get_sample(key: str) -> dict[str, object]:
+    """key 로 샘플 하나(내용·힌트 포함)를 돌려준다. 미지원 key 는 KeyError."""
+
+    if key not in _SAMPLES:
+        raise KeyError(key)
+    return _to_payload(key, _SAMPLES[key])

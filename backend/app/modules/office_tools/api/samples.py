@@ -1,8 +1,8 @@
-"""samples 서브라우터 — 각 스튜디오의 즉시 체험용 샘플 예제.
+"""samples 서브라우터 — 각 스튜디오의 즉시 체험용 샘플 예제(도구별 여러 종).
 
-``GET /samples`` 는 지원 도구 목록을, ``GET /samples/{tool}`` 은 해당 도구의 샘플
-내용 + 폼 프리필 힌트를 돌려준다. 프런트 '예제 불러오기' 버튼이 이를 받아 폼을
-채우고 바로 실행할 수 있게 한다. 상위 라우터가 세션 로그인을 강제하므로 미로그인은 401.
+``GET /samples`` 는 모든 도구의 모든 샘플(내용 + 폼 프리필 힌트)을, ``GET /samples/{key}``
+는 key 로 지정한 샘플 하나를 돌려준다. 프런트는 목록을 받아 도구별 '예제' 칩으로 보여 주고,
+사용자가 고르면 그 내용으로 폼을 채운다. 상위 라우터가 세션 로그인을 강제하므로 미로그인은 401.
 """
 
 from __future__ import annotations
@@ -17,16 +17,16 @@ router = APIRouter(tags=['office-tools'])
 
 @router.get('', response_model=list[OfficeSampleResponse])
 def list_samples() -> list[OfficeSampleResponse]:
-    """지원하는 모든 도구의 샘플을 돌려준다."""
+    """모든 도구의 모든 샘플을 돌려준다."""
 
-    return [OfficeSampleResponse(**samples_service.get_sample(tool)) for tool in samples_service.available_tools()]
+    return [OfficeSampleResponse(**sample) for sample in samples_service.all_samples()]
 
 
-@router.get('/{tool}', response_model=OfficeSampleResponse)
-def get_sample(tool: str) -> OfficeSampleResponse:
-    """도구 하나의 샘플 내용 + 힌트를 돌려준다. 미지원 도구는 404."""
+@router.get('/{key}', response_model=OfficeSampleResponse)
+def get_sample(key: str) -> OfficeSampleResponse:
+    """key 로 샘플 하나를 돌려준다. 미지원 key 는 404."""
 
     try:
-        return OfficeSampleResponse(**samples_service.get_sample(tool))
+        return OfficeSampleResponse(**samples_service.get_sample(key))
     except KeyError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'unknown sample tool: {tool}') from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'unknown sample: {key}') from exc
