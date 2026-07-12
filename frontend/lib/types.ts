@@ -80,9 +80,12 @@ export interface ClientSessionResourceGrant {
 
 export interface ClientSession {
   authenticated: boolean | null;
-  username?: string | null;
+  username: string | null;
   role: string | null;
-  isAdmin: boolean;
+  is_admin: boolean;
+  can_view_document: boolean;
+  can_view_nsa: boolean;
+  can_use_ai: boolean;
   permissions: string[];
   resources: ClientSessionResourceGrant[];
 }

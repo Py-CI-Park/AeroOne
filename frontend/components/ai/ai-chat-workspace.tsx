@@ -451,20 +451,14 @@ export function AiChatWorkspace() {
   const [nsaUnlocked, setNsaUnlocked] = useState(false);
 
   useEffect(() => {
-    // NSA scope availability is a UX hint derived from the caller's effective permissions
-    // (backend enforcement in can_read_collection is authoritative and drops unauthorized
-    // NSA scope/refs regardless). The old localStorage password-unlock flag was removed
-    // with the NSA password gate in 1.10.0.
+    // NSA scope availability is derived from the shared ClientSession's can_view_nsa flag,
+    // the single UI authority for NSA visibility (backend enforcement in can_read_collection
+    // remains authoritative and drops unauthorized NSA scope/refs regardless).
     let cancelled = false;
     void fetchClientSession()
       .then((session) => {
         if (cancelled) return;
-        const canReadNsa =
-          session.isAdmin ||
-          session.permissions.includes('collections.nsa.read') ||
-          session.permissions.includes('search.nsa.read') ||
-          session.resources.some((grant) => grant.resource_type === 'collection' && grant.resource_id === 'nsa');
-        setNsaUnlocked(canReadNsa);
+        setNsaUnlocked(session.can_view_nsa === true);
       })
       .catch(() => {
         // 세션 조회 실패 시 NSA 는 비활성(권한 없음) 상태로 둔다.

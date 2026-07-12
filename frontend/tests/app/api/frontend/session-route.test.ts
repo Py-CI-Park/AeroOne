@@ -22,76 +22,171 @@ function createRouteRequest(cookie?: string) {
   } as NextRequest;
 }
 
+const MODULES = [
+  { key: 'document', is_enabled: true },
+  { key: 'nsa', is_enabled: true },
+  { key: 'ai', is_enabled: true },
+];
+
 afterEach(() => {
   vi.restoreAllMocks();
   getServerApiBaseMock.mockClear();
 });
 
-test('GET returns permission and resource hints for authenticated sessions', async () => {
+test('GET returns full derived flags and hints for an authenticated non-admin user with a resource grant', async () => {
   const fetchMock = vi.spyOn(global, 'fetch')
     .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'analyst', role: 'user' }), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify({
-      permissions: ['collections.nsa.read'],
+      permissions: [],
       resources: [
         { resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' },
       ],
-    }), { status: 200 }));
+    }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify(MODULES), { status: 200 }));
 
   const response = await GET(createRouteRequest('aeroone_session=token'));
 
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
-    'http://127.0.0.1:18437/api/v1/auth/me',
-    expect.objectContaining({ headers: { cookie: 'aeroone_session=token' }, cache: 'no-store' }),
-  );
-  expect(fetchMock).toHaveBeenNthCalledWith(
-    2,
-    'http://127.0.0.1:18437/api/v1/auth/effective-permissions',
+    'http://session-backend.test/api/v1/auth/me',
     expect.objectContaining({ headers: { cookie: 'aeroone_session=token' }, cache: 'no-store' }),
   );
   expect(response.status).toBe(200);
+  expect(response.headers.get('cache-control')).toBe('no-store');
   await expect(response.json()).resolves.toEqual({
     authenticated: true,
     username: 'analyst',
     role: 'user',
-    isAdmin: false,
-    permissions: ['collections.nsa.read'],
+    is_admin: false,
+    can_view_document: true,
+    can_view_nsa: true,
+    can_use_ai: true,
+    permissions: [],
     resources: [
       { resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' },
     ],
   });
 });
 
-test('GET returns empty hints for anonymous sessions', async () => {
+test('GET grants NSA visibility for admins even without an explicit permission or resource grant', async () => {
+  vi.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'root', role: 'admin' }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ permissions: [], resources: [] }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify(MODULES), { status: 200 }));
+
+  const response = await GET(createRouteRequest('aeroone_session=token'));
+
+  await expect(response.json()).resolves.toEqual({
+    authenticated: true,
+    username: 'root',
+    role: 'admin',
+    is_admin: true,
+    can_view_document: true,
+    can_view_nsa: true,
+    can_use_ai: true,
+    permissions: [],
+    resources: [],
+  });
+});
+
+test('GET grants NSA visibility via a global permission string without a resource grant', async () => {
+  vi.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'analyst', role: 'user' }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ permissions: ['collections.nsa.read'], resources: [] }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify(MODULES), { status: 200 }));
+
+  const response = await GET(createRouteRequest('aeroone_session=token'));
+
+  await expect(response.json()).resolves.toMatchObject({ can_view_nsa: true });
+});
+
+test('GET accepts the legacy search.nsa.read permission key', async () => {
+  vi.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'analyst', role: 'user' }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ permissions: ['search.nsa.read'], resources: [] }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify(MODULES), { status: 200 }));
+
+  const response = await GET(createRouteRequest('aeroone_session=token'));
+
+  await expect(response.json()).resolves.toMatchObject({ can_view_nsa: true });
+});
+
+test('GET withholds NSA and AI visibility when the corresponding module is disabled', async () => {
+  vi.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'root', role: 'admin' }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ permissions: [], resources: [] }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify([
+      { key: 'document', is_enabled: true },
+      { key: 'nsa', is_enabled: false },
+      { key: 'ai', is_enabled: false },
+    ]), { status: 200 }));
+
+  const response = await GET(createRouteRequest('aeroone_session=token'));
+
+  await expect(response.json()).resolves.toMatchObject({
+    is_admin: true,
+    can_view_document: true,
+    can_view_nsa: false,
+    can_use_ai: false,
+  });
+});
+
+test('GET returns empty hints and default flags for anonymous sessions, keeping Document public', async () => {
   const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(new Response('unauthorized', { status: 401 }));
 
   const response = await GET(createRouteRequest());
 
   expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(response.status).toBe(200);
+  expect(response.headers.get('cache-control')).toBe('no-store');
   await expect(response.json()).resolves.toEqual({
     authenticated: false,
     username: null,
     role: null,
-    isAdmin: false,
+    is_admin: false,
+    can_view_document: true,
+    can_view_nsa: false,
+    can_use_ai: false,
     permissions: [],
     resources: [],
   });
 });
 
-test('GET returns unknown identity and empty hints when all upstream bases fail', async () => {
+test('GET returns unknown identity, protected flags false, and public Document when the backend is unreachable', async () => {
   const fetchMock = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('connect ECONNREFUSED'));
 
   const response = await GET(createRouteRequest('aeroone_session=token'));
 
-  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(response.status).toBe(200);
-  await expect(response.json()).resolves.toEqual({
+  const body = await response.json();
+  expect(body).toEqual({
     authenticated: null,
     username: null,
     role: null,
-    isAdmin: false,
+    is_admin: false,
+    can_view_document: true,
+    can_view_nsa: false,
+    can_use_ai: false,
     permissions: [],
     resources: [],
   });
+  expect(JSON.stringify(body)).not.toContain('ECONNREFUSED');
+});
+
+test('GET falls back to public Document access when the service-modules fetch fails, without granting NSA or AI', async () => {
+  vi.spyOn(global, 'fetch')
+    .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'analyst', role: 'user' }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ permissions: [], resources: [] }), { status: 200 }))
+    .mockResolvedValueOnce(new Response('backend error', { status: 500 }));
+
+  const response = await GET(createRouteRequest('aeroone_session=token'));
+
+  const body = await response.json();
+  expect(body).toMatchObject({
+    can_view_document: true,
+    can_view_nsa: false,
+    can_use_ai: false,
+  });
+  expect(JSON.stringify(body)).not.toContain('backend error');
 });

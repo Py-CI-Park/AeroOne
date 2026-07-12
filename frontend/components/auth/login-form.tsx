@@ -3,8 +3,9 @@
 import { FormEvent, useState } from 'react';
 
 import { login } from '@/lib/api';
+import { resolveSafeNext } from '@/lib/safe-next';
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string | null } = {}) {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -13,7 +14,7 @@ export function LoginForm() {
     event.preventDefault();
     try {
       await login(username, password);
-      window.location.assign('/admin');
+      window.location.assign(resolveSafeNext(next));
     } catch (err) {
       setMessage(err instanceof Error ? err.message : '로그인 실패');
     }
