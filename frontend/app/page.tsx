@@ -23,7 +23,7 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, visibility: 'admin' },
   { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, visibility: 'admin' },
   { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, visibility: 'admin' },
-  { id: 11, key: 'office-tools', title: '오피스 도구', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, visibility: 'admin' },
+  { id: 11, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, visibility: 'admin' },
   { id: 12, key: 'leantime', title: 'Leantime', description: '프로젝트 관리(외부 폐쇄망 앱). 운영자 설치 필요.', href: 'http://localhost:8081', badge: 'External', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: true, visibility: 'admin' },
 ];
 
@@ -49,13 +49,19 @@ export default async function HomePage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const theme = await getAppTheme(params.theme);
-  const cookieHeader = cookies()
+  // Next 15 에서 cookies() 는 async — await 로 접근(동기 접근 경고 제거)하고,
+  // 서로 독립인 테마/권한/모듈 조회는 Promise.all 로 병렬화해 SSR 지연을 줄인다.
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
     .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join('; ');
-  const isAdmin = await resolveIsAdmin();
-  const { modules, degraded } = await loadModules(cookieHeader);
+  const [theme, isAdmin, moduleResult] = await Promise.all([
+    getAppTheme(params.theme),
+    resolveIsAdmin(),
+    loadModules(cookieHeader),
+  ]);
+  const { modules, degraded } = moduleResult;
   // The live SSR path is already backend-filtered per caller (visibility + required_permission +
   // resource/collection policy), so trust it as-is. Only the degraded/fallback list has no
   // per-user info, so conservatively drop operator-only (non-public) and permission-gated cards

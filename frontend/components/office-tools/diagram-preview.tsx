@@ -27,7 +27,31 @@ export function DiagramPreview({ source, title }: DiagramPreviewProps) {
       setError('');
       try {
         const mermaid = (await import('mermaid')).default;
-        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral' });
+        // 실서비스급 표현: 밋밋한 neutral 대신 브랜드 색을 입힌 base 테마 + 곡선 엣지·넉넉한 간격.
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: 'base',
+          fontFamily: 'inherit',
+          themeVariables: {
+            primaryColor: '#eaf1fb',
+            primaryBorderColor: '#2a78d6',
+            primaryTextColor: '#0b0b0b',
+            secondaryColor: '#e7f7f0',
+            secondaryBorderColor: '#1baf7a',
+            tertiaryColor: '#fbf3e0',
+            tertiaryBorderColor: '#eda100',
+            lineColor: '#6b7280',
+            fontSize: '15px',
+            clusterBkg: '#f7f7f5',
+            clusterBorder: '#d8d8d3',
+            nodeBorder: '#2a78d6',
+            edgeLabelBackground: '#ffffff',
+          },
+          flowchart: { curve: 'basis', htmlLabels: true, padding: 16, nodeSpacing: 46, rankSpacing: 58, useMaxWidth: true },
+          sequence: { useMaxWidth: true, actorMargin: 60, boxMargin: 12 },
+          gantt: { useMaxWidth: true },
+        });
         const id = `aeroone-diagram-${(_renderSeq += 1)}`;
         const result = await mermaid.render(id, source);
         if (!cancelled) setSvg(result.svg);
@@ -76,7 +100,7 @@ export function DiagramPreview({ source, title }: DiagramPreviewProps) {
   return (
     <div className="flex flex-col gap-3">
       <div
-        className="overflow-x-auto rounded-md border border-ink-3/30 bg-white p-4"
+        className="flex justify-center overflow-x-auto rounded-xl border border-ink-3/20 bg-white p-6 shadow-sm [&_svg]:h-auto [&_svg]:max-w-full"
         data-testid="diagram-preview-svg"
         // 소스는 서버 validate_mermaid + strict 렌더로 검증된 결과물이다.
         dangerouslySetInnerHTML={{ __html: svg }}

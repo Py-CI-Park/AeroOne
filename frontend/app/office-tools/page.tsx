@@ -6,7 +6,7 @@ import { getAppTheme } from '@/lib/server-theme';
 
 export const dynamic = 'force-dynamic';
 
-const PAGE_TITLE = '오피스 도구';
+const PAGE_TITLE = 'Office Studio';
 const PAGE_PATH = '/office-tools';
 const VALID_TABS: OfficeToolKey[] = ['diagram', 'chart', 'report'];
 

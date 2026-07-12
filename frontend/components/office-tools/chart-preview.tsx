@@ -3,6 +3,8 @@
 import React from 'react';
 import type { EChartsType } from 'echarts';
 
+import { beautifyEChartsOption } from '@/lib/echarts-beautify';
+
 /**
  * 서버가 만든 ECharts option(JSON)을 브라우저에서 렌더하는 미리보기.
  *
@@ -30,9 +32,10 @@ export function ChartPreview({ option, title }: ChartPreviewProps) {
       try {
         const echarts = await import('echarts');
         if (cancelled || !containerRef.current) return;
-        const instance = echarts.init(containerRef.current);
+        const instance = echarts.init(containerRef.current, undefined, { renderer: 'canvas' });
         chartRef.current = instance;
-        instance.setOption(option);
+        // 서버 option 에 검증 팔레트·라운드 막대·툴팁·레전드 등 표현 스타일을 입혀 렌더한다.
+        instance.setOption(beautifyEChartsOption(option), { notMerge: true });
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : '차트 렌더에 실패했습니다.');
       }
@@ -78,7 +81,7 @@ export function ChartPreview({ option, title }: ChartPreviewProps) {
       <div
         ref={containerRef}
         data-testid="chart-preview-canvas"
-        className="h-[420px] w-full rounded-md border border-ink-3/30 bg-white p-2"
+        className="h-[460px] w-full rounded-xl border border-ink-3/20 bg-white p-3 shadow-sm"
       />
       <div className="flex gap-2">
         <button
