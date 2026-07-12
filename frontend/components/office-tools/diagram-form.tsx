@@ -8,6 +8,15 @@ import { getCsrfCookie } from '@/lib/cookies';
 import type { DiagramGenerateResponse, DiagramType, OfficeSample } from '@/lib/types';
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
 import { SamplePicker } from '@/components/office-tools/sample-picker';
+import { StepSection } from '@/components/office-tools/step-section';
+
+// 유형별 "이렇게 입력해 보세요" 예시. 칩을 누르면 설명란에 채워진다.
+const DESCRIPTION_EXAMPLES: Record<DiagramType, string[]> = {
+  flowchart: ['수집 -> 정제 -> 발행', '주문 -> 결제 -> 배송 -> 완료'],
+  sequence: ['사용자 -> 서버: 요청\n서버 -> DB: 조회\nDB -> 서버: 결과', '클라이언트 -> API: 로그인\nAPI -> 클라이언트: 토큰'],
+  state: ['대기\n진행\n완료', '접수\n검토\n승인\n반려'],
+  gantt: ['설계 | 2026-03-02 | 5d\n개발 | 2026-03-09 | 10d\n테스트 | 2026-03-19 | 5d'],
+};
 
 // mermaid 렌더는 SSR 비호환이라 미리보기를 클라이언트 전용 dynamic import 로 로드한다.
 const DiagramPreview = dynamic(
@@ -78,61 +87,80 @@ export function DiagramForm() {
   return (
     <div className="flex flex-col gap-6">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-label="다이어그램 생성 폼">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">제목 (선택)</span>
-          <input
-            type="text"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            maxLength={200}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-            placeholder="업무 다이어그램"
-          />
-        </label>
+        <StepSection n={1} title="무엇을 그릴지" hint="예제를 고르거나 유형을 정합니다">
+          <SamplePicker tool="diagram" onPick={applySample} disabled={busy} />
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink-1">유형</span>
+            <select
+              value={diagramType}
+              onChange={(event) => setDiagramType(event.target.value as DiagramType)}
+              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+            >
+              {DIAGRAM_TYPES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink-1">제목 (선택)</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={200}
+              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+              placeholder="업무 다이어그램"
+            />
+          </label>
+        </StepSection>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">설명</span>
-          <textarea
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            required
-            maxLength={30000}
-            rows={8}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 font-mono text-ink-1"
-            placeholder="수집 -> 정제 -> 발행"
-          />
-          <span className="text-xs text-ink-3">{activeHint}</span>
-        </label>
+        <StepSection n={2} title="설명 입력" hint="단계·관계를 자연어로">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink-1">설명</span>
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              required
+              maxLength={30000}
+              rows={8}
+              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 font-mono text-ink-1"
+              placeholder="수집 -> 정제 -> 발행"
+            />
+            <span className="text-xs text-ink-3">{activeHint}</span>
+            <span className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-xs text-ink-3">예시</span>
+              {DESCRIPTION_EXAMPLES[diagramType].map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => setDescription(example)}
+                  title={example}
+                  className="rounded-full border border-ink-3/30 px-2.5 py-0.5 text-xs text-ink-2 transition hover:border-accent/50 hover:bg-accent-soft"
+                >
+                  {example.split('\n')[0]}
+                  {example.includes('\n') ? ' …' : ''}
+                </button>
+              ))}
+            </span>
+          </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">유형</span>
-          <select
-            value={diagramType}
-            onChange={(event) => setDiagramType(event.target.value as DiagramType)}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+          <label className="flex items-center gap-2 text-sm text-ink-1">
+            <input type="checkbox" checked={aiAssist} onChange={(event) => setAiAssist(event.target.checked)} />
+            <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 생성)</span>
+          </label>
+        </StepSection>
+
+        <StepSection n={3} title="생성" hint="다이어그램을 만들고 내려받습니다">
+          <button
+            type="submit"
+            disabled={busy || !description.trim()}
+            className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
           >
-            {DIAGRAM_TYPES.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex items-center gap-2 text-sm text-ink-1">
-          <input type="checkbox" checked={aiAssist} onChange={(event) => setAiAssist(event.target.checked)} />
-          <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 생성)</span>
-        </label>
-
-        <SamplePicker tool="diagram" onPick={applySample} disabled={busy} />
-
-        <button
-          type="submit"
-          disabled={busy || !description.trim()}
-          className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-        >
-          {busy ? '생성 중…' : '다이어그램 생성'}
-        </button>
+            {busy ? '생성 중…' : '다이어그램 생성'}
+          </button>
+        </StepSection>
       </form>
 
       <ProcessSteps steps={DIAGRAM_STEPS} done={!!result} engineNote={engineNote} />

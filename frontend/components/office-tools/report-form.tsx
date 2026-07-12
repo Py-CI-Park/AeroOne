@@ -7,6 +7,10 @@ import { getCsrfCookie } from '@/lib/cookies';
 import type { OfficeSample, ReportAiMode, ReportGenerateResponse } from '@/lib/types';
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
 import { SamplePicker } from '@/components/office-tools/sample-picker';
+import { StepSection } from '@/components/office-tools/step-section';
+import { DataInput, type DataInputMode } from '@/components/office-tools/data-input';
+
+const MD_PLACEHOLDER = '# 보고서 제목\n\n## 요약\n\n핵심 결론을 먼저 씁니다.\n\n| 항목 | 값 |\n|---|---|\n| 매출 | 1,240 |';
 
 const REPORT_STEPS: ProcessStep[] = [
   { label: 'Markdown 업로드', detail: '.md·.markdown·.txt' },
@@ -23,7 +27,9 @@ const AI_MODES: { value: ReportAiMode; label: string; hint: string }[] = [
 ];
 
 export function ReportForm() {
+  const [inputMode, setInputMode] = React.useState<DataInputMode>('file');
   const [markdownFile, setMarkdownFile] = React.useState<File | null>(null);
+  const [markdownText, setMarkdownText] = React.useState('');
   const [assets, setAssets] = React.useState<File[]>([]);
   const [title, setTitle] = React.useState('');
   const [subtitle, setSubtitle] = React.useState('');
@@ -35,6 +41,15 @@ export function ReportForm() {
   const [busy, setBusy] = React.useState(false);
 
   const activeHint = AI_MODES.find((item) => item.value === aiMode)?.hint ?? '';
+  const hasData = inputMode === 'text' ? !!markdownText.trim() : !!markdownFile;
+
+  function effectiveFile(): File | null {
+    if (inputMode === 'text') {
+      return markdownText.trim() ? new File([markdownText], 'report.md', { type: 'text/markdown' }) : null;
+    }
+    return markdownFile;
+  }
+
   const engineNote = result
     ? aiMode === 'none'
       ? '변환만 (AI 미사용)'
@@ -44,7 +59,10 @@ export function ReportForm() {
     : undefined;
 
   function applySample(sample: OfficeSample) {
-    setMarkdownFile(new File([sample.content], sample.filename, { type: sample.media_type }));
+    // 예제는 텍스트 모드로 채워, 사용자가 Markdown 형식을 눈으로 확인하게 한다.
+    setInputMode('text');
+    setMarkdownText(sample.content);
+    setMarkdownFile(null);
     setResult(null);
     if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
     if (typeof sample.hints.subtitle === 'string') setSubtitle(sample.hints.subtitle);
@@ -54,12 +72,13 @@ export function ReportForm() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !markdownFile) return;
+    const file = effectiveFile();
+    if (busy || !file) return;
     setBusy(true);
     setError('');
     try {
       const response = await generateReport(
-        { markdownFile, assets, title: title.trim(), subtitle: subtitle.trim(), documentVersion: documentVersion.trim(), tags: tags.trim(), aiMode },
+        { markdownFile: file, assets, title: title.trim(), subtitle: subtitle.trim(), documentVersion: documentVersion.trim(), tags: tags.trim(), aiMode },
         getCsrfCookie(),
       );
       setResult(response);
@@ -74,29 +93,33 @@ export function ReportForm() {
   return (
     <div className="flex flex-col gap-6">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-label="보고서 생성 폼">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">Markdown 파일 (.md / .markdown / .txt)</span>
-          <input
-            type="file"
+        <StepSection n={1} title="원문 입력" hint="예제를 고르거나, 파일 업로드·직접 붙여넣기">
+          <SamplePicker tool="report" onPick={applySample} disabled={busy} />
+          <DataInput
+            mode={inputMode}
+            onModeChange={setInputMode}
+            fileLabel="Markdown 파일 (.md / .markdown / .txt)"
             accept=".md,.markdown,.txt,text/markdown,text/plain"
-            onChange={(event) => setMarkdownFile(event.target.files?.[0] ?? null)}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+            file={markdownFile}
+            onFileChange={setMarkdownFile}
+            text={markdownText}
+            onTextChange={setMarkdownText}
+            textPlaceholder={MD_PLACEHOLDER}
           />
-          {markdownFile ? <span className="text-xs text-ink-3">선택됨: {markdownFile.name}</span> : null}
-        </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink-1">이미지 / ZIP (선택, 여러 개 가능)</span>
+            <input
+              type="file"
+              multiple
+              accept=".png,.jpg,.jpeg,.gif,.webp,.svg,.zip"
+              onChange={(event) => setAssets(Array.from(event.target.files ?? []))}
+              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+            />
+            <span className="text-xs text-ink-3">Markdown 안 ![alt](파일명) 참조가 base64 로 문서에 임베드됩니다(외부 요청 0).</span>
+          </label>
+        </StepSection>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">이미지 / ZIP (선택, 여러 개 가능)</span>
-          <input
-            type="file"
-            multiple
-            accept=".png,.jpg,.jpeg,.gif,.webp,.svg,.zip"
-            onChange={(event) => setAssets(Array.from(event.target.files ?? []))}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-          />
-          <span className="text-xs text-ink-3">Markdown 안 ![alt](파일명) 참조가 base64 로 문서에 임베드됩니다(외부 요청 0).</span>
-        </label>
-
+        <StepSection n={2} title="메타와 AI 편집" hint="제목·부제·편집 방식">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-ink-1">제목 (선택)</span>
@@ -156,16 +179,17 @@ export function ReportForm() {
           </select>
           <span className="text-xs text-ink-3">{activeHint}</span>
         </label>
+        </StepSection>
 
-        <SamplePicker tool="report" onPick={applySample} disabled={busy} />
-
-        <button
-          type="submit"
-          disabled={busy || !markdownFile}
-          className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-        >
-          {busy ? '생성 중…' : '보고서 생성'}
-        </button>
+        <StepSection n={3} title="생성" hint="보고서를 만들고 내려받습니다">
+          <button
+            type="submit"
+            disabled={busy || !hasData}
+            className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
+          >
+            {busy ? '생성 중…' : '보고서 생성'}
+          </button>
+        </StepSection>
       </form>
 
       <ProcessSteps steps={REPORT_STEPS} done={!!result} engineNote={engineNote} />

@@ -8,6 +8,17 @@ import { getCsrfCookie } from '@/lib/cookies';
 import type { ChartGenerateResponse, ChartInspectResponse, ChartType, OfficeSample } from '@/lib/types';
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
 import { SamplePicker } from '@/components/office-tools/sample-picker';
+import { StepSection } from '@/components/office-tools/step-section';
+import { DataInput, type DataInputMode } from '@/components/office-tools/data-input';
+
+const PROMPT_EXAMPLES = [
+  '지역별 매출을 크기순으로 비교',
+  '월별 추세를 선으로 보여줘',
+  '채널별 구성비를 파이로',
+  '광고비와 매출의 상관',
+];
+
+const CSV_PLACEHOLDER = 'region,sales\n서울,1240\n부산,860\n대구,540';
 
 // echarts 렌더는 SSR 비호환이라 미리보기를 클라이언트 전용 dynamic import 로 로드한다.
 const ChartPreview = dynamic(
@@ -35,7 +46,9 @@ const CHART_TYPES: { value: ChartType | ''; label: string }[] = [
 ];
 
 export function ChartForm() {
+  const [inputMode, setInputMode] = React.useState<DataInputMode>('file');
   const [dataFile, setDataFile] = React.useState<File | null>(null);
+  const [dataText, setDataText] = React.useState('');
   const [prompt, setPrompt] = React.useState('');
   const [chartType, setChartType] = React.useState<ChartType | ''>('');
   const [aiAssist, setAiAssist] = React.useState(true);
@@ -43,6 +56,15 @@ export function ChartForm() {
   const [result, setResult] = React.useState<ChartGenerateResponse | null>(null);
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
+
+  const hasData = inputMode === 'text' ? !!dataText.trim() : !!dataFile;
+
+  function effectiveFile(): File | null {
+    if (inputMode === 'text') {
+      return dataText.trim() ? new File([dataText], 'data.csv', { type: 'text/csv' }) : null;
+    }
+    return dataFile;
+  }
 
   const engineNote = result
     ? result.warnings.some((warning) => warning.includes('규칙'))
@@ -53,7 +75,10 @@ export function ChartForm() {
     : undefined;
 
   function applySample(sample: OfficeSample) {
-    setDataFile(new File([sample.content], sample.filename, { type: sample.media_type }));
+    // 예제는 텍스트 모드로 채워, 사용자가 데이터 형식을 눈으로 확인하게 한다.
+    setInputMode('text');
+    setDataText(sample.content);
+    setDataFile(null);
     setProfile(null);
     setResult(null);
     if (typeof sample.hints.prompt === 'string') setPrompt(sample.hints.prompt);
@@ -62,11 +87,12 @@ export function ChartForm() {
   }
 
   async function handleInspect() {
-    if (!dataFile || busy) return;
+    const file = effectiveFile();
+    if (!file || busy) return;
     setBusy(true);
     setError('');
     try {
-      setProfile(await inspectChartData(dataFile, getCsrfCookie()));
+      setProfile(await inspectChartData(file, getCsrfCookie()));
     } catch (err) {
       setProfile(null);
       setError(err instanceof Error ? err.message : '데이터 미리보기에 실패했습니다.');
@@ -77,12 +103,13 @@ export function ChartForm() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !dataFile) return;
+    const file = effectiveFile();
+    if (busy || !file) return;
     setBusy(true);
     setError('');
     try {
       const response = await generateChart(
-        { dataFile, prompt: prompt.trim(), aiAssist, chartType },
+        { dataFile: file, prompt: prompt.trim(), aiAssist, chartType },
         getCsrfCookie(),
       );
       setResult(response);
@@ -97,71 +124,93 @@ export function ChartForm() {
   return (
     <div className="flex flex-col gap-6">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-label="차트 생성 폼">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">데이터 파일 (.csv / .xlsx / .json)</span>
-          <input
-            type="file"
+        <StepSection n={1} title="데이터 입력" hint="예제를 고르거나, 파일 업로드·직접 붙여넣기">
+          <SamplePicker tool="chart" onPick={applySample} disabled={busy} />
+          <DataInput
+            mode={inputMode}
+            onModeChange={setInputMode}
+            fileLabel="데이터 파일 (.csv / .xlsx / .json)"
             accept=".csv,.xlsx,.xlsm,.json,text/csv,application/json"
-            onChange={(event) => {
-              setDataFile(event.target.files?.[0] ?? null);
+            file={dataFile}
+            onFileChange={(next) => {
+              setDataFile(next);
               setProfile(null);
             }}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+            text={dataText}
+            onTextChange={(next) => {
+              setDataText(next);
+              setProfile(null);
+            }}
+            textPlaceholder={CSV_PLACEHOLDER}
           />
-          {dataFile ? <span className="text-xs text-ink-3">선택됨: {dataFile.name}</span> : null}
-        </label>
+        </StepSection>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">목적 문장 (선택)</span>
-          <input
-            type="text"
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            maxLength={300}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-            placeholder="예: 지역별 매출을 크기순으로 비교"
-          />
-        </label>
+        <StepSection n={2} title="목적과 유형" hint="어떻게 보여줄지 정합니다">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink-1">목적 문장 (선택)</span>
+            <input
+              type="text"
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              maxLength={300}
+              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+              placeholder="예: 지역별 매출을 크기순으로 비교"
+            />
+            <span className="flex flex-wrap gap-1.5 pt-1">
+              <span className="text-xs text-ink-3">예시</span>
+              {PROMPT_EXAMPLES.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => setPrompt(example)}
+                  className="rounded-full border border-ink-3/30 px-2.5 py-0.5 text-xs text-ink-2 transition hover:border-accent/50 hover:bg-accent-soft"
+                >
+                  {example}
+                </button>
+              ))}
+            </span>
+          </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">차트 유형</span>
-          <select
-            value={chartType}
-            onChange={(event) => setChartType(event.target.value as ChartType | '')}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-          >
-            {CHART_TYPES.map((item) => (
-              <option key={item.value || 'auto'} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink-1">차트 유형</span>
+            <select
+              value={chartType}
+              onChange={(event) => setChartType(event.target.value as ChartType | '')}
+              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+            >
+              {CHART_TYPES.map((item) => (
+                <option key={item.value || 'auto'} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="flex items-center gap-2 text-sm text-ink-1">
-          <input type="checkbox" checked={aiAssist} onChange={(event) => setAiAssist(event.target.checked)} />
-          <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 추천)</span>
-        </label>
+          <label className="flex items-center gap-2 text-sm text-ink-1">
+            <input type="checkbox" checked={aiAssist} onChange={(event) => setAiAssist(event.target.checked)} />
+            <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 추천)</span>
+          </label>
+        </StepSection>
 
-        <SamplePicker tool="chart" onPick={applySample} disabled={busy} />
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleInspect}
-            disabled={busy || !dataFile}
-            className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
-          >
-            데이터 미리보기
-          </button>
-          <button
-            type="submit"
-            disabled={busy || !dataFile}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-          >
-            {busy ? '처리 중…' : '차트 생성'}
-          </button>
-        </div>
+        <StepSection n={3} title="생성" hint="차트를 만들고 산출물을 내려받습니다">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleInspect}
+              disabled={busy || !hasData}
+              className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
+            >
+              데이터 미리보기
+            </button>
+            <button
+              type="submit"
+              disabled={busy || !hasData}
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
+            >
+              {busy ? '처리 중…' : '차트 생성'}
+            </button>
+          </div>
+        </StepSection>
       </form>
 
       <ProcessSteps steps={CHART_STEPS} done={!!result} engineNote={engineNote} />

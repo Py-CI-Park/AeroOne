@@ -55,6 +55,14 @@ _SAMPLES: dict[str, dict[str, object]] = {
         'description': '요구 분석~배포까지의 일정(업무 | 시작일 | 기간).',
         'hints': {'diagram_type': 'gantt', 'title': '프로젝트 일정', 'ai_assist': True},
     },
+    'diagram-roadmap': {
+        'tool': 'diagram',
+        'filename': 'sample_diagram_roadmap.txt',
+        'media_type': 'text/plain',
+        'title': '제품 로드맵(간트)',
+        'description': '기획~정식 출시까지 반년 로드맵 타임라인.',
+        'hints': {'diagram_type': 'gantt', 'title': '제품 로드맵', 'ai_assist': True},
+    },
     # ---- 차트 ----
     'chart-region-bar': {
         'tool': 'chart',
