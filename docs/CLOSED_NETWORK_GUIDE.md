@@ -201,6 +201,7 @@ offline_package.bat      ─┘──→ ZIP 복사 ──→  압축 해제
 - [ ] **단계 8** — 실행.
   - 단일 PC 전용(이 PC 만): `start_offline.bat --local`
   - LAN(기본): `start_offline.bat` (옵션 없이 = LAN, IP 자동 감지) 또는 호스트 고정 `start_offline.bat --allow-host=192.168.1.10`
+  - 시작 시 maintenance preflight가 실행 파일의 물리 경로를 확인한 뒤 backend/frontend를 기동하므로, 패키지 폴더를 이동한 경우에도 `start_offline.bat` 자체가 그 폴더 안에 있어야 함.
   - 완료 조건: 두 CMD 창 (backend 녹색, frontend 청록) 자동 기동 + 브라우저 자동 오픈 (`http://localhost:29501/` 또는 `http://<host>:29501/`).
   - 매뉴얼: `docs/runbook/windows-offline.md` §5, 본 가이드 §6 / §7.
 

@@ -29,6 +29,16 @@ def test_setup_secret_generation_is_compatible_with_windows_powershell_51() -> N
 def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -> None:
     assert 'pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt' in _SETUP_OFFLINE_SCRIPT
     assert "requirements-dev.txt" not in _SETUP_OFFLINE_SCRIPT
+_START_OFFLINE_SCRIPT = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
+
+
+def test_start_offline_preserves_entry_path_before_argument_shifts() -> None:
+    capture = 'set "ENTRY_BATCH=%~f0"'
+    invocation = '-BatchPath "%ENTRY_BATCH%" -RawBatchArguments "--maintenance-preflight"'
+
+    assert _START_OFFLINE_SCRIPT.index(capture) < _START_OFFLINE_SCRIPT.index(":parse_args")
+    assert invocation in _START_OFFLINE_SCRIPT
+    assert '-BatchPath "%~f0"' not in _START_OFFLINE_SCRIPT
 
 
 def _run_cmd(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:

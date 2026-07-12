@@ -2,6 +2,7 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 set "ROOT=%~dp0"
+set "ENTRY_BATCH=%~f0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "DRY_RUN="
 set "OPEN_BROWSER="
@@ -92,7 +93,7 @@ exit /b 0
 :real_run
 
 if defined MAINTENANCE_PREFLIGHT goto :maintenance_preflight
-powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%~f0" -RawBatchArguments "--maintenance-preflight"
+powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%ENTRY_BATCH%" -RawBatchArguments "--maintenance-preflight"
 if errorlevel 1 exit /b 1
 goto :maintenance_preflight_complete
 
