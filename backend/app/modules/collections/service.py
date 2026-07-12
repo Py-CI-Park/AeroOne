@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.modules.newsletter.services.html_render_service import HtmlRenderService
-from app.modules.shared.storage.service import StorageError, StorageService
+from app.modules.shared.storage.service import StorageService
 
 
 class CollectionItemError(ValueError):

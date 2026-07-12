@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core.security import hash_password
-from app.modules.admin.models import Group, GroupPermission, ResourceGrant, UserGroup, UserPermission
+from app.modules.admin.models import UserPermission
 from app.modules.auth.models import User
 
 

@@ -70,8 +70,6 @@ from app.modules.collections.search_service import CollectionSearchRoot, Collect
 from app.modules.collections.policy import can_read_collection
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter
 from app.modules.newsletter.repositories.newsletter_repository import NewsletterRepository
-from app.modules.newsletter.services.newsletter_service import NewsletterService
-from app.modules.newsletter.services.utils import slugify
 from app.modules.read_tracking.models.read_event import NewsletterReadEvent
 from app.modules.shared.storage.service import StorageError, StorageService, sha256_for_file
 

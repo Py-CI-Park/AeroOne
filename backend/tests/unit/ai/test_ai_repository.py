@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base
 from app.modules.ai import models as ai_models  # noqa: F401  (register tables)
-from app.modules.ai.models import AiConversation
 from app.modules.ai.repositories import AiConversationRepository
 
 
