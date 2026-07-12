@@ -1,0 +1,15 @@
+Next.js를 취약 15.2.0에서 보안 패치 15.2.9로 고정한다
+
+`next@15.2.0`은 알려진 보안 취약점이 있어 폐쇄망 배포 대상으로 부적합하다. 호환성 위험을 최소화하기 위해 minor/major 업그레이드 대신 같은 15.2 minor의 정확 고정 버전 15.2.9를 채택해 취약점만 닫는다.
+
+`frontend/package.json`의 `next`를 범위 없이 정확히 `15.2.9`로 고정하고 `npm install`로 lockfile을 동일 버전에 맞췄다. 저장소 관례대로 caret 없는 exact 고정을 유지해 폐쇄망 재현성을 지켰고, lockfile 변경은 next와 그 전이 의존성으로 한정된다.
+
+이 커밋은 v1.13.0 계획 Task 8의 보안 pin 부분만 반영한다. 나머지 Task 8(1.12.3 버전/changelog/README 정렬, 사고 대응 보고서, 운영 문서 갱신)은 Task 4 자격증명 회전·Task 6 패키지 빌더 등 운영자 게이트 이후에 이어서 처리한다.
+
+Constraint: exact 버전 고정(범위 금지, 폐쇄망 재현성 유지), UI 로직 무변경, 회귀 0
+Rejected: minor/major 업그레이드(호환 깨짐 위험) — 같은 minor의 최소 보안 패치만 채택
+Confidence: high — typecheck/test/build 전부 green이고 patch 범위 bump
+Scope-risk: low — frontend dependency 2파일(package.json/lockfile)만, 제품 소스 무변경
+Directive: Task 8 나머지(1.12.3 metadata·incident·문서)는 Task 4/6 운영자 게이트 이후 진행하고, 이 pin 위에서 1.12.3 release 검증 시 재확인한다
+Tested: npm install 240 packages exit 0, tsc --noEmit exit 0, vitest 313 passed / 66 files, next build exit 0(static/dynamic 라우트 생성)
+Not-tested: 실행 중 브라우저 smoke(이번 변경은 dependency 고정으로 UI 로직·라우트를 바꾸지 않음)

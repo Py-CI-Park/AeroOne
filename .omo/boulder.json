@@ -9,8 +9,12 @@
       "session_ids": [
         "codex:019f3b73-4187-7d80-9bd2-9dca5ed36c6b"
       ],
-      "status": "blocked",
-      "worktree_path": "C:/Users/KAI/Chanil_Park/Project/AeroOne/.worktrees/1.13.0-dev"
+      "status": "active",
+      "started_at": "2026-07-10T18:05:33.1836532+09:00",
+      "resumed_at": "2026-07-10T19:21:37+09:00",
+      "ended_at": null,
+      "duration_ms": null,
+      "worktree_path": "D:/Chanil_Park/Project/Programming/AeroOne"
     }
   }
 }

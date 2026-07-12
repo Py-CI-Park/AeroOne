@@ -1,5 +1,7 @@
 # 단계별 변경 보고서 색인
 
+> v1.13.0 작업 중 상태는 [`v1-13-0-development-status-2026-07-11.md`](v1-13-0-development-status-2026-07-11.md)를 먼저 읽는다. 완료 phase 보고서가 아니라 Task 3 검증 중단점과 Task 4~27/F1~F6 재개 절차를 보존한 핸드오프용 WIP 보고서다.
+
 폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---

@@ -506,7 +506,8 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 4. **DB 분기 로직** — 본 문서 §11.3 + `backend/scripts/ensure_db_state.py` 의 모듈/함수 docstring (단계 9에서 본문에 새겨 둠)
 5. **회귀 테스트 위치** — 본 문서 §13 표
 6. **변경 이력 의도** — 본 문서 §3 표 + `docs/reports/INDEX.md` 및 각 `docs/reports/phase-*.md`
-7. **AI 에이전트 핸드오프** — [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) (1.12.2 안정판 + 1.13.0-dev 이어받기 상태)
+7. **최신 AI 에이전트 핸드오프** — [`docs/runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md) (v1.13.0 Task 3 검증 중단점 + Task 4~27/F1~F6 재개 절차)
+8. **v1.13.0 개발 상태 상세 보고서** — [`docs/reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) (전체 계획·검토 이력·변경 파일·유효/무효 테스트·잔여 작업)
 
 ### 14.1 변경을 가할 때 따라야 할 순서
 
@@ -545,7 +546,9 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 - [`docs/runbook/local-dev.md`](runbook/local-dev.md) — 개발자 로컬 실행
 - [`docs/runbook/admin-auth.md`](runbook/admin-auth.md) — 관리자 인증 정책
 - [`AGENTS.md`](../AGENTS.md), [`CLAUDE.md`](../CLAUDE.md) — 한국어 커밋·PR 규칙
-- [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) — Codex/Claude/GJC 등 AI code agent 가 1.12.2 안정판과 1.13.0-dev 계획/다음 작업을 이어받는 핸드오프
+- [`docs/runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md) — Codex/Claude/GJC 등 AI code agent가 Task 3 hotfix worktree와 전체 v1.13.0 계획을 이어받는 최신 핸드오프
+- [`docs/reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) — Task 1~3 작업·검토와 Task 4~27/F1~F6 잔여 상태의 상세 기록
+- [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) — 1.13.0 제품 구현 전 상태를 보존한 superseded 핸드오프
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 기여 가이드
 
 ### 15.3 단계별 변경 보고서 (의도와 합의안)

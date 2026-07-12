@@ -3,7 +3,7 @@
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
 - 기준 버전: `1.12.2` (`대시보드 시간·버전 날짜 표시·로그인 카드 UI 정리`)
-- 갱신일: 2026-07-09
+- 갱신일: 2026-07-11
 
 ---
 
@@ -14,7 +14,7 @@
 | **시스템을 처음 보는 사람** | [`README.md`](../README.md) (시스템 정체성, 빠른 시작) | §2 운영 매뉴얼 |
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
-| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | §6 코드 진실 원천 |
+| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | v1.13.0 상세 상태 보고서 + §6 코드 진실 원천 |
 
 ---
 
@@ -42,7 +42,9 @@
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
-| [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | **AI 에이전트 핸드오프** — 1.12.2 안정판, 1.13.0-dev 계획/blocked 상태, 다음 작업 순서, guardrail, 검증/커밋 규칙을 Codex/Claude/GJC 공통 문맥으로 정리 | 중간 |
+| [`runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md) | **최신 AI 에이전트 핸드오프** — v1.13.0 Task 1~3 진행, hotfix dirty worktree, 검증 중단점, Task 4~27/F1~F6 재개 절차 | 긴 문서 |
+| [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | **v1.13.0 개발 상태 상세 보고서** — 전체 계획 페이지, 검토 Round 1~4, 변경 파일, 유효/무효 테스트, 잔여 단계·시간·금지 사항 | 긴 문서 |
+| [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | 과거 핸드오프 — 1.13.0 제품 구현 전 상태. 최신 문서로 superseded | 중간 |
 
 ---
 
@@ -74,6 +76,7 @@
 | 단계 25 | [`reports/phase-25-admin-console-ux-polish.md`](reports/phase-25-admin-console-ux-polish.md) | 권한 이해 카탈로그 + 감사 로그 전용 탭(검색/필터/CSV) + 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션 + 탭 숫자 단축키 1~9·온보딩 도움말 — 프론트-only minor 1.12.0 | `1.12.0-dev` |
 | 1.12.1 patch | — | 헤더 로그인 사용자 아이디/로그아웃, `users.display_name` 선택 프로필, 사용자 행별 권한 수정 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 15초 갱신 안내, 버전 배지 업데이트 날짜 표시 | `1.12.1` |
 | 1.12.2 patch | — | 헤더 버전 날짜 즉시 노출 제거(클릭 모달에만 표시), 대시보드 한국 시간 실시간 표시, 로그인 중앙 카드 UI, 로그인 후 아이디 단독 표시, 세션 탭 세로 가독성 보강 | `1.12.2` |
+| v1.13.0 WIP | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | Task 1~2 containment 완료, Task 3 credential rotation Round 4 구현·검증 중단점, Task 4~27/F1~F6 상세 재개 계획 | `1.13.0-dev` |
 
 ---
 
