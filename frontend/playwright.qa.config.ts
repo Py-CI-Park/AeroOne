@@ -41,15 +41,29 @@ const artifactRoot = path.resolve(runtime.artifactRoot);
 const expectedArtifactRoot = path.join(repoRoot, 'artifacts', 'qa', 'v1.13.0', sha, 'browser');
 if (artifactRoot !== expectedArtifactRoot) throw new Error('QA artifacts must remain under the redacted revision root');
 
+const projectFlag = process.argv.find((argument) => argument.startsWith('--project'));
+let projectLabel = 'all';
+if (projectFlag) {
+  projectLabel = projectFlag.includes('=')
+    ? projectFlag.split('=')[1]
+    : process.argv[process.argv.indexOf(projectFlag) + 1] ?? '';
+}
+if (!/^[a-z]+$/.test(projectLabel)) throw new Error('QA project selector must be a lowercase project name');
+const resultsFile = path.join(artifactRoot, 'playwright', `results-${projectLabel}.json`);
+
 export default defineConfig({
   testDir: './tests/qa',
-  outputDir: path.join(artifactRoot, 'playwright'),
+  outputDir: path.join(artifactRoot, 'playwright', projectLabel),
   timeout: 30_000,
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,
   workers: 1,
-  reporter: [['line'], ['json', { outputFile: path.join(artifactRoot, 'playwright', 'results.json') }]],
+  reporter: [
+    ['line'],
+    ['json', { outputFile: resultsFile }],
+    ['./tests/qa/redact-results-reporter.ts', { file: resultsFile, roots: [repoRoot, runtime.tempRoot] }],
+  ],
   use: {
     ...devices['Desktop Chrome'],
     browserName: 'chromium',

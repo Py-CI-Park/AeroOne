@@ -58,7 +58,10 @@ describe('browser harness contract', () => {
     expect(config).toContain("Object.keys(runtime)");
     expect(config).toContain("runtime.backendPid <= 0");
     expect(config).toContain("path.isAbsolute(runtime.tempRoot)");
-    expect(config).toContain("outputDir: path.join(artifactRoot, 'playwright')");
+    expect(config).toContain("outputDir: path.join(artifactRoot, 'playwright', projectLabel)");
+    expect(config).toContain("results-${projectLabel}.json");
+    expect(config).toContain("'./tests/qa/redact-results-reporter.ts'");
+    expect(fs.existsSync(path.join(frontendRoot, 'tests/qa/redact-results-reporter.ts'))).toBe(true);
     expect(config).toContain("screenshot: 'on'");
     expect(config).toContain("runtime.frontendUrl");
     expect(config).toContain("['localhost', '127.0.0.1', '::1']");
