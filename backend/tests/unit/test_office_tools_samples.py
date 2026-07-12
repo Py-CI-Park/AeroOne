@@ -76,12 +76,21 @@ def test_multiseries_chart_samples_are_registered(csrf_client: TestClient) -> No
     body = csrf_client.get('/api/v1/office-tools/samples').json()
     by_key = {item['key']: item for item in body}
     # 누적·그룹·다계열선 예제는 완성된 ChartSpec(manual_spec)을 힌트로 갖는다.
-    for key in ('chart-region-channel-stacked', 'chart-quarter-product-grouped', 'chart-product-multiline'):
+    for key in (
+        'chart-region-channel-stacked', 'chart-quarter-product-grouped', 'chart-product-multiline',
+        'chart-channel-area-stacked', 'chart-kpi-multiline', 'chart-dept-cost-grouped',
+    ):
         assert key in by_key, key
         assert isinstance(by_key[key]['hints'].get('manual_spec'), dict)
     assert by_key['chart-region-channel-stacked']['hints']['manual_spec']['stacked'] is True
-    # 복합 예제(시퀀스·경영 대시보드)도 등록돼 있다.
+    # 누적 영역도 area+stacked 로 등록돼 있다.
+    area_spec = by_key['chart-channel-area-stacked']['hints']['manual_spec']
+    assert area_spec['type'] == 'area' and area_spec['stacked'] is True
+    # 5계열 지표선은 y 열이 5개다.
+    assert len(by_key['chart-kpi-multiline']['hints']['manual_spec']['y']) == 5
+    # 복합 예제(시퀀스·상태·경영 대시보드)도 등록돼 있다.
     assert 'diagram-checkout' in by_key
+    assert 'diagram-orderstate' in by_key
     assert 'report-dashboard' in by_key
 
 

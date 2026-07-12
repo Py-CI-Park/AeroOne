@@ -4,9 +4,10 @@
 내용과 폼 프리필 힌트를 함께 돌려준다. 프런트는 '예제' 칩 목록으로 보여 주고, 사용자가
 고르면 폼을 채워 바로 실행할 수 있게 한다.
 
-- 다이어그램: 플로우 / 시퀀스 / 상태 / 간트 / 로드맵 / 주문 결제 시퀀스(복합)
-- 차트: 막대 / 선 / 파이 / 산점 / 히스토그램 + 누적막대·그룹막대·다계열선(manual_spec 결정적 렌더)
-- 보고서: 매출 보고 / 장애 사후분석 / 주간 업무보고 / 경영 대시보드(복합)
+- 다이어그램(7): 플로우 / 시퀀스 / 상태 / 간트 / 로드맵 / 주문 결제 시퀀스 / 주문 생애주기
+- 차트(11): 막대·선·파이·산점·히스토그램 + 누적막대·그룹막대·다계열선·누적영역·5계열선·5부서 그룹
+  (다계열은 manual_spec 완성 ChartSpec 으로 결정적 렌더)
+- 보고서(4): 매출 보고 / 장애 사후분석 / 주간 업무보고 / 경영 대시보드(복합)
 
 번들 파일만 읽으므로 사용자 입력 경로가 개입하지 않는다(경로 탈출 표면 없음).
 """
@@ -70,6 +71,14 @@ _SAMPLES: dict[str, dict[str, object]] = {
         'title': '주문 결제 시퀀스(복합)',
         'description': '고객·웹앱·재고·결제·카드사·DB·알림 7주체의 주문 결제 흐름.',
         'hints': {'diagram_type': 'sequence', 'title': '주문 결제 시퀀스', 'ai_assist': True},
+    },
+    'diagram-orderstate': {
+        'tool': 'diagram',
+        'filename': 'sample_diagram_orderstate.txt',
+        'media_type': 'text/plain',
+        'title': '주문 생애주기(상태 9단계)',
+        'description': '접수부터 구매 확정·반품·환불까지 9개 상태 전이.',
+        'hints': {'diagram_type': 'state', 'title': '주문 생애주기', 'ai_assist': True},
     },
     # ---- 차트 ----
     'chart-region-bar': {
@@ -152,6 +161,48 @@ _SAMPLES: dict[str, dict[str, object]] = {
                 'type': 'line', 'title': '제품군별 월 추세(다계열)',
                 'x': 'month', 'y': ['여객기', '화물기', '부품'],
                 'aggregation': 'none', 'sort': 'x_asc', 'limit': 30,
+            },
+        },
+    },
+    'chart-channel-area-stacked': {
+        'tool': 'chart',
+        'filename': 'sample_chart_channel_area.csv',
+        'media_type': 'text/csv',
+        'title': '채널 방문 누적 영역',
+        'description': '월별 채널 방문을 누적 영역으로 쌓아 총량과 구성을 함께.',
+        'hints': {
+            'manual_spec': {
+                'type': 'area', 'title': '월별 채널 방문 추세(누적 영역)',
+                'x': 'month', 'y': ['visits'], 'group': 'channel',
+                'aggregation': 'sum', 'stacked': True, 'sort': 'x_asc', 'limit': 30,
+            },
+        },
+    },
+    'chart-kpi-multiline': {
+        'tool': 'chart',
+        'filename': 'sample_chart_kpi_trend.csv',
+        'media_type': 'text/csv',
+        'title': '핵심지표 5종 지수(다계열 선)',
+        'description': '기준100 지수화한 5개 지표의 월별 추세를 한 축에서 비교.',
+        'hints': {
+            'manual_spec': {
+                'type': 'line', 'title': '월별 핵심지표 지수(기준 100)',
+                'x': 'month', 'y': ['매출지수', '방문지수', '전환지수', '재방문지수', '만족지수'],
+                'aggregation': 'none', 'sort': 'x_asc', 'limit': 30,
+            },
+        },
+    },
+    'chart-dept-cost-grouped': {
+        'tool': 'chart',
+        'filename': 'sample_chart_dept_cost.csv',
+        'media_type': 'text/csv',
+        'title': '부서×분기 비용(5계열 그룹)',
+        'description': '분기별 5개 부서 비용을 나란한 그룹 막대로 비교.',
+        'hints': {
+            'manual_spec': {
+                'type': 'bar', 'title': '분기별 부서 비용(그룹)',
+                'x': 'quarter', 'y': ['cost'], 'group': 'dept',
+                'aggregation': 'sum', 'stacked': False, 'sort': 'none', 'limit': 30,
             },
         },
     },

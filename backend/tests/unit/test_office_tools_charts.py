@@ -147,6 +147,17 @@ def test_single_series_stacked_does_not_set_stack() -> None:
     assert all('stack' not in s for s in option['series'])
 
 
+def test_stacked_area_makes_stacked_line_series_with_areastyle() -> None:
+    csv = 'month,ch,v\n2026-01,A,10\n2026-01,B,5\n2026-02,A,12\n2026-02,B,6\n'.encode('utf-8')
+    frame = load_dataframe('a.csv', csv, max_rows=1000)
+    spec = ChartSpec(type='area', title='누적영역', x='month', y=['v'], group='ch', aggregation='sum', stacked=True, sort='x_asc')
+    option = echarts_option(spec, prepare_chart(frame, spec))
+    assert len(option['series']) == 2
+    assert all(s['type'] == 'line' for s in option['series'])
+    assert all('areaStyle' in s for s in option['series'])
+    assert all(s.get('stack') == 'total' for s in option['series'])
+
+
 # --- 스펙 검증 -------------------------------------------------------------------
 
 def test_chart_spec_rejects_missing_column() -> None:
