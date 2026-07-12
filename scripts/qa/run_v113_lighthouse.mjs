@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-const VERSION = '1.13.0';
+const VERSION = 'v1.13.0';
+const REPO_ROOT = path.resolve(import.meta.dirname, '../..');
 const ROUTES = ['/login', '/activity', '/admin'];
 const AUTHENTICATED_ROUTES = new Set(['/activity', '/admin']);
 const FORM_FACTORS = ['mobile', 'desktop'];
@@ -24,7 +25,7 @@ function parseArgs(argv) {
     else fail(`unknown argument: ${argv[i]}`);
   }
   if (!out.sha || !/^[a-f0-9]{40}$/.test(out.sha)) fail('missing or invalid --sha');
-  const derived = path.resolve(process.cwd(), 'artifacts', 'qa', VERSION, out.sha, 'runtime', 'runtime.json');
+  const derived = path.resolve(REPO_ROOT, 'artifacts', 'qa', VERSION, out.sha, 'runtime', 'runtime.json');
   if (out.runtime && path.resolve(out.runtime) !== derived) fail('--runtime does not match --sha runtime path');
   return { ...out, runtime: out.runtime ?? derived };
 }

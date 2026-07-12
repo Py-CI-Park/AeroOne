@@ -29,7 +29,7 @@ describe('v1.13 browser QA runner contract', () => {
     expect(lighthouse).toContain('--disable-default-apps');
     expect(lighthouse).toContain('sessionCookie = undefined');
     expect(diagnostics).toContain("if (argv[i] === '--sha')");
-    expect(diagnostics).toContain("node_modules', '.bin");
+    expect(diagnostics).toContain("bin', 'react-doctor.js");
   });
 
   it('requires the exact runtime schema and loopback/SHA/root validation', () => {
@@ -47,7 +47,7 @@ describe('v1.13 browser QA runner contract', () => {
   it('uses local locked tools and forbids latest/download/CDN fallbacks', () => {
     expect(diagnostics).toContain("'react-doctor': '0.7.3'");
     expect(diagnostics).toContain("'react-scan': '0.5.7'");
-    expect(diagnostics).toContain("node_modules', '.bin'");
+    expect(diagnostics).toContain("bin', 'react-doctor.js");
     for (const source of [lighthouse, diagnostics]) {
       expect(source).not.toMatch(/npx\s+[^\n]*@latest|chromium\.download|https?:\/\/(?!127\.0\.0\.1|localhost)/i);
       expect(source).toContain('process.exitCode = 1');
