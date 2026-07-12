@@ -29,8 +29,8 @@ class SyntheticWorkspace:
     database_url: str
     jwt_secret: str
     admin_password: str
-    backend_port: int
-    frontend_port: int
+    backend_port: int = 0
+    frontend_port: int = 0
 
 
 def _allocate_loopback_ports(
