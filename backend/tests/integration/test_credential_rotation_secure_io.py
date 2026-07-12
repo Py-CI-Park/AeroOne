@@ -1,18 +1,124 @@
 from __future__ import annotations
 
+import ctypes
+import locale
 import os
 from pathlib import Path
 import secrets
+import shutil
 import subprocess
+import time
 
 from tests.rotation_harness import create_synthetic_workspace, has_exact_secure_acl, invoke_rotation
+
+def _is_elevated() -> bool:
+    return bool(ctypes.windll.shell32.IsUserAnAdmin())
+
+
+def _invoke_limited_probe(
+    command: str,
+    *,
+    module_root: Path,
+    test_root: Path,
+) -> subprocess.CompletedProcess[str]:
+    nonce = secrets.token_hex(8)
+    launcher_root = Path(os.environ["LOCALAPPDATA"]) / "Temp"
+    launcher_root.mkdir(parents=True, exist_ok=True)
+    script_path = launcher_root / f"aeroone-limited-probe-{nonce}.ps1"
+    stdout_path = launcher_root / f"aeroone-limited-probe-{nonce}.stdout"
+    stderr_path = launcher_root / f"aeroone-limited-probe-{nonce}.stderr"
+    status_path = launcher_root / f"aeroone-limited-probe-{nonce}.status"
+
+    def quote_powershell(value: str) -> str:
+        return value.replace("'", "''")
+
+    script_path.write_text(
+        "\n".join(
+            (
+                f"$env:AEROONE_ROTATION_MODULE_ROOT = '{quote_powershell(str(module_root))}'",
+                f"$env:AEROONE_ROTATION_TEST_ROOT = '{quote_powershell(str(test_root))}'",
+                f"$stdoutPath = '{quote_powershell(str(stdout_path))}'",
+                f"$stderrPath = '{quote_powershell(str(stderr_path))}'",
+                f"$statusPath = '{quote_powershell(str(status_path))}'",
+                "$utf8 = New-Object Text.UTF8Encoding($false)",
+                "$stdoutWriter = New-Object IO.StreamWriter($stdoutPath, $false, $utf8)",
+                "$stderrWriter = New-Object IO.StreamWriter($stderrPath, $false, $utf8)",
+                "$originalOut = [Console]::Out",
+                "$originalError = [Console]::Error",
+                "$exitCode = 0",
+                "try {",
+                "  [Console]::SetOut($stdoutWriter)",
+                "  [Console]::SetError($stderrWriter)",
+                command,
+                "} catch {",
+                "  $exitCode = 1",
+                "  [Console]::Error.WriteLine(($_ | Out-String))",
+                "} finally {",
+                "  $stdoutWriter.Flush()",
+                "  $stderrWriter.Flush()",
+                "  [Console]::SetOut($originalOut)",
+                "  [Console]::SetError($originalError)",
+                "  $stdoutWriter.Dispose()",
+                "  $stderrWriter.Dispose()",
+                "  [IO.File]::WriteAllText($statusPath, [string]$exitCode, [Text.Encoding]::ASCII)",
+                "}",
+                "exit $exitCode",
+            )
+        )
+        + "\n",
+        encoding="utf-8-sig",
+    )
+    target = (
+        "powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass "
+        f'-File "{script_path}"'
+    )
+    launch_encoding = locale.getpreferredencoding(False)
+    launch = subprocess.run(
+        ["runas.exe", "/trustlevel:0x20000", target],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding=launch_encoding,
+        errors="replace",
+        timeout=10,
+    )
+    try:
+        if launch.returncode != 0:
+            return launch
+        deadline = time.monotonic() + 30
+        while not status_path.is_file() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        if not status_path.is_file():
+            return subprocess.CompletedProcess(
+                launch.args,
+                1,
+                launch.stdout,
+                f"{launch.stderr}\nlimited-probe-timeout",
+            )
+        return subprocess.CompletedProcess(
+            launch.args,
+            int(status_path.read_text(encoding="ascii").strip()),
+            stdout_path.read_text(encoding="utf-8"),
+            stderr_path.read_text(encoding="utf-8"),
+        )
+    finally:
+        for artifact in (script_path, stdout_path, stderr_path, status_path):
+            artifact.unlink(missing_ok=True)
+
 
 
 def _invoke_secure_io_probe(tmp_path: Path, body: str) -> subprocess.CompletedProcess[str]:
     module_root = Path(__file__).resolve().parents[3] / "scripts" / "credential_rotation"
+    elevated = _is_elevated()
+    if elevated:
+        local_temp = Path(os.environ["LOCALAPPDATA"]) / "Temp"
+        local_temp.mkdir(parents=True, exist_ok=True)
+        test_root = local_temp / f"aeroone-secure-io-probe-{secrets.token_hex(8)}"
+    else:
+        test_root = tmp_path / "secure-root"
     process_environment = os.environ.copy()
     process_environment["AEROONE_ROTATION_MODULE_ROOT"] = str(module_root)
-    process_environment["AEROONE_ROTATION_TEST_ROOT"] = str(tmp_path / "secure-root")
+    process_environment["AEROONE_ROTATION_TEST_ROOT"] = str(test_root)
     command = "\n".join(
         (
             "$ErrorActionPreference = 'Stop'",
@@ -21,6 +127,16 @@ def _invoke_secure_io_probe(tmp_path: Path, body: str) -> subprocess.CompletedPr
             body,
         )
     )
+    if elevated:
+        try:
+            return _invoke_limited_probe(
+                command,
+                module_root=module_root,
+                test_root=test_root,
+            )
+        finally:
+            if test_root.exists():
+                shutil.rmtree(test_root)
     return subprocess.run(
         ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
         check=False,
