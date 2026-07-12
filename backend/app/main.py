@@ -22,6 +22,7 @@ from app.modules.read_tracking.api.public import router as read_beacon_router
 from app.modules.reports.api.public import router as reports_router
 from app.modules.render.api import router as render_router
 from app.modules.office_tools.api.router import router as office_tools_router
+from app.modules.leantime.api import router as leantime_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -83,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(render_router, prefix='/api/v1/render')
     # office-tools(보고서/차트/다이어그램) — 로그인 필수. 산출물은 파일 JobStore 에 사용자 스코프로 저장.
     app.include_router(office_tools_router, prefix='/api/v1/office-tools')
+    app.include_router(leantime_router, prefix='/api/v1/leantime')
     return app
 
 

@@ -487,6 +487,14 @@ export interface OfficeSample {
   hints: Record<string, unknown>;
 }
 
+// Leantime 동거 스택의 실시간 감지 결과. status='up' 이면 '열기'가 실제로 동작한다.
+export interface LeantimeHealth {
+  status: 'up' | 'down';
+  probe_host: string;
+  port: number;
+  probe_target: string;
+}
+
 export interface DiagramGenerateRequest {
   description: string;
   diagram_type: DiagramType;

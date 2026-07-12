@@ -26,6 +26,7 @@ import type {
   DiagramGenerateRequest,
   DiagramGenerateResponse,
   OfficeSample,
+  LeantimeHealth,
   DocumentListItem,
   ReportGenerateResponse,
   LlmConnection,
@@ -777,4 +778,10 @@ export async function generateChart(input: ChartGenerateInput, csrfToken: string
 // 프런트는 이 목록을 도구별 '예제' 칩으로 보여 주고, 고르면 해당 내용으로 폼을 채운다.
 export async function fetchOfficeSamples(): Promise<OfficeSample[]> {
   return browserFetch<OfficeSample[]>('/api/frontend/office-tools/samples', { method: 'GET' });
+}
+
+// Leantime 동거 스택의 기동 여부를 실시간으로 조회한다. 랜딩 페이지가 '구동 중/미설치'를
+// 구분해 '열기' 버튼을 조건부로 활성화하는 데 쓴다.
+export async function fetchLeantimeHealth(): Promise<LeantimeHealth> {
+  return browserFetch<LeantimeHealth>('/api/frontend/leantime/health', { method: 'GET' });
 }

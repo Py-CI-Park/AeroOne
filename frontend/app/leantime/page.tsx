@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { AppShell } from '@/components/layout/app-shell';
-import { LeantimeLaunch } from '@/components/office-tools/leantime-launch';
+import { LeantimeStatus } from '@/components/office-tools/leantime-status';
 import { getAppTheme } from '@/lib/server-theme';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +40,8 @@ export default async function LeantimePage({
           </p>
         </div>
 
+        <LeantimeStatus />
+
         <section className="flex flex-col gap-3 rounded-xl border border-ink-3/15 bg-surface-sunken/50 px-5 py-5">
           <h2 className="text-sm font-semibold text-ink-1">설치·기동 절차</h2>
           <ol className="flex flex-col gap-3">
@@ -55,15 +57,11 @@ export default async function LeantimePage({
               </li>
             ))}
           </ol>
-        </section>
-
-        <div className="flex flex-col gap-2">
-          <LeantimeLaunch />
           <p className="text-xs text-ink-3">
-            버튼을 눌러도 열리지 않으면 아직 설치·기동되지 않은 것입니다. 운영자 설치 절차는{' '}
+            운영자 상세 설치 절차(오프라인 번들·MariaDB·IIS)는{' '}
             <code className="rounded bg-ink-3/10 px-1">docs/runbook/leantime-codeploy.md</code> 를 참고하세요.
           </p>
-        </div>
+        </section>
       </div>
     </AppShell>
   );
