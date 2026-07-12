@@ -10,6 +10,13 @@ import { ProcessSteps, type ProcessStep } from '@/components/office-tools/proces
 import { SamplePicker } from '@/components/office-tools/sample-picker';
 import { StepSection } from '@/components/office-tools/step-section';
 import { DataInput, type DataInputMode } from '@/components/office-tools/data-input';
+import { UsageGuide } from '@/components/office-tools/usage-guide';
+
+const USAGE_WAYS = [
+  { badge: '① 예제', title: '예제로 시작', detail: '아래 예제를 누르면 데이터가 채워지고 바로 차트가 생성됩니다.' },
+  { badge: '② 데이터', title: '파일 또는 정형 텍스트', detail: 'CSV·엑셀 파일을 올리거나, 표 형식(CSV) 텍스트를 직접 붙여넣습니다.' },
+  { badge: '③ 목적', title: '목적 문장(서술형)', detail: '"지역별 매출을 크기순으로 비교"처럼 원하는 바를 적으면 유형을 추천합니다.' },
+];
 
 const PROMPT_EXAMPLES = [
   '지역별 매출을 크기순으로 비교',
@@ -81,9 +88,14 @@ export function ChartForm() {
     setDataFile(null);
     setProfile(null);
     setResult(null);
-    if (typeof sample.hints.prompt === 'string') setPrompt(sample.hints.prompt);
-    if (typeof sample.hints.chart_type === 'string') setChartType(sample.hints.chart_type as ChartType | '');
+    const nextPrompt = typeof sample.hints.prompt === 'string' ? sample.hints.prompt : prompt;
+    const nextType = (typeof sample.hints.chart_type === 'string' ? sample.hints.chart_type : chartType) as ChartType | '';
+    setPrompt(nextPrompt);
+    setChartType(nextType);
     setError('');
+    // 예제는 채우기만 하지 않고 곧바로 생성까지 한다(원클릭 체험).
+    const file = new File([sample.content], 'data.csv', { type: 'text/csv' });
+    runGenerate({ file, prompt: nextPrompt, aiAssist, chartType: nextType });
   }
 
   async function handleInspect() {
@@ -101,15 +113,14 @@ export function ChartForm() {
     }
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const file = effectiveFile();
-    if (busy || !file) return;
+  // 실제 생성 — 상태가 아니라 명시 인자를 받아, 예제 클릭 직후에도 그 값으로 바로 실행한다.
+  async function runGenerate(input: { file: File | null; prompt: string; aiAssist: boolean; chartType: ChartType | '' }) {
+    if (busy || !input.file) return;
     setBusy(true);
     setError('');
     try {
       const response = await generateChart(
-        { dataFile: file, prompt: prompt.trim(), aiAssist, chartType },
+        { dataFile: input.file, prompt: input.prompt.trim(), aiAssist: input.aiAssist, chartType: input.chartType },
         getCsrfCookie(),
       );
       setResult(response);
@@ -121,10 +132,20 @@ export function ChartForm() {
     }
   }
 
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    runGenerate({ file: effectiveFile(), prompt, aiAssist, chartType });
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      <UsageGuide
+        intro="데이터를 올리면 목적에 맞는 차트로 시각화합니다. 세 가지 방법 중 하나로 시작하세요."
+        ways={USAGE_WAYS}
+        output="결과는 실서비스급 ECharts 로 그려지고 option·집계 CSV·zip 으로 내려받을 수 있습니다."
+      />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-label="차트 생성 폼">
-        <StepSection n={1} title="데이터 입력" hint="예제를 고르거나, 파일 업로드·직접 붙여넣기">
+        <StepSection n={1} title="데이터 입력" hint="예제(클릭 시 바로 생성)·파일·직접 입력" done={!!result}>
           <SamplePicker tool="chart" onPick={applySample} disabled={busy} />
           <DataInput
             mode={inputMode}
@@ -142,10 +163,11 @@ export function ChartForm() {
               setProfile(null);
             }}
             textPlaceholder={CSV_PLACEHOLDER}
+            textHint="CSV·표 형식으로 직접 붙여넣습니다(첫 줄은 열 이름)."
           />
         </StepSection>
 
-        <StepSection n={2} title="목적과 유형" hint="어떻게 보여줄지 정합니다">
+        <StepSection n={2} title="목적과 유형" hint="어떻게 보여줄지 정합니다" done={!!result}>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-ink-1">목적 문장 (선택)</span>
             <input
@@ -192,7 +214,7 @@ export function ChartForm() {
           </label>
         </StepSection>
 
-        <StepSection n={3} title="생성" hint="차트를 만들고 산출물을 내려받습니다">
+        <StepSection n={3} title="생성" hint="차트를 만들고 산출물을 내려받습니다" done={!!result}>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"

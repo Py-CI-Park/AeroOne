@@ -9,6 +9,13 @@ import type { DiagramGenerateResponse, DiagramType, OfficeSample } from '@/lib/t
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
 import { SamplePicker } from '@/components/office-tools/sample-picker';
 import { StepSection } from '@/components/office-tools/step-section';
+import { UsageGuide } from '@/components/office-tools/usage-guide';
+
+const USAGE_WAYS = [
+  { badge: '① 예제', title: '예제로 시작', detail: '아래 예제를 누르면 설명이 채워지고 곧바로 다이어그램이 그려집니다.' },
+  { badge: '② 유형', title: '유형 선택', detail: '플로우·시퀀스·상태·간트 중 목적에 맞는 유형을 고릅니다.' },
+  { badge: '③ 서술', title: '서술형 입력', detail: '"수집 -> 정제 -> 발행"처럼 단계·관계를 자연어로 적습니다.' },
+];
 
 // 유형별 "이렇게 입력해 보세요" 예시. 칩을 누르면 설명란에 채워진다.
 const DESCRIPTION_EXAMPLES: Record<DiagramType, string[]> = {
@@ -57,22 +64,15 @@ export function DiagramForm() {
         : '규칙 기반'
     : undefined;
 
-  function applySample(sample: OfficeSample) {
-    setDescription(sample.content.trim());
-    if (typeof sample.hints.diagram_type === 'string') setDiagramType(sample.hints.diagram_type as DiagramType);
-    if (typeof sample.hints.title === 'string') setTitle(sample.hints.title);
-    setResult(null);
-    setError('');
-  }
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy || !description.trim()) return;
+  // 실제 생성 — 상태가 아니라 명시 인자를 받아, 예제 클릭 직후(상태 반영 전)에도 그 값으로
+  // 바로 실행할 수 있게 한다.
+  async function runGenerate(input: { description: string; diagramType: DiagramType; title: string; aiAssist: boolean }) {
+    if (busy || !input.description.trim()) return;
     setBusy(true);
     setError('');
     try {
       const response = await generateDiagram(
-        { description, diagram_type: diagramType, title: title.trim(), ai_assist: aiAssist },
+        { description: input.description, diagram_type: input.diagramType, title: input.title.trim(), ai_assist: input.aiAssist },
         getCsrfCookie(),
       );
       setResult(response);
@@ -84,10 +84,33 @@ export function DiagramForm() {
     }
   }
 
+  function applySample(sample: OfficeSample) {
+    const nextDescription = sample.content.trim();
+    const nextType = (typeof sample.hints.diagram_type === 'string' ? sample.hints.diagram_type : diagramType) as DiagramType;
+    const nextTitle = typeof sample.hints.title === 'string' ? sample.hints.title : title;
+    setDescription(nextDescription);
+    setDiagramType(nextType);
+    setTitle(nextTitle);
+    setResult(null);
+    setError('');
+    // 예제는 채우기만 하지 않고 곧바로 생성까지 한다(원클릭 체험).
+    runGenerate({ description: nextDescription, diagramType: nextType, title: nextTitle, aiAssist });
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    runGenerate({ description, diagramType, title, aiAssist });
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      <UsageGuide
+        intro="설명을 입력하면 Mermaid 다이어그램으로 그려 줍니다. 세 가지 방법 중 하나로 시작하세요."
+        ways={USAGE_WAYS}
+        output="결과는 브라우저에서 렌더되고 .mmd·SVG·PNG 로 내려받을 수 있습니다."
+      />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-label="다이어그램 생성 폼">
-        <StepSection n={1} title="무엇을 그릴지" hint="예제를 고르거나 유형을 정합니다">
+        <StepSection n={1} title="무엇을 그릴지" hint="예제(클릭 시 바로 생성)를 고르거나 유형을 정합니다" done={!!result}>
           <SamplePicker tool="diagram" onPick={applySample} disabled={busy} />
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-ink-1">유형</span>
@@ -116,7 +139,7 @@ export function DiagramForm() {
           </label>
         </StepSection>
 
-        <StepSection n={2} title="설명 입력" hint="단계·관계를 자연어로">
+        <StepSection n={2} title="설명 입력" hint="단계·관계를 자연어로" done={!!result}>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-ink-1">설명</span>
             <textarea
@@ -152,7 +175,7 @@ export function DiagramForm() {
           </label>
         </StepSection>
 
-        <StepSection n={3} title="생성" hint="다이어그램을 만들고 내려받습니다">
+        <StepSection n={3} title="생성" hint="다이어그램을 만들고 내려받습니다" done={!!result}>
           <button
             type="submit"
             disabled={busy || !description.trim()}
