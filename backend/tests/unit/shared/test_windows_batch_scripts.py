@@ -14,6 +14,21 @@ import pytest
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows batch scripts only")
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+_SETUP_SCRIPT = (REPO_ROOT / "setup.bat").read_text(encoding="utf-8")
+_SETUP_OFFLINE_SCRIPT = (REPO_ROOT / "setup_offline.bat").read_text(encoding="utf-8")
+
+
+def test_setup_secret_generation_is_compatible_with_windows_powershell_51() -> None:
+    for script in (_SETUP_SCRIPT, _SETUP_OFFLINE_SCRIPT):
+        assert "RandomNumberGenerator]::Fill" not in script
+        assert script.count("RandomNumberGenerator]::Create()") == 2
+        assert script.count("$rng.GetBytes($bytes)") == 2
+        assert script.count("$rng.Dispose()") == 2
+
+
+def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -> None:
+    assert 'pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt' in _SETUP_OFFLINE_SCRIPT
+    assert "requirements-dev.txt" not in _SETUP_OFFLINE_SCRIPT
 
 
 def _run_cmd(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:

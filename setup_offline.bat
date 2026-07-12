@@ -125,8 +125,8 @@ if not exist "%WHEEL_DIR%" (
   goto :fail
 )
 
-for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(32); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "JWT_SECRET_KEY=%%S"
-for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(24); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "ADMIN_PASSWORD=%%S"
+for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(32); $rng=[Security.Cryptography.RandomNumberGenerator]::Create(); try{$rng.GetBytes($bytes)}finally{$rng.Dispose()}; [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "JWT_SECRET_KEY=%%S"
+for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(24); $rng=[Security.Cryptography.RandomNumberGenerator]::Create(); try{$rng.GetBytes($bytes)}finally{$rng.Dispose()}; [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "ADMIN_PASSWORD=%%S"
 if not defined JWT_SECRET_KEY goto :fail
 if not defined ADMIN_PASSWORD goto :fail
 
@@ -175,7 +175,7 @@ if not exist "%ROOT%\_database\nsa" mkdir "%ROOT%\_database\nsa"
 
 call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
 pushd "%BACKEND_DIR%"
-call pip install --no-index --find-links "%WHEEL_DIR%" -r requirements-dev.txt || goto :fail_from_backend
+call pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt || goto :fail_from_backend
 set "PYTHONPATH=."
 call python scripts\ensure_db_state.py data\aeroone.db
 set "MIGRATION_MODE=%ERRORLEVEL%"

@@ -195,6 +195,7 @@ offline_package.bat      ─┘──→ ZIP 복사 ──→  압축 해제
   - LAN 다중 PC 운영: `setup_offline.bat --allow-host=192.168.1.10` (사내 IP 로 교체)
   - 미리 단계만 보고 싶으면 `setup_offline.bat --dry-run` — 설치 안 함, 단계 흐름만 출력. **단계 7 의 정답은 옵션 없이 실행**.
   - 완료 조건: `[OK] setup_offline.bat 완료` 메시지 + `backend\.env`, `frontend\.env.local`, `backend\.venv\`, `backend\data\aeroone.db` 모두 생성.
+  - backend 의존성은 동봉 wheelhouse에서 `backend\requirements.txt`만 `--no-index`로 설치하며 개발용 `requirements-dev.txt`는 공개 패키지에 포함하거나 설치하지 않음.
   - 매뉴얼: `docs/runbook/windows-offline.md` §6, 본 가이드 §6 / §7.
 
 - [ ] **단계 8** — 실행.
@@ -402,7 +403,7 @@ xcopy /Y /E /I _database D:\backup\AeroOne\_database
 
 ### 11.1 비밀 자동 생성
 
-`setup_offline.bat` 매 실행 시 PowerShell `RandomNumberGenerator` 로 다음 두 값을 새로 생성합니다.
+`setup_offline.bat` 매 실행 시 Windows PowerShell 5.1 호환 `RandomNumberGenerator.Create().GetBytes(...)` 로 다음 두 값을 새로 생성합니다.
 
 - `JWT_SECRET_KEY` — 64자 hex (32바이트)
 - `ADMIN_PASSWORD` — 48자 hex (24바이트)
