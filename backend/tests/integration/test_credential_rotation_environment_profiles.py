@@ -36,6 +36,8 @@ def _materialize_example_profiles(
         "JWT_SECRET_KEY": workspace.jwt_secret,
         "ADMIN_USERNAME": "admin",
         "ADMIN_PASSWORD": workspace.admin_password,
+        "BACKEND_PORT": str(workspace.backend_port),
+        "FRONTEND_PORT": str(workspace.frontend_port),
     }
     root_environment = workspace.root / ".env"
     backend_environment = workspace.root / "backend" / ".env"

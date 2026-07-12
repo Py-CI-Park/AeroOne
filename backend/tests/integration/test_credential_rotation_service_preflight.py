@@ -32,10 +32,11 @@ def test_actual_aeroone_listener_blocks_before_rotation_mutation(tmp_path: Path)
     )
     assert listener.stdout is not None
     backend_port, frontend_port = (int(value) for value in listener.stdout.readline().split())
-    workspace = create_synthetic_workspace(tmp_path)
-    for env_path in (workspace.root / ".env", workspace.root / "backend" / ".env"):
-        with env_path.open("a", encoding="utf-8") as stream:
-            stream.write(f"BACKEND_PORT={backend_port}\nFRONTEND_PORT={frontend_port}\n")
+    workspace = create_synthetic_workspace(
+        tmp_path,
+        backend_port=backend_port,
+        frontend_port=frontend_port,
+    )
     root_before = (workspace.root / ".env").read_bytes()
     backend_before = (workspace.root / "backend" / ".env").read_bytes()
     database_path = workspace.root / "backend" / "data" / "aeroone.db"

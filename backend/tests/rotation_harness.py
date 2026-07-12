@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import os
 from pathlib import Path
 import secrets
+import socket
 import subprocess
 import sys
 
@@ -28,9 +29,49 @@ class SyntheticWorkspace:
     database_url: str
     jwt_secret: str
     admin_password: str
+    backend_port: int
+    frontend_port: int
 
 
-def create_synthetic_workspace(tmp_path: Path) -> SyntheticWorkspace:
+def _allocate_loopback_ports(
+    *,
+    backend_port: int | None = None,
+    frontend_port: int | None = None,
+) -> tuple[int, int]:
+    allocated: list[int] = []
+    sockets: list[socket.socket] = []
+    explicit_ports = {port for port in (backend_port, frontend_port) if port is not None}
+    try:
+        for explicit_port in (backend_port, frontend_port):
+            if explicit_port is not None:
+                allocated.append(explicit_port)
+                continue
+            listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            listener.bind(("127.0.0.1", 0))
+            sockets.append(listener)
+            port = listener.getsockname()[1]
+            while port in allocated or port in explicit_ports:
+                listener.close()
+                sockets.remove(listener)
+                listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                listener.bind(("127.0.0.1", 0))
+                sockets.append(listener)
+                port = listener.getsockname()[1]
+            allocated.append(port)
+    finally:
+        for listener in sockets:
+            listener.close()
+    if allocated[0] == allocated[1]:
+        raise ValueError("backend and frontend ports must be distinct")
+    return allocated[0], allocated[1]
+
+
+def create_synthetic_workspace(
+    tmp_path: Path,
+    *,
+    backend_port: int | None = None,
+    frontend_port: int | None = None,
+) -> SyntheticWorkspace:
     test_nonce = secrets.token_hex(16)
     root = tmp_path / f"aeroone-rotation-test-{test_nonce}"
     backend = root / "backend"
@@ -43,6 +84,10 @@ def create_synthetic_workspace(tmp_path: Path) -> SyntheticWorkspace:
     database_url = f"sqlite:///{database_path.as_posix()}"
     jwt_secret = secrets.token_hex(32)
     admin_password = secrets.token_urlsafe(24)
+    backend_port, frontend_port = _allocate_loopback_ports(
+        backend_port=backend_port,
+        frontend_port=frontend_port,
+    )
     env_text = "\n".join(
         (
             "APP_ENV=test",
@@ -50,6 +95,8 @@ def create_synthetic_workspace(tmp_path: Path) -> SyntheticWorkspace:
             f"JWT_SECRET_KEY={jwt_secret}",
             "ADMIN_USERNAME=admin",
             f"ADMIN_PASSWORD={admin_password}",
+            f"BACKEND_PORT={backend_port}",
+            f"FRONTEND_PORT={frontend_port}",
             "",
         )
     )
@@ -82,6 +129,8 @@ def create_synthetic_workspace(tmp_path: Path) -> SyntheticWorkspace:
         database_url=database_url,
         jwt_secret=jwt_secret,
         admin_password=admin_password,
+        backend_port=backend_port,
+        frontend_port=frontend_port,
     )
 
 
