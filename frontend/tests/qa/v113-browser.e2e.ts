@@ -33,7 +33,7 @@ function installGuards(page: Page, testInfo: TestInfo) {
 }
 
 async function visit(page: Page, route: string) {
-  const response = await page.goto(route, { waitUntil: 'domcontentloaded' });
+  const response = await page.goto(route, { waitUntil: 'networkidle' });
   expect(response?.status(), `${route} response`).toBeGreaterThanOrEqual(200);
   expect(response?.status(), `${route} response`).toBeLessThan(400);
   await expect(page.locator('body')).not.toHaveText('');
