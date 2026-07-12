@@ -89,7 +89,9 @@ function styleSeries(series: unknown, singleBar: boolean): unknown {
   if (type === 'pie') {
     return {
       ...series,
-      radius: series.radius ?? ['40%', '68%'],
+      radius: series.radius ?? ['38%', '62%'],
+      // 제목(위)·레전드(아래)와 겹치지 않게 도넛을 살짝 위로 올린다.
+      center: series.center ?? ['50%', '46%'],
       avoidLabelOverlap: true,
       itemStyle: { borderColor: SURFACE, borderWidth: 2, borderRadius: 6, ...itemStyle },
       label: { color: INK_PRIMARY, ...(isDict(series.label) ? series.label : {}) },
@@ -149,33 +151,52 @@ export function beautifyEChartsOption(option: Record<string, unknown>): Record<s
     ...(isDict(option.tooltip) ? option.tooltip : {}),
   };
 
-  const legend = hasMultiple
+  // 레전드는 제목과 겹치지 않게 배치한다. 파이는 하단, 다계열 직교좌표는 제목 아래(top 40).
+  let legend: unknown = option.legend;
+  if (anyPie) {
+    legend = { bottom: 6, icon: 'circle', itemWidth: 10, itemHeight: 10, itemGap: 14, textStyle: { color: INK_SECONDARY, fontSize: 12 } };
+  } else if (hasMultiple) {
+    legend = {
+      type: 'scroll',
+      top: 40,
+      icon: 'roundRect',
+      itemWidth: 12,
+      itemHeight: 12,
+      itemGap: 16,
+      textStyle: { color: INK_SECONDARY, fontSize: 12 },
+      ...(isDict(option.legend) ? option.legend : {}),
+    };
+  }
+
+  // 제목은 크고 굵게, 위쪽 중앙. 서버는 text/left 만 주므로 표현(크기·색)만 여기서 얹는다.
+  const title = isDict(option.title)
     ? {
-        top: 4,
-        icon: 'roundRect',
-        itemWidth: 12,
-        itemHeight: 12,
-        itemGap: 16,
-        textStyle: { color: INK_SECONDARY, fontSize: 12 },
-        ...(isDict(option.legend) ? option.legend : {}),
+        top: 10,
+        left: 'center',
+        textStyle: { color: INK_PRIMARY, fontSize: 18, fontWeight: 700 },
+        ...option.title,
       }
-    : option.legend;
+    : option.title;
+
+  // 제목(≈34) + (다계열이면 레전드 ≈24) 만큼 위 여백을 확보해 플롯과 겹치지 않게 한다.
+  const gridTop = hasMultiple ? 78 : 52;
 
   return {
     ...option,
     color: CATEGORICAL,
-    backgroundColor: 'transparent',
+    backgroundColor: SURFACE,
     animationDuration: 700,
     animationEasing: 'cubicOut',
     textStyle: { fontFamily: 'inherit', color: INK_SECONDARY },
+    title,
     tooltip,
     legend,
     grid: isCartesian
       ? {
-          left: 8,
-          right: 20,
-          top: hasMultiple ? 44 : 20,
-          bottom: 8,
+          left: 12,
+          right: 24,
+          top: gridTop,
+          bottom: 12,
           containLabel: true,
           ...(isDict(option.grid) ? option.grid : {}),
         }

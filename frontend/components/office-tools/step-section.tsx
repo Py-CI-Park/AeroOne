@@ -19,12 +19,13 @@ type StepSectionProps = {
  */
 export function StepSection({ n, title, hint, done = false, children }: StepSectionProps) {
   return (
-    <section className="relative flex flex-col gap-3 rounded-xl border border-ink-3/15 bg-surface-raised/40 pl-6 pr-5 py-4">
-      <span
-        aria-hidden
-        className={`absolute left-0 top-4 bottom-4 w-1 rounded-full ${done ? 'bg-accent' : 'bg-accent/25'}`}
-      />
-      <div className="flex items-center gap-2.5">
+    <section
+      className={`relative flex flex-col overflow-hidden rounded-xl border-2 bg-surface-raised/70 shadow-sm transition-colors ${
+        done ? 'border-accent/40' : 'border-ink-3/20'
+      }`}
+    >
+      <span aria-hidden className={`absolute left-0 top-0 bottom-0 w-1.5 ${done ? 'bg-accent' : 'bg-accent/40'}`} />
+      <div className="flex items-center gap-2.5 border-b border-ink-3/15 bg-surface-sunken/50 py-3 pl-6 pr-5">
         <span
           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
             done ? 'bg-accent text-accent-on' : 'bg-accent/15 text-accent'
@@ -41,7 +42,7 @@ export function StepSection({ n, title, hint, done = false, children }: StepSect
         <h3 className="text-sm font-semibold text-ink-1">{title}</h3>
         {hint ? <span className="text-xs text-ink-3">· {hint}</span> : null}
       </div>
-      <div className="flex flex-col gap-3">{children}</div>
+      <div className="flex flex-col gap-3 py-4 pl-6 pr-5">{children}</div>
     </section>
   );
 }

@@ -38,20 +38,30 @@ export function SamplePicker({ tool, onPick, disabled }: SamplePickerProps) {
   if (samples.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2" data-testid="sample-picker">
-      <span className="text-xs font-medium text-ink-3">예제</span>
-      {samples.map((sample) => (
-        <button
-          key={sample.key}
-          type="button"
-          disabled={disabled}
-          title={sample.description}
-          onClick={() => onPick(sample)}
-          className="rounded-full border border-ink-3/30 px-3 py-1 text-xs text-ink-1 transition hover:border-accent/50 hover:bg-accent-soft disabled:opacity-50"
-        >
-          {sample.title}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2 rounded-lg border border-accent/25 bg-accent-soft/30 px-3 py-3" data-testid="sample-picker">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-accent">
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
+          <path d="M10 2l1.9 4.6L17 7l-3.6 3.2L14.4 15 10 12.6 5.6 15l1-4.8L3 7l5.1-.4z" />
+        </svg>
+        예제 — 클릭하면 바로 생성됩니다
+      </span>
+      <div className="flex flex-wrap gap-2">
+        {samples.map((sample) => (
+          <button
+            key={sample.key}
+            type="button"
+            disabled={disabled}
+            title={sample.description}
+            onClick={() => onPick(sample)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-surface-raised px-3.5 py-2 text-sm font-medium text-ink-1 shadow-sm transition hover:-translate-y-0.5 hover:border-accent hover:bg-accent-soft hover:text-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 text-accent" aria-hidden>
+              <path d="M6 4l10 6-10 6z" />
+            </svg>
+            {sample.title}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

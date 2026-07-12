@@ -87,3 +87,40 @@ test('cartesian charts get a containLabel grid and axis-trigger tooltip', () => 
   expect((out.grid as Record<string, unknown>).containLabel).toBe(true);
   expect((out.tooltip as Record<string, unknown>).trigger).toBe('axis');
 });
+
+test('title is enlarged/bold at the top and the option renders on a white background', () => {
+  const out = beautifyEChartsOption({
+    title: { text: '지역별 채널 매출 구성(누적)', left: 'center' },
+    xAxis: { type: 'category', data: ['서울'] },
+    yAxis: { type: 'value' },
+    series: [{ type: 'bar', name: 'a', data: [1] }],
+  });
+  const title = out.title as Record<string, unknown>;
+  expect(title.text).toBe('지역별 채널 매출 구성(누적)');
+  expect((title.textStyle as Record<string, unknown>).fontSize).toBe(18);
+  expect((title.textStyle as Record<string, unknown>).fontWeight).toBe(700);
+  expect(out.backgroundColor).toBe('#ffffff');
+});
+
+test('multi-series legend sits below the title (no overlap) and the grid leaves room', () => {
+  const out = beautifyEChartsOption({
+    title: { text: 't', left: 'center' },
+    xAxis: { type: 'category', data: ['A'] },
+    yAxis: { type: 'value' },
+    series: [
+      { type: 'bar', name: '온라인', data: [1], stack: 'total' },
+      { type: 'bar', name: '오프라인', data: [2], stack: 'total' },
+    ],
+  });
+  // 제목(top 10) 아래로 레전드(top 40)를 내려 겹치지 않게 하고, 플롯은 그보다 더 아래(top 78)에서 시작.
+  expect((out.legend as Record<string, unknown>).top).toBe(40);
+  expect((out.grid as Record<string, unknown>).top).toBe(78);
+});
+
+test('pie legend moves to the bottom so it never collides with the title', () => {
+  const out = beautifyEChartsOption({
+    title: { text: '채널 비중', left: 'center' },
+    series: [{ type: 'pie', data: [{ name: 'A', value: 1 }, { name: 'B', value: 2 }] }],
+  });
+  expect((out.legend as Record<string, unknown>).bottom).toBe(6);
+});

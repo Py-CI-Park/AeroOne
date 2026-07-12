@@ -14,7 +14,7 @@ import { UsageGuide } from '@/components/office-tools/usage-guide';
 const USAGE_WAYS = [
   { badge: '① 예제', title: '예제로 시작', detail: '아래 예제를 누르면 원문이 채워지고 바로 보고서가 만들어집니다.' },
   { badge: '② 원문', title: '파일 또는 정형 텍스트', detail: 'Markdown 파일을 올리거나, Markdown 텍스트를 직접 붙여넣습니다.' },
-  { badge: '③ 편집', title: '메타·AI 편집', detail: '제목·부제를 정하고, 필요하면 문체 다듬기/핵심 요약형을 선택합니다.' },
+  { badge: '③ 옵션', title: '문서 정보·AI 편집', detail: '같은 입력 단계에서 제목·부제와 AI 다듬기(선택)를 함께 정합니다.' },
 ];
 
 const MD_PLACEHOLDER ='# 보고서 제목\n\n## 요약\n\n핵심 결론을 먼저 씁니다.\n\n| 항목 | 값 |\n|---|---|\n| 매출 | 1,240 |';
@@ -115,7 +115,7 @@ export function ReportForm() {
         output="이미지까지 내장한 자립형 HTML 보고서로 변환되어 HTML·zip 으로 내려받을 수 있습니다."
       />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-label="보고서 생성 폼">
-        <StepSection n={1} title="원문 입력" hint="예제(클릭 시 바로 생성)·파일·직접 입력" done={!!result}>
+        <StepSection n={1} title="원문과 옵션 입력" hint="원문 · 문서 정보 · AI 편집을 한 곳에서" done={!!result}>
           <SamplePicker tool="report" onPick={applySample} disabled={busy} />
           <DataInput
             mode={inputMode}
@@ -140,71 +140,79 @@ export function ReportForm() {
             />
             <span className="text-xs text-ink-3">Markdown 안 ![alt](파일명) 참조가 base64 로 문서에 임베드됩니다(외부 요청 0).</span>
           </label>
+          <div className="flex flex-col gap-2 rounded-lg border border-ink-3/15 bg-surface-sunken/40 px-4 py-3">
+            <span className="text-sm font-semibold text-ink-1">
+              문서 정보 <span className="font-normal text-ink-3">— 모두 선택, 비워도 됩니다</span>
+            </span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-ink-2">제목</span>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  maxLength={200}
+                  className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                  placeholder="비우면 원문 첫 # 제목을 사용"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-ink-2">부제</span>
+                <input
+                  type="text"
+                  value={subtitle}
+                  onChange={(event) => setSubtitle(event.target.value)}
+                  maxLength={200}
+                  className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                  placeholder="문서 부제목"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-ink-2">버전</span>
+                <input
+                  type="text"
+                  value={documentVersion}
+                  onChange={(event) => setDocumentVersion(event.target.value)}
+                  maxLength={40}
+                  className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                  placeholder="예: v1.0"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-ink-2">태그</span>
+                <input
+                  type="text"
+                  value={tags}
+                  onChange={(event) => setTags(event.target.value)}
+                  maxLength={120}
+                  className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                  placeholder="쉼표로 구분"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-lg border border-ink-3/15 bg-surface-sunken/40 px-4 py-3">
+            <span className="text-sm font-semibold text-ink-1">
+              AI 편집 <span className="font-normal text-ink-3">— 선택, 원문 수치는 그대로 보존</span>
+            </span>
+            <span className="text-xs text-ink-3">원문을 그대로 변환할지, AI 로 문체를 다듬거나 핵심만 요약할지 고릅니다.</span>
+            <select
+              value={aiMode}
+              onChange={(event) => setAiMode(event.target.value as ReportAiMode)}
+              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+            >
+              {AI_MODES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-ink-3">{activeHint}</span>
+          </div>
         </StepSection>
 
-        <StepSection n={2} title="메타와 AI 편집" hint="제목·부제·편집 방식" done={!!result}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-ink-1">제목 (선택)</span>
-            <input
-              type="text"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              maxLength={200}
-              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-              placeholder="비우면 첫 # 제목을 사용합니다"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-ink-1">부제 (선택)</span>
-            <input
-              type="text"
-              value={subtitle}
-              onChange={(event) => setSubtitle(event.target.value)}
-              maxLength={200}
-              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-ink-1">버전 (선택)</span>
-            <input
-              type="text"
-              value={documentVersion}
-              onChange={(event) => setDocumentVersion(event.target.value)}
-              maxLength={40}
-              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-ink-1">태그 (선택)</span>
-            <input
-              type="text"
-              value={tags}
-              onChange={(event) => setTags(event.target.value)}
-              maxLength={120}
-              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-            />
-          </label>
-        </div>
-
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-ink-1">AI 편집</span>
-          <select
-            value={aiMode}
-            onChange={(event) => setAiMode(event.target.value as ReportAiMode)}
-            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-          >
-            {AI_MODES.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs text-ink-3">{activeHint}</span>
-        </label>
-        </StepSection>
-
-        <StepSection n={3} title="생성" hint="보고서를 만들고 내려받습니다" done={!!result}>
+        <StepSection n={2} title="생성" hint="보고서를 만들고 내려받습니다" done={!!result}>
           <button
             type="submit"
             disabled={busy || !hasData}
