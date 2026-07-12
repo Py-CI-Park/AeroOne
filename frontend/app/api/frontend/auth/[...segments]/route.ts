@@ -10,7 +10,7 @@ const AUTH_ALLOWLIST = {
   backendPathPrefix: '/api/v1/auth/',
   mode: {
     kind: 'exact' as const,
-    segments: ['login', 'logout', 'change-password', 'me', 'effective-permissions'] as const,
+    segments: ['login', 'logout', 'change-password', 'me', 'effective-permissions', 'activity'] as const,
   },
 };
 

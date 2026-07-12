@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -15,6 +14,7 @@ from app.modules.admin.models import UserSessionActivity
 from app.modules.admin.permissions import has_permission
 from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
+from app.modules.auth.session_hash import hash_session_token
 
 
 def _record_session_activity(request: Request, db: Session, settings: Settings, user: User, token: str, payload: dict) -> None:
@@ -22,7 +22,7 @@ def _record_session_activity(request: Request, db: Session, settings: Settings, 
         now = datetime.now(UTC)
         debounce_seconds = max(int(settings.session_activity_debounce_seconds), 0)
         cutoff = now - timedelta(seconds=debounce_seconds)
-        session_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+        session_hash = hash_session_token(token)
         exp = payload.get('exp')
         expires_at = datetime.fromtimestamp(exp, UTC) if isinstance(exp, (int, float)) else None
         existing = db.execute(

@@ -1,5 +1,6 @@
 import type {
   AdminSummary,
+  AuthActivityResponse,
   AdminUser,
   AdminGroup,
   AssetHealthResponse,
@@ -104,6 +105,12 @@ export async function fetchClientSession(): Promise<ClientSession> {
     throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
   }
   return (await response.json()) as ClientSession;
+}
+
+// 자기 자신의 활동 요약. same-origin BFF 를 통해 쿠키만으로 조회하며
+// query/body/클라이언트 사용자 ID 를 절대 보내지 않는다(계약: 422 방어는 백엔드 몫).
+export async function fetchAuthActivity(): Promise<AuthActivityResponse> {
+  return browserFetch<AuthActivityResponse>('/api/frontend/auth/activity');
 }
 export async function fetchNewsletters(params?: Record<string, string>) {
   const query = params ? `?${new URLSearchParams(params).toString()}` : '';

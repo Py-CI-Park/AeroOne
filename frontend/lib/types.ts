@@ -90,6 +90,43 @@ export interface ClientSession {
   resources: ClientSessionResourceGrant[];
 }
 
+export interface AuthActivityIdentity {
+  username: string;
+  display_name: string | null;
+  role: 'admin' | 'user' | 'pending';
+}
+
+export interface AuthActivitySession {
+  state: 'current' | 'active';
+  last_activity_at: string;
+  device_label: '현재 기기' | '다른 활성 기기';
+}
+
+export interface AuthActivityEvent {
+  kind: 'login' | 'logout';
+  outcome: 'success' | 'failure';
+  occurred_at: string;
+}
+
+export interface AuthActivityAiRequest {
+  status: 'completed' | 'failed';
+  module_key: string | null;
+  occurred_at: string;
+}
+
+export interface AuthActivityModule {
+  key: string;
+  label: string;
+}
+
+export interface AuthActivityResponse {
+  identity: AuthActivityIdentity;
+  active_sessions: AuthActivitySession[];
+  auth_events: AuthActivityEvent[];
+  ai_requests: AuthActivityAiRequest[];
+  accessible_modules: AuthActivityModule[];
+}
+
 export interface ServiceModule {
   id: number;
   key: string;
