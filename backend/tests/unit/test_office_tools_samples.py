@@ -70,3 +70,36 @@ def test_get_postmortem_report_sample_by_key(csrf_client: TestClient) -> None:
 
 def test_unknown_sample_returns_404(csrf_client: TestClient) -> None:
     assert csrf_client.get('/api/v1/office-tools/samples/nope').status_code == 404
+
+
+def test_multiseries_chart_samples_are_registered(csrf_client: TestClient) -> None:
+    body = csrf_client.get('/api/v1/office-tools/samples').json()
+    by_key = {item['key']: item for item in body}
+    # 누적·그룹·다계열선 예제는 완성된 ChartSpec(manual_spec)을 힌트로 갖는다.
+    for key in ('chart-region-channel-stacked', 'chart-quarter-product-grouped', 'chart-product-multiline'):
+        assert key in by_key, key
+        assert isinstance(by_key[key]['hints'].get('manual_spec'), dict)
+    assert by_key['chart-region-channel-stacked']['hints']['manual_spec']['stacked'] is True
+    # 복합 예제(시퀀스·경영 대시보드)도 등록돼 있다.
+    assert 'diagram-checkout' in by_key
+    assert 'report-dashboard' in by_key
+
+
+def test_manual_spec_chart_samples_match_their_data(csrf_client: TestClient) -> None:
+    """manual_spec 샘플은 실제 데이터 열과 일치해 집계까지 성공해야 한다(스펙/데이터 드리프트 차단)."""
+
+    from app.modules.office_tools import samples_service
+    from app.modules.office_tools.services.chart import load_dataframe, prepare_chart
+    from app.modules.office_tools.services.chart.schemas import ChartSpec
+
+    checked = 0
+    for sample in samples_service.all_samples():
+        hints = sample['hints']
+        spec_dict = hints.get('manual_spec') if isinstance(hints, dict) else None
+        if not isinstance(spec_dict, dict):
+            continue
+        frame = load_dataframe(str(sample['filename']), str(sample['content']).encode('utf-8'), 1000)
+        prepared = prepare_chart(frame, ChartSpec.model_validate(spec_dict))
+        assert len(prepared.series) >= 1
+        checked += 1
+    assert checked >= 3  # 누적·그룹·다계열선 최소 3종

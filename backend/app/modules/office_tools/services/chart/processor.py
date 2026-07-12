@@ -152,11 +152,15 @@ def _cartesian_option(spec: ChartSpec, prepared: PreparedChart, base: dict[str, 
     base['xAxis'] = value_axis if horizontal else category_axis
     base['yAxis'] = category_axis if horizontal else value_axis
     series_type = 'bar' if spec.type == 'histogram' else ('line' if spec.type in {'line', 'area'} else 'bar')
+    # 누적은 다계열(그룹/다중 y)일 때만 의미가 있다. 단일 계열이면 stack 을 붙이지 않는다.
+    stack_group = 'total' if spec.stacked and series_type in {'bar', 'line'} and len(prepared.series) > 1 else None
     base['series'] = []
     for item in prepared.series:
         series: dict[str, Any] = {'type': series_type, 'name': item['name'], 'data': item['data']}
         if spec.type == 'area':
             series['areaStyle'] = {}
+        if stack_group:
+            series['stack'] = stack_group
         base['series'].append(series)
 
 

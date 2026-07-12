@@ -41,6 +41,22 @@ test('does not gradient bars when multiple series exist', () => {
   expect(out.legend).toBeTruthy();
 });
 
+test('stacked bar segments get a surface gap and flatter radius', () => {
+  const out = beautifyEChartsOption({
+    xAxis: { type: 'category', data: ['서울', '부산'] },
+    yAxis: { type: 'value' },
+    series: [
+      { type: 'bar', name: '온라인', data: [10, 7], stack: 'total' },
+      { type: 'bar', name: '오프라인', data: [5, 3], stack: 'total' },
+    ],
+  });
+  const item = (out.series as Array<Record<string, unknown>>)[0].itemStyle as Record<string, unknown>;
+  // 누적 세그먼트는 완만한 라운드 + 표면색 테두리로 2px 틈을 준다(그룹/단일과 구분).
+  expect(item.borderRadius).toBe(2);
+  expect(item.borderColor).toBe('#ffffff');
+  expect(item.borderWidth).toBeCloseTo(1.5);
+});
+
 test('smooths a line series and keeps area gradient opacity', () => {
   const out = beautifyEChartsOption({
     xAxis: { type: 'category', data: ['A', 'B'] },

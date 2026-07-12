@@ -54,11 +54,15 @@ function styleSeries(series: unknown, singleBar: boolean): unknown {
   const itemStyle = isDict(series.itemStyle) ? series.itemStyle : {};
 
   if (type === 'bar') {
+    // 누적 막대는 세그먼트 사이에 2px 표면 틈을 줘 경계를 또렷이 하고(둥근 모서리는 완만하게),
+    // 그룹/단일 막대는 윗면만 둥글게 해 데이터 끝을 강조한다(dataviz 마크 규격).
+    const stacked = typeof series.stack === 'string' || series.stack === true;
     return {
       ...series,
       barMaxWidth: 46,
       itemStyle: {
-        borderRadius: [6, 6, 0, 0],
+        borderRadius: stacked ? 2 : [6, 6, 0, 0],
+        ...(stacked ? { borderColor: SURFACE, borderWidth: 1.5 } : {}),
         ...(singleBar ? { color: verticalGradient(CATEGORICAL[0]) } : {}),
         ...itemStyle,
       },

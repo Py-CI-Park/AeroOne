@@ -30,6 +30,8 @@ class ChartSpec(BaseModel):
     sort: SortMode = 'none'
     limit: int = Field(default=30, ge=1, le=100)
     orientation: Orientation = 'vertical'
+    # 다계열(그룹/다중 y) 을 누적으로 쌓을지. bar/line/area 에서만 의미가 있다.
+    stacked: bool = False
     x_label: str | None = Field(default=None, max_length=100)
     y_label: str | None = Field(default=None, max_length=100)
 

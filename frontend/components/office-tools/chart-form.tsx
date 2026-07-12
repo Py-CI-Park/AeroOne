@@ -90,12 +90,17 @@ export function ChartForm() {
     setResult(null);
     const nextPrompt = typeof sample.hints.prompt === 'string' ? sample.hints.prompt : prompt;
     const nextType = (typeof sample.hints.chart_type === 'string' ? sample.hints.chart_type : chartType) as ChartType | '';
+    // 다계열(누적/그룹/다계열선) 예제는 완성된 ChartSpec 을 그대로 넘겨 결정적으로 렌더한다.
+    const manualSpec =
+      sample.hints.manual_spec && typeof sample.hints.manual_spec === 'object'
+        ? JSON.stringify(sample.hints.manual_spec)
+        : '';
     setPrompt(nextPrompt);
     setChartType(nextType);
     setError('');
     // 예제는 채우기만 하지 않고 곧바로 생성까지 한다(원클릭 체험).
     const file = new File([sample.content], 'data.csv', { type: 'text/csv' });
-    runGenerate({ file, prompt: nextPrompt, aiAssist, chartType: nextType });
+    runGenerate({ file, prompt: nextPrompt, aiAssist, chartType: nextType, manualSpecJson: manualSpec });
   }
 
   async function handleInspect() {
@@ -114,13 +119,13 @@ export function ChartForm() {
   }
 
   // 실제 생성 — 상태가 아니라 명시 인자를 받아, 예제 클릭 직후에도 그 값으로 바로 실행한다.
-  async function runGenerate(input: { file: File | null; prompt: string; aiAssist: boolean; chartType: ChartType | '' }) {
+  async function runGenerate(input: { file: File | null; prompt: string; aiAssist: boolean; chartType: ChartType | ''; manualSpecJson?: string }) {
     if (busy || !input.file) return;
     setBusy(true);
     setError('');
     try {
       const response = await generateChart(
-        { dataFile: input.file, prompt: input.prompt.trim(), aiAssist: input.aiAssist, chartType: input.chartType },
+        { dataFile: input.file, prompt: input.prompt.trim(), aiAssist: input.aiAssist, chartType: input.chartType, manualSpecJson: input.manualSpecJson },
         getCsrfCookie(),
       );
       setResult(response);

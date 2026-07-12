@@ -101,6 +101,35 @@ test('chart: clicking an example generates immediately (one click)', async () =>
   expect(payload.chartType).toBe('bar');
 });
 
+test('chart: a manual_spec example passes the full ChartSpec through (stacked/grouped)', async () => {
+  const stackedSample = {
+    key: 'chart-region-channel-stacked',
+    tool: 'chart',
+    filename: 'rc.csv',
+    media_type: 'text/csv',
+    title: '지역×채널 누적막대(스택)',
+    description: '누적',
+    content: 'region,channel,revenue\n서울,온라인,10\n서울,오프라인,5\n',
+    hints: { manual_spec: { type: 'bar', x: 'region', y: ['revenue'], group: 'channel', stacked: true } },
+  };
+  mocks.fetchOfficeSamples.mockResolvedValue([stackedSample]);
+  mocks.generateChart.mockResolvedValue({
+    job_id: 'a'.repeat(32), status: 'completed', title: '누적', llm_used: false,
+    chart_spec: { type: 'bar' }, echarts_option: { series: [] }, warnings: [], artifacts: [],
+    preview_url: '/p', bundle_url: '/b',
+  });
+  const user = userEvent.setup();
+  render(<ChartForm />);
+
+  await user.click(await screen.findByRole('button', { name: '지역×채널 누적막대(스택)' }));
+
+  await waitFor(() => expect(mocks.generateChart).toHaveBeenCalledTimes(1));
+  const [payload] = mocks.generateChart.mock.calls[0];
+  expect(payload.manualSpecJson).toBeTruthy();
+  expect(JSON.parse(payload.manualSpecJson).stacked).toBe(true);
+  expect(JSON.parse(payload.manualSpecJson).group).toBe('channel');
+});
+
 test('report: clicking an example generates immediately (one click)', async () => {
   mocks.fetchOfficeSamples.mockResolvedValue([REPORT_SAMPLE]);
   mocks.generateReport.mockResolvedValue({ job_id: 'a'.repeat(32), title: '2월 매출 보고', html: '<h1>x</h1>', warnings: [], artifacts: [] });

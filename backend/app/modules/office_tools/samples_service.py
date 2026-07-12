@@ -4,9 +4,9 @@
 내용과 폼 프리필 힌트를 함께 돌려준다. 프런트는 '예제' 칩 목록으로 보여 주고, 사용자가
 고르면 폼을 채워 바로 실행할 수 있게 한다.
 
-- 다이어그램: 플로우 / 시퀀스 / 상태 / 간트 (Mermaid 유형별)
-- 차트: 막대 / 선(추세) / 파이(비중) / 산점(상관) / 히스토그램(분포)
-- 보고서: 매출 보고 / 장애 사후분석 / 주간 업무보고
+- 다이어그램: 플로우 / 시퀀스 / 상태 / 간트 / 로드맵 / 주문 결제 시퀀스(복합)
+- 차트: 막대 / 선 / 파이 / 산점 / 히스토그램 + 누적막대·그룹막대·다계열선(manual_spec 결정적 렌더)
+- 보고서: 매출 보고 / 장애 사후분석 / 주간 업무보고 / 경영 대시보드(복합)
 
 번들 파일만 읽으므로 사용자 입력 경로가 개입하지 않는다(경로 탈출 표면 없음).
 """
@@ -63,6 +63,14 @@ _SAMPLES: dict[str, dict[str, object]] = {
         'description': '기획~정식 출시까지 반년 로드맵 타임라인.',
         'hints': {'diagram_type': 'gantt', 'title': '제품 로드맵', 'ai_assist': True},
     },
+    'diagram-checkout': {
+        'tool': 'diagram',
+        'filename': 'sample_diagram_checkout.txt',
+        'media_type': 'text/plain',
+        'title': '주문 결제 시퀀스(복합)',
+        'description': '고객·웹앱·재고·결제·카드사·DB·알림 7주체의 주문 결제 흐름.',
+        'hints': {'diagram_type': 'sequence', 'title': '주문 결제 시퀀스', 'ai_assist': True},
+    },
     # ---- 차트 ----
     'chart-region-bar': {
         'tool': 'chart',
@@ -104,6 +112,49 @@ _SAMPLES: dict[str, dict[str, object]] = {
         'description': '응답시간(ms) 표본 → 분포 히스토그램.',
         'hints': {'prompt': '응답시간 분포', 'chart_type': 'histogram', 'ai_assist': True},
     },
+    # ---- 차트(다계열·화려한 예제, manual_spec 로 결정적 렌더) ----
+    'chart-region-channel-stacked': {
+        'tool': 'chart',
+        'filename': 'sample_chart_region_channel.csv',
+        'media_type': 'text/csv',
+        'title': '지역×채널 누적막대(스택)',
+        'description': '지역별 채널 매출을 누적 막대로 쌓아 구성비까지 한눈에.',
+        'hints': {
+            'manual_spec': {
+                'type': 'bar', 'title': '지역별 채널 매출 구성(누적)',
+                'x': 'region', 'y': ['revenue'], 'group': 'channel',
+                'aggregation': 'sum', 'stacked': True, 'sort': 'none', 'limit': 30,
+            },
+        },
+    },
+    'chart-quarter-product-grouped': {
+        'tool': 'chart',
+        'filename': 'sample_chart_quarter_product.csv',
+        'media_type': 'text/csv',
+        'title': '분기×제품군 그룹막대',
+        'description': '분기별 제품군 매출을 나란한 그룹 막대로 비교.',
+        'hints': {
+            'manual_spec': {
+                'type': 'bar', 'title': '분기별 제품군 매출(그룹)',
+                'x': 'quarter', 'y': ['sales'], 'group': 'product',
+                'aggregation': 'sum', 'stacked': False, 'sort': 'none', 'limit': 30,
+            },
+        },
+    },
+    'chart-product-multiline': {
+        'tool': 'chart',
+        'filename': 'sample_chart_product_trend.csv',
+        'media_type': 'text/csv',
+        'title': '제품군 월 추세(다계열 선)',
+        'description': '제품군 3종의 월별 추세를 다계열 선으로 겹쳐 비교.',
+        'hints': {
+            'manual_spec': {
+                'type': 'line', 'title': '제품군별 월 추세(다계열)',
+                'x': 'month', 'y': ['여객기', '화물기', '부품'],
+                'aggregation': 'none', 'sort': 'x_asc', 'limit': 30,
+            },
+        },
+    },
     # ---- 보고서 ----
     'report-sales': {
         'tool': 'report',
@@ -128,6 +179,14 @@ _SAMPLES: dict[str, dict[str, object]] = {
         'title': '주간 업무보고',
         'description': '완료·진행·계획·지표로 구성한 주간 보고.',
         'hints': {'title': '주간 업무 보고', 'subtitle': '완료·진행·계획', 'ai_mode': 'none'},
+    },
+    'report-dashboard': {
+        'tool': 'report',
+        'filename': 'sample_report_dashboard.md',
+        'media_type': 'text/markdown',
+        'title': '경영 대시보드(복합)',
+        'description': 'KPI·채널 표 여러 개·인용·코드·체크리스트가 있는 상반기 대시보드.',
+        'hints': {'title': '2026년 상반기 경영 대시보드', 'subtitle': 'KPI·채널·리스크', 'ai_mode': 'none'},
     },
 }
 

@@ -109,6 +109,44 @@ def test_echarts_option_pie_uses_name_value_pairs() -> None:
     assert all({'name', 'value'} <= set(item) for item in option['series'][0]['data'])
 
 
+# --- 다계열(그룹/누적/다중 y) — '화려한 차트' ------------------------------------
+
+_GROUP_CSV = '지역,채널,매출\n서울,온라인,10\n서울,오프라인,5\n부산,온라인,7\n부산,오프라인,3\n'.encode('utf-8')
+
+
+def test_grouped_bar_produces_one_series_per_group_without_stack() -> None:
+    frame = load_dataframe('g.csv', _GROUP_CSV, max_rows=1000)
+    spec = ChartSpec(type='bar', title='그룹', x='지역', y=['매출'], group='채널', aggregation='sum', stacked=False)
+    option = echarts_option(spec, prepare_chart(frame, spec))
+    assert {s['name'] for s in option['series']} == {'온라인', '오프라인'}
+    assert all('stack' not in s for s in option['series'])
+
+
+def test_stacked_bar_sets_stack_on_every_series() -> None:
+    frame = load_dataframe('s.csv', _GROUP_CSV, max_rows=1000)
+    spec = ChartSpec(type='bar', title='누적', x='지역', y=['매출'], group='채널', aggregation='sum', stacked=True)
+    option = echarts_option(spec, prepare_chart(frame, spec))
+    assert len(option['series']) == 2
+    assert all(s.get('stack') == 'total' for s in option['series'])
+
+
+def test_multi_y_line_produces_multiple_series() -> None:
+    csv = 'month,A,B,C\n2026-01,1,2,3\n2026-02,4,5,6\n'.encode('utf-8')
+    frame = load_dataframe('m.csv', csv, max_rows=1000)
+    spec = ChartSpec(type='line', title='다계열', x='month', y=['A', 'B', 'C'], aggregation='none', sort='x_asc')
+    option = echarts_option(spec, prepare_chart(frame, spec))
+    assert [s['name'] for s in option['series']] == ['A', 'B', 'C']
+    assert all(s['type'] == 'line' for s in option['series'])
+
+
+def test_single_series_stacked_does_not_set_stack() -> None:
+    # 단일 계열에 stacked=True 여도 stack 을 붙이지 않는다(누적은 다계열에서만 의미).
+    frame = load_dataframe('sales.csv', _CSV, max_rows=1000)
+    spec = ChartSpec(type='bar', title='단일', x='지역', y=['매출'], aggregation='sum', stacked=True)
+    option = echarts_option(spec, prepare_chart(frame, spec))
+    assert all('stack' not in s for s in option['series'])
+
+
 # --- 스펙 검증 -------------------------------------------------------------------
 
 def test_chart_spec_rejects_missing_column() -> None:
