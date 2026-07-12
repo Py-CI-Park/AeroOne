@@ -1,0 +1,19 @@
+<Configuration>
+  <VGpu>Disable</VGpu>
+  <Networking>Disable</Networking>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>{{PACKAGE_HOST_FOLDER}}</HostFolder>
+      <SandboxFolder>C:\AeroOnePackage</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>{{RECEIPT_HOST_FOLDER}}</HostFolder>
+      <SandboxFolder>C:\AeroOneReceipt</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\AeroOnePackage\sandbox\guest_bootstrap.ps1</Command>
+  </LogonCommand>
+</Configuration>

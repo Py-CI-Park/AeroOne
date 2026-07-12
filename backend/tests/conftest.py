@@ -7,6 +7,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+os.environ["APP_ENV"] = "test"
+os.environ["AEROONE_MAINTENANCE_GATE_TEST_FIXTURE"] = "pytest-app-env-test"
+
 from app.core.config import Settings, reset_settings_cache
 from app.core.security import hash_password
 from app.db.base import Base

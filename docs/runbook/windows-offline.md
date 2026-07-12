@@ -243,12 +243,14 @@ _database\
 
 ### 7.4 관리자 비밀번호 교체
 
-`setup_offline.bat` 또는 `setup.bat` 을 다시 실행하면 새 랜덤 값으로 교체됩니다. 기존 `.env` 는 `.bak` 로 자동 백업됩니다. (이전 버전 문서에서 §7.3 으로 안내한 내용과 동일합니다.)
+일상적인 단일 관리자 비밀번호 변경은 `/admin` 콘솔의 **관리자 계정 / 비밀번호**에서 수행합니다. 자격 증명 노출이 의심되면 setup 배치를 재실행하지 말고 서비스를 중지한 뒤 전체 사고 대응 회전을 실행합니다. setup은 환경 파일과 초기 시드를 준비하지만 기존 DB의 모든 사용자 비밀번호와 세션을 원자적으로 회전하지 않습니다.
 
-```cmd
-setup_offline.bat
-type backend\.env | findstr ADMIN_PASSWORD
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\rotate_aeroone_credentials.ps1 -DryRun
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\rotate_aeroone_credentials.ps1
 ```
+
+중단 재개, DB 복원 뒤 명시적 신규 회전, DPAPI bundle과 보존·삭제 책임은 [`credential-rotation.md`](credential-rotation.md)를 따릅니다. 비활성 계정은 회전으로 활성화되지 않으며 로그인 실패는 기존 사용자 상태 비공개 정책대로 401입니다.
 
 ---
 
@@ -354,7 +356,7 @@ curl -i -X POST -H "Content-Type: application/json" ^
   A. 온라인 PC 에서 의존성을 추가하고 `offline_package.bat` 을 다시 실행해 ZIP 을 새로 만들어 옮기세요. 폐쇄망 PC 에서는 `pip install --no-index --find-links` 가 항상 동봉된 wheelhouse 만 참조합니다.
 
 - **Q. 동일 폐쇄망 PC 에 이미 설치되어 있는데 다시 `setup_offline.bat` 을 돌려도 되는가?**
-  A. 네. `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 가 새 랜덤 값으로 다시 생성되며 기존 값은 `.bak` 파일로 백업됩니다. DB 는 유지됩니다 (alembic stamp head 분기).
+  A. 재설치·의존성 갱신 목적으로는 가능합니다. 환경 파일 값은 다시 생성되고 기존 값은 `.bak` 파일로 백업되며 DB는 유지됩니다. 그러나 노출 사고 때 DB 전체 사용자와 세션을 회전하는 절차는 아닙니다. 사고 대응은 서비스를 중지하고 `scripts\rotate_aeroone_credentials.ps1`을 사용하세요.
 
 - **Q. 운영 PC 가 잠시 꺼지거나 재부팅된 뒤 다시 켜졌을 때 어떻게 띄우나?**
   A. `start_offline.bat` 한 번이면 됩니다. 데이터는 `backend\data\aeroone.db` 에 그대로 있습니다.
@@ -372,4 +374,5 @@ curl -i -X POST -H "Content-Type: application/json" ^
 - [README.md](../../README.md) — 시스템 정체성과 빠른 시작
 - [docs/runbook/local-dev.md](local-dev.md) — 개발자 로컬 실행 가이드
 - [docs/runbook/admin-auth.md](admin-auth.md) — 관리자 인증 정책
+- [docs/runbook/credential-rotation.md](credential-rotation.md) — 자격 증명 노출 사고 전체 회전·재개·복원 절차
 - [docs/dev_plan/20260327_newsletter_platform_mvp.md](../dev_plan/20260327_newsletter_platform_mvp.md) — MVP 개발 계획 원본

@@ -75,6 +75,9 @@ test('opens the usage manual popup from the header', async () => {
   await user.click(screen.getByRole('button', { name: '대시보드' }));
   expect(screen.getAllByText(/현재 서비스 중/).length).toBeGreaterThan(0);
   expect(screen.getByText(/Viewer, AeroAI, Notebook, Ladder/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '관리자' }));
+  expect(screen.getByText(/자격 증명 사고 대응 런북/)).toBeInTheDocument();
+  expect(screen.queryByText(/초기 비밀번호는 \d+/)).not.toBeInTheDocument();
 
   await user.click(screen.getByRole('button', { name: '닫기' }));
 

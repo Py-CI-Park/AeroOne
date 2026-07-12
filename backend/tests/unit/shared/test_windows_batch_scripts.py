@@ -14,6 +14,31 @@ import pytest
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows batch scripts only")
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+_SETUP_SCRIPT = (REPO_ROOT / "setup.bat").read_text(encoding="utf-8")
+_SETUP_OFFLINE_SCRIPT = (REPO_ROOT / "setup_offline.bat").read_text(encoding="utf-8")
+
+
+def test_setup_secret_generation_is_compatible_with_windows_powershell_51() -> None:
+    for script in (_SETUP_SCRIPT, _SETUP_OFFLINE_SCRIPT):
+        assert "RandomNumberGenerator]::Fill" not in script
+        assert script.count("RandomNumberGenerator]::Create()") == 2
+        assert script.count("$rng.GetBytes($bytes)") == 2
+        assert script.count("$rng.Dispose()") == 2
+
+
+def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -> None:
+    assert 'pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt' in _SETUP_OFFLINE_SCRIPT
+    assert "requirements-dev.txt" not in _SETUP_OFFLINE_SCRIPT
+_START_OFFLINE_SCRIPT = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
+
+
+def test_start_offline_preserves_entry_path_before_argument_shifts() -> None:
+    capture = 'set "ENTRY_BATCH=%~f0"'
+    invocation = '-BatchPath "%ENTRY_BATCH%" -RawBatchArguments "--maintenance-preflight"'
+
+    assert _START_OFFLINE_SCRIPT.index(capture) < _START_OFFLINE_SCRIPT.index(":parse_args")
+    assert invocation in _START_OFFLINE_SCRIPT
+    assert '-BatchPath "%~f0"' not in _START_OFFLINE_SCRIPT
 
 
 def _run_cmd(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -46,6 +71,13 @@ def _write_stub_command(path: Path) -> None:
         "exit /b 0\r\n",
         encoding="utf-8",
     )
+
+
+def _make_stub_open_notebook_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "AeroOne-bundle"
+    bundle.mkdir()
+    (bundle / "3-run.bat").write_text("@echo off\r\nexit /b 0\r\n", encoding="utf-8")
+    return bundle
 
 
 def _write_frontend_dev_delegate_stub(path: Path) -> str:
@@ -382,7 +414,7 @@ def test_start_frontend_dev_preserves_caches_without_clean(tmp_path: Path) -> No
         line.startswith("npm.cmd run dev")
         for line in log_file.read_text(encoding="utf-8").splitlines()
     )
-    contents = (scripts_dir := repo_root / "scripts" / "start_frontend_dev.cmd").read_text(encoding="utf-8")
+    contents = (repo_root / "scripts" / "start_frontend_dev.cmd").read_text(encoding="utf-8")
     assert 'set "NEXT_PUBLIC_API_BASE_URL=http://localhost:18437"' in contents
     assert 'set "SERVER_API_BASE_URL=http://127.0.0.1:18437"' in contents
 
@@ -671,13 +703,14 @@ def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     assert "-BackendTimeoutSeconds 20" in invocation
     assert "-FrontendTimeoutSeconds 60" in invocation
 
-def test_run_all_dry_run_waits_for_open_notebook_readiness() -> None:
+def test_run_all_dry_run_waits_for_open_notebook_readiness(tmp_path: Path) -> None:
+    bundle = _make_stub_open_notebook_bundle(tmp_path)
     result = _run_cmd(
         REPO_ROOT,
         r"scripts\run_all.bat",
         "--dry-run",
         "--on-bundle",
-        str(REPO_ROOT.parent / "AeroOne-bundle"),
+        str(bundle),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -689,13 +722,14 @@ def test_run_all_dry_run_waits_for_open_notebook_readiness() -> None:
     assert any('would call "' in line and "3-run.bat" in line for line in lines)
 
 
-def test_run_all_passes_network_mode_to_open_notebook_bundle() -> None:
+def test_run_all_passes_network_mode_to_open_notebook_bundle(tmp_path: Path) -> None:
+    bundle = _make_stub_open_notebook_bundle(tmp_path)
     result = _run_cmd(
         REPO_ROOT,
         r"scripts\run_all.bat",
         "--dry-run",
         "--on-bundle",
-        str(REPO_ROOT.parent / "AeroOne-bundle"),
+        str(bundle),
         "--local",
     )
 
