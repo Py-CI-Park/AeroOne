@@ -1,0 +1,70 @@
+import React from 'react';
+
+import { AppShell } from '@/components/layout/app-shell';
+import { LeantimeLaunch } from '@/components/office-tools/leantime-launch';
+import { getAppTheme } from '@/lib/server-theme';
+
+export const dynamic = 'force-dynamic';
+
+const PAGE_TITLE = 'Leantime';
+const PAGE_PATH = '/leantime';
+
+type SearchParams = {
+  theme?: string;
+};
+
+const SETUP_STEPS = [
+  { n: 1, label: '오프라인 설치', detail: 'IIS + PHP(FastCGI) + MariaDB(3307) + Leantime 사이트(8081)를 운영자 PC 에 설치합니다.' },
+  { n: 2, label: '기동', detail: 'scripts/run_all.bat 또는 Windows 서비스로 Leantime 을 상시 기동합니다.' },
+  { n: 3, label: '열기', detail: '아래 버튼으로 새 탭에서 Leantime 을 엽니다(설치·기동된 경우에만 표시됩니다).' },
+];
+
+export default async function LeantimePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const theme = await getAppTheme(params.theme);
+
+  return (
+    <AppShell title={PAGE_TITLE} theme={theme} showThemeSelector themePath={PAGE_PATH} active="none">
+      <div className="flex max-w-3xl flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
+            동거(co-deploy) 앱 · 별도 설치
+          </span>
+          <p className="text-sm leading-relaxed text-ink-2">
+            Leantime 은 프로젝트·업무 관리 오픈소스 앱입니다. AeroOne 에 <strong>흡수하지 않고</strong> 별도 프로세스(PHP·MariaDB·IIS)로
+            나란히 설치·운영하며, 대시보드는 <strong>링크로만</strong> 연결합니다. 그래서 설치·기동이 안 된 상태에서는 화면이 열리지 않습니다.
+          </p>
+        </div>
+
+        <section className="flex flex-col gap-3 rounded-xl border border-ink-3/15 bg-surface-sunken/50 px-5 py-5">
+          <h2 className="text-sm font-semibold text-ink-1">설치·기동 절차</h2>
+          <ol className="flex flex-col gap-3">
+            {SETUP_STEPS.map((step) => (
+              <li key={step.n} className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-on">
+                  {step.n}
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-sm font-medium text-ink-1">{step.label}</span>
+                  <span className="text-xs leading-snug text-ink-3">{step.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <div className="flex flex-col gap-2">
+          <LeantimeLaunch />
+          <p className="text-xs text-ink-3">
+            버튼을 눌러도 열리지 않으면 아직 설치·기동되지 않은 것입니다. 운영자 설치 절차는{' '}
+            <code className="rounded bg-ink-3/10 px-1">docs/runbook/leantime-codeploy.md</code> 를 참고하세요.
+          </p>
+        </div>
+      </div>
+    </AppShell>
+  );
+}

@@ -20,7 +20,7 @@ const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClient
     { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, visibility: 'admin' },
     { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, visibility: 'admin' },
     { id: 11, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, visibility: 'admin' },
-    { id: 12, key: 'leantime', title: 'Leantime', description: '프로젝트 관리(외부 폐쇄망 앱). 운영자 설치 필요.', href: 'http://localhost:8081', badge: 'External', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: true, visibility: 'admin' },
+    { id: 12, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 안내·열기 페이지.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, visibility: 'admin' },
   ],
 }));
 
@@ -179,17 +179,17 @@ test('non-admin dashboard hides the admin-only office-tools hub card', async () 
   expect(screen.queryByRole('link', { name: /Office Studio/ })).not.toBeInTheDocument();
 });
 
-test('operator dashboard shows an external Leantime card opening the co-deploy app on port 8081', async () => {
+test('operator dashboard links the Leantime card to the internal co-deploy landing page', async () => {
   isAdminMock.mockReturnValue(true);
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   const main = screen.getByRole('main');
   const leantimeLink = within(main).getByRole('link', { name: /Leantime/i });
 
-  expect(leantimeLink).toHaveAttribute('target', '_blank');
-  expect(leantimeLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
-  expect(leantimeLink.getAttribute('href')).toMatch(/:8081$/);
-  expect(within(leantimeLink).getByTestId('service-card-description')).toHaveTextContent(/프로젝트 관리/);
+  // 외부 데드링크(:8081) 대신 내부 안내 페이지로 이동한다(설치 안 돼도 빈 화면이 안 나오게).
+  expect(leantimeLink).toHaveAttribute('href', '/leantime');
+  expect(leantimeLink).not.toHaveAttribute('target', '_blank');
+  expect(within(leantimeLink).getByTestId('service-card-description')).toHaveTextContent(/프로젝트/);
 });
 
 test('non-admin dashboard hides the admin-only Leantime card', async () => {
