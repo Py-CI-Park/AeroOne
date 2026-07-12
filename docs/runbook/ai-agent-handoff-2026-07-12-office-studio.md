@@ -69,6 +69,10 @@
 | `45c963f` | 샘플을 도구별 다중 예제(12→13종)로 확장 |
 | `9b5df55` | Leantime 카드 → 내부 안내 페이지(빈 화면 해결) |
 | `d687c9b` | 입력을 파일·텍스트 겸용 단계형 UX 로 고도화 |
+| `e8abd8d` | 이 핸드오프 문서 최초 작성·색인 |
+| `ee382a2` | Leantime 킷 기반 실시간 감지·연결(`/api/v1/leantime/health` + `LeantimeStatus`) |
+| `b0aac38` | 오피스 스튜디오 원클릭 예제·상시 사용법(`UsageGuide`)·단계 구분 강화 |
+| `c7b57f5` | 차트 누적·그룹·다계열(`ChartSpec.stacked`+`manual_spec`) + 복합 샘플(13→18종) |
 
 ---
 
