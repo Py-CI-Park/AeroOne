@@ -56,7 +56,7 @@ export default defineConfig({
     launchOptions: { executablePath: chromePath },
     headless: true,
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
     video: 'retain-on-failure',
     baseURL: runtime.frontendUrl,
   },

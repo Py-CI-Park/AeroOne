@@ -59,6 +59,7 @@ describe('browser harness contract', () => {
     expect(config).toContain("runtime.backendPid <= 0");
     expect(config).toContain("path.isAbsolute(runtime.tempRoot)");
     expect(config).toContain("outputDir: path.join(artifactRoot, 'playwright')");
+    expect(config).toContain("screenshot: 'on'");
     expect(config).toContain("runtime.frontendUrl");
     expect(config).toContain("['localhost', '127.0.0.1', '::1']");
     expect(config).toMatch(/name: 'smoke'/);
