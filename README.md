@@ -76,7 +76,7 @@
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | 1.13.1은 제품 tree가 1.13.0과 동일하므로 backend **570 passed**, frontend **397 passed / 73 files** 수치를 유지하며, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React 진단 및 QA 오프라인 ZIP pre/post verifier를 확인합니다. 여기에 1.13.1 patch metadata 검증을 추가합니다. |
+| 검증 | 1.13.1은 제품 tree가 1.13.0과 동일하므로 backend **88 passed**, frontend **10 passed**, `tsc --noEmit`, exact-tag pre/post verifier를 추가로 통과했으며, 기존 전체 제품 게이트 backend **570 passed**, frontend **397 passed / 73 files**, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React 진단 및 QA 오프라인 ZIP pre/post verifier를 계승 근거로 유지합니다. |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -123,11 +123,11 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
 
 ### 릴리즈 1.13.1 반입 파일
 
-`1.12.2` 반입물은 철회되어 사용할 수 없습니다. 최신 운영 반입물인 `1.13.1`의 정식 GitHub Release asset과 함께 게시되는 SHA-256 파일을 반입하고 검증합니다. GitHub immutable releases 정책은 활성화되었으며(`enabled=true`), `1.13.0`은 정책 활성화 전에 게시되어 `immutable=false`인 역사 릴리스로 tag와 asset을 그대로 보존합니다. 현재 기준 브랜치는 `main`이며, 로컬 중간 ZIP은 운영 배포본이 아닙니다.
+`1.12.2` 반입물은 철회되어 사용할 수 없습니다. 최신 운영 반입물은 2026-07-13 게시된 immutable 정식 `1.13.1` Release의 `AeroOne-offline-1.13.1.zip`과 함께 업로드된 `.sha256` 파일입니다. Release API는 `immutable=true`를 반환했고 재다운로드한 ZIP의 SHA-256은 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`으로 일치합니다. merge/tag commit은 `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag는 `1.13.1`, 게시 시각은 `2026-07-13T23:31:18Z`이며 [GitHub Release `1.13.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1)에서 받습니다. GitHub immutable releases 정책은 활성화되었으며, `1.13.0`은 정책 활성화 전에 게시되어 `immutable=false`인 역사 릴리스로 tag·asset·digest를 그대로 보존합니다. 현재 기준 브랜치는 `main`이며, 로컬 중간 ZIP은 운영 배포본이 아닙니다.
 
 | 파일 | 어디서 받는가 | 폐쇄망에서 놓을 위치 | 역할 |
 |---|---|---|---|
-| `AeroOne-offline-1.13.1.zip` + `.sha256` | [정식 GitHub Release `1.13.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1) asset (함께 게시되는 `.sha256` 파일을 반드시 검증; 1.13.1 digest는 사전 생성하지 않음) | `D:\AeroOne\` 로 압축 해제 | allow-list로 검증된 AeroOne 소스, production wheelhouse/node_modules, prebuilt `.next`, 정확한 Python/Node 인스톨러 |
+| `AeroOne-offline-1.13.1.zip` + `.sha256` | [정식 immutable GitHub Release `1.13.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1) asset (ZIP size `158727170` bytes, SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`; `.sha256` asset도 함께 업로드됨) | `D:\AeroOne\` 로 압축 해제 | allow-list로 검증된 AeroOne 소스, production wheelhouse/node_modules, prebuilt `.next`, 정확한 Python/Node 인스톨러 |
 | `AeroOne-bundle.zip` | 같은 Release asset 또는 Open Notebook 저장소 `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 | Open Notebook 별도 앱(Frontend 8502, API 5055, SurrealDB 8000), 자체 Python/Node/uv/ffmpeg/SurrealDB 포함 |
 | `%USERPROFILE%\.ollama\models\manifests`, `blobs` | 인터넷 PC 에서 `ollama pull gemma4:12b`, `ollama pull nomic-embed-text` 후 복사 | 폐쇄망 PC 같은 경로 | AeroAI/Open Notebook 공용 LLM·임베딩 모델 |
 | `OllamaSetup.exe` | Ollama 공식 설치 파일 | 폐쇄망 PC에서 1회 설치 | `127.0.0.1:11434` 로 두 앱이 공유하는 모델 서버 |

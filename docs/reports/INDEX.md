@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-> v1.13.0은 tag·asset·digest를 보존하는 역사 릴리스이며, 정식 상태와 검증 수치는 [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)를 기준으로 한다. GitHub immutable releases 최종 Architect finding은 `enabled=true`, 기존 `1.13.0` Release는 소급 적용되지 않아 `immutable=false`이다. `1.13.1`은 제품 기능 변경 없는 forward-only patch 준비 상태이며 아직 게시되지 않았다. [`v1-13-0-development-status-2026-07-11.md`](v1-13-0-development-status-2026-07-11.md)는 Task 3 중단 당시의 역사적 WIP 기록이다.
+> v1.13.0은 tag·asset·digest를 보존하는 역사 릴리스이며 `immutable=false` 상태를 유지한다. 정식 상태와 검증 수치는 [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)를 기준으로 한다. `1.13.1`은 제품 기능 변경 없는 forward-only patch로 게시된 정식 immutable Release이며 API `immutable=true`, 재다운로드 digest 검증을 완료했다. [`v1-13-0-development-status-2026-07-11.md`](v1-13-0-development-status-2026-07-11.md)는 Task 3 중단 당시의 역사적 WIP 기록이다.
 
 폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
@@ -206,12 +206,13 @@
 - 코드: `scripts/{rotate_aeroone_credentials,view_aeroone_credentials}.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/{sqlite_recovery,windows_dpapi}.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
 - 회귀 방지: backend full 347 passed, credential focused 79 passed, frontend 313 passed(66 파일), ruff·basedpyright·compileall, PowerShell AST, `tsc --noEmit`, `next build`, old 401/new 200. 실제 WPF 창 시각 조작과 web 브라우저 smoke는 미실행.
 
-### 단계 27 — v1.13.0 정식 릴리스 (역사 보존) 및 1.13.1 forward-only patch 준비
+### 단계 27 — v1.13.0 정식 릴리스 (역사 보존) 및 1.13.1 정식 immutable Release
 - 파일: [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)
-- 분류: minor (`1.13.0`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package를 정식 릴리스로 통합.
-- 검증: backend 570, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier.
-- 릴리스: PR #22가 main merge commit `c1cbc01062f0d30a97be0ea3df47973d040d2638`에서 병합되었고 annotated tag `1.13.0` 및 [GitHub Release asset](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)을 게시했다. 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`이다. 이 tag·asset·digest는 이동·교체·삭제하지 않는다.
-- `1.13.1`은 1.13.0을 움직이지 않는 forward-only 교정이며 아직 미게시다. immutable policy `enabled=true` 아래 exact annotated tag → draft Release → asset upload → publish → `immutable:true` 확인을 모두 완료해야 정식 게시 완료로 간주한다. 새 digest는 게시 전이므로 기록하지 않는다.
+- 분류: minor (`1.13.0`) 및 forward-only patch (`1.13.1`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package 계보를 보존.
+- 검증: 1.13.0 전체 제품 게이트 backend 570, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier를 계승하고, 1.13.1은 backend 88, frontend 10, typecheck, exact-tag pre/post verifier를 추가 통과.
+- 1.13.0 릴리스의 tag·asset·digest는 이동·교체·삭제하지 않으며 `immutable=false` 역사 기록으로 보존한다.
+- 1.13.1 릴리스: merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag `1.13.1`, [GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1), published `2026-07-13T23:31:18Z`, API `immutable=true`.
+- 운영 asset: `AeroOne-offline-1.13.1.zip` size `158727170`, SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`; `.sha256` asset도 업로드되었고 재다운로드 digest 검증을 완료했다. `gh release verify` attestation은 현재 생성 확인 중이다.
 
 ---
 
