@@ -30,8 +30,6 @@ def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -
     assert 'pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt' in _SETUP_OFFLINE_SCRIPT
     assert "requirements-dev.txt" not in _SETUP_OFFLINE_SCRIPT
 
-
-def test_setup_offline_overrides_inherited_runtime_identity_before_migration() -> None:
     app_env = 'set "APP_ENV=closed_network"'
     database_url = 'set "DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db"'
     admin_username = 'set "ADMIN_USERNAME=admin"'
