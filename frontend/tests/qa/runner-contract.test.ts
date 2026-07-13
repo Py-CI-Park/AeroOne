@@ -69,6 +69,10 @@ describe('v1.13 browser QA runner contract', () => {
     expect(diagnostics).toContain("dist', 'auto.global.js");
     expect(diagnostics).toContain('addInitScript');
     expect(diagnostics).toContain('render/commit evidence');
+    expect(diagnostics).toContain('__AEROONE_REACT_SCAN_EVIDENCE__');
+    expect(diagnostics).toContain('onCommitStart()');
+    expect(diagnostics).toContain('onRender(_fiber, renders)');
+    expect(diagnostics).toContain('callbackEvidence');
     expect(diagnostics).toContain('unnecessary renders');
     expect(diagnostics).toContain('locked local browser asset missing');
     expect(diagnostics).toContain("'--json', '--no-supply-chain', '--no-score', '--no-telemetry', '--no-color', '--yes', '--blocking', 'error'");

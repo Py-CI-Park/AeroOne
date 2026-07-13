@@ -78,10 +78,120 @@ function runDoctor(frontendRoot, verified) {
   const blocking = []; const visit = (v, key = '') => { if (Array.isArray(v)) return v.forEach(x => visit(x, key)); if (!v || typeof v !== 'object') return; const s = String(v.severity ?? v.level ?? '').toLowerCase(); if (['error', 'critical', 'high'].includes(s) || v.blocking === true) blocking.push({ key, severity: s }); Object.entries(v).forEach(([k, x]) => visit(x, k)); }; visit(report); if (result.status !== 0 || blocking.length) fail('react-doctor reported blocking findings'); return { name: 'react-doctor', version: verified.version, kind: 'analysis', invoked: true, status: result.status, blockingFindings: blocking, report: redact(report) };
 }
 async function runReactScan(frontendRoot, frontendUrl, verified) {
-  const bundle = fs.readFileSync(path.join(packageRoot('react-scan', frontendRoot), 'dist', 'auto.global.js'), 'utf8'); const marker = '}({});'; const i = bundle.lastIndexOf(marker); if (i < 0) fail('react-scan locked browser asset export contract changed'); const exposedBundle = [bundle.slice(0, i), '}(globalThis.__AEROONE_REACT_SCAN__ = {});', bundle.slice(i + marker.length), 'globalThis.__AEROONE_REACT_SCAN__.scan({ enabled: true, dangerouslyForceRunInProduction: true, showToolbar: false, log: false, trackUnnecessaryRenders: true });'].join('');
-  const browser = await chromium.launch({ executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', headless: true, args: ['--disable-background-networking', '--disable-component-update', '--disable-default-apps', '--disable-sync'] }); const context = await browser.newContext({ serviceWorkers: 'block' }); const page = await context.newPage(); const egressViolations = []; await browserRequestGuard(context, egressViolations);
- const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); }); await page.addInitScript({ content: exposedBundle }); const routes = ['/login', '/activity', '/admin']; const evidence = [];
-  try { for (const route of routes) { if (route === '/activity') { const login = await context.request.post(`${frontendUrl}/api/frontend/auth/login`, { data: { username: QA_USERNAME, password: QA_PASSWORD } }); if (!login.ok()) fail('react-scan synthetic authentication failed'); } const response = await page.goto(`${frontendUrl}${route}`, { waitUntil: 'networkidle', timeout: 120000 }); if (!response?.ok() || new URL(page.url()).pathname !== route) fail(`react-scan route failed: ${route}`); const identity = await page.evaluate(() => ({ heading: document.querySelector('h1,h2')?.textContent?.trim(), accountLabel: document.querySelector('[aria-label^="현재 로그인 사용자 "]')?.getAttribute('aria-label') })); const expectedHeading = route === '/login' ? '계정 접속' : route === '/activity' ? '내 활동' : '관리자 콘솔'; if (identity.heading !== expectedHeading) fail(`route identity mismatch: ${route}`); if (route === '/admin' && identity.accountLabel !== `현재 로그인 사용자 ${QA_USERNAME}`) fail('admin authorization identity missing'); await page.waitForTimeout(250); const state = await page.evaluate(() => { const api = globalThis.__AEROONE_REACT_SCAN__; const report = api?.getReport?.(); const rows = report instanceof Map ? Array.from(report.values()).map(item => { const renders = Array.isArray(item?.renders) ? item.renders : []; return { displayName: item?.displayName ?? null, renderCount: renders.length, commitCount: renders.filter(r => r?.didCommit === true).length, unnecessaryCount: renders.filter(r => r?.unnecessary === true).length }; }) : []; return { active: Boolean(api?.ReactScanInternals?.instrumentation), reports: rows, url: location.pathname }; }); if (!state.active) fail('react-scan instrumentation did not initialize'); const renderCount = state.reports.reduce((n, x) => n + x.renderCount, 0); const commitCount = state.reports.reduce((n, x) => n + x.commitCount, 0); if (!renderCount || !commitCount) fail(`react-scan produced no render/commit evidence: ${route}`); evidence.push({ ...state, renderCount, commitCount }); } } finally { await context.close(); await browser.close(); } if (egressViolations.length) fail(`react-scan blocked non-loopback egress (${egressViolations.length})`); if (errors.length) fail('react-scan instrumentation error'); const commits = evidence.reduce((n, x) => n + x.commitCount, 0); const renders = evidence.reduce((n, x) => n + x.renderCount, 0); const unnecessaryRenders = evidence.reduce((n, x) => n + x.reports.reduce((s, r) => s + r.unnecessaryCount, 0), 0); if (!commits || !renders) fail('react-scan produced no render/commit evidence'); if (unnecessaryRenders) fail('react-scan reported unnecessary renders'); return { name: 'react-scan', version: verified.version, kind: 'analysis', invoked: true, mode: 'local-browser-auto-global', routes, commits, renders, unnecessaryRenders, evidence: redact(evidence) };
+  const bundle = fs.readFileSync(path.join(packageRoot('react-scan', frontendRoot), 'dist', 'auto.global.js'), 'utf8');
+  const marker = '}({});';
+  const markerIndex = bundle.lastIndexOf(marker);
+  if (markerIndex < 0) fail('react-scan locked browser asset export contract changed');
+  const exposedBundle = [
+    bundle.slice(0, markerIndex),
+    '}(globalThis.__AEROONE_REACT_SCAN__ = {});',
+    bundle.slice(markerIndex + marker.length),
+    `globalThis.__AEROONE_REACT_SCAN_EVIDENCE__ = { commits: 0, renders: 0, unnecessaryRenders: 0 };
+globalThis.__AEROONE_REACT_SCAN__.scan({
+  enabled: true,
+  dangerouslyForceRunInProduction: true,
+  showToolbar: false,
+  log: false,
+  trackUnnecessaryRenders: true,
+  onCommitStart() {
+    globalThis.__AEROONE_REACT_SCAN_EVIDENCE__.commits += 1;
+  },
+  onRender(_fiber, renders) {
+    const rows = Array.isArray(renders) ? renders : [];
+    globalThis.__AEROONE_REACT_SCAN_EVIDENCE__.renders += rows.length;
+    globalThis.__AEROONE_REACT_SCAN_EVIDENCE__.unnecessaryRenders += rows.filter(row => row?.unnecessary === true).length;
+  },
+});`,
+  ].join('');
+
+  const browser = await chromium.launch({
+    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    headless: true,
+    args: ['--disable-background-networking', '--disable-component-update', '--disable-default-apps', '--disable-sync'],
+  });
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await context.newPage();
+  const egressViolations = [];
+  await browserRequestGuard(context, egressViolations);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.addInitScript({ content: exposedBundle });
+  const routes = ['/login', '/activity', '/admin'];
+  const evidence = [];
+
+  try {
+    for (const route of routes) {
+      if (route === '/activity') {
+        const login = await context.request.post(`${frontendUrl}/api/frontend/auth/login`, {
+          data: { username: QA_USERNAME, password: QA_PASSWORD },
+        });
+        if (!login.ok()) fail('react-scan synthetic authentication failed');
+      }
+      const response = await page.goto(`${frontendUrl}${route}`, { waitUntil: 'networkidle', timeout: 120000 });
+      if (!response?.ok() || new URL(page.url()).pathname !== route) fail(`react-scan route failed: ${route}`);
+      const identity = await page.evaluate(() => ({
+        heading: document.querySelector('h1,h2')?.textContent?.trim(),
+        accountLabel: document.querySelector('[aria-label^="현재 로그인 사용자 "]')?.getAttribute('aria-label'),
+      }));
+      const expectedHeading = route === '/login' ? '계정 접속' : route === '/activity' ? '내 활동' : '관리자 콘솔';
+      if (identity.heading !== expectedHeading) fail(`route identity mismatch: ${route}`);
+      if (route === '/admin' && identity.accountLabel !== `현재 로그인 사용자 ${QA_USERNAME}`) fail('admin authorization identity missing');
+      await page.waitForTimeout(250);
+      const state = await page.evaluate(() => {
+        const api = globalThis.__AEROONE_REACT_SCAN__;
+        const callbackEvidence = globalThis.__AEROONE_REACT_SCAN_EVIDENCE__;
+        const report = api?.getReport?.();
+        const reports = report instanceof Map
+          ? Array.from(report.values()).map(item => {
+            const renders = Array.isArray(item?.renders) ? item.renders : [];
+            return {
+              displayName: item?.displayName ?? null,
+              renderCount: renders.length,
+              commitCount: renders.filter(render => render?.didCommit === true).length,
+              unnecessaryCount: renders.filter(render => render?.unnecessary === true).length,
+            };
+          })
+          : [];
+        return {
+          active: Boolean(api?.ReactScanInternals?.instrumentation),
+          callbackEvidence: {
+            commits: callbackEvidence?.commits ?? 0,
+            renders: callbackEvidence?.renders ?? 0,
+            unnecessaryRenders: callbackEvidence?.unnecessaryRenders ?? 0,
+          },
+          reports,
+          url: location.pathname,
+        };
+      });
+      if (!state.active) fail('react-scan instrumentation did not initialize');
+      if (!state.callbackEvidence.renders || !state.callbackEvidence.commits) fail(`react-scan produced no render/commit evidence: ${route}`);
+      evidence.push(state);
+    }
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+
+  if (egressViolations.length) fail(`react-scan blocked non-loopback egress (${egressViolations.length})`);
+  if (errors.length) fail('react-scan instrumentation error');
+  const commits = evidence.reduce((sum, item) => sum + item.callbackEvidence.commits, 0);
+  const renders = evidence.reduce((sum, item) => sum + item.callbackEvidence.renders, 0);
+  const unnecessaryRenders = evidence.reduce((sum, item) => sum + item.callbackEvidence.unnecessaryRenders, 0);
+  if (!commits || !renders) fail('react-scan produced no render/commit evidence');
+  if (unnecessaryRenders) fail('react-scan reported unnecessary renders');
+  return {
+    name: 'react-scan',
+    version: verified.version,
+    kind: 'analysis',
+    invoked: true,
+    mode: 'local-browser-auto-global',
+    routes,
+    commits,
+    renders,
+    unnecessaryRenders,
+    evidence: redact(evidence),
+  };
 }
 async function run() {
   const args = parseArgs(process.argv);
