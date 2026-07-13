@@ -2,8 +2,8 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 브랜치: `1.13.0-dev` (검증된 보안·패키지 hotfix 계보 통합)
-- 배포 주의: `1.12.2` Release/ZIP 철회. 신규 설치·재배포 금지, 정식 `1.13.0` asset 대기
+- 기준 브랜치: `main` (정식 1.13.0 릴리스 계보)
+- 배포 상태: `1.12.2` Release/ZIP 철회, 정식 `1.13.0` Release asset·ZIP·`.sha256` 게시 완료
 - 갱신일: 2026-07-13
 
 ---
@@ -15,7 +15,7 @@
 | **시스템을 처음 보는 사람** | [`README.md`](../README.md) (시스템 정체성, 빠른 시작) | §2 운영 매뉴얼 |
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
-| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | 현재 RC 상태·정확한 잔여 순서 + §6 코드 진실 원천 |
+| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | 정식 1.13.0 상태·운영 절차 + §6 코드 진실 원천 |
 
 ---
 
@@ -44,7 +44,7 @@
 | [`runbook/credential-rotation.md`](runbook/credential-rotation.md) | 자격 증명 노출 사고 시 JWT·전체 사용자 비밀번호·세션 회전, 중단 재개, DB 복원 뒤 신규 회전, 보존·삭제 책임 | 중간 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
-| [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) | **최신 AI 에이전트 핸드오프** — 현재 RC 구현·검증 상태, 미커밋 hardening, PR 직전까지의 정확한 잔여 순서 | 긴 문서 |
+| [v1.13.0 Claude Code 사전 릴리스 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) | **역사적 실행 인계 기록** — PR 병합 전 구현·검증·재개 절차. 현재 릴리스 상태는 단계 27 보고서를 기준으로 한다. | 긴 문서 |
 | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | **v1.13.0 개발 상태 상세 보고서** — 전체 계획 페이지, 검토 Round 1~4, 변경 파일, 유효/무효 테스트, 잔여 단계·시간·금지 사항 | 긴 문서 |
 | [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | 과거 핸드오프 — 1.13.0 제품 구현 전 상태. 최신 문서로 superseded | 중간 |
 
@@ -78,8 +78,8 @@
 | 단계 25 | [`reports/phase-25-admin-console-ux-polish.md`](reports/phase-25-admin-console-ux-polish.md) | 권한 이해 카탈로그 + 감사 로그 전용 탭(검색/필터/CSV) + 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션 + 탭 숫자 단축키 1~9·온보딩 도움말 — 프론트-only minor 1.12.0 | `1.12.0-dev` |
 | 1.12.1 patch | — | 헤더 로그인 사용자 아이디/로그아웃, `users.display_name` 선택 프로필, 사용자 행별 권한 수정 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 15초 갱신 안내, 버전 배지 업데이트 날짜 표시 | `1.12.1` |
 | 1.12.2 patch | — | 화면 개선 이력은 보존하지만 Release asset/오프라인 ZIP은 **철회**되어 배포 금지 | `withdrawn` |
-| 단계 26 | [`reports/phase-26-credential-rotation-hardening.md`](reports/phase-26-credential-rotation-hardening.md) | service/listener preflight, 연속 writer lock, DPAPI recovery·strict journal/manifest, crash 재개, backup restore→archive→rotation, current-SID viewer — minor 1.13.0 | `1.13.0-dev` |
-| 단계 27 | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, allow-list 오프라인 패키지와 RC 검증 — minor 1.13.0 | `1.13.0 RC` |
+| 단계 26 | [`reports/phase-26-credential-rotation-hardening.md`](reports/phase-26-credential-rotation-hardening.md) | service/listener preflight, 연속 writer lock, DPAPI recovery·strict journal/manifest, crash 재개, backup restore→archive→rotation, current-SID viewer — minor 1.13.0 | `1.13.0` |
+| 단계 27 | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, allow-list 오프라인 패키지와 정식 릴리스 검증 | `1.13.0` |
 | v1.13.0 과거 WIP | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | Task 3 중단 당시 역사 기록. 현재 상태는 단계 27 보고서와 최신 SHA artifacts를 기준으로 한다. | `superseded` |
 
 ---
@@ -145,7 +145,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0` RC는 backend 전체 570, frontend 397/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
+최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0`은 backend 전체 570, frontend 397/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|

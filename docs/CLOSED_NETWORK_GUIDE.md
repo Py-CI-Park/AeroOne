@@ -2,13 +2,13 @@
 
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
-- 기준 브랜치: `1.13.0-dev` (검증된 보안·패키지 hotfix 계보 통합)
+- 기준 브랜치: `main` (정식 1.13.0 릴리스 계보)
 - 갱신일: 2026-07-13
-- 최근 완료 검증: backend **570 passed**, frontend Vitest **397 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR 병합 전 QA 산출물은 운영 반입 금지.
+- 최근 완료 검증: backend **570 passed**, frontend Vitest **397 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR #22 병합과 annotated tag `1.13.0`, GitHub Release asset 게시를 완료했다.
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 > [!CAUTION]
-> `1.12.2` Release와 오프라인 ZIP은 철회되었습니다. 신규 설치·재배포에 사용하지 말고, 이미 반입한 PC는 서비스를 중지한 채 `1.13.0` 정식 asset으로 교체한 뒤 §11.5.1의 전체 자격 증명 회전을 수행합니다. `1.13.0-dev` 중간 산출물은 운영 반입물이 아닙니다.
+> `1.12.2` Release와 오프라인 ZIP은 철회되었습니다. 신규 설치·재배포에 사용하지 말고, 이미 반입한 PC는 서비스를 중지한 채 [정식 `1.13.0` GitHub Release asset](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)으로 교체한 뒤 §11.5.1의 전체 자격 증명 회전을 수행합니다. 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`입니다.
 
 ---
 
@@ -56,7 +56,7 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
-| `1.13.0 RC` | 단계 26–27 | 자격 증명 회전·복구 계약, shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, tracked allow-list 오프라인 패키징 |
+| `1.13.0` | 단계 26–27 | 자격 증명 회전·복구 계약, shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, tracked allow-list 오프라인 패키징 및 정식 릴리스 |
 | `1.12.2` | **철회** | 화면 개선 이력만 보존. Release asset과 오프라인 ZIP은 신규 설치·재배포 금지 |
 | `1.12.1` | patch | 헤더 `로그인: <username>`/로그아웃 버튼, `login_events.status='logout'` 기록과 현재 세션 활동 제거, 사용자 생성의 필수 ID/PW·선택 이름/이메일(`users.display_name`, Alembic `20260707_0008`), 사용자 행별 **권한 수정** 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 마지막 갱신/15초 자동 새로고침 안내, 버전 배지 업데이트 날짜 표시 |
 | `1.12.0` | 단계 25 | 권한 키 한국어 라벨·설명·카테고리 카탈로그와 RBAC 매트릭스 pill/유효권한 요약, 감사 로그 전용 탭(작업자/액션/상태/기간 검색·필터·CSV), 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션, 탭 숫자 단축키 1~9·접이식 온보딩 도움말 (프론트-only, 백엔드/스키마 무변경) |
@@ -92,7 +92,7 @@
 
 ### 3.4 릴리즈 1.13.0 폐쇄망 반입물
 
-`1.12.2` asset은 철회되었습니다. `1.13.0` 정식 Release와 checksum이 게시되기 전에는 새 반입을 진행하지 않습니다.
+`1.12.2` asset은 철회되었습니다. [정식 `1.13.0` GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)의 Release asset과 checksum이 게시되어 있으므로 해당 게시본을 반입합니다.
 
 | 반입물 | 릴리즈/생성 위치 | 폐쇄망 배치 | 필수 여부 |
 |---|---|---|---|
@@ -326,7 +326,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-현재 `1.13.0` RC 기준 기대 결과는 backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
+현재 `1.13.0` 정식 릴리스 기준 기대 결과는 backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
@@ -536,7 +536,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 4. **DB 분기 로직** — 본 문서 §11.3 + `backend/scripts/ensure_db_state.py` 의 모듈/함수 docstring (단계 9에서 본문에 새겨 둠)
 5. **회귀 테스트 위치** — 본 문서 §13 표
 6. **변경 이력 의도** — 본 문서 §3 표 + `docs/reports/INDEX.md` 및 각 `docs/reports/phase-*.md`
-7. **최신 AI 에이전트 핸드오프** — [v1.13.0 Claude Code 이어받기](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) (현재 RC 상태, 검증 결과, PR 병합 직전까지의 잔여 절차)
+7. **정식 1.13.0 상태** — [`docs/reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) (병합·태그·공식 asset·검증 결과)
 8. **v1.13.0 개발 상태 상세 보고서** — [`docs/reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) (전체 계획·검토 이력·변경 파일·유효/무효 테스트·잔여 작업)
 
 ### 14.1 변경을 가할 때 따라야 할 순서
@@ -579,7 +579,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 - [`docs/runbook/credential-rotation.md`](runbook/credential-rotation.md) — 자격 증명 사고 대응 회전·중단 재개·복원·보존
 - [`docs/runbook/admin-auth.md`](runbook/admin-auth.md) — 관리자 인증 정책
 - [`AGENTS.md`](../AGENTS.md), [`CLAUDE.md`](../CLAUDE.md) — 한국어 커밋·PR 규칙
-- [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) — 현재 RC 구현·검증 상태와 PR 생성·병합 직전 중단 절차
+- [v1.13.0 Claude Code 사전 릴리스 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) — PR 병합 전 구현·검증·재개 절차를 보존한 역사 기록. 현재 상태는 단계 27 보고서를 따른다.
 - [`docs/reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) — Task 1~3 작업·검토와 Task 4~27/F1~F6 잔여 상태의 상세 기록
 - [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) — 1.13.0 제품 구현 전 상태를 보존한 superseded 핸드오프
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 기여 가이드

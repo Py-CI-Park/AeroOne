@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-> v1.13.0 현재 재개 상태는 [최신 Claude Code 핸드오프](../../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md)를 먼저 읽는다. [`v1-13-0-development-status-2026-07-11.md`](v1-13-0-development-status-2026-07-11.md)는 Task 3 중단 당시의 역사적 WIP 기록이다.
+> v1.13.0 현재 상태는 정식 릴리스 보고서인 [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)를 기준으로 한다. [`v1-13-0-development-status-2026-07-11.md`](v1-13-0-development-status-2026-07-11.md)는 Task 3 중단 당시의 역사적 WIP 기록이다.
 
 폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
@@ -206,12 +206,12 @@
 - 코드: `scripts/{rotate_aeroone_credentials,view_aeroone_credentials}.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/{sqlite_recovery,windows_dpapi}.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
 - 회귀 방지: backend full 347 passed, credential focused 79 passed, frontend 313 passed(66 파일), ruff·basedpyright·compileall, PowerShell AST, `tsc --noEmit`, `next build`, old 401/new 200. 실제 WPF 창 시각 조작과 web 브라우저 smoke는 미실행.
 
-### 단계 27 — v1.13.0 릴리스 후보 통합
+### 단계 27 — v1.13.0 정식 릴리스
 
 - 파일: [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)
-- 분류: minor (`1.13.0`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package를 직접 v1.13 릴리스 후보로 통합.
-- 검증: backend 567, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier.
-- 릴리스 경계: 정식 PR 승인 전 main merge 금지. exact annotated tag에서만 publishable ZIP/SHA 생성.
+- 분류: minor (`1.13.0`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package를 정식 릴리스로 통합.
+- 검증: backend 570, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier.
+- 릴리스: PR #22가 main merge commit `c1cbc01062f0d30a97be0ea3df47973d040d2638`에서 병합되었고 annotated tag `1.13.0` 및 [GitHub Release asset](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)을 게시했다. 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`이다.
 
 ---
 

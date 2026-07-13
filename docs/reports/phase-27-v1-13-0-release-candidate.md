@@ -1,8 +1,8 @@
-# 단계 27 — v1.13.0 릴리스 후보 통합
+# 단계 27 — v1.13.0 정식 릴리스
 
 ## 변경 배경
 
-철회된 1.12.2 배포본을 대체하려면 자격 증명 사고 대응만 추가하는 것으로는 충분하지 않았다. 계정·권한·Activity·관리자 운영 화면을 실제 서버 계약에 연결하고, workspace 전체를 복사하던 공개 패키징 경계를 tracked source allow-list와 반복 가능한 브라우저 검증으로 교체해야 했다. 이 단계는 공개 1.12.3을 생략하고 검증된 hotfix 계보를 보존한 채 v1.13.0으로 직접 릴리스하는 합의안의 마지막 개발 단계다.
+철회된 1.12.2 배포본을 대체하려면 자격 증명 사고 대응만 추가하는 것으로는 충분하지 않았다. 계정·권한·Activity·관리자 운영 화면을 실제 서버 계약에 연결하고, workspace 전체를 복사하던 공개 패키징 경계를 tracked source allow-list와 반복 가능한 브라우저 검증으로 교체해야 했다. 이 단계는 공개 1.12.3을 생략하고 검증된 hotfix 계보를 보존한 채 v1.13.0으로 정식 릴리스한 통합 단계다.
 
 ## 핵심 수정 사항
 
@@ -25,12 +25,12 @@
 |---|---|---|
 | Backend 전체 | `node scripts/qa/run_v113_backend_gates.mjs --sha <SHA> --suite all` | backend 570 passed, package·migration-heads·migration exit 0 |
 | Frontend 전체 | `npm test && npm run typecheck && npm run build` | Vitest 397 passed / 73 files, TypeScript 0 error, CVE-2026-23870 수정 Next 15.5.18 production build 성공 |
-| Browser RC | `npm run qa:browser:all -- --sha <SHA>` | smoke 1, matrix 10, Axe 1 통과; Lighthouse 18회 category 중앙값 100·실패 audit 0, React 진단·teardown exit 0 |
+| Browser QA | `npm run qa:browser:all -- --sha <SHA>` | smoke 1, matrix 10, Axe 1 통과; Lighthouse 18회 category 중앙값 100·실패 audit 0, React 진단·teardown exit 0 |
 | QA 오프라인 ZIP | `powershell -File scripts/build_offline_package.ps1 -Version 1.13.0` | `publishable=False`; clean build와 인스톨러 검증 후 pre-stage/post-ZIP 모두 `ok: true`, ZIP/SHA 생성 |
 | Wrapper 계약 | focused pytest + `offline_package.bat --help` | 25 passed, builder 위임·production requirements·금지 재사용 계약 통과 |
 | 노출 검사 | QA artifact pattern scan | 로컬 사용자 경로, 합성 비밀번호, 실제 secret assignment, U+FFFD 0 |
 
-정식 배포 ZIP은 PR 병합 뒤 main의 exact annotated `1.13.0` tag에서만 `publishable=true`로 생성한다. 태그 전 QA ZIP은 운영 반입물이 아니다.
+정식 배포는 PR #22가 main에 병합된 merge commit `c1cbc01062f0d30a97be0ea3df47973d040d2638`에 annotated tag `1.13.0`을 생성하고, GitHub Release asset을 게시하는 것으로 완료되었다. 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`이며, [GitHub Release 1.13.0](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)에서 확인할 수 있다. 위 표의 QA ZIP `publishable=False`는 태그 전 검증 당시의 결과이며 정식 게시 asset의 상태를 나타내지 않는다.
 
 ## 영향 범위와 제약
 
@@ -41,8 +41,12 @@
 
 ## PR·릴리스 경계
 
+당시 계획은 다음 순서였다.
+
 1. 최종 dev SHA에서 backend/frontend/browser/package/격리 설치 증거를 다시 생성한다.
 2. 한국어 PR에 변경 배경, 핵심 수정, 명령·출력, 영향 범위, 후속 작업을 기록한다.
 3. PR 승인 전에는 main에 병합하지 않는다.
 4. 승인 후 `--no-ff` 병합, annotated `1.13.0` tag, exact-tag ZIP/SHA 생성, push, GitHub Release asset 업로드와 재다운로드 digest 검증을 수행한다.
 5. 태그는 이동하지 않으며 실패는 forward fix로 처리한다.
+
+현재 완료 상태: PR #22는 main에 병합되었고 merge commit은 `c1cbc01062f0d30a97be0ea3df47973d040d2638`, annotated tag는 `1.13.0`이다. GitHub Release asset과 `.sha256` 게시 및 재다운로드 digest 검증도 완료되었으며, 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`이다. 태그는 이동하지 않았고 1.13.1을 제안하지 않는다.
