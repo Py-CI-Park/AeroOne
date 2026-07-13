@@ -4,7 +4,7 @@
 
 - 기준 브랜치: `1.13.0-dev` (검증된 보안·패키지 hotfix 계보 통합)
 - 배포 주의: `1.12.2` Release/ZIP 철회. 신규 설치·재배포 금지, 정식 `1.13.0` asset 대기
-- 갱신일: 2026-07-12
+- 갱신일: 2026-07-13
 
 ---
 
@@ -78,8 +78,9 @@
 | 단계 25 | [`reports/phase-25-admin-console-ux-polish.md`](reports/phase-25-admin-console-ux-polish.md) | 권한 이해 카탈로그 + 감사 로그 전용 탭(검색/필터/CSV) + 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션 + 탭 숫자 단축키 1~9·온보딩 도움말 — 프론트-only minor 1.12.0 | `1.12.0-dev` |
 | 1.12.1 patch | — | 헤더 로그인 사용자 아이디/로그아웃, `users.display_name` 선택 프로필, 사용자 행별 권한 수정 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 15초 갱신 안내, 버전 배지 업데이트 날짜 표시 | `1.12.1` |
 | 1.12.2 patch | — | 화면 개선 이력은 보존하지만 Release asset/오프라인 ZIP은 **철회**되어 배포 금지 | `withdrawn` |
-| 단계 26 | [`reports/phase-26-credential-rotation-hardening.md`](reports/phase-26-credential-rotation-hardening.md) | service/listener preflight, 연속 writer lock, DPAPI recovery·strict journal/manifest, crash 재개, ordinary backup 복원→history archive→새 회전, current-SID WPF 자격 뷰어 — minor 1.13.0 | `1.13.0-dev` |
-| v1.13.0 WIP | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | containment·credential rotation·공개 package verifier/builder·내부 bundle 경계를 통합하고 Activity/Admin 운영 UX와 direct v1.13 release를 진행 | `1.13.0-dev` |
+| 단계 26 | [`reports/phase-26-credential-rotation-hardening.md`](reports/phase-26-credential-rotation-hardening.md) | service/listener preflight, 연속 writer lock, DPAPI recovery·strict journal/manifest, crash 재개, backup restore→archive→rotation, current-SID viewer — minor 1.13.0 | `1.13.0-dev` |
+| 단계 27 | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, allow-list 오프라인 패키지와 RC 검증 — minor 1.13.0 | `1.13.0 RC` |
+| v1.13.0 과거 WIP | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | Task 3 중단 당시 역사 기록. 현재 상태는 단계 27 보고서와 최신 SHA artifacts를 기준으로 한다. | `superseded` |
 
 ---
 
@@ -144,7 +145,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.12.2`의 backend 268/frontend 313 기록은 철회 배포본의 과거 수치이며 승인 기준이 아니다. `1.13.0-dev` PR 직전 게이트는 backend 전체 347, credential focused 79, frontend 313/66 files, `tsc --noEmit`, `next build`를 통과했다. 실제 WPF 창 시각 조작과 web 브라우저 smoke는 이번 보안 변경에서 수행하지 않았다.
+최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0` RC는 backend 전체 550, frontend 381/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|

@@ -206,6 +206,13 @@
 - 코드: `scripts/{rotate_aeroone_credentials,view_aeroone_credentials}.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/{sqlite_recovery,windows_dpapi}.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
 - 회귀 방지: backend full 347 passed, credential focused 79 passed, frontend 313 passed(66 파일), ruff·basedpyright·compileall, PowerShell AST, `tsc --noEmit`, `next build`, old 401/new 200. 실제 WPF 창 시각 조작과 web 브라우저 smoke는 미실행.
 
+### 단계 27 — v1.13.0 릴리스 후보 통합
+
+- 파일: [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)
+- 분류: minor (`1.13.0`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package를 직접 v1.13 릴리스 후보로 통합.
+- 검증: backend 550, frontend 381/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier.
+- 릴리스 경계: 정식 PR 승인 전 main merge 금지. exact annotated tag에서만 publishable ZIP/SHA 생성.
+
 ---
 
 ## 보고서가 다루지 않는 자리

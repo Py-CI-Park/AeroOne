@@ -26,8 +26,8 @@
 
 USB 등 **단방향 허용 매체**로 폐쇄망 PC에 복사할 4가지:
 
-1. **AeroOne 오프라인 ZIP** — 정식 GitHub Release `1.13.0`의 `AeroOne-offline-1.13.0-YYYYMMDD-HHMMSS.zip`과 `.sha256` asset을 함께 받습니다. `1.13.0-dev`에서 로컬 생성한 중간 ZIP은 운영 반입에 사용하지 않습니다.
-   - 소스·wheelhouse·`node_modules`·prebuilt `.next`·옵션 인스톨러 포함. (vendored open-notebook 트리는 의도적으로 제외)
+1. **AeroOne 오프라인 ZIP** — 정식 GitHub Release `1.13.0`의 `AeroOne-offline-1.13.0.zip`과 `.sha256` asset을 함께 받습니다. 태그 전 `artifacts\qa\...\AeroOne-offline-1.13.0-pr-<SHA>.zip`은 `publishable=false` 검증물이며 운영 반입에 사용하지 않습니다.
+   - allow-list source·production wheelhouse/node_modules·prebuilt `.next`·정확한 Python/Node 인스톨러 포함. runtime data와 vendored open-notebook 트리는 제외.
 2. **Open Notebook 번들 ZIP** — 같은 Release 의 `AeroOne-bundle.zip` asset 을 받거나, open-notebook 저장소에서 `airgap\1-online-package.bat` 실행 → `dist\AeroOne-bundle.zip`
    - 자체 Python/uv/Node/SurrealDB/ffmpeg + prebuilt frontend + 자동 프로비저닝 스크립트 포함(자기완결).
 3. **Ollama 설치파일** — 폐쇄망 PC에 Ollama가 없으면 `OllamaSetup.exe` (https://ollama.com/download). 있으면 생략.

@@ -140,12 +140,12 @@ cd backend && .venv\Scripts\activate && set PYTHONPATH=. && python -m pytest tes
    git push origin main X.Y.Z
    gh release create X.Y.Z --title "..." --notes "..."
 
-   :: ZIP 빌드 (offline_package.bat 가 git describe 로 버전 prefix 를 자동 박는다)
+   :: ZIP 빌드 (exact annotated tag=HEAD=version, clean tree에서만 publishable=true)
    offline_package.bat
-   :: 산출물 예시: dist\AeroOne-offline-X.Y.Z-YYYYMMDD-HHMMSS.zip
+   :: 산출물: dist\AeroOne-offline-X.Y.Z.zip + .sha256
 
    :: GitHub Release 에 ZIP + sha256 asset 첨부 (운영자가 GitHub 에서 직접 받을 수 있도록)
-   gh release upload X.Y.Z dist\AeroOne-offline-X.Y.Z-*.zip dist\AeroOne-offline-X.Y.Z-*.zip.sha256
+   gh release upload X.Y.Z dist\AeroOne-offline-X.Y.Z.zip dist\AeroOne-offline-X.Y.Z.zip.sha256
    ```
 
 ### 9.2 브랜치 보존 정책
@@ -154,7 +154,7 @@ cd backend && .venv\Scripts\activate && set PYTHONPATH=. && python -m pytest tes
 
 ### 9.3 검증 게이트 (병합 직전)
 
-- backend `pytest tests` — **66 passed** 유지 (실패 0).
+- backend `pytest tests` — 현재 release phase report의 전체 건수(**1.13.0 RC: 550 passed**) 유지 (실패 0).
 - 코드 / 배치 / 문서 변경의 §6 위험 신호 6 가지를 commit 직전 자체 점검.
 - UI 변경이면 운영자가 dev 서버에서 직접 화면 확인 + Playwright 자동 검증 (preview, 셀, iframe 등 의도된 자리의 측정값).
 - 문서 변경이면 broken-link grep + 정합성 검증 (참조 commit / 코드 라인 번호가 실재).
@@ -171,13 +171,13 @@ cd backend && .venv\Scripts\activate && set PYTHONPATH=. && python -m pytest tes
 
 ### 9.5 dist/ 와 ZIP asset 관리 정책
 
-`dist/` 는 `.gitignore` 로 git 에서 제외되어 본 PC 의 디스크에만 존재합니다. 운영자가 GitHub 외부에서 ZIP 을 받을 수 있는 경로는 **GitHub Release 의 asset** 한 자리뿐 — `gh release upload X.Y.Z dist\AeroOne-offline-X.Y.Z-*.zip *.sha256` 으로 매 release 의 단계 5 에서 반드시 첨부합니다.
+`dist/` 는 `.gitignore` 로 git 에서 제외되어 본 PC 의 디스크에만 존재합니다. 운영자가 GitHub 외부에서 ZIP 을 받을 수 있는 경로는 **GitHub Release 의 asset** 한 자리뿐 — `gh release upload X.Y.Z dist\AeroOne-offline-X.Y.Z.zip dist\AeroOne-offline-X.Y.Z.zip.sha256` 으로 매 release 의 단계 5 에서 반드시 첨부합니다.
 
 본 PC 의 `dist/` 보존 정책:
 
-- 최신 ZIP 1 개와 그 sha256 파일만 보존 권장. 옛 ZIP / staging 폴더는 GitHub Release asset 에 이미 올라가 있으므로 본 PC 에서 정리해도 됩니다.
-- `dist/offline-package-YYYYMMDD-*` staging 디렉토리는 ZIP 생성 직후 자동 삭제되지 않으므로 운영자가 디스크 압박을 느낄 때 수동 정리.
-- ZIP 파일명은 `offline_package.bat` 가 `git describe --tags --abbrev=0` 으로 현재 reachable 한 최신 태그를 자동으로 prefix 에 박습니다. 1.0.4 main 에서 빌드하면 `AeroOne-offline-1.0.4-YYYYMMDD-HHMMSS.zip` 모양. 태그가 없는 환경에서는 prefix 없이 STAMP 만 사용 (fallback).
+- 최신 ZIP 1개와 그 sha256 파일만 보존 권장. 이전 exact-version 산출물은 GitHub Release asset에 올라간 뒤 로컬에서 정리할 수 있습니다.
+- release mode는 clean tree의 exact annotated tag가 `X.Y.Z` 또는 `vX.Y.Z`이고 HEAD와 일치할 때만 `dist/AeroOne-offline-X.Y.Z.zip`을 생성합니다.
+- tag가 없거나 version과 다르면 timestamp fallback 없이 `artifacts/qa/X.Y.Z/X.Y.Z-pr-<SHA>/`에 `publishable=false` QA 산출물을 생성합니다. dirty tree는 release/QA 모두 fail-closed입니다.
 
 ### 9.6 minor / major 트리거
 

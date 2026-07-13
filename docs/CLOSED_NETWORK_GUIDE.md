@@ -3,8 +3,8 @@
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
 - 기준 브랜치: `1.13.0-dev` (검증된 보안·패키지 hotfix 계보 통합)
-- 갱신일: 2026-07-12
-- 최근 완료 검증: backend **481 passed**, frontend Vitest **313 passed** (66 파일), `tsc --noEmit`·`next build`, 오프라인 QA 패키지 설치·기동 성공. 현재 merge SHA 전체 재검증은 진행 전.
+- 갱신일: 2026-07-13
+- 최근 완료 검증: backend **550 passed**, frontend Vitest **381 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR 병합 전 QA 산출물은 운영 반입 금지.
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 > [!CAUTION]
@@ -56,7 +56,7 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
-| `1.13.0-dev` | 단계 26 | 서비스/listener 중지 preflight, 연속 SQLite writer lock, DPAPI recovery·strict journal/manifest, crash 재개, 독립 백업 복원 뒤 history archive→새 회전, current-SID 자격 뷰어 |
+| `1.13.0 RC` | 단계 26–27 | 자격 증명 회전·복구 계약, shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, tracked allow-list 오프라인 패키징 |
 | `1.12.2` | **철회** | 화면 개선 이력만 보존. Release asset과 오프라인 ZIP은 신규 설치·재배포 금지 |
 | `1.12.1` | patch | 헤더 `로그인: <username>`/로그아웃 버튼, `login_events.status='logout'` 기록과 현재 세션 활동 제거, 사용자 생성의 필수 ID/PW·선택 이름/이메일(`users.display_name`, Alembic `20260707_0008`), 사용자 행별 **권한 수정** 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 마지막 갱신/15초 자동 새로고침 안내, 버전 배지 업데이트 날짜 표시 |
 | `1.12.0` | 단계 25 | 권한 키 한국어 라벨·설명·카테고리 카탈로그와 RBAC 매트릭스 pill/유효권한 요약, 감사 로그 전용 탭(작업자/액션/상태/기간 검색·필터·CSV), 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션, 탭 숫자 단축키 1~9·접이식 온보딩 도움말 (프론트-only, 백엔드/스키마 무변경) |
@@ -85,10 +85,10 @@
 
 ### 3.3 테스트 통계
 
-- backend 전체: **347 passed**
-- 자격 증명 회전 focused: **79 passed**
-- frontend 전체: **313 passed / 66 files**
-- 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, `offline_package.bat` packaging 제외 목록, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 자격 회전 service/listener preflight·연속 DB lock·DPAPI recovery·crash 재개·WPF ValidateOnly, 탭형 관리자 콘솔/RBAC/목록 UX, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API, 뷰어·Document·AeroAI 프론트 컴포넌트
+- backend 전체: **550 passed**
+- frontend 전체: **381 passed / 73 files**
+- browser/package: production Chrome smoke·matrix·Axe·Lighthouse·React 및 QA ZIP pre-stage/post-ZIP verifier 통과
+- 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, allow-list package builder/pre-post verifier, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 자격 회전 service/listener preflight·연속 DB lock·DPAPI recovery·crash 재개·WPF ValidateOnly, Activity privacy, 관리자 Overview/Users/Sessions/Modules, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API
 
 ### 3.4 릴리즈 1.13.0 폐쇄망 반입물
 
@@ -96,7 +96,7 @@
 
 | 반입물 | 릴리즈/생성 위치 | 폐쇄망 배치 | 필수 여부 |
 |---|---|---|---|
-| `AeroOne-offline-1.13.0-YYYYMMDD-HHMMSS.zip` + `.sha256` | 정식 AeroOne GitHub Release `1.13.0` asset | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
+| `AeroOne-offline-1.13.0.zip` + `.sha256` | 정식 AeroOne GitHub Release `1.13.0` asset | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
 | `AeroOne-bundle.zip` + `.sha256` | 같은 Release asset 또는 Open Notebook `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 후 `2-airgap-install.bat` | Open Notebook 사용 시 필수 |
 | Ollama 모델 폴더(`manifests\`, `blobs\`) | 인터넷 PC `%USERPROFILE%\.ollama\models` | 폐쇄망 PC `%USERPROFILE%\.ollama\models` | AeroAI/Open Notebook AI 사용 시 필수 |
 | `OllamaSetup.exe` | 인터넷 PC에서 별도 다운로드 | 폐쇄망 PC에 1회 설치 | 폐쇄망 PC에 Ollama 없을 때 필수 |
@@ -326,7 +326,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-현재 `1.13.0-dev` 기준 기대 결과는 **347 passed, 실패 0**입니다. `1.12.2`의 268건 기록은 철회 배포본의 과거 수치이므로 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
+현재 `1.13.0` RC 기준 기대 결과는 backend **550 passed**, frontend **381 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 

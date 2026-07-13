@@ -15,6 +15,17 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.13.0',
+    date: '2026-07-13',
+    items: [
+      '계정 메뉴와 안전한 로그인 복귀 경로를 추가하고 Document·NSA·AeroAI 접근 정책을 서버 권한과 일관되게 적용했습니다.',
+      '본인 활동 화면에서 최근 세션·로그인·AeroAI 사용 기록을 개인정보 최소화 형태로 확인할 수 있습니다.',
+      '관리자 Overview를 실제 24시간 집계로 교체하고 사용자·세션·모듈 운영 화면에 검색, 페이지네이션, 자동 갱신, 정책 미리보기를 추가했습니다.',
+      '브라우저 접근성·Lighthouse·React 진단과 tracked allow-list 기반 오프라인 패키지 검증 절차를 릴리스 게이트로 고정했습니다.',
+      '자격 증명 사고 대응 회전, 복구 journal, 격리 manifest와 current-user 보안 뷰어 계약을 강화했습니다.',
+    ],
+  },
+  {
     version: '1.12.2',
     date: '2026-07-07',
     items: [
