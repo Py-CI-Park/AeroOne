@@ -10,7 +10,7 @@
 |---|---|---|
 | `setup.bat` | 온라인 PC | 개발/사전 설치 (가상환경, pip install, DB seed, npm install) |
 | `start.bat` | 온라인 PC | 백엔드/프런트 동시 실행 (개발용 dev 서버) |
-| `offline_package.bat` | 온라인 PC | 현재 리포 + Python wheelhouse + frontend node_modules + 동봉 인스톨러를 ZIP 으로 패키징 |
+| `offline_package.bat` | 온라인 PC | `scripts\build_offline_package.ps1` 호환 wrapper: tracked allow-list + clean frontend production build + production wheelhouse + 정확한 인스톨러를 검증해 ZIP/SHA 생성 |
 | `setup_offline.bat` | 폐쇄망 PC | Python/Node 사전 점검, `.env` 재작성, 오프라인 pip install, DB, frontend production 빌드 |
 | `start_offline.bat` | 폐쇄망 PC | 운영 모드 실행 (`next start` + uvicorn). 1.0.22+ 기본은 LAN(`0.0.0.0`, IP 자동 감지), 이 PC 전용은 `--local` |
 | `scripts\run_all.bat` | 폐쇄망/개발 PC | AeroOne + Open Notebook co-deploy 실행. AeroOne backend health, Open Notebook API/Frontend/`/config` 준비를 순서대로 확인한 뒤 READY 처리 |
@@ -35,7 +35,7 @@ offline_package.bat    ─┘──→ ZIP 복사 ──→  압축 해제
 
 1. 온라인 PC 에서 `setup.bat` 으로 의존성과 DB 시드 완료
 2. 필요 시 `start.bat` 으로 동작 검증
-3. `offline_package.bat` 으로 ZIP 생성 (`dist\AeroOne-offline-X.Y.Z-YYYYMMDD-HHMMSS.zip`)
+3. `offline_package.bat` 으로 ZIP 생성 (정확한 annotated tag의 clean tree: `dist\AeroOne-offline-X.Y.Z.zip`; 태그 전 QA: `artifacts\qa\X.Y.Z\X.Y.Z-pr-<SHA>\`)
 4. ZIP 을 USB / 사내 파일서버 등 허용된 경로로 전달
 5. 폐쇄망 PC 에서 압축 해제 (권장 위치는 §4 참고)
 6. `setup_offline.bat` 실행 — 사전 점검 통과 후 자동 설치 진행
@@ -186,14 +186,14 @@ scripts\run_all.bat --dry-run --on-bundle ..\AeroOne-bundle --local
 [PRE  ] Python / Node / npm 사전 요건 점검
 [1   ] backend\.env, frontend\.env.local 재작성 (랜덤 secret/admin 비밀번호)
 [2   ] backend\.venv 생성 또는 재사용
-[3   ] pip install --no-index --find-links offline_assets\python-wheels -r requirements-dev.txt
+[3   ] pip install --no-index --find-links offline_assets\python-wheels -r requirements.txt
 [4   ] backend\data\aeroone.db 점검 → alembic upgrade head 또는 stamp head
 [5   ] python scripts\seed.py (관리자 / 카테고리 / 태그 / 샘플 Markdown / Newsletter import-sync)
 [6   ] frontend\node_modules 존재 확인 → frontend\.next\BUILD_ID 가 있으면 npm run build 건너뛰기 (1.0.6 부터 ZIP 에 prebuild .next 동봉)
 [OK  ] 다음 단계 안내
 ```
 
-> 1.0.6 부터는 `offline_package.bat` 가 본 PC 에서 `npm run build` 까지 끝낸 `frontend\.next` (cache 폴더 제외) 를 ZIP 에 동봉합니다. 폐쇄망 PC 의 `setup_offline.bat` 는 `.next\BUILD_ID` 가 보이면 webpack 단계를 통째로 건너뛰어 native binding mismatch (본 PC 와 폐쇄망 PC 의 Node 버전 / arch 차이로 SWC, bcrypt 등이 webpack 단계에서 실패하는 사고) 를 구조적으로 회피합니다. 1.0.5 이하 ZIP 으로 `setup_offline.bat` 를 돌리면 `.next` 가 없으므로 옛 동작 (폐쇄망 PC 에서 직접 build) 으로 fallback 합니다.
+> 1.13.0부터 `offline_package.bat`은 workspace robocopy 대신 tracked source allow-list를 clean stage에 풀고 `npm ci`→`npm run build`→`npm prune --omit=dev`를 수행합니다. 생성한 `frontend\.next`(cache 제외)와 production `node_modules`만 ZIP에 동봉합니다. 폐쇄망 PC의 `setup_offline.bat`는 `.next\BUILD_ID`가 보이면 webpack 단계를 건너뛰어 native binding mismatch를 회피합니다. source workspace의 기존 `node_modules`/`.next`/wheelhouse는 재사용하지 않습니다.
 
 ### 6.1 alembic upgrade vs stamp
 
@@ -340,7 +340,7 @@ curl -i -X POST -H "Content-Type: application/json" ^
 |---|---|---|
 | `setup_offline.bat` 가 사전 점검에서 `[ERROR] Python` 출력 후 종료 | Python 미설치 또는 PATH 누락 | `offline_assets\installers\python-*.exe` 실행 후 PowerShell 재시작 |
 | 같은 자리에서 `[ERROR] Node.js` | Node 미설치 또는 PATH 누락 | `offline_assets\installers\node-*.msi` 실행 후 재시작 |
-| 사전 점검은 통과하지만 wheelhouse 단계에서 실패 | wheel 파일 일부 누락 (온라인 PC 에서 transitive dep 누락) | 온라인 PC 에서 `offline_package.bat --dry-run` 으로 wheelhouse 재수집 후 재패키징 |
+| 사전 점검은 통과하지만 wheelhouse 단계에서 실패 | wheel 파일 일부 누락 또는 현재 Python과 폐쇄망 Python 버전 불일치 | 온라인 PC의 clean tree에서 `offline_package.bat`을 다시 실행해 production wheelhouse와 verifier 통과 ZIP을 재생성 |
 | 포트 충돌 (`port 18437/29501 is already in use`) | 다른 프로세스가 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료, 또는 `.env` 의 포트 변경 (CORS_ORIGINS, NEXT_PUBLIC_API_BASE_URL 도 함께 수정) |
 | 페이지 로딩 후 `Failed to fetch` (뉴스레터·관리자) | 페이지 호스트와 API 호스트가 다름 (`127.0.0.1` vs `localhost` 쿠키 격리) | 브라우저 주소를 `http://localhost:29501/...` 로 통일 |
 | Document·Civil·NSA 본문이 외부 PC 에서 `Failed to fetch` | 1.4.0 이전 버전 — 클라이언트가 `localhost:18437` 직접 호출 | **1.4.0 이상에서 자동 해결** (same-origin 프록시 경유). 구버전이면 ZIP 을 1.4.0 으로 재배포 |

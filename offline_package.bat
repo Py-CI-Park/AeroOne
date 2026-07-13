@@ -2,90 +2,25 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 set "ROOT=%~dp0"
-if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
-set "DRY_RUN="
-if /I "%~1"=="--dry-run" set "DRY_RUN=1"
-if /I "%~1"=="--help" goto :help
+set "BUILDER=%ROOT%scripts\build_offline_package.ps1"
 
-for /f %%I in ('powershell -NoProfile -Command "(Get-Date).ToString(\"yyyyMMdd-HHmmss\")"') do set "STAMP=%%I"
-set "GIT_VERSION="
-for /f "delims=" %%V in ('git describe --tags --abbrev^=0 2^>nul') do set "GIT_VERSION=%%V"
-set "DIST_DIR=%ROOT%\dist"
-set "STAGE_DIR=%DIST_DIR%\offline-package-%STAMP%"
-set "REPO_STAGE=%STAGE_DIR%\AeroOne"
-set "WHEEL_DIR=%REPO_STAGE%\offline_assets\python-wheels"
-if defined GIT_VERSION (
-  set "ZIP_PATH=%DIST_DIR%\AeroOne-offline-%GIT_VERSION%-%STAMP%.zip"
-) else (
-  set "ZIP_PATH=%DIST_DIR%\AeroOne-offline-%STAMP%.zip"
-)
-set "INSTALLER_SRC=%ROOT%\offline_installers"
-
-if "%DRY_RUN%"=="1" goto :dry_run_emit
-goto :real_run
-
-:dry_run_emit
-echo [DRY-RUN] create %REPO_STAGE%
-echo [DRY-RUN] robocopy repository into stage
-echo [DRY-RUN]   /XD adds: .gjc artifacts vendor ^(workflow state + QA artifacts + Open Notebook co-deploy 트리는 AeroOne ZIP 에서 제외 — 기존 보호 제외목록은 무변경^)
-echo [DRY-RUN]   /XF adds: .git .ug-* ^(worktree .git 파일 + Ultragoal checkpoint scratch files 제외^)
-echo [DRY-RUN] py -3.12 -m pip download -r backend\requirements-dev.txt -d %WHEEL_DIR%
-echo [DRY-RUN] npm install in frontend if needed
-echo [DRY-RUN] robocopy frontend\node_modules into staged frontend\node_modules
-echo [DRY-RUN] copy offline_installers if present
-echo [DRY-RUN] Compress-Archive to %ZIP_PATH%
-exit /b 0
-
-:real_run
-
-if exist "%STAGE_DIR%" rmdir /s /q "%STAGE_DIR%"
-mkdir "%REPO_STAGE%" || exit /b 1
-mkdir "%WHEEL_DIR%" || exit /b 1
-if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
-
-robocopy "%ROOT%" "%REPO_STAGE%" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD .git .gjc .omx .omc .worktrees .venv .python_packages node_modules dist artifacts backend\.venv frontend\node_modules frontend\.next backend\data offline_installers vendor /XF .git .ug-* >nul
-if errorlevel 8 exit /b 1
-
-if not exist "%ROOT%\frontend\node_modules" (
-  pushd "%ROOT%\frontend"
-  call npm install || exit /b 1
-  popd
-) else (
-  echo [INFO] frontend\node_modules already exists. Reusing current install.
+if /I "%~1"=="--help" (
+  if not "%~2"=="" goto :invalid_args
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%BUILDER%" -Help
+  exit /b !ERRORLEVEL!
 )
 
-echo [INFO] Pre-building frontend (.next) on online PC so the offline PC skips webpack
-pushd "%ROOT%\frontend"
-call npm run build || (popd & exit /b 1)
-popd
-
-robocopy "%ROOT%\frontend\node_modules" "%REPO_STAGE%\frontend\node_modules" /E /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
-if errorlevel 8 exit /b 1
-
-robocopy "%ROOT%\frontend\.next" "%REPO_STAGE%\frontend\.next" /E /R:1 /W:1 /NFL /NDL /NJH /NJS /XD cache >nul
-if errorlevel 8 exit /b 1
-
-py -3.12 -m pip download -r "%ROOT%\backend\requirements-dev.txt" -d "%WHEEL_DIR%" || py -3 -m pip download -r "%ROOT%\backend\requirements-dev.txt" -d "%WHEEL_DIR%" || python -m pip download -r "%ROOT%\backend\requirements-dev.txt" -d "%WHEEL_DIR%" || exit /b 1
-
-if exist "%INSTALLER_SRC%" (
-  robocopy "%INSTALLER_SRC%" "%REPO_STAGE%\offline_assets\installers" /E /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
+if /I "%~1"=="--dry-run" (
+  if not "%~2"=="" goto :invalid_args
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%BUILDER%" -Version 1.13.0 -DryRun
+  exit /b !ERRORLEVEL!
 )
 
->"%REPO_STAGE%\offline_assets\README-OFFLINE.txt" echo AeroOne offline package - quick start
->>"%REPO_STAGE%\offline_assets\README-OFFLINE.txt" echo 1. (optional) Place Python 3.12 / Node 20 installers in offline_installers before packaging.
->>"%REPO_STAGE%\offline_assets\README-OFFLINE.txt" echo 2. On the offline PC: run setup_offline.bat, then start_offline.bat.
->>"%REPO_STAGE%\offline_assets\README-OFFLINE.txt" echo 3. AeroAI + Open Notebook co-deploy: see docs\runbook\closed-network-install-manual.md (full step-by-step).
->>"%REPO_STAGE%\offline_assets\README-OFFLINE.txt" echo    - run both together with scripts\run_all.bat (needs the Open Notebook bundle + Ollama models).
+if not "%~1"=="" goto :invalid_args
 
-if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
-powershell -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory('%REPO_STAGE%', '%ZIP_PATH%', [System.IO.Compression.CompressionLevel]::Fastest, $false)" || exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%BUILDER%" -Version 1.13.0
+exit /b %ERRORLEVEL%
 
-echo [OK] offline package created: %ZIP_PATH%
-exit /b 0
-
-:help
-echo Usage: offline_package.bat [--dry-run]
-echo.
-echo Creates a ZIP bundle for offline Windows PCs.
-echo Bundle includes repo source, Python wheelhouse, frontend node_modules, and optional installers.
-exit /b 0
+:invalid_args
+echo [ERROR] Usage: offline_package.bat [--dry-run^|--help]
+exit /b 2

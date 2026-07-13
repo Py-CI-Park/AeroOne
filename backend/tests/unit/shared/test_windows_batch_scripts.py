@@ -746,14 +746,15 @@ def test_run_all_passes_network_mode_to_open_notebook_bundle(tmp_path: Path) -> 
     assert '3-run.bat" --local' in result.stdout
 
 
-def test_offline_package_excludes_workflow_state_from_zip_stage() -> None:
-    result = _run_cmd(REPO_ROOT, "offline_package.bat", "--dry-run")
+def test_offline_package_delegates_to_allow_list_builder() -> None:
+    result = _run_cmd(REPO_ROOT, "offline_package.bat", "--help")
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "/XD adds: .gjc artifacts vendor" in result.stdout
-    assert "/XF adds: .git .ug-*" in result.stdout
+    assert "git-archive allow-list" in result.stdout
+    assert "requirements-dev.txt" not in result.stdout
 
     script = (REPO_ROOT / "offline_package.bat").read_text(encoding="utf-8")
-    assert "/XD .git .gjc .omx .omc .worktrees" in script
-    assert " .venv .python_packages node_modules dist artifacts backend\\.venv" in script
-    assert "/XF .git .ug-*" in script
+    assert "scripts\\build_offline_package.ps1" in script
+    assert "-Version 1.13.0 -DryRun" in script
+    assert "robocopy" not in script.lower()
+    assert "requirements-dev.txt" not in script
