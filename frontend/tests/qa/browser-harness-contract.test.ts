@@ -13,7 +13,7 @@ type Manifest = {
 const frontendRoot = path.resolve(__dirname, '../..');
 const manifest = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'package.json'), 'utf8')) as Manifest;
 const lock = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'package-lock.json'), 'utf8')) as {
-  packages: Record<string, { version?: string; devDependencies?: Record<string, string> }>;
+  packages: Record<string, { version?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string> }>;
 };
 const config = fs.readFileSync(path.join(frontendRoot, 'playwright.qa.config.ts'), 'utf8');
 const spec = fs.readFileSync(path.join(frontendRoot, 'tests/qa/v113-browser.e2e.ts'), 'utf8');
@@ -43,10 +43,11 @@ const qaScripts = {
 
 describe('browser harness contract', () => {
   it('pins QA dependencies and scripts exactly', () => {
-    expect(manifest.dependencies.next).toBe('15.2.9');
+    expect(manifest.dependencies.next).toBe('15.5.18');
     expect(manifest.devDependencies).toMatchObject(qaDependencies);
     expect(manifest.scripts).toMatchObject(qaScripts);
     expect(lock.packages[''].devDependencies).toMatchObject(qaDependencies);
+    expect(lock.packages['']?.dependencies?.next).toBe('15.5.18');
     for (const [name, version] of Object.entries(qaDependencies)) {
       expect(lock.packages[`node_modules/${name}`]?.version).toBe(version);
     }
