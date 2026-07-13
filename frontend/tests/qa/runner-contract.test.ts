@@ -16,8 +16,10 @@ describe('v1.13 browser QA runner contract', () => {
     expect(lighthouse).toContain("if (argv[i] === '--sha')");
     expect(lighthouse).toContain("chrome.port");
     expect(lighthouse).toContain("await chrome.kill()");
-    expect(lighthouse).toContain("await import('chrome-launcher')");
+    expect(lighthouse).toContain("await importFrontendPackage('chrome-launcher')");
     expect(lighthouse).not.toContain('port: 0');
+    expect(lighthouse).toContain("createRequire(path.join(REPO_ROOT, 'frontend', 'package.json'))");
+    expect(lighthouse).toContain("await importFrontendPackage('lighthouse')");
     expect(lighthouse).toContain("const AUTHENTICATED_ROUTES = new Set(['/activity', '/admin']);");
     expect(lighthouse).toContain("const QA_USERNAME = 'qa-admin';");
     expect(lighthouse).toContain("const QA_PASSWORD = 'QA-admin-v1130-strong!';");

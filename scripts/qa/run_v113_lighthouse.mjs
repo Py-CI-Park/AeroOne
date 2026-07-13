@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import process from 'node:process';
 
 const VERSION = 'v1.13.0';
 const REPO_ROOT = path.resolve(import.meta.dirname, '../..');
+const FRONTEND_REQUIRE = createRequire(path.join(REPO_ROOT, 'frontend', 'package.json'));
 const ROUTES = ['/login', '/activity', '/admin'];
 const AUTHENTICATED_ROUTES = new Set(['/activity', '/admin']);
 const FORM_FACTORS = ['mobile', 'desktop'];
@@ -63,10 +66,14 @@ function assertRequestedPath(output, requestedUrl, route) {
   if (typeof finalUrl !== 'string' || new URL(finalUrl).origin !== new URL(requestedUrl).origin || new URL(finalUrl).pathname !== route) fail(`audit redirected away from requested route ${route}`);
 }
 
+async function importFrontendPackage(name) {
+  const resolved = FRONTEND_REQUIRE.resolve(name);
+  return import(pathToFileURL(resolved).href);
+}
 async function run() {
   const args = parseArgs(process.argv); const runtime = validateRuntime(args.runtime, args.sha);
   if (!fs.existsSync(CHROME_PATH)) fail(`stable Chrome not found: ${CHROME_PATH}`);
-  const { default: lighthouse } = await import('lighthouse'); const { launch } = await import('chrome-launcher');
+  const { default: lighthouse } = await importFrontendPackage('lighthouse'); const { launch } = await importFrontendPackage('chrome-launcher');
   let chrome; let sessionCookie;
   const results = [];
   try {
