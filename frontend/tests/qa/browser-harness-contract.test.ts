@@ -108,6 +108,7 @@ describe('browser harness contract', () => {
     expect(teardown).toContain("kind: 'browser-teardown-test-report'");
     expect(teardown).toContain('ownedPidsStopped: true');
     expect(teardown).toContain('ownedListenersRemaining: 0');
+    expect(teardown).toContain("if (result.code !== 0) throw new Error('listener inspection failed')");
     expect(teardown).toContain('tempRootRemoved: true');
     expect(teardown).toContain('runtimeReceiptRemoved: true');
     expect(teardown).toContain("verdict: 'passed'");

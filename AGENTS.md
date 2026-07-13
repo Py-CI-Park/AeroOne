@@ -176,7 +176,7 @@ cd backend && .venv\Scripts\activate && set PYTHONPATH=. && python -m pytest tes
 본 PC 의 `dist/` 보존 정책:
 
 - 최신 ZIP 1개와 그 sha256 파일만 보존 권장. 이전 exact-version 산출물은 GitHub Release asset에 올라간 뒤 로컬에서 정리할 수 있습니다.
-- release mode는 clean tree의 exact annotated tag가 `X.Y.Z` 또는 `vX.Y.Z`이고 HEAD와 일치할 때만 `dist/AeroOne-offline-X.Y.Z.zip`을 생성합니다.
+- release mode는 clean tree의 접두사 없는 exact annotated tag `X.Y.Z`가 HEAD와 일치할 때만 `dist/AeroOne-offline-X.Y.Z.zip`을 생성합니다.
 - tag가 없거나 version과 다르면 timestamp fallback 없이 `artifacts/qa/X.Y.Z/X.Y.Z-pr-<SHA>/`에 `publishable=false` QA 산출물을 생성합니다. dirty tree는 release/QA 모두 fail-closed입니다.
 
 ### 9.6 minor / major 트리거

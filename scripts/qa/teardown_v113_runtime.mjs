@@ -22,9 +22,13 @@ const runCommand = (command, args) => new Promise(resolveCommand => {
 const processInfo = pid => runCommand('wmic.exe', ['process', 'where', `ProcessId=${pid}`, 'get', 'CommandLine', '/value']);
 const commandLine = async pid => (await processInfo(pid)).stdout;
 const isAlive = async pid => (await commandLine(pid)).includes('CommandLine=');
-const hasListener = async port => (
-  await runCommand('netstat.exe', ['-ano', '-p', 'TCP'])
-).stdout.split(/\r?\n/).some(line => line.includes(`127.0.0.1:${port}`) && /LISTENING/i.test(line));
+const hasListener = async port => {
+  const result = await runCommand('netstat.exe', ['-ano', '-p', 'TCP']);
+  if (result.code !== 0) throw new Error('listener inspection failed');
+  return result.stdout
+    .split(/\r?\n/)
+    .some(line => line.includes(`127.0.0.1:${port}`) && /LISTENING/i.test(line));
+};
 const sleep = milliseconds => new Promise(resolveDelay => setTimeout(resolveDelay, milliseconds));
 
 function validateRuntime(runtime) {
