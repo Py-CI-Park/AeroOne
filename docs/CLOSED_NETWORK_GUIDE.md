@@ -4,7 +4,7 @@
 
 - 기준 브랜치: `1.13.0-dev` (검증된 보안·패키지 hotfix 계보 통합)
 - 갱신일: 2026-07-13
-- 최근 완료 검증: backend **550 passed**, frontend Vitest **381 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR 병합 전 QA 산출물은 운영 반입 금지.
+- 최근 완료 검증: backend **550 passed**, frontend Vitest **382 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR 병합 전 QA 산출물은 운영 반입 금지.
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 > [!CAUTION]
@@ -86,7 +86,7 @@
 ### 3.3 테스트 통계
 
 - backend 전체: **550 passed**
-- frontend 전체: **381 passed / 73 files**
+- frontend 전체: **382 passed / 73 files**
 - browser/package: production Chrome smoke·matrix·Axe·Lighthouse·React 및 QA ZIP pre-stage/post-ZIP verifier 통과
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, allow-list package builder/pre-post verifier, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 자격 회전 service/listener preflight·연속 DB lock·DPAPI recovery·crash 재개·WPF ValidateOnly, Activity privacy, 관리자 Overview/Users/Sessions/Modules, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API
 
@@ -326,7 +326,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-현재 `1.13.0` RC 기준 기대 결과는 backend **550 passed**, frontend **381 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
+현재 `1.13.0` RC 기준 기대 결과는 backend **550 passed**, frontend **382 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 

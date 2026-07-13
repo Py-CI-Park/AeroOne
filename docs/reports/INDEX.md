@@ -210,7 +210,7 @@
 
 - 파일: [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)
 - 분류: minor (`1.13.0`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package를 직접 v1.13 릴리스 후보로 통합.
-- 검증: backend 550, frontend 381/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier.
+- 검증: backend 550, frontend 382/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier.
 - 릴리스 경계: 정식 PR 승인 전 main merge 금지. exact annotated tag에서만 publishable ZIP/SHA 생성.
 
 ---
