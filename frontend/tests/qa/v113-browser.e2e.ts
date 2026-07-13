@@ -74,7 +74,7 @@ async function login(page: Page) {
   await page.locator('input[autocomplete="username"]').fill(QA_USERNAME);
   await page.locator('input[autocomplete="current-password"]').fill(QA_PASSWORD);
   await page.getByRole('button', { name: '로그인' }).click();
-  await page.waitForURL(/\/admin(?:$|\?)/);
+  await page.waitForURL(url => url.pathname === '/admin');
   await page.waitForLoadState('networkidle');
   await expect.poll(
     async () => (await page.context().cookies()).map((cookie) => cookie.name),

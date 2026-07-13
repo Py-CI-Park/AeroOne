@@ -82,6 +82,8 @@ describe('browser harness contract', () => {
     expect(fs.readFileSync(path.join(frontendRoot, 'next.config.ts'), 'utf8')).toContain('generateBuildId');
     expect(spec).toMatch(/requestfailed/);
     expect(spec).toContain("QA-admin-v1130-strong!");
+    expect(spec).toContain("waitForURL(url => url.pathname === '/admin')");
+    expect(spec).not.toContain('waitForURL(/\\/admin');
     expect(spec).toMatch(/hostname/);
     expect(spec).toMatch(/localhost.*127\.0\.0\.1.*::1/);
     expect(fs.existsSync(path.join(frontendRoot, 'tests/qa/v113-browser.e2e.ts'))).toBe(true);
