@@ -92,7 +92,7 @@ async function login(page: Page) {
   await visit(page, '/login?next=/admin');
   await page.locator('input[autocomplete="username"]').fill(QA_USERNAME);
   await page.locator('input[autocomplete="current-password"]').fill(QA_PASSWORD);
-  await page.getByRole('button', { name: '로그인' }).click();
+  await page.getByRole('button', { name: '로그인', exact: true }).click();
   await page.waitForURL(url => url.pathname === '/admin');
   await page.waitForLoadState('networkidle');
   await expect.poll(
@@ -103,7 +103,7 @@ async function loginAs(page: Page, username: string, password: string, next = '/
   await visit(page, `/login?next=${encodeURIComponent(next)}`);
   await page.locator('input[autocomplete="username"]').fill(username);
   await page.locator('input[autocomplete="current-password"]').fill(password);
-  await page.getByRole('button', { name: '로그인' }).click();
+  await page.getByRole('button', { name: '로그인', exact: true }).click();
   await page.waitForURL(url => url.pathname === next);
   await page.waitForLoadState('networkidle');
 }
@@ -179,11 +179,14 @@ test.describe('behavioral authorization matrix @matrix', () => {
 
   test('anonymous redirect and invalid credentials remain safe @matrix', async ({ page }) => {
     await withExpectedHttpStatuses(page, [401], async () => {
-      await page.goto('/activity', { waitUntil: 'domcontentloaded' });
+      await page.goto('/activity', { waitUntil: 'networkidle' });
+      await expect(page).toHaveURL(/\/activity$/);
+      await expect(page.getByText('로그인이 필요합니다.')).toBeVisible();
+      await page.getByRole('link', { name: '로그인 페이지로 이동' }).click();
       await page.waitForURL(/\/login\?next=%2Factivity/);
       await page.locator('input[autocomplete="username"]').fill('qa-normal');
       await page.locator('input[autocomplete="current-password"]').fill('not-the-password');
-      await page.getByRole('button', { name: '로그인' }).click();
+      await page.getByRole('button', { name: '로그인', exact: true }).click();
       await expect(page.getByRole('alert')).toBeVisible();
       await expect(page).toHaveURL(/\/login\?next=%2Factivity/);
       await expect(page.getByRole('alert')).not.toContainText(/token|secret|password|hash|ip|user agent/i);
@@ -232,6 +235,7 @@ test.describe('behavioral authorization matrix @matrix', () => {
     });
     await page.goto('/ai');
     await expect(page.getByText('NSA (권한 없음)', { exact: true })).toBeVisible();
+    await page.context().clearCookies();
 
     await loginAs(page, 'qa-nsa', 'QA-nsa-v1130-strong!', '/nsa');
     await expect(page.getByRole('heading', { name: 'NSA' })).toBeVisible();
