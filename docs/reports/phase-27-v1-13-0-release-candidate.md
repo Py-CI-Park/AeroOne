@@ -23,9 +23,9 @@
 
 | 게이트 | 명령 | 관측 결과 |
 |---|---|---|
-| Backend 전체 | `node scripts/qa/run_v113_backend_gates.mjs --sha <SHA> --suite all` | backend 567 passed, package·migration-heads·migration exit 0 |
+| Backend 전체 | `node scripts/qa/run_v113_backend_gates.mjs --sha <SHA> --suite all` | backend 570 passed, package·migration-heads·migration exit 0 |
 | Frontend 전체 | `npm test && npm run typecheck && npm run build` | Vitest 397 passed / 73 files, TypeScript 0 error, CVE-2026-23870 수정 Next 15.5.18 production build 성공 |
-| Browser RC | `npm run qa:browser:all -- --sha <SHA>` | smoke 1, matrix 4, Axe 1 통과; Lighthouse·React 진단·teardown exit 0 |
+| Browser RC | `npm run qa:browser:all -- --sha <SHA>` | smoke 1, matrix 10, Axe 1 통과; Lighthouse 18회 category 중앙값 100·실패 audit 0, React 진단·teardown exit 0 |
 | QA 오프라인 ZIP | `powershell -File scripts/build_offline_package.ps1 -Version 1.13.0` | `publishable=False`; clean build와 인스톨러 검증 후 pre-stage/post-ZIP 모두 `ok: true`, ZIP/SHA 생성 |
 | Wrapper 계약 | focused pytest + `offline_package.bat --help` | 25 passed, builder 위임·production requirements·금지 재사용 계약 통과 |
 | 노출 검사 | QA artifact pattern scan | 로컬 사용자 경로, 합성 비밀번호, 실제 secret assignment, U+FFFD 0 |
