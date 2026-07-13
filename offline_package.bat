@@ -12,13 +12,13 @@ if /I "%~1"=="--help" (
 
 if /I "%~1"=="--dry-run" (
   if not "%~2"=="" goto :invalid_args
-  powershell -NoProfile -ExecutionPolicy Bypass -File "%BUILDER%" -Version 1.13.0 -DryRun
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%BUILDER%" -Version 1.13.1 -DryRun
   exit /b !ERRORLEVEL!
 )
 
 if not "%~1"=="" goto :invalid_args
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%BUILDER%" -Version 1.13.0
+powershell -NoProfile -ExecutionPolicy Bypass -File "%BUILDER%" -Version 1.13.1
 exit /b %ERRORLEVEL%
 
 :invalid_args

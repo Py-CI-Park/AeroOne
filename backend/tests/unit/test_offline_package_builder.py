@@ -32,7 +32,7 @@ from app.operations.package_policy_contracts import (
 )
 from app.operations.package_policy_verifier import compute_sha256, verify_post_zip, verify_pre_stage
 
-_VERSION = "1.13.0"
+_VERSION = "1.13.1"
 _PY_INSTALLER = "python-3.12.7-amd64.exe"
 _NODE_INSTALLER = "node-v20.18.0-x64.msi"
 _BUILDER_SCRIPT = Path(__file__).parents[3] / "scripts" / "build_offline_package.ps1"

@@ -11,8 +11,8 @@ test('shows the current version label and hides the dialog initially', () => {
   expect(screen.queryByTestId('version-dialog')).not.toBeInTheDocument();
 });
 
-test('tracks the current 1.13.0 release version and update date', () => {
-  expect(APP_VERSION).toBe('1.13.0');
+test('tracks the current 1.13.1 release version and update date', () => {
+  expect(APP_VERSION).toBe('1.13.1');
   expect(APP_UPDATED_DATE).toBe('2026-07-13');
 });
 
@@ -23,7 +23,7 @@ test('opens the changelog dialog with latest entry and contact info on click', (
 
   expect(screen.getByTestId('version-dialog')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: '업데이트 내역' })).toBeInTheDocument();
-  expect(screen.getByText(APP_UPDATED_DATE)).toBeInTheDocument();
+  expect(screen.getAllByText(APP_UPDATED_DATE).length).toBeGreaterThan(0);
   // 최신 릴리스의 첫 항목 본문이 보인다.
   expect(screen.getByText(CHANGELOG[0].items[0])).toBeInTheDocument();
   // 문의 정보는 이름만 노출(이메일/링크 없음).

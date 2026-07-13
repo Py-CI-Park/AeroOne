@@ -1,4 +1,4 @@
-# 단계 27 — v1.13.0 정식 릴리스
+# 단계 27 — v1.13.0 정식 릴리스 (역사 보존) 및 1.13.1 forward-only patch 교정
 
 ## 변경 배경
 
@@ -40,7 +40,6 @@
 - Windows Sandbox는 부가 검증이며, 필수 패키지 게이트는 빈 격리 폴더에서 네트워크 없이 setup/start/health/login/empty-NSA/cleanup을 확인하는 것이다.
 
 ## PR·릴리스 경계
-
 당시 계획은 다음 순서였다.
 
 1. 최종 dev SHA에서 backend/frontend/browser/package/격리 설치 증거를 다시 생성한다.
@@ -49,4 +48,11 @@
 4. 승인 후 `--no-ff` 병합, annotated `1.13.0` tag, exact-tag ZIP/SHA 생성, push, GitHub Release asset 업로드와 재다운로드 digest 검증을 수행한다.
 5. 태그는 이동하지 않으며 실패는 forward fix로 처리한다.
 
-현재 완료 상태: PR #22는 main에 병합되었고 merge commit은 `c1cbc01062f0d30a97be0ea3df47973d040d2638`, annotated tag는 `1.13.0`이다. GitHub Release asset과 `.sha256` 게시 및 재다운로드 digest 검증도 완료되었으며, 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`이다. 태그는 이동하지 않았고 1.13.1을 제안하지 않는다.
+### Forward-only 1.13.1 교정과 immutable 게시 조건
+1.13.0의 역사 릴리스는 다음 기록을 보존한다.
+
+1. PR #22가 main에 `c1cbc01062f0d30a97be0ea3df47973d040d2638`로 병합되었다.
+2. annotated `1.13.0` tag, GitHub Release asset, `.sha256`, 재다운로드 digest 검증과 공식 ZIP SHA-256 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`은 완료된 역사 사실이다.
+3. `1.13.0` tag·asset·digest는 이동·교체·삭제하지 않는다. 기존 PR #23 기록도 역사 사실로 유지한다.
+
+최종 Architect finding에 따라 GitHub immutable releases policy는 `enabled=true`이고, 정책이 기존 Release에 소급 적용되지 않아 `1.13.0`은 `immutable=false`이다. 따라서 1.13.1은 제품 기능 변경 없이 1.13.0을 움직이지 않는 forward-only patch로 준비한다. 현재 1.13.1은 아직 게시 전이며, exact annotated `1.13.1` tag → draft Release 생성 → asset upload → publish → `immutable:true` 확인을 모두 완료해야 정식 게시 완료로 간주한다. 새 digest는 게시 전이므로 만들거나 기록하지 않는다. immutable=true로 게시된 1.13.1 Release의 ZIP과 `.sha256`을 확인한 뒤에만 운영 반입을 권장한다.

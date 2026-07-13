@@ -5,10 +5,14 @@
 - 기준 브랜치: `main` (정식 1.13.0 릴리스 계보)
 - 갱신일: 2026-07-13
 - 최근 완료 검증: backend **570 passed**, frontend Vitest **397 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR #22 병합과 annotated tag `1.13.0`, GitHub Release asset 게시를 완료했다.
+- 기준 브랜치: `main` (역사적 정식 1.13.0 릴리스 계보)
+- 갱신일: 2026-07-13
+- 최근 완료 검증: 역사 릴리스 `1.13.0`의 backend **570 passed**, frontend Vitest **397 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR #22 병합과 annotated tag `1.13.0`, GitHub Release asset 게시 기록은 보존한다. `1.13.1`은 제품 기능 변경 없는 forward-only patch 준비 상태이며 아직 게시되지 않았다.
+- GitHub immutable releases 최종 Architect finding: `enabled=true`; 기존 `1.13.0` Release는 소급 적용되지 않아 `immutable=false`.
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 > [!CAUTION]
-> `1.12.2` Release와 오프라인 ZIP은 철회되었습니다. 신규 설치·재배포에 사용하지 말고, 이미 반입한 PC는 서비스를 중지한 채 [정식 `1.13.0` GitHub Release asset](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)으로 교체한 뒤 §11.5.1의 전체 자격 증명 회전을 수행합니다. 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`입니다.
+> `1.12.2` Release와 오프라인 ZIP은 철회되었습니다. `1.13.0` tag·asset·digest는 역사 릴리스로 보존되며 이동·교체·삭제하지 않습니다. 신규 운영 반입은 아직 게시되지 않은 `1.13.1`이 아니라, immutable policy 확인을 마친 `1.13.1` Release가 게시된 뒤 그 ZIP과 `.sha256`을 사용해야 합니다. `1.13.0`의 공식 ZIP SHA-256은 역사 검증 기록으로 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`입니다.
 
 ---
 
@@ -46,7 +50,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**가능합니다.** 단, 철회된 `1.12.2`가 아니라 정식 `1.13.0` 배포본을 사용해야 합니다. 단일 PC(`Mode A`)와 LAN 다중 PC(`Mode B`) 운영, 1.12.x의 화면·관리자 UX, 1.10.0 이후 NSA 서버측 접근제어는 유지하면서 전체 자격·세션 회전과 복구 계약을 추가합니다.
+**현재는 준비 단계입니다.** `1.12.2`는 철회되었고 `1.13.0`은 역사 보존 대상입니다. 제품 기능 변경 없이 준비하는 forward-only `1.13.1` Release가 immutable=true로 게시되기 전에는 신규 운영 반입을 완료로 간주하지 않습니다. 게시 후에는 해당 Release의 ZIP과 `.sha256`만 사용합니다.
 
 ---
 
@@ -56,8 +60,9 @@
 
 | 커밋 | 단계 | 의미 |
 |---|---|---|
-| `1.13.0` | 단계 26–27 | 자격 증명 회전·복구 계약, shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, tracked allow-list 오프라인 패키징 및 정식 릴리스 |
+| `1.13.0` | 역사 릴리스 | 단계 26–27 기능·검증, PR #22/merge/tag/asset/digest 기록을 보존. tag·asset·digest는 이동·교체·삭제하지 않음 |
 | `1.12.2` | **철회** | 화면 개선 이력만 보존. Release asset과 오프라인 ZIP은 신규 설치·재배포 금지 |
+| `1.13.1` | forward-only patch 준비 | 제품 기능 변경 없이 immutable Release 게시를 준비 중이며 아직 미게시 |
 | `1.12.1` | patch | 헤더 `로그인: <username>`/로그아웃 버튼, `login_events.status='logout'` 기록과 현재 세션 활동 제거, 사용자 생성의 필수 ID/PW·선택 이름/이메일(`users.display_name`, Alembic `20260707_0008`), 사용자 행별 **권한 수정** 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 마지막 갱신/15초 자동 새로고침 안내, 버전 배지 업데이트 날짜 표시 |
 | `1.12.0` | 단계 25 | 권한 키 한국어 라벨·설명·카테고리 카탈로그와 RBAC 매트릭스 pill/유효권한 요약, 감사 로그 전용 탭(작업자/액션/상태/기간 검색·필터·CSV), 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션, 탭 숫자 단축키 1~9·접이식 온보딩 도움말 (프론트-only, 백엔드/스키마 무변경) |
 | `1.11.0` | 단계 24 | 관리자 로그인/CRUD same-origin `/api/frontend/auth/*`, `/api/frontend/admin/*` 프록시 통합, 전용 `/api/frontend/search/unified`, 탭형 `/admin` 콘솔(모듈/사용자/RBAC/세션/시스템/분류/검색/백업), RBAC 입력 위젯, 목록 검색/정렬/상태, ARIA Tabs, ResourceGrant key 방어 |
@@ -90,14 +95,13 @@
 - browser/package: production Chrome smoke·matrix·Axe·Lighthouse·React 및 QA ZIP pre-stage/post-ZIP verifier 통과
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, allow-list package builder/pre-post verifier, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 자격 회전 service/listener preflight·연속 DB lock·DPAPI recovery·crash 재개·WPF ValidateOnly, Activity privacy, 관리자 Overview/Users/Sessions/Modules, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API
 
-### 3.4 릴리즈 1.13.0 폐쇄망 반입물
-
-`1.12.2` asset은 철회되었습니다. [정식 `1.13.0` GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)의 Release asset과 checksum이 게시되어 있으므로 해당 게시본을 반입합니다.
+### 3.4 릴리즈 1.13.1 폐쇄망 반입물
+`1.13.0` tag·asset·digest는 역사 릴리스로 보존합니다. `1.13.1`은 아직 게시되지 않았으므로 현재 반입할 수 없습니다. immutable policy의 `enabled=true` 상태에서 exact annotated `1.13.1` tag를 기준으로 draft Release 생성 → asset 업로드 → publish → `immutable:true` 확인을 모두 완료한 뒤에만 다음 반입물을 사용합니다. 새 digest는 아직 없으므로 이 문서에 기재하지 않습니다.
 
 | 반입물 | 릴리즈/생성 위치 | 폐쇄망 배치 | 필수 여부 |
 |---|---|---|---|
-| `AeroOne-offline-1.13.0.zip` + `.sha256` | 정식 AeroOne GitHub Release `1.13.0` asset | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
-| `AeroOne-bundle.zip` + `.sha256` | 같은 Release asset 또는 Open Notebook `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 후 `2-airgap-install.bat` | Open Notebook 사용 시 필수 |
+| `AeroOne-offline-1.13.1.zip` + `.sha256` | immutable=true로 확인된 정식 AeroOne GitHub Release `1.13.1` asset | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
+| `AeroOne-bundle.zip` + `.sha256` | immutable=true로 확인된 같은 Release asset 또는 Open Notebook `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 후 `2-airgap-install.bat` | Open Notebook 사용 시 필수 |
 | Ollama 모델 폴더(`manifests\`, `blobs\`) | 인터넷 PC `%USERPROFILE%\.ollama\models` | 폐쇄망 PC `%USERPROFILE%\.ollama\models` | AeroAI/Open Notebook AI 사용 시 필수 |
 | `OllamaSetup.exe` | 인터넷 PC에서 별도 다운로드 | 폐쇄망 PC에 1회 설치 | 폐쇄망 PC에 Ollama 없을 때 필수 |
 
@@ -326,7 +330,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-현재 `1.13.0` 정식 릴리스 기준 기대 결과는 backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
+역사 릴리스 `1.13.0`의 검증 기준은 backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.13.1`은 아직 게시 전이므로 운영 반입 완료나 새 digest를 주장하지 않습니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
