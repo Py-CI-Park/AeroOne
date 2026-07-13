@@ -212,7 +212,7 @@
 - 검증: 1.13.0 전체 제품 게이트 backend 570, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier를 계승하고, 1.13.1은 backend 88, frontend 10, typecheck, exact-tag pre/post verifier를 추가 통과.
 - 1.13.0 릴리스의 tag·asset·digest는 이동·교체·삭제하지 않으며 `immutable=false` 역사 기록으로 보존한다.
 - 1.13.1 릴리스: merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag `1.13.1`, [GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1), published `2026-07-13T23:31:18Z`, API `immutable=true`.
-- 운영 asset: `AeroOne-offline-1.13.1.zip` size `158727170`, SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`; `.sha256` asset도 업로드되었고 재다운로드 digest 검증을 완료했다. `gh release verify` attestation은 현재 생성 확인 중이다.
+- 운영 asset: `AeroOne-offline-1.13.1.zip` size `158727170`, SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`; `.sha256` asset도 업로드되었고 재다운로드 digest 및 GitHub CLI 2.96.0의 Release·두 asset cryptographic attestation 검증을 완료했다.
 
 ---
 
