@@ -83,6 +83,7 @@ async function runReactScan(frontendRoot, frontendUrl, verified) {
   const markerIndex = bundle.lastIndexOf(marker);
   if (markerIndex < 0) fail('react-scan locked browser asset export contract changed');
   const exposedBundle = [
+    "Object.defineProperty(Navigator.prototype, 'onLine', { configurable: true, get: () => false });",
     bundle.slice(0, markerIndex),
     '}(globalThis.__AEROONE_REACT_SCAN__ = {});',
     bundle.slice(markerIndex + marker.length),

@@ -75,6 +75,7 @@ describe('v1.13 browser QA runner contract', () => {
     expect(diagnostics).toContain('callbackEvidence');
     expect(diagnostics).toContain('unnecessary renders');
     expect(diagnostics).toContain('locked local browser asset missing');
+    expect(diagnostics).toContain("Object.defineProperty(Navigator.prototype, 'onLine'");
     expect(diagnostics).toContain("'--json', '--no-supply-chain', '--no-score', '--no-telemetry', '--no-color', '--yes', '--blocking', 'error'");
     expect(diagnostics).toContain('JSON.parse(result.stdout)');
     expect(diagnostics).toContain('timeout: 120000');
