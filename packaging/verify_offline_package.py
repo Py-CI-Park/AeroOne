@@ -11,7 +11,7 @@ small JSON file rather than re-implementing Authenticode itself.
 Usage:
     python verify_offline_package.py pre-stage \
         --stage-root <dir> --manifest <manifest.json> --policy <policy.json> \
-        --origin AeroOne --tag v1.13.0 --commit <sha> --policy-label release-qa@1 \
+        --origin AeroOne --tag 1.13.0 --commit <sha> --policy-label release-qa@1 \
         --signatures <signatures.json> --digests-out <digests.json>
 
     python verify_offline_package.py post-zip \

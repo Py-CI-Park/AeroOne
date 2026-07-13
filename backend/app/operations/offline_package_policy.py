@@ -69,7 +69,7 @@ def determine_release_context(
     if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version, flags=re.ASCII) is None:
         raise OfflinePackageBuildError(OfflinePackageBuildErrorCode.TAG_REQUIRED)
 
-    accepted_tag = f"v{version}"
+    accepted_tag = version
     commit_short = git_state.head_commit[:8]
     if git_state.head_tag == accepted_tag:
         return ReleaseContext(

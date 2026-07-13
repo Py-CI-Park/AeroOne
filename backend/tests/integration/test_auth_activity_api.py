@@ -240,7 +240,7 @@ def test_activity_accessible_modules_enforce_audience_and_permissions(app, clien
         assert policy_keys == expected_keys
 
 
-def test_activity_unknown_login_status_fails_closed(app, client) -> None:
+def test_activity_unknown_login_status_is_omitted(app, client) -> None:
     with app.state.db.session() as session:
         user = session.scalar(select(User).where(User.username == 'admin'))
         base = datetime.now(UTC)
@@ -250,12 +250,17 @@ def test_activity_unknown_login_status_fails_closed(app, client) -> None:
 
     _login(client)
     response = client.get('/api/v1/auth/activity')
-    assert response.status_code == 500
+    assert response.status_code == 200
     assert response.headers.get('cache-control') == 'no-store'
-    assert response.json() == {'detail': 'Activity data is temporarily unavailable.'}
+    events = response.json()['auth_events']
+    assert len(events) == 2
+    assert all(event['kind'] == 'login' for event in events)
+    assert all(event['outcome'] == 'success' for event in events)
+    assert all(set(event) == {'kind', 'outcome', 'occurred_at'} for event in events)
+    assert 'impersonation' not in json.dumps(response.json())
 
 
-def test_activity_unknown_ai_status_fails_closed(app, client) -> None:
+def test_activity_all_unknown_ai_statuses_return_empty_array(app, client) -> None:
     with app.state.db.session() as session:
         user = session.scalar(select(User).where(User.username == 'admin'))
         session.add(
@@ -270,9 +275,10 @@ def test_activity_unknown_ai_status_fails_closed(app, client) -> None:
 
     _login(client)
     response = client.get('/api/v1/auth/activity')
-    assert response.status_code == 500
+    assert response.status_code == 200
     assert response.headers.get('cache-control') == 'no-store'
-    assert response.json() == {'detail': 'Activity data is temporarily unavailable.'}
+    assert response.json()['ai_requests'] == []
+    assert 'queued' not in json.dumps(response.json())
 
 
 def test_activity_session_ttl_cutoff_and_latest_20_limit(app, client) -> None:

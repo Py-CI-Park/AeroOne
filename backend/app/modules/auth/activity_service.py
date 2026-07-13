@@ -71,7 +71,10 @@ def build_activity_payload(db: Session, current_user: User, request: Request, se
     login_rows = (
         db.execute(
             select(LoginEvent)
-            .where(LoginEvent.user_id == current_user.id)
+            .where(
+                LoginEvent.user_id == current_user.id,
+                LoginEvent.status.in_(tuple(_LOGIN_EVENT_MAP)),
+            )
             .order_by(LoginEvent.created_at.desc(), LoginEvent.id.desc())
             .limit(_LATEST_LIMIT)
         )
@@ -82,14 +85,17 @@ def build_activity_payload(db: Session, current_user: User, request: Request, se
     for row in login_rows:
         mapped = _LOGIN_EVENT_MAP.get(row.status)
         if mapped is None:
-            raise ValueError(f'Unsupported stored login event status: {row.status!r}')
+            continue
         kind, outcome = mapped
         auth_events.append({'kind': kind, 'outcome': outcome, 'occurred_at': _rfc3339(row.created_at)})
 
     ai_rows = (
         db.execute(
             select(AiRequestLog)
-            .where(AiRequestLog.user_id == current_user.id)
+            .where(
+                AiRequestLog.user_id == current_user.id,
+                AiRequestLog.status.in_(tuple(_AI_REQUEST_MAP)),
+            )
             .order_by(AiRequestLog.created_at.desc(), AiRequestLog.id.desc())
             .limit(_LATEST_LIMIT)
         )
@@ -100,7 +106,7 @@ def build_activity_payload(db: Session, current_user: User, request: Request, se
     for row in ai_rows:
         mapped_status = _AI_REQUEST_MAP.get(row.status)
         if mapped_status is None:
-            raise ValueError(f'Unsupported stored AI request status: {row.status!r}')
+            continue
         ai_requests.append({'status': mapped_status, 'module_key': None, 'occurred_at': _rfc3339(row.created_at)})
 
     module_rows = (

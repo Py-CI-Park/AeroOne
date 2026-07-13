@@ -51,6 +51,10 @@ def test_powershell_builder_writes_python_inputs_without_utf8_bom() -> None:
     assert "if ($gitState.HeadTag) { $verifyArgs += @('--tag', $gitState.HeadTag) }" in script
     assert 'refs/tags/$tagName^{tag}' in script
     assert 'refs/tags/$tagName^{commit}' in script
+    assert '$tagName = $RequestedVersion' in script
+    assert '"v$RequestedVersion"' not in script
+    assert "Release mode requires an exact annotated tag <Version> at HEAD." in script
+    assert "Release mode requires an exact annotated tag v<Version> at HEAD." not in script
     assert 'git for-each-ref --points-at HEAD' not in script
     assert 'git ls-tree -r --name-only $Commit' in script
     assert 'git archive --format=zip -o $archiveZip $Commit' in script
@@ -205,7 +209,7 @@ def test_select_allowlisted_paths_rejects_empty_selection() -> None:
 
 
 def test_release_mode_requires_exact_annotated_tag_equal_to_version() -> None:
-    git_state = GitState(is_clean=True, head_commit="a" * 40, head_tag=f"v{_VERSION}")
+    git_state = GitState(is_clean=True, head_commit="a" * 40, head_tag=_VERSION)
     context = determine_release_context(git_state, _VERSION)
 
     assert context.mode == "release"
@@ -236,9 +240,10 @@ def test_malformed_or_repeated_prefix_tag_falls_back_to_qa_mode(head_tag: str) -
     assert context.publishable is False
 
 
-def test_unprefixed_tag_name_falls_back_to_qa_mode() -> None:
+@pytest.mark.parametrize("head_tag", [f"v{_VERSION}", f"{_VERSION}-dev", _VERSION.replace(".", "")])
+def test_prefixed_or_malformed_tag_name_falls_back_to_qa_mode(head_tag: str) -> None:
     context = determine_release_context(
-        GitState(is_clean=True, head_commit="d" * 40, head_tag=_VERSION), _VERSION
+        GitState(is_clean=True, head_commit="d" * 40, head_tag=head_tag), _VERSION
     )
     assert context.mode == "qa"
     assert context.publishable is False
@@ -366,7 +371,7 @@ def test_builder_to_verifier_chain_passes_for_a_compliant_synthetic_repo(tmp_pat
         _write(source_repo, rel, content)
 
     policy = _policy()
-    git_state = GitState(is_clean=True, head_commit="b" * 40, head_tag=f"v{_VERSION}")
+    git_state = GitState(is_clean=True, head_commit="b" * 40, head_tag=_VERSION)
     options = BuildOptions()
 
     tracked_paths = [
@@ -460,7 +465,7 @@ def test_builder_to_verifier_chain_fails_closed_when_forbidden_path_smuggled_int
     # Smuggled forbidden entry that never went through the builder's plan.
     _write(stage_root, "backend/.env", b"SECRET=leak\n")
 
-    provenance = ManifestProvenance(origin="AeroOne", tag="v1.13.0", commit="c" * 40, policy="release-qa@1")
+    provenance = ManifestProvenance(origin="AeroOne", tag=_VERSION, commit="c" * 40, policy="release-qa@1")
     all_paths = (
         "backend/app/__init__.py",
         "backend/requirements.txt",

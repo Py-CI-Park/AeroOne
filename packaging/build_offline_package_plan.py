@@ -10,7 +10,7 @@ performs the actual archive/build/wheelhouse/zip mechanics.
 
 Usage:
     python build_offline_package_plan.py plan \
-        --version 1.13.0 --commit <sha> --clean --tag v1.13.0 \
+        --version 1.13.0 --commit <sha> --clean --tag 1.13.0 \
         --policy packaging/installer-policy.json \
         --tracked-paths <newline-delimited-file> \
         [--reuse-node-modules] [--reuse-next-build] [--reuse-wheelhouse] \

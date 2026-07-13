@@ -22,7 +22,7 @@
 
   .PARAMETER Version
   The AeroOne version this build targets (e.g. "1.13.0"). Release mode
-  requires an exact annotated tag "v<Version>" pointing at HEAD; anything
+  requires an exact annotated tag "<Version>" pointing at HEAD; anything
   else (no tag, mismatched tag) automatically falls back to QA mode.
 
   .PARAMETER DryRun
@@ -59,7 +59,7 @@ if ($Help) {
     Write-Output 'Usage: build_offline_package.ps1 [-Version <x.y.z>] [-DryRun] [-Help]'
     Write-Output ''
     Write-Output 'Builds a public offline-package ZIP from a git-archive allow-list.'
-    Write-Output 'Release mode requires an exact annotated tag v<Version> at HEAD.'
+    Write-Output 'Release mode requires an exact annotated tag <Version> at HEAD.'
     Write-Output 'Otherwise the build lands in QA mode under artifacts\qa\ (publishable=false).'
     exit 0
 }
@@ -103,7 +103,7 @@ function Get-GitState {
         $previousEap = $ErrorActionPreference
         $ErrorActionPreference = 'SilentlyContinue'
         try {
-            $tagName = "v$RequestedVersion"
+            $tagName = $RequestedVersion
             $tagObject = git rev-parse --verify --quiet "refs/tags/$tagName^{tag}"
             if ($LASTEXITCODE -eq 0 -and $tagObject) {
                 $peeledCommit = git rev-parse --verify --quiet "refs/tags/$tagName^{commit}"

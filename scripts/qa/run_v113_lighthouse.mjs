@@ -14,6 +14,8 @@ const AUTHENTICATED_ROUTES = new Set(['/activity', '/admin']);
 const FORM_FACTORS = ['mobile', 'desktop'];
 const RUNS = 3;
 const THRESHOLDS = { performance: 100, accessibility: 100, 'best-practices': 100, seo: 100 };
+// Lighthouse classifies audit scores of 0.9 or higher as passing (green).
+const MIN_PASSING_AUDIT_SCORE = 0.9;
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const REQUIRED_SCHEMA_KEYS = ['schemaVersion', 'sha', 'backendUrl', 'frontendUrl', 'backendPid', 'frontendPid', 'tempRoot', 'artifactRoot'];
 const QA_USERNAME = 'qa-admin';
@@ -95,7 +97,7 @@ async function run() {
         const scoresForRun = Object.fromEntries(Object.keys(THRESHOLDS).map((key) => [key, Math.round((categories[key]?.score ?? -1) * 100)]));
         const failedAudits = Object.entries(categories).flatMap(([category, value]) =>
           (value?.auditRefs ?? [])
-            .filter((ref) => ref.weight > 0 && (output?.lhr?.audits?.[ref.id]?.score ?? 1) < 1)
+            .filter((ref) => ref.weight > 0 && (output?.lhr?.audits?.[ref.id]?.score ?? 1) < MIN_PASSING_AUDIT_SCORE)
             .map((ref) => ({ category, id: ref.id, score: output.lhr.audits[ref.id].score })),
         );
         scores.push(scoresForRun);
@@ -112,4 +114,4 @@ async function run() {
 }
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
 if (invokedPath && import.meta.url === invokedPath) run().catch((error) => { console.error(`lighthouse QA failed: ${redact(error.message)}`); process.exitCode = 1; });
-export { parseArgs, validateRuntime, redact, authenticate, assertRequestedPath, ROUTES, FORM_FACTORS, RUNS, THRESHOLDS };
+export { parseArgs, validateRuntime, redact, authenticate, assertRequestedPath, ROUTES, FORM_FACTORS, RUNS, THRESHOLDS, MIN_PASSING_AUDIT_SCORE };

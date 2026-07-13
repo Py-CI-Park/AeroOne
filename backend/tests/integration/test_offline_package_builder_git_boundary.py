@@ -185,18 +185,22 @@ def test_git_state_tag_classification_and_commit_bound_archive(
     assert lightweight["tag"] is None
 
     repo, commit_a, _ = _repo(tmp_path / "mismatch")
-    _git(repo, "tag", "-a", "-m", "wrong", f"v{VERSION}", commit_a)
+    _git(repo, "tag", "-a", "-m", "wrong", VERSION, commit_a)
     mismatch = _run(ps, runner_path, repo)
     assert mismatch["tag"] is None
 
     repo, _, commit_b = _repo(tmp_path / "exact")
-    exact = _run(ps, runner_path, repo, tag=f"v{VERSION}", annotated=True)
-    assert exact["tag"] == f"v{VERSION}" and exact["commit"] == commit_b
+    exact = _run(ps, runner_path, repo, tag=VERSION, annotated=True)
+    assert exact["tag"] == VERSION and exact["commit"] == commit_b
+
+    repo, _, _ = _repo(tmp_path / "prefixed")
+    prefixed = _run(ps, runner_path, repo, tag=f"v{VERSION}", annotated=True)
+    assert prefixed["tag"] is None
 
     repo, _, _ = _repo(tmp_path / "multiple")
     _git(repo, "tag", "-a", "-m", "other", "v9.9.9")
-    multiple = _run(ps, runner_path, repo, tag=f"v{VERSION}", annotated=True)
-    assert multiple["tag"] == f"v{VERSION}"
+    multiple = _run(ps, runner_path, repo, tag=VERSION, annotated=True)
+    assert multiple["tag"] == VERSION
     root = tmp_path / "output-root"
     contained = _run(ps, runner_path, repo, output_root=root, output=root / "Version" / "AeroOne")
     assert contained["output"] == str(root / "Version" / "AeroOne")

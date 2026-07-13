@@ -17,6 +17,8 @@ describe('v1.13 browser QA runner contract', () => {
     expect(lighthouse).toContain("const FORM_FACTORS = ['mobile', 'desktop'];");
     expect(lighthouse).toContain('const RUNS = 3;');
     expect(lighthouse).toContain("performance: 100, accessibility: 100, 'best-practices': 100, seo: 100");
+    expect(lighthouse).toContain('const MIN_PASSING_AUDIT_SCORE = 0.9;');
+    expect(lighthouse).toContain('< MIN_PASSING_AUDIT_SCORE');
     expect(lighthouse).toContain('C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe');
     expect(lighthouse).toContain("if (argv[i] === '--sha')");
     expect(lighthouse).toContain("chrome.port");

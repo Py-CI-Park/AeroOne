@@ -104,6 +104,14 @@ describe('browser harness contract', () => {
     expect(teardown).toContain("'[REPO_ROOT]'");
     expect(teardown).toContain("'[TEMP_ROOT]'");
     expect(teardown).toContain("['backend.log', 'frontend.log']");
+    expect(teardown).toContain("const teardownReceiptPath = join(artifactRoot, 'teardown.json');");
+    expect(teardown).toContain("kind: 'browser-teardown-test-report'");
+    expect(teardown).toContain('ownedPidsStopped: true');
+    expect(teardown).toContain('ownedListenersRemaining: 0');
+    expect(teardown).toContain('tempRootRemoved: true');
+    expect(teardown).toContain('runtimeReceiptRemoved: true');
+    expect(teardown).toContain("verdict: 'passed'");
+    expect(teardown).toContain("await rm(teardownReceiptPath, { force: true });");
   });
 
   it('rejects a wrong SHA and invalidates a stale runtime receipt before failing', () => {

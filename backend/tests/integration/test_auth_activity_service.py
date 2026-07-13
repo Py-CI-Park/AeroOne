@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+
 from sqlalchemy import select
 
 from app.modules.admin.models import AiRequestLog, LoginEvent, ServiceModule, UserSessionActivity
@@ -21,6 +22,10 @@ def _get_admin(app) -> User:
         user = session.scalar(select(User).where(User.username == 'admin'))
         session.expunge(user)
         return user
+
+
+def _as_rfc3339(value: datetime) -> str:
+    return value.isoformat().replace('+00:00', 'Z')
 
 
 def test_session_creation_stores_hash_matching_helper(app, client) -> None:
@@ -134,7 +139,7 @@ def test_active_sessions_ordering_latest_20_and_id_tiebreak(app) -> None:
     assert timestamps == sorted(timestamps, reverse=True)
 
 
-def test_auth_events_unknown_status_fails_closed(app) -> None:
+def test_auth_events_unknown_status_is_omitted(app) -> None:
     user = _get_admin(app)
     base = datetime.now(UTC)
     statuses = ['unknown-a', 'unknown-b'] + ['success', 'failure', 'logout'] * 20
@@ -149,8 +154,14 @@ def test_auth_events_unknown_status_fails_closed(app) -> None:
                 )
             )
         session.flush()
-        with pytest.raises(ValueError, match='Unsupported stored login event status'):
-            build_activity_payload(session, user, _FakeRequest({}), app.state.settings)
+        payload = build_activity_payload(session, user, _FakeRequest({}), app.state.settings)
+
+    assert len(payload['auth_events']) == 20
+    assert payload['auth_events'][:3] == [
+        {'kind': 'login', 'outcome': 'success', 'occurred_at': _as_rfc3339(base - timedelta(seconds=2))},
+        {'kind': 'login', 'outcome': 'failure', 'occurred_at': _as_rfc3339(base - timedelta(seconds=3))},
+        {'kind': 'logout', 'outcome': 'success', 'occurred_at': _as_rfc3339(base - timedelta(seconds=4))},
+    ]
 
 
 def test_auth_events_keep_latest_20_in_order(app) -> None:
@@ -176,7 +187,7 @@ def test_auth_events_keep_latest_20_in_order(app) -> None:
     assert {event['kind'] for event in payload['auth_events']} == {'login', 'logout'}
 
 
-def test_ai_requests_unknown_status_fails_closed(app) -> None:
+def test_ai_requests_unknown_status_is_omitted(app) -> None:
     user = _get_admin(app)
     base = datetime.now(UTC)
     with app.state.db.session() as session:
@@ -184,9 +195,23 @@ def test_ai_requests_unknown_status_fails_closed(app) -> None:
         session.add(AiRequestLog(request_id='req-error-1', user_id=user.id, model='gemma', status='error', created_at=base - timedelta(seconds=1)))
         session.add(AiRequestLog(request_id='req-unknown-1', user_id=user.id, model='gemma', status='pending', created_at=base - timedelta(seconds=2)))
         session.flush()
-        with pytest.raises(ValueError, match='Unsupported stored AI request status'):
-            build_activity_payload(session, user, _FakeRequest({}), app.state.settings)
+        payload = build_activity_payload(session, user, _FakeRequest({}), app.state.settings)
 
+    assert [row['status'] for row in payload['ai_requests']] == ['completed', 'failed']
+    assert all(row['module_key'] is None for row in payload['ai_requests'])
+
+
+def test_all_unknown_activity_statuses_produce_empty_collections(app) -> None:
+    user = _get_admin(app)
+    now = datetime.now(UTC)
+    with app.state.db.session() as session:
+        session.add(LoginEvent(user_id=user.id, username='admin', status='future-login', created_at=now))
+        session.add(AiRequestLog(request_id='future-ai', user_id=user.id, model='gemma', status='future-ai', created_at=now))
+        session.flush()
+        payload = build_activity_payload(session, user, _FakeRequest({}), app.state.settings)
+
+    assert payload['auth_events'] == []
+    assert payload['ai_requests'] == []
 
 def test_ai_requests_map_known_statuses_and_keep_module_key_null(app) -> None:
     user = _get_admin(app)

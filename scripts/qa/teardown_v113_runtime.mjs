@@ -9,6 +9,7 @@ const sha = (process.argv[process.argv.indexOf('--sha') + 1] || '').trim();
 if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('sha must be 40 lowercase hex');
 const runtimePath = join(repo, 'artifacts/qa/v1.13.0', sha, 'runtime', 'runtime.json');
 const artifactRoot = join(repo, 'artifacts/qa/v1.13.0', sha, 'browser');
+const teardownReceiptPath = join(artifactRoot, 'teardown.json');
 const runtimeKeys = ['schemaVersion', 'sha', 'backendUrl', 'frontendUrl', 'backendPid', 'frontendPid', 'tempRoot', 'artifactRoot'];
 
 const runCommand = (command, args) => new Promise(resolveCommand => {
@@ -100,6 +101,7 @@ async function redactRuntimeLogs(runtime) {
 
 let failed = false;
 try {
+  await rm(teardownReceiptPath, { force: true });
   let runtime;
   try {
     runtime = validateRuntime(JSON.parse(await readFile(runtimePath, 'utf8')));
@@ -133,17 +135,37 @@ try {
     Date.now() < deadline
     && (await isAlive(runtime.backendPid) || await isAlive(runtime.frontendPid))
   ) await sleep(250);
+  const backendListenerRemaining = await hasListener(backendPort);
+  const frontendListenerRemaining = await hasListener(frontendPort);
   if (
     await isAlive(runtime.backendPid)
     || await isAlive(runtime.frontendPid)
-    || await hasListener(backendPort)
-    || await hasListener(frontendPort)
+    || backendListenerRemaining
+    || frontendListenerRemaining
   ) throw new Error('owned process/listener remains');
 
   await redactRuntimeLogs(runtime);
   await removeOwnedTemp(runtime.tempRoot);
   await rm(runtimePath, { force: false });
   if (unexpectedExit) throw new Error('owned process exited before teardown');
+  const teardownReceipt = {
+    schemaVersion: 1,
+    kind: 'browser-teardown-test-report',
+    sha,
+    ownedPidsStopped: true,
+    ownedListenersRemaining: 0,
+    tempRootRemoved: true,
+    runtimeReceiptRemoved: true,
+    evidence: 'Owned processes and listeners stopped; runtime receipt and temporary root removed.',
+    verdict: 'passed',
+  };
+  const receiptText = `${JSON.stringify(redact(teardownReceipt, { preserveShaFields: true }), null, 2)}\n`;
+  if (
+    receiptText.includes(runtime.tempRoot)
+    || receiptText.includes(runtime.tempRoot.replaceAll('\\', '/'))
+    || receiptText.includes('QA-admin-v1130-strong!')
+  ) throw new Error('teardown receipt redaction failed');
+  await writeFile(teardownReceiptPath, receiptText, 'utf8');
 } catch (error) {
   failed = true;
   process.stderr.write(`teardown failed: ${error.message}\n`);
