@@ -55,5 +55,5 @@
 3. `1.13.0` tag·asset·digest는 이동·교체·삭제하지 않는다. 기존 PR #23 기록도 역사 사실로 유지한다.
 GitHub immutable releases policy는 `enabled=true`이며, 정책이 기존 Release에 소급 적용되지 않아 `1.13.0`은 `immutable=false`인 역사 릴리스다.
 1.13.1은 제품 기능 변경 없이 1.13.0을 움직이지 않는 forward-only patch로 게시 완료했다. merge/tag commit은 `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag는 `1.13.1`, [GitHub Release URL](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1), published는 `2026-07-13T23:31:18Z`, Release API는 `immutable=true`다.
-운영 asset은 `AeroOne-offline-1.13.1.zip`(size `158727170`)과 함께 업로드된 `.sha256`이며, 재다운로드 SHA-256은 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`으로 검증 완료했다. `gh release verify` attestation은 현재 생성 확인 중이므로 검증 완료라고 쓰지 않는다.
+운영 asset은 `AeroOne-offline-1.13.1.zip`(size `158727170`)과 함께 업로드된 `.sha256`이며, 재다운로드 SHA-256은 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`으로 검증 완료했다. GitHub CLI 2.96.0의 `gh release verify`와 두 asset의 `gh release verify-asset`도 cryptographic attestation 검증을 통과했다.
 제품 tree는 1.13.0과 동일하며, 직접 영향 검증 backend 88, frontend 10, `tsc --noEmit`, exact-tag pre/post verifier를 추가 통과했다. 기존 전체 제품 게이트 backend 570, frontend 397/73 files, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier는 계승 근거로 유지한다.

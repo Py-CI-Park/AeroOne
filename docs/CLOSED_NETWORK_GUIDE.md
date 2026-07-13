@@ -48,7 +48,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**현재 운영 반입은 완료되었습니다.** `1.12.2`는 철회되었고 `1.13.0`은 `immutable=false` 역사 보존 대상입니다. 제품 기능 변경 없는 forward-only `1.13.1`은 `immutable=true` 정식 Release로 게시되었으며, 해당 Release의 ZIP과 업로드된 `.sha256`을 사용합니다. `gh release verify` attestation은 현재 생성 확인 중이므로 검증 완료로 간주하지 않습니다.
+**현재 운영 반입은 완료되었습니다.** `1.12.2`는 철회되었고 `1.13.0`은 `immutable=false` 역사 보존 대상입니다. 제품 기능 변경 없는 forward-only `1.13.1`은 `immutable=true` 정식 Release로 게시되었으며, 해당 Release의 ZIP과 업로드된 `.sha256`을 사용합니다. GitHub CLI 2.96.0의 `gh release verify`와 두 asset의 `gh release verify-asset`도 cryptographic attestation 검증을 통과했습니다.
 
 ---
 
@@ -94,7 +94,7 @@
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, allow-list package builder/pre-post verifier, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 자격 회전 service/listener preflight·연속 DB lock·DPAPI recovery·crash 재개·WPF ValidateOnly, Activity privacy, 관리자 Overview/Users/Sessions/Modules, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API
 
 ### 3.4 릴리즈 1.13.1 폐쇄망 반입물
-`1.13.0` tag·asset·digest는 역사 릴리스로 보존합니다. 신규 운영 반입은 [정식 immutable Release `1.13.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1)의 `AeroOne-offline-1.13.1.zip`과 함께 업로드된 `.sha256`을 사용합니다. Release API `immutable=true`, merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, published `2026-07-13T23:31:18Z`, ZIP size `158727170`, 재다운로드 SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`을 확인했습니다. `gh release verify` attestation은 현재 생성 확인 중입니다.
+`1.13.0` tag·asset·digest는 역사 릴리스로 보존합니다. 신규 운영 반입은 [정식 immutable Release `1.13.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1)의 `AeroOne-offline-1.13.1.zip`과 함께 업로드된 `.sha256`을 사용합니다. Release API `immutable=true`, merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, published `2026-07-13T23:31:18Z`, ZIP size `158727170`, 재다운로드 SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`을 확인했습니다. GitHub CLI 2.96.0으로 Release와 두 asset의 cryptographic attestation 검증도 통과했습니다.
 
 | 반입물 | 릴리즈/생성 위치 | 폐쇄망 배치 | 필수 여부 |
 |---|---|---|---|
@@ -328,7 +328,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-역사 릴리스 `1.13.0`의 전체 제품 게이트(backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build, production Chrome·package gate)는 계승 근거로 보존합니다. 동일 product tree의 `1.13.1`은 backend **88 passed**, frontend **10 passed**, `tsc --noEmit`, exact-tag pre/post verifier를 추가 통과했으며 정식 immutable Release의 재다운로드 digest 검증을 완료했습니다. `1.12.2` 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. `gh release verify` attestation은 현재 생성 확인 중이므로 완료라고 쓰지 않습니다.
+역사 릴리스 `1.13.0`의 전체 제품 게이트(backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build, production Chrome·package gate)는 계승 근거로 보존합니다. 동일 product tree의 `1.13.1`은 backend **88 passed**, frontend **10 passed**, `tsc --noEmit`, exact-tag pre/post verifier를 추가 통과했으며 정식 immutable Release의 재다운로드 digest와 Release·두 asset의 cryptographic attestation 검증을 완료했습니다. `1.12.2` 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
