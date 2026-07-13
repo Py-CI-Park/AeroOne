@@ -1,4 +1,4 @@
-import { readdir, readFile, rm } from 'node:fs/promises';
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
@@ -71,6 +71,43 @@ async function removeOwnedTemp(tempRoot) {
   throw lastError;
 }
 
+function redactText(text, runtime) {
+  const replacements = [
+    [repo, '[REPO_ROOT]'],
+    [runtime.tempRoot, '[TEMP_ROOT]'],
+  ];
+  let redacted = text;
+  for (const [value, marker] of replacements) {
+    redacted = redacted.replaceAll(value, marker);
+    redacted = redacted.replaceAll(value.replaceAll('\\', '/'), marker);
+    redacted = redacted.replaceAll(value.replaceAll('/', '\\'), marker);
+  }
+  return redacted
+    .replaceAll('QA-admin-v1130-strong!', '[REDACTED]')
+    .replace(/(authorization|cookie|token|secret|password|api[-_]?key)\s*[:=]\s*[^,\s]+/gi, '$1=[REDACTED]');
+}
+
+async function redactRuntimeLogs(runtime) {
+  for (const name of ['backend.log', 'frontend.log']) {
+    const logPath = join(runtime.artifactRoot, name);
+    let source;
+    try {
+      source = await readFile(logPath, 'utf8');
+    } catch (error) {
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
+    const redacted = redactText(source, runtime);
+    if (
+      redacted.includes(repo)
+      || redacted.includes(repo.replaceAll('\\', '/'))
+      || redacted.includes(runtime.tempRoot)
+      || redacted.includes(runtime.tempRoot.replaceAll('\\', '/'))
+    ) throw new Error(`${name} redaction failed`);
+    await writeFile(logPath, redacted, 'utf8');
+  }
+}
+
 let failed = false;
 try {
   let runtime;
@@ -113,6 +150,7 @@ try {
     || await hasListener(frontendPort)
   ) throw new Error('owned process/listener remains');
 
+  await redactRuntimeLogs(runtime);
   await removeOwnedTemp(runtime.tempRoot);
   await rm(runtimePath, { force: false });
   if (unexpectedExit) throw new Error('owned process exited before teardown');
