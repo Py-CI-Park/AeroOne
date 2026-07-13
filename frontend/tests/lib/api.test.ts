@@ -14,7 +14,7 @@ import {
   getPublicNewsletters,
   login,
   changeOwnPassword,
-  fetchAdminSummary,
+  fetchAdminOverview,
   fetchConnectedUsers,
   purgeSessions,
   fetchUnifiedSearch,
@@ -228,7 +228,7 @@ test('browserFetch-backed helpers reject with an ApiError carrying status and a 
 
   let caught: unknown;
   try {
-    await fetchAdminSummary();
+    await fetchAdminOverview();
   } catch (error) {
     caught = error;
   }
@@ -251,7 +251,7 @@ test('auth and admin helpers call same-origin frontend proxy paths, never backen
 
   await login('admin', 'secret');
   await changeOwnPassword('old', 'new', 'csrf-token');
-  await fetchAdminSummary();
+  await fetchAdminOverview();
   await fetchConnectedUsers();
   await fetchUnifiedSearch('jet', true);
 
@@ -259,7 +259,7 @@ test('auth and admin helpers call same-origin frontend proxy paths, never backen
   expect(calledUrls).toEqual([
     '/api/frontend/auth/login',
     '/api/frontend/auth/change-password',
-    '/api/frontend/admin/dashboard',
+    '/api/frontend/admin/overview',
     '/api/frontend/admin/sessions',
     '/api/frontend/search/unified?q=jet&include_nsa=true',
   ]);

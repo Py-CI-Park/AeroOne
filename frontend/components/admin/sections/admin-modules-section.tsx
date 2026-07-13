@@ -170,6 +170,7 @@ export function AdminModulesSection() {
           return (
             <div key={module.key} className="rounded-lg border border-slate-100 p-3 text-sm">
               <div className="mb-2 flex items-center justify-between gap-2"><strong>{module.key}</strong><Badge tone={draft.is_enabled ? 'green' : 'amber'}>{draft.is_enabled ? 'enabled' : 'disabled'}</Badge></div>
+              <p className="mb-2 rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-500">게이트: visibility <span className="font-mono text-slate-700">{module.visibility}</span> · required_permission <span className="font-mono text-slate-700">{module.required_permission ?? '없음'}</span> · resource <span className="font-mono text-slate-700">{module.resource_type ?? '없음'}/{module.resource_id ?? '없음'}</span></p>
               <div className="grid gap-2 md:grid-cols-2">
                 <input value={draft.title} onChange={(event) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, title: event.target.value } }))} className="rounded-md border border-slate-300 px-2 py-1" aria-label={`${module.key} title`} />
                 <SectionFields label={`${module.key} section`} section={draft.section} onChange={(section) => setModuleDrafts((current) => ({ ...current, [module.id]: { ...draft, section } }))} />

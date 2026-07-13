@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import func, select
 
 from app.core.config import reset_settings_cache
 from app.core.security import hash_file_bytes, hash_password
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter, NewsletterAsset, SourceType
-from app.modules.admin.models import UserPermission
+from app.modules.admin.models import ServiceModule, UserPermission, UserSessionActivity
 from app.modules.auth.models import User
 
 
@@ -28,12 +31,11 @@ def test_admin_dashboard_modules_assets_and_backup(csrf_client) -> None:
     assert [module['key'] for module in modules][:3] == ['newsletter', 'civil-aircraft', 'document']
     assert any(module['key'] == 'open-notebook' and module['is_external'] for module in modules)
 
-    summary_response = csrf_client.get('/api/v1/admin/dashboard')
+    summary_response = csrf_client.get('/api/v1/admin/overview')
     assert summary_response.status_code == 200
     summary = summary_response.json()
-    assert summary['app_version'] == '1.12.1'
-    assert summary['db_ok'] is True
-    assert 'asset_health' in summary
+    assert summary['system']['app_version'] == '1.12.1'
+    assert 'asset_health' in summary['system']
 
     module_id = next(module['id'] for module in modules if module['key'] == 'announcement')
     update_response = csrf_client.patch(
@@ -369,3 +371,75 @@ def test_asset_health_classifies_assets_and_config_health_is_admin_only(csrf_cli
     assert misconfigured['error_code'] == 'ROOT_MISSING'
     assert misconfigured['resolved_root'].endswith('does-not-exist')
     assert '환경변수' in misconfigured['remediation']
+
+
+def test_sessions_reports_distinct_session_and_user_counts_and_excludes_stale_expired(csrf_client, app, settings) -> None:
+    baseline = csrf_client.get('/api/v1/admin/sessions').json()
+    baseline_session_count = baseline['active_session_count']
+    baseline_user_count = baseline['active_user_count']
+
+    _create_user(app, 'multi-session-user')
+    now = datetime.now(UTC)
+    with app.state.db.session() as session:
+        user = session.execute(select(User).where(User.username == 'multi-session-user')).scalar_one()
+        session.add(UserSessionActivity(user_id=user.id, session_hash='hash-a', last_seen_at=now, expires_at=now + timedelta(hours=1)))
+        session.add(UserSessionActivity(user_id=user.id, session_hash='hash-b', last_seen_at=now, expires_at=now + timedelta(hours=1)))
+        session.add(UserSessionActivity(user_id=user.id, session_hash='hash-stale', last_seen_at=now - timedelta(minutes=settings.access_token_ttl_minutes + 5), expires_at=now + timedelta(hours=1)))
+        session.add(UserSessionActivity(user_id=user.id, session_hash='hash-expired', last_seen_at=now, expires_at=now - timedelta(minutes=1)))
+        session.commit()
+
+    response = csrf_client.get('/api/v1/admin/sessions')
+    assert response.status_code == 200
+    payload = response.json()
+    rows = [row for row in payload['active_sessions'] if row['username'] == 'multi-session-user']
+    assert len(rows) == 2
+    assert payload['active_session_count'] == baseline_session_count + 2
+    assert payload['active_user_count'] == baseline_user_count + 1
+    assert payload['active_count'] == payload['active_user_count']
+    for row in rows:
+        assert set(row.keys()) == {'user_id', 'username', 'last_seen_at'}
+
+
+def test_service_module_create_gate_violation_returns_400_and_mutates_nothing(csrf_client) -> None:
+    with_before = csrf_client.get('/api/v1/admin/service-modules')
+    module_count_before = len(with_before.json())
+    audit_before = len(csrf_client.get('/api/v1/admin/audit-events').json())
+
+    response = csrf_client.post(
+        '/api/v1/admin/service-modules',
+        json={'key': 'bad-gate', 'title': 'Bad Gate', 'visibility': 'public', 'required_permission': 'collections.read', 'resource_type': 'collection', 'resource_id': 'nsa'},
+    )
+    assert response.status_code == 400
+
+    after = csrf_client.get('/api/v1/admin/service-modules')
+    assert len(after.json()) == module_count_before
+    assert {module['key'] for module in after.json()} == {module['key'] for module in with_before.json()}
+    audit_after = len(csrf_client.get('/api/v1/admin/audit-events').json())
+    assert audit_after == audit_before
+
+
+def test_service_module_update_gate_violation_returns_400_and_leaves_row_and_session_version_unchanged(csrf_client, app) -> None:
+    modules_response = csrf_client.get('/api/v1/admin/service-modules')
+    nsa_module = next(module for module in modules_response.json() if module['key'] == 'nsa')
+
+    with app.state.db.session() as session:
+        admin_user = session.execute(select(User).where(User.username == 'admin')).scalar_one()
+        session_version_before = admin_user.session_version
+
+    audit_before = len(csrf_client.get('/api/v1/admin/audit-events').json())
+
+    response = csrf_client.patch(
+        f"/api/v1/admin/service-modules/{nsa_module['id']}",
+        json={'visibility': 'admin', 'required_permission': 'collections.nsa.read'},
+    )
+    assert response.status_code == 400
+
+    with app.state.db.session() as session:
+        module_after = session.get(ServiceModule, nsa_module['id'])
+        assert module_after.visibility == nsa_module['visibility']
+        assert module_after.required_permission == nsa_module['required_permission']
+        admin_user_after = session.execute(select(User).where(User.username == 'admin')).scalar_one()
+        assert admin_user_after.session_version == session_version_before
+
+    audit_after = len(csrf_client.get('/api/v1/admin/audit-events').json())
+    assert audit_after == audit_before

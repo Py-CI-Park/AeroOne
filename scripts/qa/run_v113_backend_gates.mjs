@@ -43,10 +43,31 @@ function git(...args) {
   return result.stdout.trim();
 }
 
+function redactionRoots() {
+  // Junction/symlink escape hatch: the worktree venv can resolve to another
+  // checkout's absolute path, which would slip past a REPO_ROOT-prefix match.
+  const roots = new Set([REPO_ROOT]);
+  for (const candidate of [REPO_ROOT, PYTHON, BACKEND_CWD]) {
+    try {
+      const real = fs.realpathSync(candidate);
+      const marker = `${path.sep}backend${path.sep}`;
+      const markerIndex = real.indexOf(marker);
+      roots.add(markerIndex >= 0 ? real.slice(0, markerIndex) : real);
+    } catch {
+      // missing candidate is already fatal elsewhere; redaction stays fail-closed via generic patterns
+    }
+  }
+  return [...roots].filter(Boolean);
+}
+
+const REDACTION_ROOTS = redactionRoots();
+
 function redact(text) {
   let out = String(text);
-  for (const variant of [REPO_ROOT, REPO_ROOT.replaceAll('\\', '/')]) {
-    out = out.split(variant).join('[REPO_ROOT]');
+  for (const root of REDACTION_ROOTS) {
+    for (const variant of [root, root.replaceAll('\\', '/')]) {
+      out = out.split(variant).join('[REPO_ROOT]');
+    }
   }
   return out
     .replace(/[A-Z]:\\(?:Users|Documents and Settings)\\[^\\\s"']+/gi, '[USER_PATH]')

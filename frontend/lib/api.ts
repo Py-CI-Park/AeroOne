@@ -1,5 +1,5 @@
 import type {
-  AdminSummary,
+  AdminOverviewResponse,
   AuthActivityResponse,
   AdminUser,
   AdminGroup,
@@ -352,8 +352,8 @@ export async function fetchPublicServiceModules(cookieHeader?: string) {
   });
 }
 
-export async function fetchAdminSummary() {
-  return browserFetch<AdminSummary>('/api/frontend/admin/dashboard', { method: 'GET' });
+export async function fetchAdminOverview() {
+  return browserFetch<AdminOverviewResponse>('/api/frontend/admin/overview', { method: 'GET' });
 }
 
 

@@ -127,6 +127,67 @@ export interface AuthActivityResponse {
   accessible_modules: AuthActivityModule[];
 }
 
+export interface AdminOverviewWindowCount {
+  current: number;
+  prior: number;
+  delta: number;
+}
+
+export interface AdminOverviewModuleRef {
+  key: string;
+  label: string;
+}
+
+export interface AdminOverviewResponse {
+  generated_at: string;
+  anchor: string;
+  users: {
+    total: number;
+    active: number;
+    inactive: number;
+    roles: { admin: number; user: number; pending: number };
+    created: AdminOverviewWindowCount;
+  };
+  logins: {
+    success: AdminOverviewWindowCount;
+    failure: AdminOverviewWindowCount;
+    logout: AdminOverviewWindowCount;
+  };
+  ai: {
+    total: AdminOverviewWindowCount;
+    failure: AdminOverviewWindowCount;
+  };
+  sessions: {
+    active_session_count: number;
+    active_user_count: number;
+    active_count: number;
+  };
+  modules: {
+    total: number;
+    buckets: {
+      unavailable: AdminOverviewModuleRef[];
+      coming: AdminOverviewModuleRef[];
+      development: AdminOverviewModuleRef[];
+      active: AdminOverviewModuleRef[];
+    };
+  };
+  system: {
+    app_version: string;
+    app_env: string;
+    database_kind: string;
+    newsletter_count: number;
+    asset_health: { ok: number; missing: number; checksum_mismatch: number; misconfig: number };
+    read_summary: { rows: number; total_reads: number };
+  };
+  recent_audit: Array<{
+    id: number;
+    action: string;
+    target_type: string | null;
+    status: string;
+    created_at: string;
+  }>;
+}
+
 export interface ServiceModule {
   id: number;
   key: string;
@@ -164,6 +225,8 @@ export interface LoginEvent {
 
 export interface ConnectedUsersResponse {
   active_sessions: ConnectedSession[];
+  active_session_count: number;
+  active_user_count: number;
   active_count: number;
   recent_login_events: LoginEvent[];
   login_failure_count: number;
@@ -174,22 +237,6 @@ export interface SessionPurgeResponse {
   login_events_deleted: number;
   session_activity_deleted: number;
 }
-
-export interface AdminSummary {
-  app_version: string;
-  app_env: string;
-  database_url: string;
-  db_ok: boolean;
-  newsletter_total: number;
-  latest_newsletter_title?: string | null;
-  active_modules: number;
-  coming_soon_modules: number;
-  asset_health: Record<string, number>;
-  read_summary: Record<string, number>;
-  ai_status: Record<string, unknown>;
-  recent_audit_events: AuditEvent[];
-}
-
 export interface AuditEvent {
   id: number;
   actor_username?: string | null;

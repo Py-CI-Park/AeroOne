@@ -32,7 +32,7 @@ from app.modules.admin.models import (
 from app.modules.admin.permissions import ADMIN_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, has_permission, has_resource_permission, list_user_permission_keys
 from app.modules.admin.session_fanout import bump_authorization_session_versions, bump_group_members, users_affected_by_resource_grant
 from app.modules.admin.schemas import (
-    AdminSummaryResponse,
+    AdminOverviewResponse,
     AssetHealthItem,
     AssetHealthResponse,
     ConfigHealthItem,
@@ -62,6 +62,8 @@ from app.modules.admin.schemas import (
     UserUpdateRequest,
     PasswordResetRequest,
 )
+from app.modules.admin.module_policy import validate_module_gate
+from app.modules.admin.overview_service import build_overview
 from app.modules.ai.service import AiChatService
 from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf, require_permission
 from app.modules.auth.models import User
@@ -379,29 +381,9 @@ def public_service_modules(db: Session = Depends(get_db), user: User | None = De
     return [ServiceModuleResponse.model_validate(module) for module in modules]
 
 
-@router.get('/dashboard', response_model=AdminSummaryResponse, dependencies=[Depends(require_permission('admin.audit.read'))])
-def admin_summary(settings: Settings = Depends(get_settings), db: Session = Depends(get_db)) -> AdminSummaryResponse:
-    _ensure_service_modules(db)
-    health = _asset_health(db, settings)
-    latest = db.execute(select(Newsletter).order_by(Newsletter.published_at.desc().nullslast(), Newsletter.created_at.desc())).scalars().first()
-    modules = db.execute(select(ServiceModule)).scalars().all()
-    read_summary = _read_tracking_summary(db)
-    audits = db.execute(select(AdminAuditEvent).order_by(AdminAuditEvent.created_at.desc()).limit(10)).scalars().all()
-    ai_status = AiChatService(settings).status()
-    return AdminSummaryResponse(
-        app_version=settings.app_version,
-        app_env=settings.app_env,
-        database_url=settings.database_url,
-        db_ok=True,
-        newsletter_total=db.scalar(select(func.count(Newsletter.id))) or 0,
-        latest_newsletter_title=latest.title if latest else None,
-        active_modules=sum(1 for module in modules if module.is_enabled),
-        coming_soon_modules=sum(1 for module in modules if module.status == 'coming_soon'),
-        asset_health={'ok': health.ok, 'missing': health.missing, 'checksum_mismatch': health.checksum_mismatch, 'misconfig': health.misconfig},
-        read_summary=read_summary,
-        ai_status=ai_status,
-        recent_audit_events=[AuditEventResponse.model_validate(event) for event in audits],
-    )
+@router.get('/overview', response_model=AdminOverviewResponse, dependencies=[Depends(require_permission('admin.audit.read'))])
+def admin_overview(settings: Settings = Depends(get_settings), db: Session = Depends(get_db)) -> AdminOverviewResponse:
+    return AdminOverviewResponse(**build_overview(db, settings))
 
 
 @router.get('/sessions', response_model=ConnectedUsersResponse, dependencies=[Depends(require_permission('admin.sessions.read'))])
@@ -409,17 +391,22 @@ def connected_sessions(settings: Settings = Depends(get_settings), db: Session =
     now = datetime.now(UTC)
     active_since = now - timedelta(minutes=settings.access_token_ttl_minutes)
     sessions = db.execute(
-        select(UserSessionActivity.user_id, User.username, func.max(UserSessionActivity.last_seen_at))
+        select(UserSessionActivity.user_id, User.username, UserSessionActivity.last_seen_at)
         .join(User, User.id == UserSessionActivity.user_id)
-        .where(UserSessionActivity.last_seen_at >= active_since)
-        .group_by(UserSessionActivity.user_id, User.username)
-        .order_by(func.max(UserSessionActivity.last_seen_at).desc())
+        .where(
+            UserSessionActivity.last_seen_at >= active_since,
+            (UserSessionActivity.expires_at.is_(None)) | (UserSessionActivity.expires_at > now),
+        )
+        .order_by(UserSessionActivity.last_seen_at.desc())
     ).all()
     events = db.execute(select(LoginEvent).order_by(LoginEvent.created_at.desc(), LoginEvent.id.desc()).limit(25)).scalars().all()
     failure_count = db.scalar(select(func.count(LoginEvent.id)).where(LoginEvent.status == 'failure')) or 0
+    active_user_count = len({row[0] for row in sessions})
     return ConnectedUsersResponse(
         active_sessions=[{'user_id': row[0], 'username': row[1], 'last_seen_at': row[2]} for row in sessions],
-        active_count=len(sessions),
+        active_session_count=len(sessions),
+        active_user_count=active_user_count,
+        active_count=active_user_count,
         recent_login_events=events,
         login_failure_count=int(failure_count),
         read_tracking_summary=_read_tracking_summary(db),
@@ -662,6 +649,9 @@ def list_service_modules(db: Session = Depends(get_db)) -> list[ServiceModuleRes
 def create_service_module(payload: ServiceModuleCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> ServiceModuleResponse:
     if db.scalar(select(ServiceModule).where(ServiceModule.key == payload.key)):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Service module key already exists')
+    gate_error = validate_module_gate(payload.visibility, payload.required_permission, payload.resource_type, payload.resource_id)
+    if gate_error is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=gate_error)
     module = ServiceModule(**payload.model_dump())
     db.add(module)
     db.flush()
@@ -688,7 +678,15 @@ def update_service_module(module_id: int, payload: ServiceModuleUpdateRequest, r
     if module is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Service module not found')
     before = _safe_module_snapshot(module)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+    visibility = updates.get('visibility', module.visibility)
+    required_permission = updates.get('required_permission', module.required_permission)
+    resource_type = updates.get('resource_type', module.resource_type)
+    resource_id = updates.get('resource_id', module.resource_id)
+    gate_error = validate_module_gate(visibility, required_permission, resource_type, resource_id)
+    if gate_error is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=gate_error)
+    for field, value in updates.items():
         setattr(module, field, value)
     db.flush()
     record_admin_audit(db, actor=actor, action='service_module.update', target_type='service_module', target_id=module.key, request=request, before=before, after=_safe_module_snapshot(module))

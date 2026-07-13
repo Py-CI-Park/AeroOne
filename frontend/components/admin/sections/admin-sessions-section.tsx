@@ -87,7 +87,17 @@ export function AdminSessionsSection() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_minmax(260px,0.8fr)]">
         <div className="min-h-[24rem] rounded-lg border border-slate-100 p-3">
           <p className="text-xs font-semibold uppercase text-slate-500">활성 세션</p>
-          <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.active_count ?? 0}</p>
+          {!state.connectedUsers && state.error ? (
+            <div className="mt-1 rounded-md border border-red-200 bg-red-50 p-2" role="alert">
+              <p className="text-sm text-red-700">{state.error}</p>
+              <button type="button" onClick={() => void refresh(['connectedUsers'])} className="mt-2 rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-semibold text-red-700">다시 시도</button>
+            </div>
+          ) : (
+            <>
+              <p className="mt-1 text-2xl font-semibold">{state.connectedUsers?.active_session_count ?? 0}</p>
+              <p className="text-sm text-slate-500">세션 {state.connectedUsers?.active_session_count ?? 0}건 · 접속 사용자 {state.connectedUsers?.active_user_count ?? 0}명</p>
+            </>
+          )}
           <ListFilter
             id="admin-active-sessions"
             searchLabel="활성 세션 검색"

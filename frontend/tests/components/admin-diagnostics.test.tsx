@@ -11,7 +11,7 @@ vi.mock('@/lib/api', async () => {
     fetchAdminNewsletters: vi.fn(),
     fetchAssetHealth: vi.fn(),
     fetchConfigHealth: vi.fn(),
-    fetchAdminSummary: vi.fn(),
+    fetchAdminOverview: vi.fn(),
     fetchAdminUsers: vi.fn(),
     fetchConnectedUsers: vi.fn(),
     purgeSessions: vi.fn(),
@@ -69,7 +69,17 @@ test('admin newsletter list renders status-specific asset diagnostics', async ()
 });
 
 test('admin home console lists config-health roots', async () => {
-  vi.mocked(api.fetchAdminSummary).mockResolvedValue({ app_version: '1.9.0', app_env: 'test', database_url: 'sqlite:///test.db', db_ok: true, newsletter_total: 0, active_modules: 0, coming_soon_modules: 0, asset_health: {}, read_summary: {}, ai_status: {}, recent_audit_events: [] } as never);
+  vi.mocked(api.fetchAdminOverview).mockResolvedValue({
+    generated_at: '2026-07-04T00:00:00Z',
+    anchor: '2026-06-27T00:00:00Z',
+    users: { total: 1, active: 1, inactive: 0, roles: { admin: 1, user: 0, pending: 0 }, created: { current: 0, prior: 0, delta: 0 } },
+    logins: { success: { current: 1, prior: 0, delta: 1 }, failure: { current: 1, prior: 0, delta: 1 }, logout: { current: 0, prior: 0, delta: 0 } },
+    ai: { total: { current: 0, prior: 0, delta: 0 }, failure: { current: 0, prior: 0, delta: 0 } },
+    sessions: { active_session_count: 1, active_user_count: 1, active_count: 1 },
+    modules: { total: 0, buckets: { unavailable: [], coming: [], development: [], active: [] } },
+    system: { app_version: '1.9.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 0, asset_health: { ok: 0, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 0, total_reads: 0 } },
+    recent_audit: [],
+  } as never);
   vi.mocked(api.fetchAdminUsers).mockResolvedValue([] as never);
   vi.mocked(api.fetchConnectedUsers).mockResolvedValue({ active_sessions: [{ user_id: 1, username: 'admin', last_seen_at: '2026-07-04T00:00:00Z' }], active_count: 1, recent_login_events: [{ id: 1, user_id: 1, username: 'admin', status: 'success', created_at: '2026-07-04T00:00:00Z' }, { id: 2, user_id: null, username: 'admin', status: 'failure', created_at: '2026-07-04T00:01:00Z' }], login_failure_count: 1, read_tracking_summary: { rows: 2, total_reads: 7 } } as never);
   vi.mocked(api.fetchAdminPermissions).mockResolvedValue([] as never);

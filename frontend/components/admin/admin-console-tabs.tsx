@@ -18,7 +18,7 @@ import {
   fetchAdminAiStatus,
   fetchAdminGroups,
   fetchAdminPermissions,
-  fetchAdminSummary,
+  fetchAdminOverview,
   fetchAdminUsers,
   fetchRbacMatrix,
   fetchAssetHealth,
@@ -44,7 +44,7 @@ import {
 import { getCsrfCookie } from '@/lib/cookies';
 import type {
   AdminGroup,
-  AdminSummary,
+  AdminOverviewResponse,
   AdminUser,
   AiAdminStatus,
   AssetHealthResponse,
@@ -69,6 +69,7 @@ import { AdminTaxonomySection } from './sections/admin-taxonomy-section';
 import { AdminSearchSection } from './sections/admin-search-section';
 import { AdminBackupsSection } from './sections/admin-backups-section';
 import { AdminAuditSection } from './sections/admin-audit-section';
+import { AdminOverviewSection } from './sections/admin-overview-section';
 import { ConfirmProvider, useConfirm } from './widgets/confirm-dialog';
 import { ToastStack, type AdminToast } from './widgets/toast-stack';
 
@@ -77,7 +78,7 @@ export type UserDraft = Pick<AdminUser, 'display_name' | 'email' | 'role' | 'is_
 export type TaxonomyDraft = { name: string; description?: string; sort_order: number; is_active: boolean };
 
 type PanelState = {
-  summary?: AdminSummary;
+  overview?: AdminOverviewResponse;
   users: AdminUser[];
   permissions: Permission[];
   groups: AdminGroup[];
@@ -227,8 +228,8 @@ const tabs = [
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
-type RefreshKey = 'summary' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai';
-const allRefreshKeys: RefreshKey[] = ['summary', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai'];
+type RefreshKey = 'overview' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai';
+const allRefreshKeys: RefreshKey[] = ['overview', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai'];
 
 export function AdminConsoleTabs() {
   return (
@@ -272,7 +273,7 @@ function AdminConsoleTabsContent() {
     const next: Partial<PanelState> = { error: undefined };
     try {
       await Promise.all(keys.map(async (key) => {
-        if (key === 'summary') next.summary = await fetchAdminSummary();
+        if (key === 'overview') next.overview = await fetchAdminOverview();
         if (key === 'users') next.users = await fetchAdminUsers();
         if (key === 'connectedUsers') next.connectedUsers = await fetchConnectedUsers();
         if (key === 'permissions') next.permissions = await fetchAdminPermissions();
@@ -319,20 +320,20 @@ function AdminConsoleTabsContent() {
 
   async function saveModule(module: ServiceModule) {
     const draft = moduleDrafts[module.id] ?? moduleToDraft(module);
-    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await updateServiceModule(module.id, draft, getCsrfCookie()); return `${draft.title} 모듈을 저장했습니다.`; });
+    await runBusy(`module-${module.id}`, ['modules', 'overview', 'audits'], async () => { await updateServiceModule(module.id, draft, getCsrfCookie()); return `${draft.title} 모듈을 저장했습니다.`; });
   }
   async function toggleModule(module: ServiceModule) {
     const draft = moduleDrafts[module.id] ?? moduleToDraft(module);
-    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await updateServiceModule(module.id, { is_enabled: !draft.is_enabled }, getCsrfCookie()); return `${module.title} 모듈 상태를 변경했습니다.`; });
+    await runBusy(`module-${module.id}`, ['modules', 'overview', 'audits'], async () => { await updateServiceModule(module.id, { is_enabled: !draft.is_enabled }, getCsrfCookie()); return `${module.title} 모듈 상태를 변경했습니다.`; });
   }
   async function createModule() {
     if (!moduleForm.key.trim() || !moduleForm.title.trim()) return;
-    await runBusy('module-create', ['modules', 'summary', 'audits'], async () => { await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie()); setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' }); return '대시보드 모듈을 추가했습니다.'; });
+    await runBusy('module-create', ['modules', 'overview', 'audits'], async () => { await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie()); setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' }); return '대시보드 모듈을 추가했습니다.'; });
   }
   async function removeModule(module: ServiceModule) {
     const result = await confirm({ title: '모듈 삭제', message: `${module.key} 모듈을 삭제할까요?\n삭제 후 대시보드 노출 및 관리자 목록에서 제거됩니다.`, confirmLabel: '삭제', tone: 'danger' });
     if (!result.confirmed) return;
-    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await deleteServiceModule(module.id, getCsrfCookie()); return `${module.title} 모듈을 삭제했습니다.`; });
+    await runBusy(`module-${module.id}`, ['modules', 'overview', 'audits'], async () => { await deleteServiceModule(module.id, getCsrfCookie()); return `${module.title} 모듈을 삭제했습니다.`; });
   }
   async function changePassword() {
     if (!passwordForm.current || !passwordForm.next) return;
@@ -398,13 +399,13 @@ function AdminConsoleTabsContent() {
     await runBusy('search', [], async () => { const payload = await fetchUnifiedSearch(searchForm.q, searchForm.includeNsa); setState((current) => ({ ...current, searchResults: payload.results })); return `통합 검색 결과 ${payload.results.length}건`; });
   }
   async function runBackup() {
-    await runBusy('backup', ['backups', 'summary', 'audits'], async () => { await createBackup(getCsrfCookie()); return '백업을 생성했습니다.'; });
+    await runBusy('backup', ['backups', 'overview', 'audits'], async () => { await createBackup(getCsrfCookie()); return '백업을 생성했습니다.'; });
   }
   async function runValidate(id: number) {
-    await runBusy(`backup-${id}`, ['backups', 'summary', 'audits'], async () => { const result = await validateBackup(id, getCsrfCookie()); return result.valid ? '백업 검증 성공' : `백업 검증 실패: ${result.issues.join(', ')}`; });
+    await runBusy(`backup-${id}`, ['backups', 'overview', 'audits'], async () => { const result = await validateBackup(id, getCsrfCookie()); return result.valid ? '백업 검증 성공' : `백업 검증 실패: ${result.issues.join(', ')}`; });
   }
   async function runRestoreDryRun(id: number) {
-    await runBusy(`restore-${id}`, ['backups', 'summary', 'audits'], async () => { const result = await dryRunRestoreBackup(id, getCsrfCookie()); return result.compatible ? `복원 점검 성공: ${result.would_restore.join(', ')}` : `복원 점검 실패: ${result.issues.join(', ')}`; });
+    await runBusy(`restore-${id}`, ['backups', 'overview', 'audits'], async () => { const result = await dryRunRestoreBackup(id, getCsrfCookie()); return result.compatible ? `복원 점검 성공: ${result.would_restore.join(', ')}` : `복원 점검 실패: ${result.issues.join(', ')}`; });
   }
 
   const context = useMemo<AdminConsoleContextValue>(() => ({ state, refresh, moduleDrafts, setModuleDrafts, userDrafts, setUserDrafts, categoryDrafts, setCategoryDrafts, tagDrafts, setTagDrafts, moduleForm, setModuleForm, userForm, setUserForm, groupForm, setGroupForm, grantForm, setGrantForm, membershipForm, setMembershipForm, categoryForm, setCategoryForm, tagForm, setTagForm, searchForm, setSearchForm, passwordForm, setPasswordForm, saveModule, toggleModule, createModule, removeModule, changePassword, createUser, saveUser, resetPassword, saveGroup, saveResourceGrant, removeResourceGrant, changeMembership, createTaxonomy, saveCategory, saveTag, purgeSessionMetadata, runSearch, runBackup, runValidate, runRestoreDryRun }), [state, moduleDrafts, userDrafts, categoryDrafts, tagDrafts, moduleForm, userForm, groupForm, grantForm, membershipForm, categoryForm, tagForm, searchForm, passwordForm]);
@@ -482,12 +483,7 @@ function AdminConsoleTabsContent() {
           <p className="mt-3 text-xs text-slate-500">입력 필드가 아닌 곳에서는 숫자 키 1~9로 탭을 바로 전환할 수 있습니다.</p>
         </details>
         <ToastStack toasts={state.toasts} onDismiss={dismissToast} />
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">버전 / 모드</p><p className="mt-2 text-2xl font-semibold">v{state.summary?.app_version ?? '-'}</p><p className="text-sm text-slate-500">{state.summary?.app_env ?? '-'}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">뉴스레터</p><p className="mt-2 text-2xl font-semibold">{state.summary?.newsletter_total ?? 0}</p><p className="text-sm text-slate-500">최근: {state.summary?.latest_newsletter_title ?? '-'}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">자산</p><p className="mt-2 text-2xl font-semibold">{state.health?.ok ?? 0} OK</p><p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0} · 설정 {state.health?.misconfig ?? 0}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">AI 운영</p><p className="mt-2 text-2xl font-semibold">{String(state.summary?.ai_status?.status ?? '-')}</p><p className="text-sm text-slate-500">로그 {state.ai?.request_logs_total ?? 0} · 실패 {state.ai?.request_failures ?? 0}</p></div>
-        </section>
+        <AdminOverviewSection />
         <nav className="flex flex-wrap gap-2" aria-label="관리자 콘솔 탭" role="tablist">
           {tabs.map((tab) => {
             const selected = activeTab === tab.key;

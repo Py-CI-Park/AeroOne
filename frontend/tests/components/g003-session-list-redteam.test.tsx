@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { AdminConsoleTabs } from '@/components/admin/admin-console-tabs';
 import { paginate } from '@/components/admin/widgets/list-filter';
 import { formatRelativeTime } from '@/lib/relative-time';
@@ -10,7 +10,7 @@ vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return {
     ...actual,
-    fetchAdminSummary: vi.fn(),
+    fetchAdminOverview: vi.fn(),
     fetchAdminUsers: vi.fn(),
     fetchConnectedUsers: vi.fn(),
     fetchAdminPermissions: vi.fn(),
@@ -30,6 +30,8 @@ vi.mock('@/lib/api', async () => {
 
 const connectedUsersEmpty: ConnectedUsersResponse = {
   active_sessions: [],
+  active_session_count: 0,
+  active_user_count: 0,
   active_count: 0,
   recent_login_events: [],
   login_failure_count: 0,
@@ -37,7 +39,17 @@ const connectedUsersEmpty: ConnectedUsersResponse = {
 };
 
 function mockAdminData(connectedUsers: ConnectedUsersResponse = connectedUsersEmpty) {
-  vi.mocked(api.fetchAdminSummary).mockResolvedValue({ app_version: '1.12.0', app_env: 'test', database_url: 'sqlite:///test.db', db_ok: true, newsletter_total: 0, latest_newsletter_title: null, active_modules: 0, coming_soon_modules: 0, asset_health: {}, read_summary: {}, ai_status: { status: 'ok' }, recent_audit_events: [] } as never);
+  vi.mocked(api.fetchAdminOverview).mockResolvedValue({
+    generated_at: '2026-07-05T00:00:00Z',
+    anchor: '2026-06-28T00:00:00Z',
+    users: { total: 0, active: 0, inactive: 0, roles: { admin: 0, user: 0, pending: 0 }, created: { current: 0, prior: 0, delta: 0 } },
+    logins: { success: { current: 0, prior: 0, delta: 0 }, failure: { current: 0, prior: 0, delta: 0 }, logout: { current: 0, prior: 0, delta: 0 } },
+    ai: { total: { current: 0, prior: 0, delta: 0 }, failure: { current: 0, prior: 0, delta: 0 } },
+    sessions: { active_session_count: 0, active_user_count: 0, active_count: 0 },
+    modules: { total: 0, buckets: { unavailable: [], coming: [], development: [], active: [] } },
+    system: { app_version: '1.12.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 0, asset_health: { ok: 0, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 0, total_reads: 0 } },
+    recent_audit: [],
+  } as never);
   vi.mocked(api.fetchAdminUsers).mockResolvedValue([] as never);
   vi.mocked(api.fetchConnectedUsers).mockResolvedValue(connectedUsers as never);
   vi.mocked(api.fetchAdminPermissions).mockResolvedValue([] as never);
@@ -173,4 +185,41 @@ test('세션 tab paginates login events and search resets back to page 1', async
   expect(screen.getByText('user-13')).toBeInTheDocument();
   expect(screen.queryByText('user-12')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled();
+});
+
+test('세션 tab distinguishes active_session_count from active_user_count and shows a retry action on a degraded fetch instead of zeros', async () => {
+  mockAdminData({
+    ...connectedUsersEmpty,
+    active_sessions: [
+      { user_id: 1, username: 'operator', last_seen_at: '2026-07-05T12:00:00Z' },
+      { user_id: 1, username: 'operator', last_seen_at: '2026-07-05T11:00:00Z' },
+    ],
+    active_session_count: 2,
+    active_user_count: 1,
+    active_count: 1,
+  });
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  expect(await screen.findByRole('heading', { name: '접속자/세션' })).toBeInTheDocument();
+
+  expect(screen.getByText('2')).toBeInTheDocument();
+  expect(screen.getByText(/세션 2건 · 접속 사용자 1명/)).toBeInTheDocument();
+});
+
+test('세션 tab shows a retry control (not zeros) when connectedUsers fetch degrades', async () => {
+  vi.mocked(api.fetchConnectedUsers).mockRejectedValueOnce(new Error('세션 정보를 불러오지 못했습니다.') as never);
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  expect(await screen.findByRole('heading', { name: '접속자/세션' })).toBeInTheDocument();
+
+  const retryButton = await screen.findByRole('button', { name: '다시 시도' });
+  expect(retryButton).toBeInTheDocument();
+  const activeSessionsCard = screen.getByText('활성 세션').closest('div') as HTMLElement;
+  expect(within(activeSessionsCard).queryByText('0')).not.toBeInTheDocument();
+
+  vi.mocked(api.fetchConnectedUsers).mockResolvedValue(connectedUsersEmpty as never);
+  fireEvent.click(retryButton);
+  await waitFor(() => expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument());
 });
