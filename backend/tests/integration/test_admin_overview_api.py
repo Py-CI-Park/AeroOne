@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+import pytest
 
 from app.core.security import hash_password
 from app.modules.admin.models import AdminAuditEvent, AiRequestLog, LoginEvent, ServiceModule
@@ -77,19 +78,14 @@ def test_overview_ai_failure_window_and_delta(app, settings) -> None:
     assert overview['ai']['total']['prior'] == 1
 
 
-def test_overview_role_bucket_falls_back_unknown_roles_to_pending(app, settings) -> None:
+def test_overview_rejects_unknown_stored_roles(app, settings) -> None:
     with app.state.db.session() as session:
         session.add(User(username='role-user', password_hash=hash_password('password'), role='user', is_active=True))
         session.add(User(username='role-weird', password_hash=hash_password('password'), role='operator', is_active=True))
         session.commit()
 
-        overview = build_overview(session, settings, now=FIXED_NOW)
-
-    # base fixture seeds one 'admin' role user; plus our 'user' and unknown 'operator' (-> pending).
-    assert overview['users']['roles']['admin'] == 1
-    assert overview['users']['roles']['user'] == 1
-    assert overview['users']['roles']['pending'] == 1
-    assert overview['users']['total'] == 3
+        with pytest.raises(ValueError, match='Unsupported stored user role'):
+            build_overview(session, settings, now=FIXED_NOW)
 
 
 def test_overview_module_buckets_are_disjoint_and_sum_to_total(app, settings) -> None:

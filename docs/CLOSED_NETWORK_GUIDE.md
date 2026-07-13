@@ -4,7 +4,7 @@
 
 - 기준 브랜치: `1.13.0-dev` (검증된 보안·패키지 hotfix 계보 통합)
 - 갱신일: 2026-07-13
-- 최근 완료 검증: backend **550 passed**, frontend Vitest **382 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR 병합 전 QA 산출물은 운영 반입 금지.
+- 최근 완료 검증: backend **567 passed**, frontend Vitest **397 passed / 73 files**, `tsc --noEmit`·`next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, allow-list QA ZIP pre/post verifier 통과. PR 병합 전 QA 산출물은 운영 반입 금지.
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 > [!CAUTION]
@@ -85,8 +85,8 @@
 
 ### 3.3 테스트 통계
 
-- backend 전체: **550 passed**
-- frontend 전체: **382 passed / 73 files**
+- backend 전체: **567 passed**
+- frontend 전체: **397 passed / 73 files**
 - browser/package: production Chrome smoke·matrix·Axe·Lighthouse·React 및 QA ZIP pre-stage/post-ZIP verifier 통과
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, allow-list package builder/pre-post verifier, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 자격 회전 service/listener preflight·연속 DB lock·DPAPI recovery·crash 재개·WPF ValidateOnly, Activity privacy, 관리자 Overview/Users/Sessions/Modules, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API
 
@@ -326,7 +326,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-현재 `1.13.0` RC 기준 기대 결과는 backend **550 passed**, frontend **382 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
+현재 `1.13.0` RC 기준 기대 결과는 backend **567 passed**, frontend **397 passed / 73 files**, typecheck/build와 production Chrome·package gate 실패 0입니다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다. 실패가 1건이라도 나오면 §15의 단계 보고서와 [`docs/reports/INDEX.md`](reports/INDEX.md)를 거꾸로 읽어 진단합니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
@@ -536,7 +536,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 4. **DB 분기 로직** — 본 문서 §11.3 + `backend/scripts/ensure_db_state.py` 의 모듈/함수 docstring (단계 9에서 본문에 새겨 둠)
 5. **회귀 테스트 위치** — 본 문서 §13 표
 6. **변경 이력 의도** — 본 문서 §3 표 + `docs/reports/INDEX.md` 및 각 `docs/reports/phase-*.md`
-7. **최신 AI 에이전트 핸드오프** — [`docs/runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md) (v1.13.0 Task 3 검증 중단점 + Task 4~27/F1~F6 재개 절차)
+7. **최신 AI 에이전트 핸드오프** — [v1.13.0 Claude Code 이어받기](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) (현재 RC 상태, 검증 결과, PR 병합 직전까지의 잔여 절차)
 8. **v1.13.0 개발 상태 상세 보고서** — [`docs/reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) (전체 계획·검토 이력·변경 파일·유효/무효 테스트·잔여 작업)
 
 ### 14.1 변경을 가할 때 따라야 할 순서
@@ -579,7 +579,7 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 - [`docs/runbook/credential-rotation.md`](runbook/credential-rotation.md) — 자격 증명 사고 대응 회전·중단 재개·복원·보존
 - [`docs/runbook/admin-auth.md`](runbook/admin-auth.md) — 관리자 인증 정책
 - [`AGENTS.md`](../AGENTS.md), [`CLAUDE.md`](../CLAUDE.md) — 한국어 커밋·PR 규칙
-- [`docs/runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md) — Codex/Claude/GJC 등 AI code agent가 Task 3 hotfix worktree와 전체 v1.13.0 계획을 이어받는 최신 핸드오프
+- [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) — 현재 RC 구현·검증 상태와 PR 생성·병합 직전 중단 절차
 - [`docs/reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) — Task 1~3 작업·검토와 Task 4~27/F1~F6 잔여 상태의 상세 기록
 - [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) — 1.13.0 제품 구현 전 상태를 보존한 superseded 핸드오프
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 기여 가이드

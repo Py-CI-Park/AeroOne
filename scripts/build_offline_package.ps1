@@ -88,55 +88,53 @@ function Write-Utf8NoBom {
 
 function Get-GitState {
     <#
-      .SYNOPSIS
-      Gathers the fail-closed-relevant git facts: worktree cleanliness, HEAD
-      commit, and the exact annotated tag at HEAD (if any). Never falls back
-      to a wall-clock timestamp.
+      Gathers cleanliness, captured HEAD, and only the requested annotated tag.
     #>
+    param([Parameter(Mandatory = $true)] [string]$RequestedVersion)
+
     Push-Location $RepoRoot
     try {
         $statusLines = git status --porcelain
+        if ($LASTEXITCODE -ne 0) { throw 'git-status-failed' }
         $isClean = -not ($statusLines | Where-Object { $_ -ne '' })
-
         $headCommit = (git rev-parse HEAD).Trim()
-
+        if ($LASTEXITCODE -ne 0 -or $headCommit -notmatch '^[0-9a-f]{40}$') { throw 'git-head-failed' }
         $exactTag = $null
         $previousEap = $ErrorActionPreference
         $ErrorActionPreference = 'SilentlyContinue'
         try {
-            $describeOutput = git describe --tags --exact-match HEAD 2>$null
-            if ($LASTEXITCODE -eq 0 -and $describeOutput) {
-                $exactTag = ([string]$describeOutput).Trim()
+            $tagName = "v$RequestedVersion"
+            $tagObject = git rev-parse --verify --quiet "refs/tags/$tagName^{tag}"
+            if ($LASTEXITCODE -eq 0 -and $tagObject) {
+                $peeledCommit = git rev-parse --verify --quiet "refs/tags/$tagName^{commit}"
+                if ($LASTEXITCODE -eq 0 -and ([string]$peeledCommit).Trim() -eq $headCommit) {
+                    $exactTag = $tagName
+                }
             }
         } finally {
             $ErrorActionPreference = $previousEap
         }
-
-        return [PSCustomObject]@{
-            IsClean    = [bool]$isClean
-            HeadCommit = $headCommit
-            HeadTag    = $exactTag
-        }
+        return [PSCustomObject]@{ IsClean = [bool]$isClean; HeadCommit = $headCommit; HeadTag = $exactTag }
     }
-    finally {
-        Pop-Location
-    }
+    finally { Pop-Location }
 }
 
-function Get-TrackedPaths {
-    <#
-      .SYNOPSIS
-      The git-archive source-of-truth path list: every path git tracks at
-      HEAD, unfiltered. Allow-list filtering happens exclusively in the
-      Python policy layer (``select_allowlisted_paths``), never here.
-    #>
+function Get-CommitPaths {
+    param([Parameter(Mandatory = $true)] [string]$Commit)
     Push-Location $RepoRoot
     try {
-        return git ls-files
+        $paths = git ls-tree -r --name-only $Commit
+        if ($LASTEXITCODE -ne 0) { throw 'git-ls-tree-failed' }
+        return $paths
     }
-    finally {
-        Pop-Location
-    }
+    finally { Pop-Location }
+}
+
+function Get-CapturedGitSource {
+    param([Parameter(Mandatory = $true)] [string]$RequestedVersion)
+    $state = Get-GitState -RequestedVersion $RequestedVersion
+    $paths = @(Get-CommitPaths -Commit $state.HeadCommit)
+    return [PSCustomObject]@{ State = $state; Paths = $paths }
 }
 
 function Invoke-BuildPlan {
@@ -172,6 +170,31 @@ function Invoke-BuildPlan {
     }
     return $result
 }
+function Assert-ContainedOutputDirectory {
+    param([Parameter(Mandatory = $true)] [string]$OutputDirectory, [Parameter(Mandatory = $true)] [string]$AllowedRoot)
+    $root = [System.IO.Path]::GetFullPath($AllowedRoot).TrimEnd('\', '/')
+    $destination = [System.IO.Path]::GetFullPath($OutputDirectory).TrimEnd('\', '/')
+    $prefix = "$root$([System.IO.Path]::DirectorySeparatorChar)"
+    if (-not ([string]::Equals($destination, $root, [StringComparison]::OrdinalIgnoreCase) -or $destination.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase))) {
+        throw 'offline-package-build-policy-violation:output-path-escape'
+    }
+    $cursor = $destination
+    while ($true) {
+        $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
+        if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+            throw 'offline-package-build-policy-violation:output-path-reparse-point'
+        }
+        if ([string]::Equals($cursor, $root, [StringComparison]::OrdinalIgnoreCase)) {
+            break
+        }
+        $parent = [IO.Directory]::GetParent($cursor)
+        if (-not $parent) {
+            throw 'offline-package-build-policy-violation:output-path-escape'
+        }
+        $cursor = $parent.FullName.TrimEnd('\', '/')
+    }
+    return $destination
+}
 
 function New-StageDirectory {
     param([Parameter(Mandatory = $true)] [string]$Path)
@@ -182,34 +205,34 @@ function New-StageDirectory {
 }
 
 function Invoke-GitArchiveAllowList {
-    <#
-      .SYNOPSIS
-      Materializes the allow-listed source tree using ``git archive`` with
-      the already-computed (Python-validated) selected-path list as an
-      explicit pathspec, so the archive itself can never contain a path the
-      policy layer did not approve.
-    #>
     param(
+        [Parameter(Mandatory = $true)] [string]$Commit,
         [Parameter(Mandatory = $true)] [string[]]$SelectedPaths,
         [Parameter(Mandatory = $true)] [string]$StageRoot
     )
-    $archiveZip = [System.IO.Path]::GetTempFileName() + '.zip'
+    $archiveZip = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "$([System.IO.Path]::GetRandomFileName()).zip")
     try {
         Push-Location $RepoRoot
         try {
-            & git archive --format=zip -o $archiveZip HEAD -- @SelectedPaths
+            & git archive --format=zip -o $archiveZip $Commit -- @SelectedPaths
             if ($LASTEXITCODE -ne 0) { throw 'git-archive-failed' }
-        }
-        finally {
-            Pop-Location
-        }
+        } finally { Pop-Location }
         Expand-Archive -LiteralPath $archiveZip -DestinationPath $StageRoot -Force
+    } finally {
+        if (Test-Path -LiteralPath $archiveZip) { Remove-Item -LiteralPath $archiveZip -Force -ErrorAction SilentlyContinue }
     }
-    finally {
-        if (Test-Path -LiteralPath $archiveZip) {
-            Remove-Item -LiteralPath $archiveZip -Force -ErrorAction SilentlyContinue
-        }
-    }
+}
+
+function Invoke-CapturedGitArchive {
+    param(
+        [Parameter(Mandatory = $true)] $CapturedSource,
+        [Parameter(Mandatory = $true)] [string[]]$SelectedPaths,
+        [Parameter(Mandatory = $true)] [string]$StageRoot
+    )
+    Invoke-GitArchiveAllowList `
+        -Commit $CapturedSource.State.HeadCommit `
+        -SelectedPaths $SelectedPaths `
+        -StageRoot $StageRoot
 }
 
 function Invoke-FrontendBuild {
@@ -219,15 +242,25 @@ function Invoke-FrontendBuild {
       build + dev-dependency prune, so the staged ``node_modules``/``.next``
       never carry devDependencies or a stale prior install.
     #>
-    param([Parameter(Mandatory = $true)] [string]$FrontendDir)
+    param(
+        [Parameter(Mandatory = $true)] [string]$FrontendDir,
+        [Parameter(Mandatory = $true)] [string]$BuildId
+    )
 
     Push-Location $FrontendDir
     try {
         & $NpmExecutable ci
         if ($LASTEXITCODE -ne 0) { throw 'npm-ci-failed' }
 
-        & $NpmExecutable run build
-        if ($LASTEXITCODE -ne 0) { throw 'npm-build-failed' }
+        $previousBuildId = [Environment]::GetEnvironmentVariable('AEROONE_BUILD_ID', 'Process')
+        try {
+            [Environment]::SetEnvironmentVariable('AEROONE_BUILD_ID', $BuildId, 'Process')
+            & $NpmExecutable run build
+            if ($LASTEXITCODE -ne 0) { throw 'npm-build-failed' }
+        }
+        finally {
+            [Environment]::SetEnvironmentVariable('AEROONE_BUILD_ID', $previousBuildId, 'Process')
+        }
 
         & $NpmExecutable prune --omit=dev
         if ($LASTEXITCODE -ne 0) { throw 'npm-prune-failed' }
@@ -243,21 +276,21 @@ function Invoke-FrontendBuild {
     }
 }
 
-function Invoke-BackendWheelhouse {
     <#
       .SYNOPSIS
       Downloads the production wheelhouse strictly from
       ``backend/requirements.txt`` (never requirements-dev.txt).
     #>
+function Invoke-BackendWheelhouse {
     param(
         [Parameter(Mandatory = $true)] [string]$RequirementsPath,
-        [Parameter(Mandatory = $true)] [string]$WheelDir
+        [Parameter(Mandatory = $true)] [string]$WheelDir,
+        [Parameter(Mandatory = $true)] [string]$StageRoot
     )
-
-    # Fail-closed guard mirrored from the Python policy layer: refuse
-    # anything but the production requirements file before ever shelling
-    # out to pip.
-    if ([System.IO.Path]::GetFileName($RequirementsPath) -ne 'requirements.txt') {
+    $stageFull = [System.IO.Path]::GetFullPath($StageRoot)
+    $requirementsFull = [System.IO.Path]::GetFullPath($RequirementsPath)
+    $expected = [System.IO.Path]::GetFullPath((Join-Path $stageFull 'backend\requirements.txt'))
+    if (-not [string]::Equals($requirementsFull, $expected, [StringComparison]::OrdinalIgnoreCase)) {
         throw 'offline-package-build-policy-violation:dev-dependencies-forbidden'
     }
     New-Item -ItemType Directory -Path $WheelDir -Force | Out-Null
@@ -318,11 +351,15 @@ function New-PackageManifest {
 # ---------------------------------------------------------------------------
 
 Assert-Python312
-$gitState = Get-GitState
+if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$' -or $Version -match '[^\x00-\x7F]') {
+    throw 'offline-package-build-policy-violation:invalid-version'
+}
+$gitSource = Get-CapturedGitSource -RequestedVersion $Version
+$gitState = $gitSource.State
 $trackedPathsFile = [System.IO.Path]::GetTempFileName()
 $selectedOutFile = [System.IO.Path]::GetTempFileName()
 try {
-    Write-Utf8NoBom -Path $trackedPathsFile -Value ((Get-TrackedPaths) -join "`n")
+    Write-Utf8NoBom -Path $trackedPathsFile -Value ($gitSource.Paths -join "`n")
 
     $plan = Invoke-BuildPlan -Version $Version -GitState $gitState -TrackedPathsFile $trackedPathsFile -SelectedOutFile $selectedOutFile
     $selectedPaths = Get-Content -LiteralPath $selectedOutFile
@@ -334,17 +371,18 @@ try {
         exit 0
     }
 
-    $outputDir = Join-Path $RepoRoot ($plan.output_dir -replace '/', '\')
+    $outputRoot = if ($plan.mode -eq 'release') { Join-Path $RepoRoot 'dist' } else { Join-Path $RepoRoot 'artifacts\qa' }
+    $outputDir = Assert-ContainedOutputDirectory -OutputDirectory (Join-Path $RepoRoot ($plan.output_dir -replace '/', '\')) -AllowedRoot $outputRoot
     New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
     $stageRoot = Join-Path $outputDir 'AeroOne'
     New-StageDirectory -Path $stageRoot
 
-    Invoke-GitArchiveAllowList -SelectedPaths $selectedPaths -StageRoot $stageRoot
+    Invoke-CapturedGitArchive -CapturedSource $gitSource -SelectedPaths $selectedPaths -StageRoot $stageRoot
 
-    Invoke-FrontendBuild -FrontendDir (Join-Path $stageRoot 'frontend')
+    Invoke-FrontendBuild -FrontendDir (Join-Path $stageRoot 'frontend') -BuildId $gitState.HeadCommit
 
-    Invoke-BackendWheelhouse -RequirementsPath (Join-Path $stageRoot 'backend\requirements.txt') -WheelDir (Join-Path $stageRoot 'offline_assets\python-wheels')
+    Invoke-BackendWheelhouse -RequirementsPath (Join-Path $stageRoot 'backend\requirements.txt') -WheelDir (Join-Path $stageRoot 'offline_assets\python-wheels') -StageRoot $stageRoot
 
     $generatedPaths = @(
         Copy-RequiredInstallers `
@@ -363,8 +401,8 @@ try {
 
     Import-Module $VerifierModule -Force
     $signatureMap = Get-RequiredInstallerSignatureMap -PolicyPath $PolicyPath -StageRoot $stageRoot
-    $signaturesPath = [System.IO.Path]::GetTempFileName() + '.json'
-    $digestsPath = [System.IO.Path]::GetTempFileName() + '.json'
+    $signaturesPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "$([System.IO.Path]::GetRandomFileName()).json")
+    $digestsPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "$([System.IO.Path]::GetRandomFileName()).json")
     try {
         Write-Utf8NoBom -Path $signaturesPath -Value ($signatureMap | ConvertTo-Json -Depth 4)
         $verifyArgs = @(

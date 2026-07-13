@@ -87,6 +87,8 @@ type PanelState = {
   audits: AuditEvent[];
   modules: ServiceModule[];
   connectedUsers?: ConnectedUsersResponse;
+  connectedUsersError?: string;
+  connectedUsersLoading?: boolean;
   health?: AssetHealthResponse;
   configHealth?: ConfigHealthResponse;
   backups: BackupRecord[];
@@ -259,10 +261,15 @@ function AdminConsoleTabsContent() {
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const toastIdRef = useRef(0);
+  const connectedUsersRequestRef = useRef(0);
 
   function pushToast(type: AdminToast['type'], text: string) {
     toastIdRef.current += 1;
-    setState((current) => ({ ...current, toasts: [...current.toasts, { id: toastIdRef.current, type, text }] }));
+    const id = toastIdRef.current;
+    setState((current) => ({
+      ...current,
+      toasts: [...current.toasts, { id, type, text }],
+    }));
   }
 
   function dismissToast(id: number) {
@@ -270,35 +277,70 @@ function AdminConsoleTabsContent() {
   }
 
   async function refresh(keys: RefreshKey[] = allRefreshKeys) {
-    setState((current) => ({ ...current, busy: current.busy ?? 'refresh' }));
-    const next: Partial<PanelState> = { error: undefined };
+    setState((current) => ({
+      ...current,
+      busy: current.busy ?? 'refresh',
+      ...(keys.includes('connectedUsers') ? { connectedUsersLoading: true } : {}),
+    }));
+    const connectedUsersRequestId = keys.includes('connectedUsers')
+      ? ++connectedUsersRequestRef.current
+      : undefined;
+    const next: Partial<PanelState> = {
+      error: undefined,
+      ...(connectedUsersRequestId !== undefined ? { connectedUsersError: undefined } : {}),
+    };
+    const errors: string[] = [];
+    let connectedUsersError: string | undefined;
     try {
       await Promise.all(keys.map(async (key) => {
-        if (key === 'overview') next.overview = await fetchAdminOverview();
-        if (key === 'users') next.users = await fetchAdminUsers();
-        if (key === 'connectedUsers') next.connectedUsers = await fetchConnectedUsers();
-        if (key === 'permissions') next.permissions = await fetchAdminPermissions();
-        if (key === 'groups') next.groups = await fetchAdminGroups();
-        if (key === 'rbacMatrix') next.rbacMatrix = await fetchRbacMatrix();
-        if (key === 'resourceGrants') next.resourceGrants = await listResourceGrants();
-        if (key === 'audits') next.audits = await fetchAuditEvents();
-        if (key === 'modules') next.modules = await fetchServiceModulesAdmin();
-        if (key === 'health') next.health = await fetchAssetHealth();
-        if (key === 'configHealth') next.configHealth = await fetchConfigHealth();
-        if (key === 'backups') next.backups = await fetchBackups();
-        if (key === 'categories') next.categories = await fetchCategories();
-        if (key === 'tags') next.tags = await fetchTags();
-        if (key === 'ai') next.ai = await fetchAdminAiStatus();
+        try {
+          if (key === 'overview') next.overview = await fetchAdminOverview();
+          if (key === 'users') next.users = await fetchAdminUsers();
+          if (key === 'connectedUsers') next.connectedUsers = await fetchConnectedUsers();
+          if (key === 'permissions') next.permissions = await fetchAdminPermissions();
+          if (key === 'groups') next.groups = await fetchAdminGroups();
+          if (key === 'rbacMatrix') next.rbacMatrix = await fetchRbacMatrix();
+          if (key === 'resourceGrants') next.resourceGrants = await listResourceGrants();
+          if (key === 'audits') next.audits = await fetchAuditEvents();
+          if (key === 'modules') next.modules = await fetchServiceModulesAdmin();
+          if (key === 'health') next.health = await fetchAssetHealth();
+          if (key === 'configHealth') next.configHealth = await fetchConfigHealth();
+          if (key === 'backups') next.backups = await fetchBackups();
+          if (key === 'categories') next.categories = await fetchCategories();
+          if (key === 'tags') next.tags = await fetchTags();
+          if (key === 'ai') next.ai = await fetchAdminAiStatus();
+        } catch (error) {
+          const text = error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.';
+          if (key === 'connectedUsers') {
+            connectedUsersError = text;
+            next.connectedUsersError = text;
+          } else {
+            errors.push(text);
+          }
+        }
       }));
+      if (
+        connectedUsersRequestId !== undefined
+        && connectedUsersRequestId !== connectedUsersRequestRef.current
+      ) {
+        delete next.connectedUsers;
+        delete next.connectedUsersError;
+        connectedUsersError = undefined;
+      }
+      if (
+        connectedUsersRequestId !== undefined
+        && connectedUsersRequestId === connectedUsersRequestRef.current
+      ) {
+        next.connectedUsersLoading = false;
+      }
+      next.error = errors[0];
+      if (connectedUsersError) pushToast('error', connectedUsersError);
+      if (next.error) pushToast('error', next.error);
       setState((current) => ({ ...current, ...next }));
       if (next.modules) setModuleDrafts(Object.fromEntries(next.modules.map((module) => [module.id, moduleToDraft(module)])));
       if (next.users) setUserDrafts(Object.fromEntries(next.users.map((user) => [user.id, userToDraft(user)])));
       if (next.categories) setCategoryDrafts(Object.fromEntries(next.categories.map((category) => [category.id, categoryToDraft(category)])));
       if (next.tags) setTagDrafts(Object.fromEntries(next.tags.map((tag) => [tag.id, tagToDraft(tag)])));
-    } catch (error) {
-      const text = error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.';
-      pushToast('error', text);
-      setState((current) => ({ ...current, error: text }));
     } finally {
       setState((current) => ({ ...current, busy: current.busy === 'refresh' || current.busy === 'initial-load' ? undefined : current.busy }));
     }

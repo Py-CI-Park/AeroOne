@@ -79,6 +79,14 @@ function makeLoginEvents(count: number): LoginEvent[] {
   }));
 }
 
+function deferred<T>() {
+  let resolvePromise!: (value: T) => void;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return { promise, resolve: resolvePromise };
+}
+
 beforeEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
@@ -187,7 +195,7 @@ test('세션 tab paginates login events and search resets back to page 1', async
   expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled();
 });
 
-test('세션 tab distinguishes active_session_count from active_user_count and shows a retry action on a degraded fetch instead of zeros', async () => {
+test('세션 tab distinguishes active_session_count from active_user_count', async () => {
   mockAdminData({
     ...connectedUsersEmpty,
     active_sessions: [
@@ -216,10 +224,117 @@ test('세션 tab shows a retry control (not zeros) when connectedUsers fetch deg
 
   const retryButton = await screen.findByRole('button', { name: '다시 시도' });
   expect(retryButton).toBeInTheDocument();
+  expect(screen.getByText('로그인 실패 지표를 표시할 수 없습니다.')).toBeInTheDocument();
+  expect(screen.getByText('읽음 집계를 표시할 수 없습니다.')).toBeInTheDocument();
+  expect(screen.queryByText('실패 0건')).not.toBeInTheDocument();
   const activeSessionsCard = screen.getByText('활성 세션').closest('div') as HTMLElement;
   expect(within(activeSessionsCard).queryByText('0')).not.toBeInTheDocument();
 
   vi.mocked(api.fetchConnectedUsers).mockResolvedValue(connectedUsersEmpty as never);
   fireEvent.click(retryButton);
   await waitFor(() => expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument());
+});
+
+test('세션 tab does not degrade when an unrelated initial resource fails', async () => {
+  mockAdminData({
+    ...connectedUsersEmpty,
+    active_session_count: 2,
+    active_user_count: 1,
+  });
+  vi.mocked(api.fetchAdminUsers).mockRejectedValueOnce(new Error('사용자 목록 실패') as never);
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+
+  expect(await screen.findByText(/세션 2건 · 접속 사용자 1명/)).toBeInTheDocument();
+  expect(screen.queryByText(/최신 세션 정보를 갱신하지 못했습니다/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+});
+
+test('세션 tab preserves its own retry error when a sibling resource also fails', async () => {
+  vi.mocked(api.fetchConnectedUsers).mockRejectedValueOnce(new Error('세션 결합 실패') as never);
+  vi.mocked(api.fetchAdminUsers).mockRejectedValueOnce(new Error('사용자 결합 실패') as never);
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+
+  expect((await screen.findAllByText('세션 결합 실패')).length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+  expect(screen.getAllByText('사용자 결합 실패').length).toBeGreaterThan(0);
+});
+test('세션 tab keeps last-good dataset with a visible degraded banner after refresh failure', async () => {
+  mockAdminData({
+    ...connectedUsersEmpty,
+    active_session_count: 4,
+    active_user_count: 2,
+    login_failure_count: 3,
+    read_tracking_summary: { rows: 2, total_reads: 7 },
+  });
+  vi.mocked(api.fetchConnectedUsers)
+    .mockResolvedValueOnce({
+      ...connectedUsersEmpty,
+      active_session_count: 4,
+      active_user_count: 2,
+      login_failure_count: 3,
+      read_tracking_summary: { rows: 2, total_reads: 7 },
+    } as never)
+    .mockRejectedValueOnce(new Error('세션 갱신 실패') as never);
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  await waitFor(() => expect(screen.getByText(/세션 4건 · 접속 사용자 2명/)).toBeInTheDocument());
+
+  vi.useFakeTimers();
+  fireEvent.click(screen.getByLabelText('세션 자동 새로고침'));
+  await act(async () => {
+    vi.advanceTimersByTime(15_000);
+    await Promise.resolve();
+  });
+
+  expect(screen.getByText(/최신 세션 정보를 갱신하지 못했습니다/)).toBeInTheDocument();
+  expect(screen.getByText(/세션 4건 · 접속 사용자 2명/)).toBeInTheDocument();
+  expect(screen.getByText('실패 3건')).toBeInTheDocument();
+  expect(screen.getByText('7')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+});
+
+test('세션 tab ignores an older connected-users response that finishes after a newer refresh', async () => {
+  const olderRefresh = deferred<ConnectedUsersResponse>();
+  vi.mocked(api.fetchConnectedUsers)
+    .mockResolvedValueOnce({
+      ...connectedUsersEmpty,
+      active_session_count: 1,
+      active_user_count: 1,
+    } as never)
+    .mockReturnValueOnce(olderRefresh.promise as never)
+    .mockResolvedValueOnce({
+      ...connectedUsersEmpty,
+      active_session_count: 7,
+      active_user_count: 3,
+    } as never);
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  expect(await screen.findByText(/세션 1건 · 접속 사용자 1명/)).toBeInTheDocument();
+
+  vi.useFakeTimers();
+  fireEvent.click(screen.getByLabelText('세션 자동 새로고침'));
+  await act(async () => {
+    vi.advanceTimersByTime(30_000);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(screen.getByText(/세션 7건 · 접속 사용자 3명/)).toBeInTheDocument();
+
+  await act(async () => {
+    olderRefresh.resolve({
+      ...connectedUsersEmpty,
+      active_session_count: 9,
+      active_user_count: 4,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(screen.getByText(/세션 7건 · 접속 사용자 3명/)).toBeInTheDocument();
+  expect(screen.queryByText(/세션 9건 · 접속 사용자 4명/)).not.toBeInTheDocument();
 });

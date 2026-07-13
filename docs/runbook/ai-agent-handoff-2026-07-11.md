@@ -1,6 +1,7 @@
 # AI 에이전트 핸드오프 — v1.13.0 Task 3 검증 중단 지점과 전체 재개 절차
 
 - 작성일: 2026-07-11
+> **Superseded:** 현재 v1.13.0 RC 재개에는 [최신 Claude Code 핸드오프](../../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md)를 사용합니다. 이 문서는 Task 3 중단 당시의 계보와 복구 절차를 보존합니다.
 - 대상: Codex, Claude Code, GJC, 기타 coding agent, 사람 검토자
 - root branch/HEAD: `1.13.0-dev@034bd03`
 - hotfix worktree/HEAD: `.worktrees/1.12.3-hotfix`, local `main@d6628dd`

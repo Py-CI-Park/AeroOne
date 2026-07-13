@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.modules.admin.models import AdminAuditEvent, AiRequestLog, LoginEvent, ServiceModule, UserSessionActivity
+from app.modules.admin.module_access_service import validate_role
 from app.modules.auth.models import User
 from app.modules.newsletter.models.newsletter import Newsletter
+from app.modules.admin.health_service import asset_health, read_tracking_summary
 
 _COMING_STATUSES = ('coming', 'coming-soon', 'coming_soon')
 
@@ -30,11 +32,8 @@ def _window_count(db: Session, model: Any, timestamp_column: Any, *, now: dateti
 
 
 def build_overview(db: Session, settings: Settings, *, now: datetime | None = None) -> dict[str, Any]:
-    # Local import avoids a circular import at module load time (api.py imports build_overview).
-    from app.modules.admin.api import _asset_health, _ensure_service_modules, _read_tracking_summary
 
     now = now or datetime.now(UTC)
-    _ensure_service_modules(db)
 
     total_users = int(db.scalar(select(func.count(User.id))) or 0)
     active_users = int(db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))) or 0)
@@ -42,8 +41,7 @@ def build_overview(db: Session, settings: Settings, *, now: datetime | None = No
 
     role_counts = {'admin': 0, 'user': 0, 'pending': 0}
     for role, count in db.execute(select(User.role, func.count(User.id)).group_by(User.role)).all():
-        key = role if role in role_counts else 'pending'
-        role_counts[key] += int(count)
+        role_counts[validate_role(role)] += int(count)
 
     users_payload = {
         'total': total_users,
@@ -93,7 +91,7 @@ def build_overview(db: Session, settings: Settings, *, now: datetime | None = No
             buckets['active'].append(ref)
     modules_payload = {'total': len(modules), 'buckets': buckets}
 
-    health = _asset_health(db, settings)
+    health = asset_health(db, settings)
     database_kind = settings.database_url.split(':', 1)[0]
     system_payload = {
         'app_version': settings.app_version,
@@ -101,7 +99,7 @@ def build_overview(db: Session, settings: Settings, *, now: datetime | None = No
         'database_kind': database_kind,
         'newsletter_count': int(db.scalar(select(func.count(Newsletter.id))) or 0),
         'asset_health': {'ok': health.ok, 'missing': health.missing, 'checksum_mismatch': health.checksum_mismatch, 'misconfig': health.misconfig},
-        'read_summary': _read_tracking_summary(db),
+        'read_summary': read_tracking_summary(db),
     }
 
     recent_audit = db.execute(select(AdminAuditEvent).order_by(AdminAuditEvent.created_at.desc()).limit(10)).scalars().all()

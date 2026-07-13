@@ -3,12 +3,21 @@ import { closeSync, openSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-const repo = resolve(import.meta.dirname, '../..'); const sha = (process.argv[process.argv.indexOf('--sha') + 1] || process.env.QA_SHA || '').trim();
+const repo = resolve(import.meta.dirname, '../..'); const shaArgIndex = process.argv.indexOf('--sha'); const sha = (shaArgIndex >= 0 ? process.argv[shaArgIndex + 1] : '').trim();
 if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('sha must be 40 lowercase hex');
 const artifactRoot = resolve(repo, 'artifacts/qa/v1.13.0', sha, 'browser'); const runtimeDir = resolve(repo, 'artifacts/qa/v1.13.0', sha, 'runtime'); const runtimePath = join(runtimeDir, 'runtime.json');
+await rm(runtimePath, { force: true });
+const gitCheck = (args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8', shell: false, windowsHide: true });
+const head = gitCheck(['rev-parse', 'HEAD']);
+if (head.error || head.status !== 0 || head.stdout.trim() !== sha) throw new Error('git HEAD does not match --sha');
+const status = gitCheck(['status', '--porcelain']);
+if (status.error || status.status !== 0 || status.stdout.trim() !== '') throw new Error('git worktree is dirty');
 const backendCwd = join(repo, 'backend'); const frontendCwd = join(repo, 'frontend'); const py = join(backendCwd, '.venv', 'Scripts', 'python.exe'); const next = join(frontendCwd, 'node_modules', 'next', 'dist', 'bin', 'next');
+const buildIdPath = join(frontendCwd, '.next', 'BUILD_ID');
+const buildId = await readFile(buildIdPath, 'utf8').catch(() => '');
+if (buildId.trim() !== sha) throw new Error(`frontend BUILD_ID does not match --sha (${buildId.trim() || 'missing'})`);
 const reservePort = () => new Promise((ok, bad) => {
  const server = createServer();
  server.once('error', bad);
@@ -35,7 +44,7 @@ const killTree = pid => new Promise(ok => { if (!pid) return ok(); const p = spa
 let tempRoot; let backendPid; let frontendPid; let backendProcess; let frontendProcess; let backendReservation; let frontendReservation; const fds = [];
 try {
  for (const [p, label] of [[py, 'backend Python'], [next, 'frontend Next'], [join(frontendCwd, '.next', 'BUILD_ID'), 'frontend production build']]) await access(p).catch(() => { throw new Error(`missing ${label}: ${p}`); });
- await mkdir(artifactRoot, { recursive: true }); await mkdir(runtimeDir, { recursive: true }); await rm(runtimePath, { force: true }); tempRoot = await mkdtemp(join(tmpdir(), `aeroone-v113-${sha}-`));
+ await mkdir(artifactRoot, { recursive: true }); await mkdir(runtimeDir, { recursive: true }); tempRoot = await mkdtemp(join(tmpdir(), `aeroone-v113-${sha}-`));
  const isolatedBackend = join(tempRoot, 'backend');
  await cp(join(backendCwd, 'app'), join(isolatedBackend, 'app'), { recursive: true });
  await mkdir(join(tempRoot, 'scripts', 'windows'), { recursive: true });

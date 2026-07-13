@@ -15,7 +15,7 @@
 | **시스템을 처음 보는 사람** | [`README.md`](../README.md) (시스템 정체성, 빠른 시작) | §2 운영 매뉴얼 |
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
-| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | v1.13.0 상세 상태 보고서 + §6 코드 진실 원천 |
+| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | 현재 RC 상태·정확한 잔여 순서 + §6 코드 진실 원천 |
 
 ---
 
@@ -44,7 +44,7 @@
 | [`runbook/credential-rotation.md`](runbook/credential-rotation.md) | 자격 증명 노출 사고 시 JWT·전체 사용자 비밀번호·세션 회전, 중단 재개, DB 복원 뒤 신규 회전, 보존·삭제 책임 | 중간 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
-| [`runbook/ai-agent-handoff-2026-07-11.md`](runbook/ai-agent-handoff-2026-07-11.md) | **최신 AI 에이전트 핸드오프** — v1.13.0 Task 1~3 진행, hotfix dirty worktree, 검증 중단점, Task 4~27/F1~F6 재개 절차 | 긴 문서 |
+| [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) | **최신 AI 에이전트 핸드오프** — 현재 RC 구현·검증 상태, 미커밋 hardening, PR 직전까지의 정확한 잔여 순서 | 긴 문서 |
 | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | **v1.13.0 개발 상태 상세 보고서** — 전체 계획 페이지, 검토 Round 1~4, 변경 파일, 유효/무효 테스트, 잔여 단계·시간·금지 사항 | 긴 문서 |
 | [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | 과거 핸드오프 — 1.13.0 제품 구현 전 상태. 최신 문서로 superseded | 중간 |
 
@@ -145,7 +145,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0` RC는 backend 전체 550, frontend 382/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
+최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0` RC는 backend 전체 567, frontend 397/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|

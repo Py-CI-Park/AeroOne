@@ -49,6 +49,12 @@ def test_powershell_builder_writes_python_inputs_without_utf8_bom() -> None:
     assert "Set-Content -LiteralPath $selectedFile" not in script
     assert "Set-Content -LiteralPath $signaturesPath" not in script
     assert "if ($gitState.HeadTag) { $verifyArgs += @('--tag', $gitState.HeadTag) }" in script
+    assert 'refs/tags/$tagName^{tag}' in script
+    assert 'refs/tags/$tagName^{commit}' in script
+    assert 'git for-each-ref --points-at HEAD' not in script
+    assert 'git ls-tree -r --name-only $Commit' in script
+    assert 'git archive --format=zip -o $archiveZip $Commit' in script
+    assert 'git archive --format=zip -o $archiveZip HEAD' not in script
     assert "$verifyTag" not in script
     assert "foreach ($cachePath in @('.next\\cache', 'node_modules\\.cache'))" in script
     assert "Remove-Item -LiteralPath $cachePath -Recurse -Force" in script
@@ -138,6 +144,13 @@ _TRACKED_PATHS_HAPPY = [
     "frontend/.next/cache/x",
     "vendor/unexpected.txt",
     "dist/leftover.zip",
+    "backend/tests/unit/test_builder.py",
+    "frontend/tests/e2e.spec.ts",
+    "frontend/playwright.qa.config.ts",
+    "scripts/qa/run_gate.mjs",
+    "Scripts/QA/run_gate.mjs",
+    "BACKEND/REQUIREMENTS-DEV.TXT",
+    "Frontend/Node_Modules/pkg/index.js",
     ".worktrees/other/file.py",
 ]
 
@@ -168,6 +181,14 @@ def test_select_allowlisted_paths_excludes_forbidden_and_out_of_allowlist_entrie
         "vendor/unexpected.txt",
         "dist/leftover.zip",
         ".worktrees/other/file.py",
+        "backend/requirements-dev.txt",
+        "backend/tests/unit/test_builder.py",
+        "frontend/tests/e2e.spec.ts",
+        "frontend/playwright.qa.config.ts",
+        "scripts/qa/run_gate.mjs",
+        "Scripts/QA/run_gate.mjs",
+        "BACKEND/REQUIREMENTS-DEV.TXT",
+        "Frontend/Node_Modules/pkg/index.js",
     ):
         assert forbidden not in selected
 
@@ -206,6 +227,21 @@ def test_mismatched_or_missing_tag_falls_back_to_qa_mode_not_release(head_tag: s
     assert context.output_dir == f"artifacts/qa/{_VERSION}/{_VERSION}-pr-deadbeef"
     assert context.zip_name == f"AeroOne-offline-{_VERSION}-pr-deadbeef.zip"
     assert "T" not in context.output_dir  # no wall-clock timestamp component
+
+
+@pytest.mark.parametrize("head_tag", [f"vv{_VERSION}", f"v{_VERSION}x", _VERSION.replace(".", "")])
+def test_malformed_or_repeated_prefix_tag_falls_back_to_qa_mode(head_tag: str) -> None:
+    context = determine_release_context(GitState(is_clean=True, head_commit="c" * 40, head_tag=head_tag), _VERSION)
+    assert context.mode == "qa"
+    assert context.publishable is False
+
+
+def test_unprefixed_tag_name_falls_back_to_qa_mode() -> None:
+    context = determine_release_context(
+        GitState(is_clean=True, head_commit="d" * 40, head_tag=_VERSION), _VERSION
+    )
+    assert context.mode == "qa"
+    assert context.publishable is False
 
 
 def test_dirty_worktree_is_rejected_regardless_of_tag_state() -> None:
@@ -254,6 +290,22 @@ def test_validate_requirements_source_rejects_dev_requirements_file() -> None:
 
 def test_validate_requirements_source_accepts_production_requirements_file() -> None:
     validate_requirements_source("backend/requirements.txt")  # must not raise
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "./backend/requirements.txt",
+        "backend/../backend/requirements.txt",
+        "other/requirements.txt",
+        "/backend/requirements.txt",
+        "C:\\repo\\backend\\requirements.txt",
+    ],
+)
+def test_validate_requirements_source_rejects_noncanonical_paths(path: str) -> None:
+    with pytest.raises(OfflinePackageBuildError) as excinfo:
+        validate_requirements_source(path)
+    assert excinfo.value.code == OfflinePackageBuildErrorCode.DEV_DEPENDENCIES_FORBIDDEN
 
 
 # ---------------------------------------------------------------------------

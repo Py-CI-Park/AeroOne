@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+import re
 
 from app.operations.offline_package_build_contracts import (
     BuildOptions,
@@ -27,7 +28,6 @@ from app.operations.package_policy_contracts import ManifestEntry, ManifestProve
 from app.operations.package_policy_verifier import check_top_level_allowed, classify_forbidden, compute_sha256
 
 _MAX_SANDBOX_TIMEOUT_MINUTES = 20
-_PRODUCTION_REQUIREMENTS_FILENAME = "requirements.txt"
 
 
 def validate_build_options(options: BuildOptions) -> None:
@@ -52,14 +52,9 @@ def validate_build_options(options: BuildOptions) -> None:
 
 
 def validate_requirements_source(requirements_filename: str) -> None:
-    """The wheelhouse must always be built from the production
-    ``backend/requirements.txt``. ``requirements-dev.txt`` (QA-only
-    dependencies such as pytest/ruff) must never reach the production tree
-    or the public ZIP.
-    """
-    if Path(requirements_filename).name != _PRODUCTION_REQUIREMENTS_FILENAME:
+    """Require the one canonical repository-relative production requirements path."""
+    if requirements_filename.replace("\\", "/") != "backend/requirements.txt":
         raise OfflinePackageBuildError(OfflinePackageBuildErrorCode.DEV_DEPENDENCIES_FORBIDDEN)
-
 
 def determine_release_context(
     git_state: GitState,
@@ -68,56 +63,47 @@ def determine_release_context(
     dist_root: str = "dist",
     qa_root: str = "artifacts/qa",
 ) -> ReleaseContext:
-    """release mode requires an *exact* annotated tag at HEAD that equals
-    ``version`` (``v<version>`` or ``<version>``) on a clean worktree.
-    Anything else (no tag, mismatched tag) is QA mode: deterministic
-    ``<version>-pr-<commit-short>`` naming under ``artifacts/qa/``, never a
-    wall-clock timestamp, and ``publishable=False``. A dirty worktree is
-    rejected outright regardless of mode.
-    """
+    """Determine immutable release or QA context from a captured commit."""
     if not git_state.is_clean:
         raise OfflinePackageBuildError(OfflinePackageBuildErrorCode.DIRTY_WORKTREE)
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version, flags=re.ASCII) is None:
+        raise OfflinePackageBuildError(OfflinePackageBuildErrorCode.TAG_REQUIRED)
 
-    normalized_tag = git_state.head_tag.lstrip("v") if git_state.head_tag else None
+    accepted_tag = f"v{version}"
     commit_short = git_state.head_commit[:8]
-
-    if normalized_tag is not None and normalized_tag == version:
+    if git_state.head_tag == accepted_tag:
         return ReleaseContext(
-            mode="release",
-            publishable=True,
-            output_dir=dist_root,
-            zip_name=f"AeroOne-offline-{version}.zip",
-            version=version,
-            tag=git_state.head_tag,
-            commit=git_state.head_commit,
+            mode="release", publishable=True, output_dir=dist_root,
+            zip_name=f"AeroOne-offline-{version}.zip", version=version,
+            tag=git_state.head_tag, commit=git_state.head_commit,
         )
 
     pr_id = f"{version}-pr-{commit_short}"
     return ReleaseContext(
-        mode="qa",
-        publishable=False,
-        output_dir=f"{qa_root}/{version}/{pr_id}",
-        zip_name=f"AeroOne-offline-{pr_id}.zip",
-        version=version,
-        tag=git_state.head_tag,
-        commit=git_state.head_commit,
+        mode="qa", publishable=False, output_dir=f"{qa_root}/{version}/{pr_id}",
+        zip_name=f"AeroOne-offline-{pr_id}.zip", version=version,
+        tag=git_state.head_tag, commit=git_state.head_commit,
     )
 
 
 def _is_builder_denied_path(rel_posix: str) -> bool:
-    """Additional builder-owned denylist for git-tracked source files that
-    the generic Task 5 allow-list policy does not categorically forbid
-    (because that policy is shared with other packaging profiles), but
-    which must never reach the public offline package regardless: QA-only
-    dependency manifests, and any generated tree the builder itself
-    produces fresh (``git ls-files`` never actually reports these since
-    they are gitignored, but the check stays defense-in-depth).
-    """
-    denied_exact = {"backend/requirements-dev.txt"}
-    if rel_posix in denied_exact:
+    """Case-insensitive builder-owned exclusions for Windows worktrees."""
+    normalized = rel_posix.replace("\\", "/").casefold()
+    denied_exact = {
+        "backend/requirements-dev.txt",
+        "frontend/playwright.qa.config.ts",
+    }
+    if normalized in denied_exact:
         return True
-    denied_prefixes = ("frontend/node_modules/", "frontend/.next/", "offline_assets/python-wheels/")
-    return rel_posix.startswith(denied_prefixes)
+    denied_prefixes = (
+        "backend/tests/",
+        "frontend/tests/",
+        "scripts/qa/",
+        "frontend/node_modules/",
+        "frontend/.next/",
+        "offline_assets/python-wheels/",
+    )
+    return normalized.startswith(denied_prefixes)
 
 
 def select_allowlisted_paths(tracked_paths: Sequence[str], policy: PolicyDocument) -> list[str]:

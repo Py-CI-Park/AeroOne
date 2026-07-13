@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
+import { deterministicBuildId } from '../../next.config';
 
 type Manifest = {
   scripts: Record<string, string>;
@@ -76,6 +78,8 @@ describe('browser harness contract', () => {
     expect(config).toMatch(/grep:\s*\/@smoke\//);
     expect(config).toMatch(/grep:\s*\/@matrix\//);
     expect(config).toMatch(/grep:\s*\/@axe\//);
+    expect(setup).toContain('frontend BUILD_ID does not match --sha');
+    expect(fs.readFileSync(path.join(frontendRoot, 'next.config.ts'), 'utf8')).toContain('generateBuildId');
     expect(spec).toMatch(/requestfailed/);
     expect(spec).toContain("QA-admin-v1130-strong!");
     expect(spec).toMatch(/hostname/);
@@ -87,9 +91,78 @@ describe('browser harness contract', () => {
     expect(setup).toContain("APP_ENV:'closed_network'");
     expect(setup).toContain('env.PYTHONPATH = isolatedBackend');
     expect(setup).toContain("childFailure('backend', backendProcess)");
+    expect(setup).toContain("gitCheck(['rev-parse', 'HEAD']");
+    expect(setup).toContain("gitCheck(['status', '--porcelain']");
+    expect(setup).toContain('git HEAD does not match --sha');
+    expect(setup).toContain('git worktree is dirty');
+    expect(setup).toContain('shell: false');
+    expect(fs.readFileSync(path.join(frontendRoot, '../scripts/build_offline_package.ps1'), 'utf8')).toContain('AEROONE_BUILD_ID');
     expect(teardown).toContain('redactRuntimeLogs(runtime)');
     expect(teardown).toContain("'[REPO_ROOT]'");
     expect(teardown).toContain("'[TEMP_ROOT]'");
     expect(teardown).toContain("['backend.log', 'frontend.log']");
+  });
+
+  it('rejects a wrong SHA and invalidates a stale runtime receipt before failing', () => {
+    const wrongSha = '0'.repeat(40);
+    const staleRoot = path.join(frontendRoot, '..', 'artifacts', 'qa', 'v1.13.0', wrongSha);
+    const staleRuntime = path.join(staleRoot, 'runtime', 'runtime.json');
+    fs.mkdirSync(path.dirname(staleRuntime), { recursive: true });
+    fs.writeFileSync(staleRuntime, '{"stale":true}\n');
+
+    try {
+      const result = spawnSync(
+        process.execPath,
+        [path.join(frontendRoot, '..', 'scripts', 'qa', 'prepare_v113_runtime.mjs'), '--sha', wrongSha],
+        {
+          cwd: path.join(frontendRoot, '..'),
+          encoding: 'utf8',
+          shell: false,
+          windowsHide: true,
+        },
+      );
+      expect(result.status).not.toBe(0);
+      expect(`${result.stdout}${result.stderr}`).toContain('git HEAD does not match --sha');
+      expect(fs.existsSync(staleRuntime)).toBe(false);
+    } finally {
+      fs.rmSync(staleRoot, { recursive: true, force: true });
+    }
+  });
+});
+describe('deterministic build provenance', () => {
+  it('rejects a dirty worktree even when HEAD is the requested SHA', () => {
+    const sha = 'a'.repeat(40);
+    const calls: string[][] = [];
+    const buildId = () => deterministicBuildId((args) => {
+      calls.push(args);
+      if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') return 'true\n';
+      if (args[0] === 'rev-parse') return `${sha}\n`;
+      return ' M frontend/next.config.ts\n';
+    });
+
+    expect(buildId).toThrow('git worktree is dirty');
+    expect(calls).toContainEqual(['status', '--porcelain']);
+  });
+
+  it('uses a clean exact SHA from Git', () => {
+    const sha = 'b'.repeat(40);
+    const buildId = deterministicBuildId((args) => {
+      if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') return 'true\n';
+      if (args[0] === 'rev-parse') return `${sha}\n`;
+      return '';
+    });
+
+    expect(buildId).toBe(sha);
+  });
+
+  it('uses the offline fallback when Git metadata is unavailable', () => {
+    const previous = process.env.AEROONE_BUILD_ID;
+    process.env.AEROONE_BUILD_ID = 'c'.repeat(40);
+    try {
+      expect(deterministicBuildId(() => { throw new Error('not a worktree'); })).toBe('c'.repeat(40));
+    } finally {
+      if (previous === undefined) delete process.env.AEROONE_BUILD_ID;
+      else process.env.AEROONE_BUILD_ID = previous;
+    }
   });
 });

@@ -9,14 +9,17 @@ vi.mock('@/lib/api', () => ({
   getServerApiBase: getServerApiBaseMock,
 }));
 
-import { GET, POST, PUT } from '@/app/api/frontend/auth/[...segments]/route';
+import { GET, POST } from '@/app/api/frontend/auth/[...segments]/route';
 
-function createRouteRequest(url: string, init?: { method?: string; headers?: Record<string, string> }) {
+function createRouteRequest(
+  url: string,
+  init?: { method?: string; headers?: Record<string, string>; body?: BodyInit },
+) {
   return {
     url,
     method: init?.method ?? 'GET',
     headers: new Headers(init?.headers),
-    body: undefined,
+    body: init?.body,
   } as unknown as NextRequest;
 }
 
@@ -26,8 +29,8 @@ function upstreamJsonWithCookies(payload: unknown) {
     headers: { 'content-type': 'application/json' },
   });
   (response.headers as Headers & { getSetCookie: () => string[] }).getSetCookie = () => [
-    'aeroone_session=one; Path=/; HttpOnly',
-    'csrf_token=two; Path=/',
+    'aeroone_session=one; Expires=Wed, 15 Jul 2026 12:00:00 GMT; Path=/; HttpOnly',
+    'csrf_token=two; Path=/; SameSite=Lax',
   ];
   return response;
 }
@@ -47,7 +50,13 @@ test('POST relays auth login method, cookie, csrf, content headers and multi Set
       'x-csrf-token': 'csrf-token',
       'content-type': 'application/json',
       accept: 'application/json',
+      authorization: 'Bearer must-not-forward',
+      host: 'attacker.invalid',
+      'x-forwarded-for': '203.0.113.8',
+      connection: 'keep-alive',
+      'x-unrelated': 'must-not-forward',
     },
+    body: '{"username":"admin","password":"synthetic"}',
   }));
 
   expect(fetchMock).toHaveBeenCalledWith(
@@ -58,14 +67,25 @@ test('POST relays auth login method, cookie, csrf, content headers and multi Set
       headers: expect.any(Headers),
     }),
   );
-  const relayedHeaders = fetchMock.mock.calls[0]?.[1]?.headers as Headers;
-  expect(relayedHeaders.get('cookie')).toBe('aeroone_session=old');
-  expect(relayedHeaders.get('x-csrf-token')).toBe('csrf-token');
-  expect(relayedHeaders.get('content-type')).toBe('application/json');
-  expect(relayedHeaders.get('accept')).toBe('application/json');
+  const fetchInit = fetchMock.mock.calls[0]?.[1] as RequestInit & { duplex?: string };
+  const relayedHeaders = fetchInit.headers as Headers;
+  expect(Object.fromEntries(relayedHeaders.entries())).toEqual({
+    accept: 'application/json',
+    'content-type': 'application/json',
+    cookie: 'aeroone_session=old',
+    'x-csrf-token': 'csrf-token',
+  });
+  expect(fetchInit.body).toBe('{"username":"admin","password":"synthetic"}');
+  expect(fetchInit.duplex).toBe('half');
   expect(response.status).toBe(200);
-  expect(response.headers.get('set-cookie')).toContain('aeroone_session=one');
-  expect(response.headers.get('set-cookie')).toContain('csrf_token=two');
+  const setCookies = (
+    response.headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie?.();
+  expect(setCookies).toEqual([
+    'aeroone_session=one; Expires=Wed, 15 Jul 2026 12:00:00 GMT; Path=/; HttpOnly',
+    'csrf_token=two; Path=/; SameSite=Lax',
+  ]);
+  expect(response.headers.get('cache-control')).toBe('no-store');
 });
 
 test.each([
@@ -83,11 +103,29 @@ test.each([
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
-test('PUT rejects disallowed method with 405 and no upstream fetch', async () => {
+test('unsupported method is rejected with no-store and no upstream fetch', async () => {
   const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(new Response('should not reach'));
 
-  const response = await PUT(createRouteRequest('http://localhost/api/frontend/auth/login', { method: 'PUT' }));
+  const response = await POST(createRouteRequest('http://localhost/api/frontend/auth/login', { method: 'PUT' }));
 
   expect(response.status).toBe(405);
+  expect(response.headers.get('cache-control')).toBe('no-store');
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test.each([401, 422, 500])('proxied %s response is no-store and hides backend body', async (status) => {
+  vi.spyOn(global, 'fetch').mockResolvedValue(new Response('private backend detail', {
+    status,
+    headers: { 'content-type': 'application/json', 'content-length': '99' },
+  }));
+
+  const response = await POST(createRouteRequest('http://localhost/api/frontend/auth/login', { method: 'POST' }));
+
+  expect(response.status).toBe(status);
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(response.headers.get('content-type')).toContain('text/plain');
+  expect(response.headers.get('content-length')).toBeNull();
+  const body = await response.text();
+  expect(body).not.toContain('private backend detail');
+  expect(body).toBe('요청을 처리할 수 없습니다.');
 });

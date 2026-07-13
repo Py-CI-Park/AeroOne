@@ -2,6 +2,39 @@
 
 이 문서는 중단된 세션을 **AeroOne v1.13.0 direct release Ultragoal** 로 이어서 완료하기 위한 단일 진실 원천입니다. 이 문서만으로 별도 맥락 없이 재개할 수 있습니다.
 
+> **2026-07-13 현재 상태가 아래 2026-07-12 스냅샷보다 우선합니다.** 아래 내용은 계보와 설계 근거로 보존하며, 재개 작업은 이 갱신 블록부터 시작합니다.
+
+## 현재 재개 지점 — PR 생성 직전 검증 준비
+
+| 항목 | 현재 상태 |
+|---|---|
+| 작업 위치 | `D:/Chanil_Park/Project/Programming/AeroOne`, branch `1.13.0-dev` |
+| 기준 HEAD | `d0f73ca9983d4973cf27c4a8b00e92d49d76b15e` 뒤에 최종 hardening 변경이 미커밋 상태 |
+| 원격 차이 | `origin/1.13.0-dev`보다 54 commits ahead, 아직 이번 최종 변경 push 없음 |
+| 구현 | Activity 모듈 가시성/미지 역할 fail-closed, Admin Overview·Sessions 실제 데이터, BFF no-store·오류 비공개, allow-list 패키지 경계, SHA-bound browser/React 진단 hardening 완료 |
+| 코드 정리 리뷰 | backend policy, frontend failure handling, package boundary, browser evidence 네 lane 모두 `CLEAR/CLEAR/CLEAR`, `APPROVE`, blocker/advisory 0 |
+| 현재 테스트 | frontend 전체 **397 passed / 73 files**, typecheck 0; backend full은 clipboard 점유 timeout 1건 외 **566 passed**, 같은 clipboard 파일 단독 재실행 **2 passed**; package focused **35 passed**; browser contract **14 passed**; Ruff와 `git diff --check` 통과 |
+| 릴리스 상태 | main merge, tag, GitHub Release 모두 아직 수행하지 않음 |
+
+### 현재 미커밋 변경의 목적
+
+1. 서버가 Activity와 Admin 모듈 목록을 동일한 역할·권한·resource gate 정책으로 계산하고, 알 수 없는 역할·상태를 정상값으로 위조하지 않게 한다.
+2. Activity 응답과 frontend BFF가 성공·오류 모두 `no-store`를 유지하고 백엔드 오류 본문이나 민감 헤더를 복사하지 않게 한다.
+3. 관리자 세션 화면이 sibling 요청 실패나 out-of-order 응답 때 실제 마지막 성공값을 보존하고 가짜 0을 만들지 않게 한다.
+4. 오프라인 패키지가 exact annotated `v1.13.0`과 immutable captured commit에서만 publishable 산출물을 만들고 tests/QA/dev dependency를 제외하게 한다.
+5. Browser QA가 clean exact SHA/BUILD_ID, loopback HTTP·WebSocket, local locked diagnostics, stale receipt 선삭제, 공통 redaction, atomic receipt를 강제하게 한다.
+
+### 정확한 남은 순서
+
+1. 현재 전체 변경과 문서 통계를 한 한국어+Lore 커밋으로 고정한다.
+2. 그 clean SHA에서 backend 567, frontend 397, typecheck, production build를 다시 실행한다. clipboard 통합 테스트는 다른 프로세스 점유로 timeout 나면 전체 결과와 격리 재실행을 모두 보존하되 최종 릴리스 판단에는 실제 PASS가 필요하다.
+3. 같은 SHA로 `qa:browser:all`을 실행해 smoke/matrix/Axe/Lighthouse/React 진단 receipt와 비균일 screenshot을 만든다.
+4. 같은 SHA로 QA 오프라인 ZIP을 만들고, 별도 빈 테스트 폴더에서 인터넷 없음(`PIP_NO_INDEX=1`) 조건으로 설치·마이그레이션·seed·loopback 기동·health 200을 확인한 뒤 테스트 폴더를 삭제한다.
+5. frozen SHA에 대해 Architect 3-lane과 Executor QA/red-team을 합류시키고 strict Ultragoal quality gate를 만든다.
+6. G017~G024의 실제 완료·대체 관계를 `goals.json`과 `ledger.jsonl`에 checkpoint한다. G022의 main merge/tag/release는 PR 승인 뒤 단계이므로 임의 완료 금지다.
+7. `1.13.0-dev`를 push하고 한국어 정식 PR을 생성한 뒤 mergeability/check 상태를 확인한다.
+8. **PR 병합 직전 중단하고 사용자에게 결과 표를 보고한다.** 사용자 승인 전 main merge, annotated tag, GitHub Release, asset upload를 수행하지 않는다.
+
 ---
 
 ## 0. 목표(변경 금지)

@@ -1,4 +1,5 @@
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { redact } from './redact_v113.mjs';
 import { resolve, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
@@ -7,6 +8,7 @@ const repo = resolve(import.meta.dirname, '../..');
 const sha = (process.argv[process.argv.indexOf('--sha') + 1] || '').trim();
 if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('sha must be 40 lowercase hex');
 const runtimePath = join(repo, 'artifacts/qa/v1.13.0', sha, 'runtime', 'runtime.json');
+const artifactRoot = join(repo, 'artifacts/qa/v1.13.0', sha, 'browser');
 const runtimeKeys = ['schemaVersion', 'sha', 'backendUrl', 'frontendUrl', 'backendPid', 'frontendPid', 'tempRoot', 'artifactRoot'];
 
 const runCommand = (command, args) => new Promise(resolveCommand => {
@@ -72,19 +74,7 @@ async function removeOwnedTemp(tempRoot) {
 }
 
 function redactText(text, runtime) {
-  const replacements = [
-    [repo, '[REPO_ROOT]'],
-    [runtime.tempRoot, '[TEMP_ROOT]'],
-  ];
-  let redacted = text;
-  for (const [value, marker] of replacements) {
-    redacted = redacted.replaceAll(value, marker);
-    redacted = redacted.replaceAll(value.replaceAll('\\', '/'), marker);
-    redacted = redacted.replaceAll(value.replaceAll('/', '\\'), marker);
-  }
-  return redacted
-    .replaceAll('QA-admin-v1130-strong!', '[REDACTED]')
-    .replace(/(authorization|cookie|token|secret|password|api[-_]?key)\s*[:=]\s*[^,\s]+/gi, '$1=[REDACTED]');
+  return redact(text, { replacements: [[repo, '[REPO_ROOT]'], [runtime.tempRoot, '[TEMP_ROOT]'], ['QA-admin-v1130-strong!', '[REDACTED]']] });
 }
 
 async function redactRuntimeLogs(runtime) {

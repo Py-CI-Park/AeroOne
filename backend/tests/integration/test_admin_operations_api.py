@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.core.config import reset_settings_cache
 from app.core.security import hash_file_bytes, hash_password
@@ -37,7 +37,7 @@ def test_admin_dashboard_modules_assets_and_backup(csrf_client) -> None:
     assert summary['system']['app_version'] == '1.13.0'
     assert 'asset_health' in summary['system']
 
-    module_id = next(module['id'] for module in modules if module['key'] == 'announcement')
+    module_id = next(module['id'] for module in csrf_client.get('/api/v1/admin/service-modules').json() if module['key'] == 'announcement')
     update_response = csrf_client.patch(
         f'/api/v1/admin/service-modules/{module_id}',
         json={'is_enabled': True, 'status': 'development', 'badge': 'Active'},
@@ -222,11 +222,13 @@ def test_service_module_activation_patch_is_audited_and_changes_public_visibilit
     assert after_response.status_code == 200
     assert 'nsa' in {module['key'] for module in after_response.json()}
 
-def test_operator_sees_admin_only_modules(csrf_client) -> None:
+def test_operator_sees_enabled_admin_only_modules_but_not_disabled_modules(csrf_client) -> None:
     response = csrf_client.get('/api/v1/admin/service-modules/public')
     assert response.status_code == 200
     keys = {module['key'] for module in response.json()}
-    assert {'ai', 'announcement', 'open-notebook', 'nsa'} <= keys
+    assert {'ai', 'open-notebook', 'nsa'} <= keys
+    assert 'announcement' not in keys
+    assert 'schedule' not in keys
 
 
 def test_service_module_create_and_delete(csrf_client) -> None:
@@ -248,6 +250,14 @@ def test_service_module_create_and_delete(csrf_client) -> None:
     actions = {event['action'] for event in csrf_client.get('/api/v1/admin/audit-events').json()}
     assert 'service_module.create' in actions
     assert 'service_module.delete' in actions
+def test_deleting_final_module_remains_durable_across_reads(csrf_client) -> None:
+    modules = csrf_client.get('/api/v1/admin/service-modules').json()
+    for module in modules:
+        assert csrf_client.delete(f"/api/v1/admin/service-modules/{module['id']}").status_code == 204
+
+    assert csrf_client.get('/api/v1/admin/service-modules').json() == []
+    assert csrf_client.get('/api/v1/admin/service-modules/public').json() == []
+    assert csrf_client.get('/api/v1/admin/overview').json()['modules'] == {'total': 0, 'buckets': {'unavailable': [], 'coming': [], 'development': [], 'active': []}}
 
 
 def test_self_password_change_rotates_credentials(csrf_client) -> None:

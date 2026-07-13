@@ -15,6 +15,7 @@ from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import reset_db_caches
 from app.main import create_app
+from app.modules.admin.models import ServiceModule
 from app.modules.auth.repositories import UserRepository
 from app.modules.newsletter.models.category import Category
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter, NewsletterAsset, SourceType
@@ -88,6 +89,20 @@ def app(settings: Settings):
     with app.state.db.session() as session:
         user_repo = UserRepository(session)
         user_repo.create(username='admin', password_hash=hash_password('password'))
+        session.add_all(
+            [
+                ServiceModule(key='newsletter', title='Newsletter', href='/newsletters', section='Newsletter', status='active', badge='Active', sort_order=10, is_enabled=True, is_external=False, visibility='public'),
+                ServiceModule(key='civil-aircraft', title='Civil Aircraft Spec Catalog', description='Commercial aircraft specs & market competition analysis.', href='/reports/civil-aircraft', section='Document', status='active', badge='Active', sort_order=20, is_enabled=True, is_external=False, visibility='public'),
+                ServiceModule(key='document', title='Document', description='Browse HTML documents organized in folders.', href='/documents', section='Document', status='active', badge='Active', sort_order=30, is_enabled=True, is_external=False, visibility='public'),
+                ServiceModule(key='nsa', title='NSA', description='Password-protected HTML documents.', href='/nsa', section='Document', status='active', badge='Active', sort_order=40, is_enabled=True, is_external=False, visibility='public', required_permission='collections.nsa.read', resource_type='collection', resource_id='nsa'),
+                ServiceModule(key='viewer', title='Viewer', description='로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href='/viewer', section='Development', status='development', badge='Active', sort_order=50, is_enabled=True, is_external=False, visibility='admin'),
+                ServiceModule(key='ai', title='AeroAI', description='사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href='/ai', section='Development', status='development', badge='Active', sort_order=60, is_enabled=True, is_external=False, visibility='admin'),
+                ServiceModule(key='open-notebook', title='Notebook', description='NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href='', section='Development', status='development', badge='Active', sort_order=70, is_enabled=True, is_external=True, visibility='admin'),
+                ServiceModule(key='ladder', title='Ladder', description='Coffee-bet ladder game (사다리타기).', href='/games/ladder', section='Development', status='development', badge='Active', sort_order=80, is_enabled=True, is_external=False, visibility='admin'),
+                ServiceModule(key='announcement', title='Announcement', description='Company-wide announcements module.', href='#', section='Development', status='coming_soon', badge='Coming soon', sort_order=90, is_enabled=False, is_external=False, visibility='admin'),
+                ServiceModule(key='schedule', title='Schedule', description='Shared calendar & event tracking.', href='#', section='Development', status='coming_soon', badge='Coming soon', sort_order=100, is_enabled=False, is_external=False, visibility='admin'),
+            ]
+        )
         category = Category(name='브리핑', slug='briefing', description='기본 카테고리')
         tag = Tag(name='항공우주', slug='aerospace')
         session.add_all([category, tag])
