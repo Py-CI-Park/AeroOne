@@ -26,7 +26,7 @@ const run = (script, passSha = false) => new Promise((resolveRun, reject) => {
 let runnerCode = 0; let teardownCode = 1;
 try {
   for (const script of ['qa:browser:setup', 'qa:browser:smoke', 'qa:browser:matrix', 'qa:browser:axe', 'qa:browser:lighthouse', 'qa:browser:react']) {
-    runnerCode = await run(script, script === 'qa:browser:lighthouse' || script === 'qa:browser:react');
+    runnerCode = await run(script, script === 'qa:browser:setup' || script === 'qa:browser:lighthouse' || script === 'qa:browser:react');
     if (runnerCode !== 0) break;
   }
 } catch { runnerCode = 1; }
