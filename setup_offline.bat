@@ -4,7 +4,9 @@ chcp 65001 >nul
 
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
-if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" (
+set "AEROONE_DRY_RUN_REQUESTED="
+for %%A in (%*) do if /I "%%~A"=="--dry-run" set "AEROONE_DRY_RUN_REQUESTED=1"
+if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" if not defined AEROONE_DRY_RUN_REQUESTED (
   if "%~1"=="" (
     powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%~f0"
   ) else (

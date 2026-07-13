@@ -529,6 +529,14 @@ def test_start_offline_dry_run_frontend_window_avoids_broken_nested_quotes() -> 
     assert frontend_line.rstrip('"').endswith("call start_frontend_offline.cmd"), frontend_line
 
 
+def test_setup_offline_dry_run_bypasses_only_the_mutating_maintenance_gate() -> None:
+    assert 'for %%A in (%*) do if /I "%%~A"=="--dry-run"' in _SETUP_OFFLINE_SCRIPT
+    assert (
+        'if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" '
+        'if not defined AEROONE_DRY_RUN_REQUESTED ('
+    ) in _SETUP_OFFLINE_SCRIPT
+    assert "invoke_with_maintenance_gate.ps1" in _SETUP_OFFLINE_SCRIPT
+
 def test_setup_offline_dry_run_allow_host_prints_lan_info() -> None:
     result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause", "--allow-host=192.168.1.10")
 

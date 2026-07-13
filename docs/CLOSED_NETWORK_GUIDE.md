@@ -294,6 +294,8 @@ setup_offline.bat --dry-run --no-pause --allow-host=192.168.1.10
 start_offline.bat --dry-run --allow-host=192.168.1.10
 ```
 
+`setup_offline.bat --dry-run`은 파일·DB·환경을 변경하지 않는 순수 미리보기이므로 실행 중인 서버의 maintenance gate를 기다리지 않습니다. 실제 설치에서만 workspace gate를 획득하며, 따라서 운영 서버를 유지한 채 LAN/loopback 분기 출력을 점검할 수 있습니다.
+
 ### 8.2 라이브 5단계 시퀀스 (`start_offline.bat` 실행 후)
 
 ```cmd

@@ -17,6 +17,8 @@
 
 주요 배치 파일은 `--dry-run` 을 지원하며, `start_offline.bat` 계열은 `--no-pause` 로 자동화 실행에 붙일 수 있습니다. `scripts\run_all.bat` 은 `--local` / `--allow-host` 를 AeroOne 과 Open Notebook adapter 양쪽에 전달합니다.
 
+`setup_offline.bat --dry-run`은 어떤 파일·DB·환경도 바꾸지 않으므로 maintenance gate를 획득하지 않습니다. 실행 중인 AeroOne을 중단하지 않고 설치·LAN 분기만 미리 볼 수 있으며, 옵션을 제거한 실제 설치는 기존대로 gate 안에서 직렬 실행됩니다.
+
 ---
 
 ## 2. 권장 순서 (E2E)
