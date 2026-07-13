@@ -15,6 +15,15 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.13.1',
+    date: '2026-07-13',
+    items: [
+      '제품 tree는 1.13.0과 동일하게 유지하고 문서 정합성만 보정한 patch 릴리스입니다.',
+      'GitHub immutable releases 정책을 활성화한 뒤 forward-only로 재게시했으며, 기존 1.13.0 tag와 asset은 immutable=false인 역사 릴리스로 불변 보존합니다.',
+      '1.13.1 asset과 함께 게시되는 `.sha256` 파일을 검증해 반입하며, patch metadata 검증을 릴리스 확인에 추가했습니다.',
+    ],
+  },
+  {
     version: '1.13.0',
     date: '2026-07-13',
     items: [

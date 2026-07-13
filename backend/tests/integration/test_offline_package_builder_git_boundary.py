@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 
-VERSION = "1.13.0"
+VERSION = "1.13.1"
 BUILDER = Path(__file__).parents[3] / "scripts" / "build_offline_package.ps1"
 RUNNER = r'''
 $ErrorActionPreference = 'Stop'

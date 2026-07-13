@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.13.0-1f6feb)
+![version](https://img.shields.io/badge/version-1.13.1-1f6feb)
 ![status](https://img.shields.io/badge/status-release-success)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
@@ -18,7 +18,7 @@
 </div>
 
 > [!CAUTION]
-> **1.12.2 배포본은 철회되었습니다.** `1.13.0`은 자격 증명 사고 대응, Activity, 관리자 운영 UX와 검증된 allow-list 패키징을 포함한 정식 대체 릴리스입니다. 공식 Release asset은 [GitHub Release 1.13.0](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)에서 받으세요. 이미 철회본을 반입했다면 서비스를 중지하고 정식 1.13.0 asset으로 교체한 뒤 [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md)의 회전 절차를 적용합니다.
+> **1.12.2 배포본은 철회되었습니다.** 최신 운영 반입물은 `1.13.1`이며, 자격 증명 사고 대응·Activity·관리자 운영 UX와 검증된 allow-list 패키징을 포함한 정식 대체 릴리스입니다. 공식 Release asset은 [GitHub Release 1.13.1](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1)에서 받으세요. 이미 철회본을 반입했다면 서비스를 중지하고 최신 1.13.1 asset으로 교체한 뒤 [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md)의 회전 절차를 적용합니다.
 
 <table>
   <tr>
@@ -76,7 +76,7 @@
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | 1.13.0 backend **570 passed**, frontend **397 passed / 73 files**, `tsc --noEmit`, `next build`; production Chrome smoke/matrix/Axe/Lighthouse/React 진단 및 QA 오프라인 ZIP pre/post verifier 통과 |
+| 검증 | 1.13.1은 제품 tree가 1.13.0과 동일하므로 backend **570 passed**, frontend **397 passed / 73 files** 수치를 유지하며, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React 진단 및 QA 오프라인 ZIP pre/post verifier를 확인합니다. 여기에 1.13.1 patch metadata 검증을 추가합니다. |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -121,13 +121,13 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
                                                  scripts\run_all.bat
 ```
 
-### 릴리즈 1.13.0 반입 파일
+### 릴리즈 1.13.1 반입 파일
 
-`1.12.2` 반입물은 철회되어 사용할 수 없습니다. 아래 이름의 `1.13.0` 정식 GitHub Release asset과 SHA-256 게시본을 반입합니다. 현재 기준 브랜치는 `main`이며, 로컬 중간 ZIP은 운영 배포본이 아닙니다.
+`1.12.2` 반입물은 철회되어 사용할 수 없습니다. 최신 운영 반입물인 `1.13.1`의 정식 GitHub Release asset과 함께 게시되는 SHA-256 파일을 반입하고 검증합니다. GitHub immutable releases 정책은 활성화되었으며(`enabled=true`), `1.13.0`은 정책 활성화 전에 게시되어 `immutable=false`인 역사 릴리스로 tag와 asset을 그대로 보존합니다. 현재 기준 브랜치는 `main`이며, 로컬 중간 ZIP은 운영 배포본이 아닙니다.
 
 | 파일 | 어디서 받는가 | 폐쇄망에서 놓을 위치 | 역할 |
 |---|---|---|---|
-| `AeroOne-offline-1.13.0.zip` + `.sha256` | [정식 GitHub Release `1.13.0`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0) asset (SHA-256: `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`) | `D:\AeroOne\` 로 압축 해제 | allow-list로 검증된 AeroOne 소스, production wheelhouse/node_modules, prebuilt `.next`, 정확한 Python/Node 인스톨러 |
+| `AeroOne-offline-1.13.1.zip` + `.sha256` | [정식 GitHub Release `1.13.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1) asset (함께 게시되는 `.sha256` 파일을 반드시 검증; 1.13.1 digest는 사전 생성하지 않음) | `D:\AeroOne\` 로 압축 해제 | allow-list로 검증된 AeroOne 소스, production wheelhouse/node_modules, prebuilt `.next`, 정확한 Python/Node 인스톨러 |
 | `AeroOne-bundle.zip` | 같은 Release asset 또는 Open Notebook 저장소 `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 | Open Notebook 별도 앱(Frontend 8502, API 5055, SurrealDB 8000), 자체 Python/Node/uv/ffmpeg/SurrealDB 포함 |
 | `%USERPROFILE%\.ollama\models\manifests`, `blobs` | 인터넷 PC 에서 `ollama pull gemma4:12b`, `ollama pull nomic-embed-text` 후 복사 | 폐쇄망 PC 같은 경로 | AeroAI/Open Notebook 공용 LLM·임베딩 모델 |
 | `OllamaSetup.exe` | Ollama 공식 설치 파일 | 폐쇄망 PC에서 1회 설치 | `127.0.0.1:11434` 로 두 앱이 공유하는 모델 서버 |
@@ -137,7 +137,7 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    ```cmd
    setup.bat
    start.bat            :: 동작 확인 후 닫기
-   offline_package.bat  :: exact 1.13.0 tag에서 dist\AeroOne-offline-1.13.0.zip 생성
+   offline_package.bat  :: exact 1.13.1 tag에서 dist\AeroOne-offline-1.13.1.zip 생성
    ```
 
    ZIP 안에 들어가는 것:
@@ -304,7 +304,7 @@ npm run typecheck
 npm run build
 ```
 
-정식 `1.13.0`은 PR #22가 main에 병합된 merge commit `c1cbc01062f0d30a97be0ea3df47973d040d2638`에서 annotated tag `1.13.0`으로 게시되었습니다. backend 전체 **570 passed**, frontend **397 passed / 73 files**, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React 진단과 QA 오프라인 ZIP의 pre-stage/post-ZIP verifier를 확인했습니다. 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`이며, asset은 [GitHub Release 1.13.0](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)에서 받을 수 있습니다. 모든 자동 증거는 동일 커밋별 `artifacts/qa/v1.13.0/<SHA>/`에 분리되며 운영 `.env`·canonical DB·secure root를 변경하지 않습니다. `1.12.2`의 과거 검증 기록은 철회 배포본의 승인 근거로 재사용하지 않습니다. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7과 [`docs/reports/phase-27-v1-13-0-release-candidate.md`](docs/reports/phase-27-v1-13-0-release-candidate.md)를 기준으로 진단합니다.
+정식 `1.13.0`은 PR #22가 main에 병합된 merge commit `c1cbc01062f0d30a97be0ea3df47973d040d2638`에서 annotated tag `1.13.0`으로 게시되었습니다. backend 전체 **570 passed**, frontend **397 passed / 73 files**, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React 진단과 QA 오프라인 ZIP의 pre-stage/post-ZIP verifier를 확인했습니다. 공식 ZIP SHA-256은 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`이며, asset은 [GitHub Release 1.13.0](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.0)에서 받을 수 있습니다. 이 릴리스는 immutable releases 정책 활성화 전 게시되어 `immutable=false`로 남은 역사 기록이며 tag와 asset을 보존합니다. 모든 자동 증거는 동일 커밋별 `artifacts/qa/v1.13.0/<SHA>/`에 분리되며 운영 `.env`·canonical DB·secure root를 변경하지 않습니다. `1.12.2`의 과거 검증 기록은 철회 배포본의 승인 근거로 재사용하지 않습니다. 회귀 발생 시 [`docs/INDEX.md`](docs/INDEX.md) §7과 [`docs/reports/phase-27-v1-13-0-release-candidate.md`](docs/reports/phase-27-v1-13-0-release-candidate.md)를 기준으로 진단합니다.
 
 ---
 

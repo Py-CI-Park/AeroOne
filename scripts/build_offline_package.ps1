@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
   .SYNOPSIS
-  Public offline-package builder (Task 6, AeroOne v1.13.0): git-archive
+  Public offline-package builder (Task 6, AeroOne v1.13.1): git-archive
   allow-list -> clean temp stage -> npm ci/build/production-prune ->
   backend wheelhouse -> Task 5 installers -> manifest/ZIP/SHA-256.
 
@@ -21,7 +21,7 @@
   pre-stage/post-ZIP policy verifier before the ZIP is trusted.
 
   .PARAMETER Version
-  The AeroOne version this build targets (e.g. "1.13.0"). Release mode
+  The AeroOne version this build targets (e.g. "1.13.1"). Release mode
   requires an exact annotated tag "<Version>" pointing at HEAD; anything
   else (no tag, mismatched tag) automatically falls back to QA mode.
 
@@ -38,7 +38,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '1.13.0',
+    [string]$Version = '1.13.1',
     [switch]$DryRun,
     [switch]$Help,
     [switch]$ReuseNodeModules,
