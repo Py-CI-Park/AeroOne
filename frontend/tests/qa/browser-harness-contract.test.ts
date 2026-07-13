@@ -15,6 +15,7 @@ const lock = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'package-lock.js
 };
 const config = fs.readFileSync(path.join(frontendRoot, 'playwright.qa.config.ts'), 'utf8');
 const spec = fs.readFileSync(path.join(frontendRoot, 'tests/qa/v113-browser.e2e.ts'), 'utf8');
+const setup = fs.readFileSync(path.join(frontendRoot, '../scripts/qa/prepare_v113_runtime.mjs'), 'utf8');
 
 const qaDependencies = {
   '@playwright/test': '1.61.1',
@@ -79,5 +80,11 @@ describe('browser harness contract', () => {
     expect(spec).toMatch(/hostname/);
     expect(spec).toMatch(/localhost.*127\.0\.0\.1.*::1/);
     expect(fs.existsSync(path.join(frontendRoot, 'tests/qa/v113-browser.e2e.ts'))).toBe(true);
+    expect(setup).toContain('const reservePort');
+    expect(setup).toContain("const isolatedBackend = join(tempRoot, 'backend')");
+    expect(setup).toContain("hold_maintenance_gate.ps1");
+    expect(setup).toContain("APP_ENV:'closed_network'");
+    expect(setup).toContain('env.PYTHONPATH = isolatedBackend');
+    expect(setup).toContain("childFailure('backend', backendProcess)");
   });
 });
