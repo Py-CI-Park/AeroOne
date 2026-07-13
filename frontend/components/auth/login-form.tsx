@@ -2,9 +2,21 @@
 
 import { FormEvent, useState } from 'react';
 
-import { login } from '@/lib/api';
+import { fetchClientSession, login } from '@/lib/api';
+import { resolveSafeNext } from '@/lib/safe-next';
 
-export function LoginForm() {
+async function waitForAuthenticatedSession() {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const session = await fetchClientSession();
+    if (session.authenticated) return;
+    if (attempt < 4) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+    }
+  }
+  throw new Error('로그인 상태를 확인하지 못했습니다');
+}
+
+export function LoginForm({ next }: { next?: string | null } = {}) {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -13,7 +25,8 @@ export function LoginForm() {
     event.preventDefault();
     try {
       await login(username, password);
-      window.location.assign('/admin');
+      await waitForAuthenticatedSession();
+      window.location.assign(resolveSafeNext(next));
     } catch (err) {
       setMessage(err instanceof Error ? err.message : '로그인 실패');
     }

@@ -2,8 +2,9 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 버전: `1.12.2` (`대시보드 시간·버전 날짜 표시·로그인 카드 UI 정리`)
-- 갱신일: 2026-07-07
+- 기준 브랜치: `1.13.0-dev` (검증된 보안·패키지 hotfix 계보 통합)
+- 배포 주의: `1.12.2` Release/ZIP 철회. 신규 설치·재배포 금지, 정식 `1.13.0` asset 대기
+- 갱신일: 2026-07-13
 
 ---
 
@@ -14,7 +15,7 @@
 | **시스템을 처음 보는 사람** | [`README.md`](../README.md) (시스템 정체성, 빠른 시작) | §2 운영 매뉴얼 |
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
-| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | §6 코드 진실 원천 |
+| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | 현재 RC 상태·정확한 잔여 순서 + §6 코드 진실 원천 |
 
 ---
 
@@ -40,8 +41,12 @@
 | [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 13장) | 375줄 |
 | [`runbook/local-dev.md`](runbook/local-dev.md) | 개발자 로컬 실행 가이드 (worktree 주의 포함) | 92줄 |
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
+| [`runbook/credential-rotation.md`](runbook/credential-rotation.md) | 자격 증명 노출 사고 시 JWT·전체 사용자 비밀번호·세션 회전, 중단 재개, DB 복원 뒤 신규 회전, 보존·삭제 책임 | 중간 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
+| [v1.13.0 최신 Claude Code 핸드오프](../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md) | **최신 AI 에이전트 핸드오프** — 현재 RC 구현·검증 상태, 미커밋 hardening, PR 직전까지의 정확한 잔여 순서 | 긴 문서 |
+| [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | **v1.13.0 개발 상태 상세 보고서** — 전체 계획 페이지, 검토 Round 1~4, 변경 파일, 유효/무효 테스트, 잔여 단계·시간·금지 사항 | 긴 문서 |
+| [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | 과거 핸드오프 — 1.13.0 제품 구현 전 상태. 최신 문서로 superseded | 중간 |
 
 ---
 
@@ -72,7 +77,10 @@
 | 단계 24 | [`reports/phase-24-admin-console-proxy-redesign.md`](reports/phase-24-admin-console-proxy-redesign.md) | 관리자 로그인/CRUD same-origin 프록시 통합 + `/admin` 탭형 콘솔 UX/RBAC 입력/목록 상태/ARIA Tabs — minor 1.11.0 | `1.11.0-dev` |
 | 단계 25 | [`reports/phase-25-admin-console-ux-polish.md`](reports/phase-25-admin-console-ux-polish.md) | 권한 이해 카탈로그 + 감사 로그 전용 탭(검색/필터/CSV) + 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션 + 탭 숫자 단축키 1~9·온보딩 도움말 — 프론트-only minor 1.12.0 | `1.12.0-dev` |
 | 1.12.1 patch | — | 헤더 로그인 사용자 아이디/로그아웃, `users.display_name` 선택 프로필, 사용자 행별 권한 수정 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 15초 갱신 안내, 버전 배지 업데이트 날짜 표시 | `1.12.1` |
-| 1.12.2 patch | — | 헤더 버전 날짜 즉시 노출 제거(클릭 모달에만 표시), 대시보드 한국 시간 실시간 표시, 로그인 중앙 카드 UI, 로그인 후 아이디 단독 표시, 세션 탭 세로 가독성 보강 | `1.12.2` |
+| 1.12.2 patch | — | 화면 개선 이력은 보존하지만 Release asset/오프라인 ZIP은 **철회**되어 배포 금지 | `withdrawn` |
+| 단계 26 | [`reports/phase-26-credential-rotation-hardening.md`](reports/phase-26-credential-rotation-hardening.md) | service/listener preflight, 연속 writer lock, DPAPI recovery·strict journal/manifest, crash 재개, backup restore→archive→rotation, current-SID viewer — minor 1.13.0 | `1.13.0-dev` |
+| 단계 27 | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, allow-list 오프라인 패키지와 RC 검증 — minor 1.13.0 | `1.13.0 RC` |
+| v1.13.0 과거 WIP | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | Task 3 중단 당시 역사 기록. 현재 상태는 단계 27 보고서와 최신 SHA artifacts를 기준으로 한다. | `superseded` |
 
 ---
 
@@ -111,8 +119,10 @@
 | secret 강도 검증 | `backend/app/core/config.py:85-95` | `validate_runtime_security` (production / closed_network 에서 강제) |
 | 부팅 검증 호출 | `backend/app/main.py:18` | startup 시 1회 호출 |
 | DB 분기 (배치용) | `backend/scripts/ensure_db_state.py` | 종료 코드 0/1/2/3, docstring 에 의미 직접 기재 |
-| 폐쇄망 LAN 옵션 / 기본 바인딩 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | **1.0.22+ 기본 = LAN**: 옵션 없으면 `ALLOW_HOST=auto` → `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(미감지 시 loopback 폴백, 0.0.0.0 바인딩). `--local` 로 loopback 전용, `--allow-host=<IP>` 로 호스트 고정, `AEROONE_ALLOW_HOST` env 도 인식 |
-| 패키징 제외 목록 | `offline_package.bat:46` | robocopy `/XD` + `/XF` 인자. `.git` 디렉터리/파일, `.gjc`, `.omc`, `.worktrees`, venv/node_modules/build/cache/vendor/artifacts 트리와 `.ug-*` scratch 파일은 ZIP 에 넣지 않음 |
+| 자격 증명 사고 대응 회전 | `scripts/rotate_aeroone_credentials.ps1`, `scripts/view_aeroone_credentials.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/{sqlite_recovery,windows_dpapi}.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py` | setup 재실행과 구분되는 기존 DB 전용 사고 대응. production 물리 경로·ACL·single-link와 서비스 중지를 검증하고 recovery부터 commit까지 연속 writer lock으로 JWT/전체 비밀번호/session version/live session/ledger를 원자 회전. strict manifest, crash 재개, 독립 백업 복원 뒤 old root archive→새 rotation, history/cloud 제외·원자 clear·닫기 거부가 포함된 current-SID 뷰어 계약은 [`runbook/credential-rotation.md`](runbook/credential-rotation.md) 참조 |
+| 폐쇄망 LAN 옵션 / 기본 바인딩 | `setup_offline.bat`, `start_offline.bat` 의 `:parse_args` / `:capture_host` / `:resolve_auto_host` 라벨 | **1.0.22+ 기본 = LAN**: 옵션 없으면 `ALLOW_HOST=auto` → `scripts/windows/detect_lan_ip.ps1` 로 LAN IPv4 자동 감지(미감지 시 loopback 폴백, 0.0.0.0 바인딩). `--local` 로 loopback 전용, `--allow-host=<IP>` 로 호스트 고정, `AEROONE_ALLOW_HOST` env 도 인식. `setup_offline --dry-run`은 무변이 미리보기라 maintenance gate를 획득하지 않고, 실제 설치와 시작만 gate로 직렬화한다. 실제 시작 전 maintenance preflight는 인자 `shift` 전에 보존한 entry batch 물리 경로를 검증 |
+| 공개 오프라인 패키징 | `offline_package.bat`, `scripts/build_offline_package.ps1`, `backend/app/operations/offline_package_policy.py`, `packaging/installer-policy.json`, `packaging/verify_offline_package.py` | `offline_package.bat`은 PowerShell builder 호환 wrapper. builder는 `git archive` tracked allow-list만 새 stage에 풀고 clean `npm ci`/build/production prune, `backend/requirements.txt` wheelhouse, 정책에 고정된 정확한 인스톨러 2개를 추가한 뒤 Task 5 pre-stage/post-ZIP verifier가 모두 통과해야 ZIP/SHA를 생성. `.gjc`, `.omo`, `.env`, DB/storage, vendor, artifacts, dev dependencies/generated cache는 제외 |
+| 폐쇄망 production 의존성 설치 | `setup_offline.bat` 의 `pip install --no-index --find-links ... -r requirements.txt` | 공개 패키지 wheelhouse에서 production requirements만 설치. `requirements-dev.txt`는 공개 패키지와 폐쇄망 설치 대상에서 제외 |
 | 프론트엔드 디자인 토큰 | `frontend/app/globals.css` (`[data-theme]` light/dark CSS 변수) + `frontend/tailwind.config.ts` (surface/ink/line/accent 시맨틱 유틸) | Claude Design 핸드오프(`design-handoff/`) 이식. 시스템 폰트만(외부 의존 0) |
 | 테마 적용 지점 | `frontend/app/layout.tsx` 가 `aeroone_theme` 쿠키를 읽어 `<html data-theme>` 1곳에 서버 렌더. 토글은 `newsletter-theme-selector.tsx` 의 일반 `<a>`(풀 내비) → `/theme` 라우트(`frontend/app/theme/route.ts`)가 쿠키 설정 후 **상대 경로**로 리다이렉트 | 테마를 페이지 RSC 가 아니라 `<html>` 한 곳에 두어 클라이언트 내비게이션 간 stale flip 방지. 토글이 `<Link>` 면 풀 로드가 안 돼 즉시 반영 안 됨 → 의도적으로 `<a>`. **1.1.1**: `/theme` 리다이렉트는 `request.url` 의 origin 대신 origin 없는 상대 Location 을 쓴다 — LAN 모드(`next start -H 0.0.0.0`)에서 origin 이 `http://0.0.0.0:29501` 로 잡혀 브라우저가 접속 불가 주소로 튕기던 테마 토글 연결 종료 버그를 회피 |
 | 공유 UI primitive | `frontend/components/ui/icons.tsx` (인라인 SVG), `frontend/components/ui/primitives.tsx` (Tag/Btn/Thumb) | 외부 아이콘 CDN 0 |
@@ -135,13 +145,13 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report 를 기준으로 한다. 1.12.2 기준 backend 268 passed, frontend Vitest 313 passed(66 파일), `tsc --noEmit`, `next build` 를 수행한다. release gate 에서는 여기에 브라우저 smoke 를 더한다.
+최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0` RC는 backend 전체 570, frontend 397/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
 | `backend/tests/unit/test_config.py` | 10 | `closed_network` / `production` / `development` / `test` 모드 + `secure_cookies` |
 | `backend/tests/unit/test_ensure_db_state.py` | 7 | 종료 코드 0/1/2/3 + 부모 디렉토리 자동 생성 |
-| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 31 | setup.bat / start.bat / start_offline.bat / run_all.bat / offline_package.bat 의 dry-run / 실행 / 기본 LAN / `--local` / `--allow-host` / `--allow-host=auto` / Open Notebook readiness / packaging 제외 목록 |
+| `backend/tests/unit/shared/test_windows_batch_scripts.py` | 31+ | setup.bat / start.bat / start_offline.bat / run_all.bat / offline_package.bat 의 dry-run / 실행 / 기본 LAN / `--local` / `--allow-host` / `--allow-host=auto` / Open Notebook readiness / allow-list builder 위임 |
 | `backend/tests/unit/shared/test_windows_frontend_cmd_scripts.py` | 2 | frontend 런처 본문 가드 |
 | `backend/tests/unit/shared/test_lan_firewall_cmd_script.py` | 2 | LAN 방화벽 헬퍼 cmd 본문 가드 (포트 / 스코프 profile=any / `--remove` / help) |
 | `backend/tests/unit/shared/test_detect_lan_ip_ps1_script.py` | 1 | `--allow-host=auto` LAN IP 자동 감지 스크립트 본문 가드 |
@@ -153,6 +163,7 @@
 | `backend/tests/integration/test_documents_api.py` | 8 | 문서 목록(하위폴더·`_debug` 제외·정렬) / 빈 목록 / 콘텐츠 sanitize·CSP / HTML 다운로드 / 404 / 디렉토리 이탈 400 |
 | `backend/tests/integration/test_ai_api.py` | 9 | AI status/chat, 기본 document/civil scope, 명시 NSA scope, FTS unavailable degrade, unknown collection validation, Ollama 빈 답변 재시도 |
 | `backend/tests/integration/test_admin_operations_api.py` | 2 | 관리자 대시보드/service_modules/asset health/backup validate/audit, 사용자 RBAC self-lockout·비관리자 403·비밀번호 reset 감사 redaction |
+| `backend/tests/{unit,integration}/test_credential_rotation*.py` + `test_windows_dpapi_zeroization.py` | 79 | strict command/ledger/artifact/manifest, service/listener preflight, 연속 DB lock, production provenance·reparse/hardlink·exact ACL, native DPAPI zeroize, actual crash 재개, ordinary backup 복원→archive→신규 회전, old 401/new 200, WPF ValidateOnly |
 | 그 외 unit / integration | 85+ | 인증 API, 뉴스레터 public/admin/imports/content API, 컬렉션 다운로드, seed 등 |
 
 프론트엔드 Vitest: `frontend/tests/components/app-shell.test.tsx` 는 Admin 상단 네비를 포함하고, `frontend/tests/app/home-page.test.tsx` 는 `service_modules` API 실패 시 fallback 대시보드가 기존 카드/개발중/Coming soon 구성을 유지하는지 확인한다. 그 밖에 read-beacon/read-events, 민간 항공기 보고서, 문서 보관소, AI workspace/proxy, NSA 서버측 권한, 사다리, 뉴스레터 날짜 aria-label 테스트가 포함된다.
@@ -165,7 +176,7 @@
 
 | 위치 | 의미 | git tracked? |
 |---|---|---|
-| `.env.example` | 환경 변수 템플릿 | YES (예시 값만) |
+| `.env.example`, `backend/.env.example` | root/backend exact 환경 프로필 템플릿 | YES (예시 값만) |
 | `.env`, `.env.local`, `.env.bak` | 실제 secret | NO (gitignore) |
 | `.omc/` | 현재 OMC 런타임 상태 (notepad / project-memory / state) | NO |
 | `.omx/` | 옛 OMC 런타임 상태 | NO |

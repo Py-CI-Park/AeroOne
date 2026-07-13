@@ -7,7 +7,7 @@ vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return {
     ...actual,
-    fetchAdminSummary: vi.fn(),
+    fetchAdminOverview: vi.fn(),
     fetchAdminUsers: vi.fn(),
     fetchConnectedUsers: vi.fn(),
     fetchAdminPermissions: vi.fn(),
@@ -39,7 +39,17 @@ vi.mock('@/lib/api', async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(api.fetchAdminSummary).mockResolvedValue({ app_version: '1.11.0', app_env: 'test', database_url: 'sqlite:///test.db', db_ok: true, newsletter_total: 1, latest_newsletter_title: '최근 뉴스', active_modules: 3, coming_soon_modules: 0, asset_health: {}, read_summary: {}, ai_status: { status: 'ok' }, recent_audit_events: [] } as never);
+  vi.mocked(api.fetchAdminOverview).mockResolvedValue({
+    generated_at: '2026-07-05T00:00:00Z',
+    anchor: '2026-06-28T00:00:00Z',
+    users: { total: 3, active: 3, inactive: 0, roles: { admin: 2, user: 1, pending: 0 }, created: { current: 1, prior: 0, delta: 1 } },
+    logins: { success: { current: 3, prior: 2, delta: 1 }, failure: { current: 0, prior: 1, delta: -1 }, logout: { current: 2, prior: 1, delta: 1 } },
+    ai: { total: { current: 5, prior: 4, delta: 1 }, failure: { current: 0, prior: 0, delta: 0 } },
+    sessions: { active_session_count: 0, active_user_count: 0, active_count: 0 },
+    modules: { total: 3, buckets: { unavailable: [], coming: [], development: [], active: [{ key: 'ov-dashboard', label: 'Overview Dashboard' }, { key: 'ov-analytics', label: 'Overview Analytics' }, { key: 'ov-alpha', label: 'Overview Alpha' }] } },
+    system: { app_version: '1.11.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 1, asset_health: { ok: 1, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 0, total_reads: 0 } },
+    recent_audit: [],
+  } as never);
   vi.mocked(api.fetchAdminUsers).mockResolvedValue([
     { id: 3, username: 'operator', email: 'op@example.com', role: 'admin', is_active: true, permissions: ['admin.read'] },
     { id: 1, username: 'analyst', email: 'analyst@example.com', role: 'user', is_active: true, permissions: [] },
@@ -219,4 +229,87 @@ test('admin tablist keyboard navigation uses roving tabindex and activates Arrow
   fireEvent.keyDown(auditTab, { key: 'Home' });
   await waitFor(() => expect(modulesTab).toHaveAttribute('aria-selected', 'true'));
   expect(modulesTab).toHaveAttribute('tabindex', '0');
+});
+
+
+test('Users 섹션은 21명을 10개씩 페이지네이션하고 검색/정렬 변경 시 1페이지로 리셋하며 가입일/최근 로그인을 표시한다', async () => {
+  const users = Array.from({ length: 21 }, (_, index) => {
+    const n = index + 1;
+    return {
+      id: n,
+      username: `user-${String(n).padStart(2, '0')}`,
+      email: `user${n}@example.com`,
+      role: 'user',
+      is_active: true,
+      permissions: [],
+      created_at: '2026-06-01T00:00:00Z',
+      last_login_at: n % 5 === 0 ? null : '2026-07-01T00:00:00Z',
+    };
+  });
+  vi.mocked(api.fetchAdminUsers).mockResolvedValue(users as never);
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '사용자' }));
+  expect(await screen.findByText('사용자/RBAC')).toBeInTheDocument();
+
+  expect(screen.getByText('페이지 1 / 3')).toBeInTheDocument();
+  expect(screen.getByText('user-01')).toBeInTheDocument();
+  expect(screen.getByText('user-10')).toBeInTheDocument();
+  expect(screen.queryByText('user-11')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled();
+
+  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
+  expect(await screen.findByText('페이지 2 / 3')).toBeInTheDocument();
+  expect(screen.getByText('user-11')).toBeInTheDocument();
+  expect(screen.getByText('user-20')).toBeInTheDocument();
+  expect(screen.queryByText('user-01')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
+  expect(await screen.findByText('페이지 3 / 3')).toBeInTheDocument();
+  expect(screen.getByText('user-21')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled();
+
+  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: 'user-2' } });
+  await waitFor(() => expect(screen.getByText('페이지 1 / 1')).toBeInTheDocument());
+  expect(screen.getByText('user-20')).toBeInTheDocument();
+  expect(screen.getByText('user-21')).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: '' } });
+  await waitFor(() => expect(screen.getByText('페이지 1 / 3')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
+  await waitFor(() => expect(screen.getByText('페이지 2 / 3')).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText('사용자 정렬'), { target: { value: 'username-desc' } });
+  await waitFor(() => expect(screen.getByText('페이지 1 / 3')).toBeInTheDocument());
+  expect(screen.getByText('user-21')).toBeInTheDocument();
+
+  expect(screen.getAllByText(/가입일/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/마지막 로그인/).length).toBeGreaterThan(0);
+});
+
+test('Users 섹션은 데이터 없음(빈 목록)과 조회 실패(degraded)를 시각적으로 구분한다', async () => {
+  vi.mocked(api.fetchAdminUsers).mockResolvedValue([] as never);
+
+  render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '사용자' }));
+  expect(await screen.findByText('등록된 사용자가 없습니다.')).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+test('모듈 카드는 게이트 필드(visibility/required_permission/resource_type/resource_id) 읽기 전용 요약을 노출하고 400 정책 거부는 안전한 메시지로만 표시한다', async () => {
+  vi.mocked(api.fetchServiceModulesAdmin).mockResolvedValue([
+    { id: 5, key: 'dashboard', title: 'Dashboard', description: 'Main', href: '/', section: 'Core', status: 'active', badge: 'Live', sort_order: 2, is_enabled: true, is_external: false, visibility: 'admin', required_permission: 'admin.dashboard.view', resource_type: 'collection', resource_id: 'nsa' },
+  ] as never);
+  vi.mocked(api.updateServiceModule).mockRejectedValueOnce(new api.ApiError('요청 처리에 실패했습니다', 400) as never);
+
+  render(<AdminConsoleTabs />);
+  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+
+  expect(screen.getByText('admin.dashboard.view')).toBeInTheDocument();
+  expect(screen.getByText(/collection\/nsa/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('요청 처리에 실패했습니다');
+  expect(screen.queryByText(/database|traceback|sqlite:\/\//i)).not.toBeInTheDocument();
 });

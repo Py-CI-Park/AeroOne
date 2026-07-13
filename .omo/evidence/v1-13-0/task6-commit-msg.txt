@@ -1,0 +1,15 @@
+공개 오프라인 패키지 builder를 git-archive allow-list 인프라로 구현한다
+
+기존 `offline_package.bat`의 robocopy deny-list 방식은 새 로컬 상태를 자동 포함할 수 있고 최종 ZIP verifier가 없으며 `requirements-dev.txt`까지 담는 문제가 있었다. 이를 대체할 git-archive allow-list 기반 공개 패키지 builder와 그 경계 로직, Windows Sandbox smoke harness 스크립트를 추가한다.
+
+builder 경계 로직은 I/O 없는 순수 Python(`offline_package_policy.py`)으로 분리해 단위 테스트했다: 6개 build 토글 fail-closed, release/QA 모드 자동 판정(dirty 무조건 거부, tag 없는 timestamp fallback 미사용), Task 5 allow-list 재사용 + builder 전용 denylist, manifest 생성. `build_offline_package.ps1`은 git archive→npm ci/build/prune→requirements.txt wheelhouse→Task 5 두 installer 추가→manifest→Task 5 verifier(pre-stage/post-ZIP) 통과 후에만 ZIP/SHA를 생성한다. Sandbox harness(`scripts/sandbox/*`)는 networking-disabled WSB로 guest에서 verifier→silent installer→무인 setup/start/health/frontend/login/empty-NSA/stop을 atomic receipt로 남기도록 작성했다.
+
+운영 안정성을 위해 `offline_package.bat` 자체의 wrapper 전환은 이 커밋에 포함하지 않았다. 새 builder의 실제 end-to-end 실행(npm ci/build/wheelhouse full run, 실 installer 바이너리 추가, Windows Sandbox guest smoke)은 관리자 elevation·installer 바이너리·네트워크가 필요해 이번 자율 범위에서 검증되지 않았다. 검증되지 않은 builder로 운영자의 동작하는 packaging 도구(현 robocopy `offline_package.bat`)를 대체하면 hotfix에서 기능 회귀 위험이 있으므로, wrapper 전환은 E2E 검증(실 build + Sandbox smoke) 이후로 미룬다. 이 커밋은 builder 인프라와 검증된 경계 로직만 additive로 추가한다.
+
+Constraint: 신규 파일만 additive 추가, 동작하는 operator packaging 경로(offline_package.bat) 무변경, allow-list fail-closed, 실 cert/installer/Sandbox 무접촉
+Rejected: 검증 안 된 builder로 offline_package.bat 즉시 전환(hotfix 기능 회귀 위험) — E2E 검증 뒤로 defer; robocopy deny-list 유지(우회·verifier 부재)
+Confidence: medium-high — 경계 로직 23 tests + builder→Task5-verifier 체인 GREEN, ruff clean, basedpyright 0 errors, PowerShell AST 3/3. 단 실 build/Sandbox 미실행(아래)
+Scope-risk: low-medium — 신규 파일만, operator 경로 무변경이나 builder 실 실행은 미검증
+Directive: 후속 작업자는 elevation 가능 환경에서 (1) 실 installer 바이너리 배치, (2) 실 npm ci/build/wheelhouse full run + Task5 verifier로 산출 ZIP 검증, (3) Windows Sandbox guest smoke를 실행해 receipt PASS를 확인한 뒤에만 offline_package.bat을 이 builder wrapper로 전환한다
+Tested: pytest tests/unit/test_offline_package_builder.py = 23 passed(build 토글/release·QA 모드/dirty 거부/forbidden 제외/builder→verifier 체인 happy·fail-closed), Task5 회귀 21 passed 유지, ruff clean, basedpyright 0 errors, PowerShell AST 3/3, WSB XML 파싱
+Not-tested: 실 npm ci/build/wheelhouse full run, 실 Python/Node installer 바이너리 추가, Windows Sandbox guest smoke(elevation+바이너리 필요), offline_package.bat wrapper 전환(E2E 검증 뒤로 defer)

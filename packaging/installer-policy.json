@@ -1,0 +1,84 @@
+{
+  "policy_version": 1,
+  "profile": "release-qa",
+  "allow_top_level_entries": [
+    "backend",
+    "frontend",
+    "docs",
+    "scripts",
+    "packaging",
+    "offline_assets",
+    "infra",
+    "alembic.ini",
+    "README.md",
+    "start_offline.bat",
+    "setup_offline.bat",
+    "offline_package.bat",
+    "setup.bat"
+  ],
+  "forbidden_categories": [
+    {
+      "category": "env-secret",
+      "patterns": ["**/.env", ".env"],
+      "allow_patterns": ["**/.env.example", ".env.example"]
+    },
+    {
+      "category": "database",
+      "patterns": [
+        "**/*.db",
+        "**/*.db-wal",
+        "**/*.db-shm",
+        "**/*.sqlite",
+        "**/*.sqlite3",
+        "backend/data/**"
+      ],
+      "allow_patterns": []
+    },
+    {
+      "category": "storage-runtime",
+      "patterns": ["storage/**"],
+      "allow_patterns": []
+    },
+    {
+      "category": "agent-state",
+      "patterns": [
+        ".gjc/**",
+        ".omo/**",
+        ".omx/**",
+        ".omc/**",
+        ".ug-*",
+        "**/.ug-*"
+      ],
+      "allow_patterns": []
+    },
+    {
+      "category": "dev-artifact",
+      "patterns": [
+        "**/.venv/**",
+        "**/__pycache__/**",
+        "**/*.pyc",
+        "**/node_modules/.cache/**",
+        "**/.next/cache/**",
+        "dist/**",
+        "artifacts/**",
+        "**/.pytest_cache/**",
+        ".worktrees/**"
+      ],
+      "allow_patterns": []
+    }
+  ],
+  "required_installers": [
+    {
+      "filename": "python-3.12.7-amd64.exe",
+      "sha256": "1206721601a62c925d4e4a0dcfc371e88f2ddbe8c0c07962ebb2be9b5bde4570",
+      "authenticode_thumbprint": "36168EE17C1A240517388540C903BB6717DD2563",
+      "authenticode_subject": "Python Software Foundation"
+    },
+    {
+      "filename": "node-v20.18.0-x64.msi",
+      "sha256": "93d1d30341d7d38b7a8f3ab0fa3be1f9e6436b90338b2bd8b8af4e80d00bd036",
+      "authenticode_thumbprint": "6153EB0186DD8FEBD9E3693F4F110DEFC007715D",
+      "authenticode_subject": "OpenJS Foundation"
+    }
+  ]
+}

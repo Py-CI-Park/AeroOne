@@ -1,18 +1,20 @@
 import { vi } from 'vitest';
 
 import {
+  ApiError,
   fetchAiStatus,
   fetchCollectionContent,
   fetchCollectionList,
   fetchDocumentContent,
   fetchClientSession,
   getServerApiBase,
+  getSafeApiErrorMessage,
   fetchLatestNewsletter,
   getNewsletterProxyPath,
   getPublicNewsletters,
   login,
   changeOwnPassword,
-  fetchAdminSummary,
+  fetchAdminOverview,
   fetchConnectedUsers,
   purgeSessions,
   fetchUnifiedSearch,
@@ -154,8 +156,12 @@ test('fetchClientSession calls same-origin session route with credentials', asyn
     status: 200,
     json: async () => ({
       authenticated: true,
+      username: 'analyst',
       role: 'user',
-      isAdmin: false,
+      is_admin: false,
+      can_view_document: true,
+      can_view_nsa: true,
+      can_use_ai: false,
       permissions: ['collections.nsa.read'],
       resources: [{ resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' }],
     }),
@@ -168,10 +174,71 @@ test('fetchClientSession calls same-origin session route with credentials', asyn
     credentials: 'include',
     cache: 'no-store',
   });
+  expect(session.is_admin).toBe(false);
+  expect(session.can_view_document).toBe(true);
+  expect(session.can_view_nsa).toBe(true);
+  expect(session.can_use_ai).toBe(false);
   expect(session.permissions).toEqual(['collections.nsa.read']);
   expect(session.resources).toEqual([
     { resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' },
   ]);
+});
+
+test.each([
+  [401, '로그인이 필요합니다'],
+  [403, '접근 권한이 없습니다'],
+  [422, '요청 형식이 올바르지 않습니다'],
+  [429, '요청이 너무 잦습니다'],
+  [500, '서버 오류가 발생했습니다'],
+  [503, '서버 오류가 발생했습니다'],
+  [418, '요청 처리에 실패했습니다'],
+])('getSafeApiErrorMessage maps status %i to a safe Korean category message', (status, expected) => {
+  expect(getSafeApiErrorMessage(status as number)).toBe(expected);
+});
+
+test('fetchClientSession rejects with an ApiError carrying the status and a safe message, never the raw body', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 500,
+    text: async () => 'internal stack trace leak: /etc/secrets',
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  let caught: unknown;
+  try {
+    await fetchClientSession();
+  } catch (error) {
+    caught = error;
+  }
+
+  expect(caught).toBeInstanceOf(ApiError);
+  const apiError = caught as InstanceType<typeof ApiError>;
+  expect(apiError.status).toBe(500);
+  expect(apiError.message).toBe('서버 오류가 발생했습니다');
+  expect(apiError.message).not.toContain('/etc/secrets');
+});
+
+test('browserFetch-backed helpers reject with an ApiError carrying status and a safe message, never the raw body', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 403,
+    text: async () => 'forbidden: user lacks admin.read on tenant 42',
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  let caught: unknown;
+  try {
+    await fetchAdminOverview();
+  } catch (error) {
+    caught = error;
+  }
+
+  expect(caught).toBeInstanceOf(ApiError);
+  const apiError = caught as InstanceType<typeof ApiError>;
+  expect(apiError.status).toBe(403);
+  expect(apiError.message).toBe('접근 권한이 없습니다');
+  expect(apiError.message).not.toContain('tenant 42');
+  expect(apiError.message).not.toContain('admin.read');
 });
 
 
@@ -184,7 +251,7 @@ test('auth and admin helpers call same-origin frontend proxy paths, never backen
 
   await login('admin', 'secret');
   await changeOwnPassword('old', 'new', 'csrf-token');
-  await fetchAdminSummary();
+  await fetchAdminOverview();
   await fetchConnectedUsers();
   await fetchUnifiedSearch('jet', true);
 
@@ -192,7 +259,7 @@ test('auth and admin helpers call same-origin frontend proxy paths, never backen
   expect(calledUrls).toEqual([
     '/api/frontend/auth/login',
     '/api/frontend/auth/change-password',
-    '/api/frontend/admin/dashboard',
+    '/api/frontend/admin/overview',
     '/api/frontend/admin/sessions',
     '/api/frontend/search/unified?q=jet&include_nsa=true',
   ]);

@@ -14,6 +14,42 @@ import pytest
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows batch scripts only")
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+_SETUP_SCRIPT = (REPO_ROOT / "setup.bat").read_text(encoding="utf-8")
+_SETUP_OFFLINE_SCRIPT = (REPO_ROOT / "setup_offline.bat").read_text(encoding="utf-8")
+
+
+def test_setup_secret_generation_is_compatible_with_windows_powershell_51() -> None:
+    for script in (_SETUP_SCRIPT, _SETUP_OFFLINE_SCRIPT):
+        assert "RandomNumberGenerator]::Fill" not in script
+        assert script.count("RandomNumberGenerator]::Create()") == 2
+        assert script.count("$rng.GetBytes($bytes)") == 2
+        assert script.count("$rng.Dispose()") == 2
+
+
+def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -> None:
+    assert 'pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt' in _SETUP_OFFLINE_SCRIPT
+    assert "requirements-dev.txt" not in _SETUP_OFFLINE_SCRIPT
+
+    app_env = 'set "APP_ENV=closed_network"'
+    database_url = 'set "DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db"'
+    admin_username = 'set "ADMIN_USERNAME=admin"'
+    migration = 'call python scripts\\ensure_db_state.py data\\aeroone.db'
+
+    assert _SETUP_OFFLINE_SCRIPT.index(app_env) < _SETUP_OFFLINE_SCRIPT.index(migration)
+    assert _SETUP_OFFLINE_SCRIPT.index(database_url) < _SETUP_OFFLINE_SCRIPT.index(migration)
+    assert _SETUP_OFFLINE_SCRIPT.index(admin_username) < _SETUP_OFFLINE_SCRIPT.index(migration)
+
+
+_START_OFFLINE_SCRIPT = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
+
+
+def test_start_offline_preserves_entry_path_before_argument_shifts() -> None:
+    capture = 'set "ENTRY_BATCH=%~f0"'
+    invocation = '-BatchPath "%ENTRY_BATCH%" -RawBatchArguments "--maintenance-preflight"'
+
+    assert _START_OFFLINE_SCRIPT.index(capture) < _START_OFFLINE_SCRIPT.index(":parse_args")
+    assert invocation in _START_OFFLINE_SCRIPT
+    assert '-BatchPath "%~f0"' not in _START_OFFLINE_SCRIPT
 
 
 def _run_cmd(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -46,6 +82,13 @@ def _write_stub_command(path: Path) -> None:
         "exit /b 0\r\n",
         encoding="utf-8",
     )
+
+
+def _make_stub_open_notebook_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "AeroOne-bundle"
+    bundle.mkdir()
+    (bundle / "3-run.bat").write_text("@echo off\r\nexit /b 0\r\n", encoding="utf-8")
+    return bundle
 
 
 def _write_frontend_dev_delegate_stub(path: Path) -> str:
@@ -382,7 +425,7 @@ def test_start_frontend_dev_preserves_caches_without_clean(tmp_path: Path) -> No
         line.startswith("npm.cmd run dev")
         for line in log_file.read_text(encoding="utf-8").splitlines()
     )
-    contents = (scripts_dir := repo_root / "scripts" / "start_frontend_dev.cmd").read_text(encoding="utf-8")
+    contents = (repo_root / "scripts" / "start_frontend_dev.cmd").read_text(encoding="utf-8")
     assert 'set "NEXT_PUBLIC_API_BASE_URL=http://localhost:18437"' in contents
     assert 'set "SERVER_API_BASE_URL=http://127.0.0.1:18437"' in contents
 
@@ -496,6 +539,14 @@ def test_start_offline_dry_run_frontend_window_avoids_broken_nested_quotes() -> 
     assert 'cd /d ""' in frontend_line, frontend_line
     assert frontend_line.rstrip('"').endswith("call start_frontend_offline.cmd"), frontend_line
 
+
+def test_setup_offline_dry_run_bypasses_only_the_mutating_maintenance_gate() -> None:
+    assert 'for %%A in (%*) do if /I "%%~A"=="--dry-run"' in _SETUP_OFFLINE_SCRIPT
+    assert (
+        'if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" '
+        'if not defined AEROONE_DRY_RUN_REQUESTED ('
+    ) in _SETUP_OFFLINE_SCRIPT
+    assert "invoke_with_maintenance_gate.ps1" in _SETUP_OFFLINE_SCRIPT
 
 def test_setup_offline_dry_run_allow_host_prints_lan_info() -> None:
     result = _run_cmd(REPO_ROOT, "setup_offline.bat", "--dry-run", "--no-pause", "--allow-host=192.168.1.10")
@@ -671,13 +722,14 @@ def test_open_browser_cmd_delegates_to_wait_helper(tmp_path: Path) -> None:
     assert "-BackendTimeoutSeconds 20" in invocation
     assert "-FrontendTimeoutSeconds 60" in invocation
 
-def test_run_all_dry_run_waits_for_open_notebook_readiness() -> None:
+def test_run_all_dry_run_waits_for_open_notebook_readiness(tmp_path: Path) -> None:
+    bundle = _make_stub_open_notebook_bundle(tmp_path)
     result = _run_cmd(
         REPO_ROOT,
         r"scripts\run_all.bat",
         "--dry-run",
         "--on-bundle",
-        str(REPO_ROOT.parent / "AeroOne-bundle"),
+        str(bundle),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -689,13 +741,14 @@ def test_run_all_dry_run_waits_for_open_notebook_readiness() -> None:
     assert any('would call "' in line and "3-run.bat" in line for line in lines)
 
 
-def test_run_all_passes_network_mode_to_open_notebook_bundle() -> None:
+def test_run_all_passes_network_mode_to_open_notebook_bundle(tmp_path: Path) -> None:
+    bundle = _make_stub_open_notebook_bundle(tmp_path)
     result = _run_cmd(
         REPO_ROOT,
         r"scripts\run_all.bat",
         "--dry-run",
         "--on-bundle",
-        str(REPO_ROOT.parent / "AeroOne-bundle"),
+        str(bundle),
         "--local",
     )
 
@@ -704,14 +757,15 @@ def test_run_all_passes_network_mode_to_open_notebook_bundle() -> None:
     assert '3-run.bat" --local' in result.stdout
 
 
-def test_offline_package_excludes_workflow_state_from_zip_stage() -> None:
-    result = _run_cmd(REPO_ROOT, "offline_package.bat", "--dry-run")
+def test_offline_package_delegates_to_allow_list_builder() -> None:
+    result = _run_cmd(REPO_ROOT, "offline_package.bat", "--help")
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "/XD adds: .gjc artifacts vendor" in result.stdout
-    assert "/XF adds: .git .ug-*" in result.stdout
+    assert "git-archive allow-list" in result.stdout
+    assert "requirements-dev.txt" not in result.stdout
 
     script = (REPO_ROOT / "offline_package.bat").read_text(encoding="utf-8")
-    assert "/XD .git .gjc .omx .omc .worktrees" in script
-    assert " .venv .python_packages node_modules dist artifacts backend\\.venv" in script
-    assert "/XF .git .ug-*" in script
+    assert "scripts\\build_offline_package.ps1" in script
+    assert "-Version 1.13.0 -DryRun" in script
+    assert "robocopy" not in script.lower()
+    assert "requirements-dev.txt" not in script

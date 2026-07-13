@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from app.core.security import hash_password
-from app.modules.admin.models import ResourceGrant, UserGroup, UserPermission
+from app.modules.admin.models import UserPermission
 from app.modules.admin.permissions import has_permission
 from app.modules.auth.models import User
 from app.modules.collections.policy import can_read_collection

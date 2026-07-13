@@ -7,7 +7,7 @@ vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return {
     ...actual,
-    fetchAdminSummary: vi.fn(),
+    fetchAdminOverview: vi.fn(),
     fetchAdminUsers: vi.fn(),
     fetchConnectedUsers: vi.fn(),
     fetchAdminPermissions: vi.fn(),
@@ -39,7 +39,17 @@ beforeEach(() => {
 });
 
 function mockAdminData() {
-  vi.mocked(api.fetchAdminSummary).mockResolvedValue({ app_version: '1.12.0', app_env: 'test', database_url: 'sqlite:///test.db', db_ok: true, newsletter_total: 1, latest_newsletter_title: '최근 뉴스', active_modules: 1, coming_soon_modules: 0, asset_health: {}, read_summary: {}, ai_status: { status: 'ok' }, recent_audit_events: [] } as never);
+  vi.mocked(api.fetchAdminOverview).mockResolvedValue({
+    generated_at: '2026-07-05T00:00:00Z',
+    anchor: '2026-06-28T00:00:00Z',
+    users: { total: 1, active: 1, inactive: 0, roles: { admin: 1, user: 0, pending: 0 }, created: { current: 0, prior: 0, delta: 0 } },
+    logins: { success: { current: 0, prior: 0, delta: 0 }, failure: { current: 0, prior: 0, delta: 0 }, logout: { current: 0, prior: 0, delta: 0 } },
+    ai: { total: { current: 0, prior: 0, delta: 0 }, failure: { current: 0, prior: 0, delta: 0 } },
+    sessions: { active_session_count: 0, active_user_count: 0, active_count: 0 },
+    modules: { total: 1, buckets: { unavailable: [], coming: [], development: [], active: [{ key: 'ov-dashboard', label: 'Overview Dashboard' }] } },
+    system: { app_version: '1.12.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 1, asset_health: { ok: 1, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 0, total_reads: 0 } },
+    recent_audit: [],
+  } as never);
   vi.mocked(api.fetchAdminUsers).mockResolvedValue([{ id: 1, username: 'operator', email: 'op@example.com', role: 'admin', is_active: true, permissions: ['admin.read'] }] as never);
   vi.mocked(api.fetchConnectedUsers).mockResolvedValue({ active_sessions: [], active_count: 0, recent_login_events: [], login_failure_count: 0, read_tracking_summary: { rows: 0, total_reads: 0 } } as never);
   vi.mocked(api.fetchAdminPermissions).mockResolvedValue([{ key: 'admin.read', description: 'Admin read' }, { key: 'collections.nsa.read', description: 'NSA read' }] as never);
@@ -153,7 +163,7 @@ test('G004 exposes collapsible onboarding help with audit tab and shortcut guida
   expect(within(helpList as HTMLElement).getByText(/숫자 키 1~9/)).toBeInTheDocument();
 });
 
-test('release version constants advance to 1.12.2', () => {
-  expect(APP_VERSION).toBe('1.12.2');
-  expect(CHANGELOG[0].version).toBe('1.12.2');
+test('release version constants advance to 1.13.0', () => {
+  expect(APP_VERSION).toBe('1.13.0');
+  expect(CHANGELOG[0].version).toBe('1.13.0');
 });

@@ -4,6 +4,17 @@ chcp 65001 >nul
 
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
+set "AEROONE_DRY_RUN_REQUESTED="
+for %%A in (%*) do if /I "%%~A"=="--dry-run" set "AEROONE_DRY_RUN_REQUESTED=1"
+if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" if not defined AEROONE_DRY_RUN_REQUESTED (
+  if "%~1"=="" (
+    powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%~f0"
+  ) else (
+    powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%~f0" -RawBatchArguments "%*"
+  )
+  exit /b !errorlevel!
+)
+set "AEROONE_MAINTENANCE_GATE_HELD="
 set "ROOT_FWD=%ROOT:\=/%"
 set "BACKEND_DIR=%ROOT%\backend"
 set "FRONTEND_DIR=%ROOT%\frontend"
@@ -116,8 +127,8 @@ if not exist "%WHEEL_DIR%" (
   goto :fail
 )
 
-for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(32); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "JWT_SECRET_KEY=%%S"
-for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(24); [Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "ADMIN_PASSWORD=%%S"
+for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(32); $rng=[Security.Cryptography.RandomNumberGenerator]::Create(); try{$rng.GetBytes($bytes)}finally{$rng.Dispose()}; [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "JWT_SECRET_KEY=%%S"
+for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(24); $rng=[Security.Cryptography.RandomNumberGenerator]::Create(); try{$rng.GetBytes($bytes)}finally{$rng.Dispose()}; [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "ADMIN_PASSWORD=%%S"
 if not defined JWT_SECRET_KEY goto :fail
 if not defined ADMIN_PASSWORD goto :fail
 
@@ -153,6 +164,11 @@ if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
 >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=%EFFECTIVE_BACKEND_BASE%
 >>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://127.0.0.1:18437
 >>"%FRONTEND_ENV%" echo NEXT_PUBLIC_CSRF_COOKIE_NAME=csrf_token
+REM The generated offline environment is authoritative during setup.
+REM Inherited developer/service variables must not redirect migrations or seeding.
+set "APP_ENV=closed_network"
+set "DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db"
+set "ADMIN_USERNAME=admin"
 
 if not exist "%BACKEND_VENV%\Scripts\python.exe" (
   py -3.12 -m venv "%BACKEND_VENV%" || py -3 -m venv "%BACKEND_VENV%" || python -m venv "%BACKEND_VENV%" || goto :fail
@@ -166,7 +182,7 @@ if not exist "%ROOT%\_database\nsa" mkdir "%ROOT%\_database\nsa"
 
 call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
 pushd "%BACKEND_DIR%"
-call pip install --no-index --find-links "%WHEEL_DIR%" -r requirements-dev.txt || goto :fail_from_backend
+call pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt || goto :fail_from_backend
 set "PYTHONPATH=."
 call python scripts\ensure_db_state.py data\aeroone.db
 set "MIGRATION_MODE=%ERRORLEVEL%"

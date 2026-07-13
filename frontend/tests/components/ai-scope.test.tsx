@@ -24,9 +24,17 @@ beforeEach(() => {
   mocks.fetchCollectionSearch.mockResolvedValue({ results: [], degraded: false, collections: ['document', 'civil'] });
   mocks.sendAiChat.mockResolvedValue({ model: 'gemma4:12b', message: { role: 'assistant', content: 'ok' }, citations: [] });
   mocks.listAiConversations.mockResolvedValue({ conversations: [] });
-  // Default: authenticated non-admin with NO nsa permission -> NSA scope stays locked.
+  // Default: authenticated non-admin with NSA visibility off -> NSA scope stays locked.
   mocks.fetchClientSession.mockResolvedValue({
-    authenticated: true, role: 'user', isAdmin: false, permissions: [], resources: [],
+    authenticated: true,
+    username: 'user',
+    role: 'user',
+    is_admin: false,
+    can_view_document: true,
+    can_view_nsa: false,
+    can_use_ai: true,
+    permissions: [],
+    resources: [],
   });
 });
 
@@ -79,15 +87,23 @@ test('scope toggles do not silently fall back after the last active scope is cli
 });
 
 test('nsa scope is disabled without permission and enabled once the session grants nsa access', async () => {
-  // No nsa permission (beforeEach default) -> NSA scope disabled.
+  // Default session (beforeEach): can_view_nsa false -> NSA scope disabled.
   const { unmount } = render(<AiChatWorkspace />);
   await screen.findByTestId('ai-scope');
   await waitFor(() => expect((screen.getByLabelText(/NSA/) as HTMLInputElement).disabled).toBe(true));
   unmount();
 
-  // Session hint grants nsa read -> NSA scope enabled and selectable.
+  // Session grants can_view_nsa -> NSA scope enabled and selectable.
   mocks.fetchClientSession.mockResolvedValue({
-    authenticated: true, role: 'user', isAdmin: false, permissions: ['collections.nsa.read'], resources: [],
+    authenticated: true,
+    username: 'user',
+    role: 'user',
+    is_admin: false,
+    can_view_document: true,
+    can_view_nsa: true,
+    can_use_ai: true,
+    permissions: ['collections.nsa.read'],
+    resources: [],
   });
   render(<AiChatWorkspace />);
   await screen.findByTestId('ai-scope');

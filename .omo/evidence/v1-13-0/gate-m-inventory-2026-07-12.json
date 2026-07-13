@@ -1,0 +1,539 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-07-12",
+  "rootHead": "034bd0324af9f69268d25ae605d9be0fd5c632fb",
+  "hotfixHead": "639fc5860693e8fe99ae9791e64b8865a8a97bb6",
+  "root": [
+    {
+      "status": " M",
+      "path": ".omo/boulder.json",
+      "sha256": "a66c44b51358735212c57ca721040b75d02984fc454d051bbad565bbc03bc83a",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": " M",
+      "path": ".omo/drafts/v1-13-0-operator-experience-plan.md",
+      "sha256": "ea2e3ecad3f5a83ed2e955991af9ca61d2337dc3570a58f450389ab7a7f45ee4",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": " M",
+      "path": ".omo/plans/v1-13-0-operator-experience-plan.md",
+      "sha256": "f298651023b863f402a5ce066c2a330fd9c5626b1a0901aad82fbf6040534d8b",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": " M",
+      "path": ".omo/start-work/ledger.jsonl",
+      "sha256": "c3925cb1ea087b2cc99b87cbbbcd33bd6144b9710186fc28aa5235fd0978bb05",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": " M",
+      "path": "docs/CLOSED_NETWORK_GUIDE.md",
+      "sha256": "eb3bc6dd5922c4b1357c71fcf973587adf761470701625314e5c52b3d9883904",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": " M",
+      "path": "docs/INDEX.md",
+      "sha256": "c46914b9c5a2d3468b6b94a13661784873da102e0b5d9d20f79f0600536d91d0",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": " M",
+      "path": "docs/reports/INDEX.md",
+      "sha256": "05c6a923b5be68e2a3b54f3974e980103b6f1f80140c3beed792548579647746",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": " M",
+      "path": "docs/runbook/ai-agent-handoff-2026-07-09.md",
+      "sha256": "6a2bf145406c8560bd9eeded291b52a4bc7e400e50922acecf384411c2edbdfe",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/builder-fix-commit-msg.txt",
+      "sha256": "d69a3f87dc12036eebd876e83d68df5b50bb618e2c57f34ba78bb314d73928d9",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/incident-commit-msg.txt",
+      "sha256": "560df01cf469f4498d5b60f8fbd12beb0cba6993fa086433cc307caa0fd06a6c",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/next-pin-commit-msg.txt",
+      "sha256": "03e9c973ef0d01f5dd8fe659c72373600e3fbe948d0933bc04bc18d45baff8d5",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/round4-commit-msg.txt",
+      "sha256": "966290a5157ab4af82e7ee0a714d7ce2538424543bf63f36441dc0c4be1dfe86",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-cred-log",
+      "sha256": "12ba65068ebfeb3ac0c309300459251adfd6012e72e3a3a69eff5e096a7e5022",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-cred-status",
+      "sha256": "ab7ce954c7e869656a210c52506f80c15035335675d51af49e1e97c7830689e2",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-frontend-log",
+      "sha256": "f7fe0014fcda80ca379dab5d32051493085e31062587e49c86384c4fd23cd53d",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-frontend-status",
+      "sha256": "85671a59223b46aa9dae8c1de564b836b1c546b727a85e4575a9ea75225c59c5",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-integration-log",
+      "sha256": "1a041107ddf17c756c04197aedfbfccff2a7b6edc5dd1a3156be5a1fadfe5819",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-integration-status",
+      "sha256": "32694b882b18c88c92383fe2d161c8e22865125b9617ea2361ca26cb8a89f37e",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-log",
+      "sha256": "a8b966da7d264991ed452fa40f4e5d0e49fcffd0b0f4ed29d6330efb2395dc82",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-noncred-log",
+      "sha256": "07f843d7a8f80f2497e20f872c9477c266138d0d3b3b4b58dda3fadb221d3ef8",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-noncred-status",
+      "sha256": "c4edb3d405d1c6f80208dc4993f6d486ac13ce0ea10a2aad32664ddcecf36978",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/.current-status",
+      "sha256": "1cc456b980577c140e8aabfefa2a1cd95f3f0d7fabc304548567d20d151f7015",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/README.md",
+      "sha256": "6c77ace4c3eae25dc6bf580f42e53369db77a7fb207b27f5672b362cdb8c0784",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-full-20260711-234931.log",
+      "sha256": "170521bb7196e203d167ad6e33bed89223db32d113cf827513d92cb01ad5369b",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-full-20260711-234931.status",
+      "sha256": "9cd7cd281da0d805f3cd9cd5a25c6ec91f2dbd1beafa2cb193336986b4a506f5",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-full-20260712-001114.log",
+      "sha256": "dcfe564c16a746532a537014e46bf6934144389df02801a76e89b5461404bc5c",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-full-20260712-001114.status",
+      "sha256": "93290da2e222d63c061fac91a270d898099ca7d7cd69add01d30176ffab3c7f6",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-full-run.ps1",
+      "sha256": "8945a09728d799d9eafa740e4af86b5e784725d038916355acf4371d13dde7e3",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-noncred-20260712-022434.log",
+      "sha256": "a2e9da98376d1496ba7d91dd536300d2a31fd12b7e714e3f4e2325cc02895e13",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-noncred-20260712-022434.status",
+      "sha256": "5a60ebd862e5d7c07a2a0798745a0563d740b14ac130c0afc84b2a5d5333ebf7",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-backend-noncred-run.ps1",
+      "sha256": "af53b83c8285331cf49c9d198280f0fc6b869d6bc90cb4491f7dce26947bb5bf",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-credential-focused-20260712-011517.log",
+      "sha256": "492ede5d75935b74e913002e24213f8c274d10b256b53e9ce6971175770a7f69",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-credential-focused-20260712-011517.status",
+      "sha256": "424b26713d927d14f9a3a643727b1a9b48cf8195149efb2995942d818215a2f4",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-credential-focused-run.ps1",
+      "sha256": "821c67513497f612bae06e78038df5a3c819bdb54bd3d715a4dfa52061c78c3c",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-frontend-gate-20260711-235653.log",
+      "sha256": "7358bd9c9bc7cfa8742e765c153affc6f9d6b94fa4c8b2de277a8ba437c4c61f",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-frontend-gate-20260711-235653.status",
+      "sha256": "77aac3c2dba7cfe065dacbd6c94cf9440ff8ac503842c44c55b90ef157cddd74",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-frontend-gate-20260712-023421.log",
+      "sha256": "1cf826398ac0d2d7d1076b59b66c651239eefdc19c9a11cec0c57763e51a1090",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-frontend-gate-20260712-023421.status",
+      "sha256": "9795da0464e610d43dfcddb5744ddf20339f36a82438c5aa1d9b2986f349ec43",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-3-frontend-gate-run.ps1",
+      "sha256": "e5db1b076b7216556671947627a577bd7e9ba2423ac1918b7e468bf91fbf9750",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-full-integration-20260712-044348.log",
+      "sha256": "05dd482501683c61bf2b9c8afa8d6c0c6b1617c70bb63d6c6608e39e5700da56",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/runs/task-full-integration-20260712-044348.status",
+      "sha256": "e735d7c2e0cf7aa46b0afb8a217156017cec791ea98868ce774021ae7c2b6bab",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/session-progress-2026-07-12.md",
+      "sha256": "89c8ca208ba1dbeb1c3cc9aac1c1f7c00b5397c848fb9fd2382a94d7891954d3",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-1.md",
+      "sha256": "e0da71addf35b81e4ce956f5c1d566b00210706f37ccff3e8bc0557b94bb8ea4",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-2-central-directory-audit.ps1",
+      "sha256": "20a4b63e47bc83f2c7838027c06a565a47dc2d77659e865c82ccd8752d9875fa",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-2-contain-historical-assets.sh",
+      "sha256": "e5df09b26be329ad13b3b34560cda990130e19c410df580d42378980bf2d3221",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-2-execution.md",
+      "sha256": "96aa59f3778671fbfe0dc666d3763796d2e435e5ffdea513d84c8440fa0f46f1",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-2-verification.md",
+      "sha256": "fa44e56cc92c486f2040aeee5738f20a50407c65e7a4574def352d33136be675",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-2.md",
+      "sha256": "662d235aa5e88c26470ffa8eddac88c4b3f907afd7714c9242ec7724e93c47e1",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-3-current-status.md",
+      "sha256": "968da24b2248859e00ede488fff1bc6b4025d0faa320a21e2970b4503c6ebcd4",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-3-review-round-1.md",
+      "sha256": "3be2dde9964226c91ba957cb920b05a3d31ad9b1ad1f41c48926c9440438b12d",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-3-review-round-2.md",
+      "sha256": "a09c3cdb5f607a8f0b3ceb5f2bee97862c3e1f36c0710db59feb970132d6ad9d",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-3-review-round-3.md",
+      "sha256": "34496420a18b0ab480ae3e1f819a4cf4e18d3495026b2eb4058b03f0a6a7f0d2",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-3-round4-gate-results.md",
+      "sha256": "61e7616b6ac44fad4115559906eedee2077f7ea94f3afa029d32b0299f95d053",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-3-round4-review-prep.md",
+      "sha256": "511c7f659ffe9540bfaabcf0470c028945937d12f250b9581db9ae220c44e80f",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task5-commit-msg.txt",
+      "sha256": "ee2db2446780886e3a43511e128fe0dd8b24f3989876cf6254eed8415676a6df",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task6-commit-msg.txt",
+      "sha256": "267bcf01db1be59db5a1080795fb9faab6b717e88d9978bcb75ccdaed6d8e0ef",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task7-commit-msg.txt",
+      "sha256": "b1a3289bc45087c75f786f18232372e36b3a51d5bb94afb9d40d355e7e8fc30a",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/ultragoal-brief.md",
+      "sha256": "2bd46e4e53c540854dd43953b47207daac313584f502734d5ca54d2427164b1a",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": "docs/reports/v1-13-0-development-status-2026-07-11.md",
+      "sha256": "44ba49ac675e1254ce4584ece3abcdd56011b959151234e363bde36f1c365774",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": "docs/runbook/ai-agent-handoff-2026-07-11.md",
+      "sha256": "676fdccd5dd5c984de2973a779af5c9f9e2195ff7e72c9eb0431dd8a1cf740e9",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "dev-evidence-commit"
+    }
+  ],
+  "hotfix": [
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-5-error.md",
+      "sha256": "a550a2181bdb6e61ba57abd4a52df7cda8ddd6a1b85c94636e50c2c8a0384574",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "hotfix-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-5.md",
+      "sha256": "636abbf8b0f3cd93d2bc35739e13690293bf4d97647e44327704588e15e14dad",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "hotfix-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-6-error.md",
+      "sha256": "46249200860985e064578d4b8c5087511a3595cb870ba5b44bdf060f85795434",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "hotfix-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-6.md",
+      "sha256": "4cb7668826e8c4725e435d5aa452fcb7e35ee35024b5d1d1e88224cdefd7831f",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "hotfix-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-7-error.md",
+      "sha256": "0f6366d62de221fa351b50060a209452af72dc9f4079ce715b783cccd9119aff",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "hotfix-evidence-commit"
+    },
+    {
+      "status": "??",
+      "path": ".omo/evidence/v1-13-0/task-7.md",
+      "sha256": "2e16772219d045e823aec9012df8f0967b783fdd12bc73667f55e5a9fc7eee7b",
+      "sensitivity": "secret-pattern=0,u+fffd=0",
+      "owner": "session-agent",
+      "destination": "hotfix-evidence-commit"
+    }
+  ],
+  "packageExclusion": "installer-policy agent-state excludes .omo/** and .gjc/**"
+}

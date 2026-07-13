@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import Link from 'next/link';
 
-import { AdminNavLink } from '@/components/layout/admin-nav-link';
+import { AccountMenu } from '@/components/layout/account-menu';
 
 import { Icon } from '@/components/ui/icons';
 import { NewsletterThemeSelector } from '@/components/newsletter/newsletter-theme-selector';
@@ -100,7 +100,7 @@ export function AppShell({
           {active === 'dashboard' ? <KoreanClock /> : null}
           {showThemeSelector ? <NewsletterThemeSelector theme={theme} currentPath={themePath} /> : null}
           <HelpManualButton />
-          <AdminNavLink active={active === 'admin'} />
+          <AccountMenu active={active === 'admin'} />
         </div>
       </header>
 

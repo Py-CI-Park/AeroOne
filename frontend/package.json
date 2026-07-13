@@ -7,14 +7,24 @@
     "build": "next build",
     "start": "next start -p 29501",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "qa:browser:setup": "node ../scripts/qa/prepare_v113_runtime.mjs",
+    "qa:browser:smoke": "npx --no-install playwright test --config=playwright.qa.config.ts --project=smoke",
+    "qa:browser:matrix": "npx --no-install playwright test --config=playwright.qa.config.ts --project=matrix",
+    "qa:browser:axe": "npx --no-install playwright test --config=playwright.qa.config.ts --project=axe",
+    "qa:browser:lighthouse": "node ../scripts/qa/run_v113_lighthouse.mjs",
+    "qa:browser:react": "node ../scripts/qa/run_v113_react_diagnostics.mjs",
+    "qa:browser:teardown": "node ../scripts/qa/teardown_v113_runtime.mjs",
+    "qa:browser:all": "node ../scripts/qa/run_v113_browser_all.mjs"
   },
   "dependencies": {
-    "next": "15.2.0",
+    "next": "15.5.18",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.61.1",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.2.0",
     "@testing-library/user-event": "14.6.1",
@@ -23,7 +33,12 @@
     "@types/react-dom": "19.0.4",
     "autoprefixer": "10.4.20",
     "jsdom": "26.0.0",
+    "lighthouse": "12.8.2",
+    "playwright-lighthouse": "4.0.0",
     "postcss": "8.5.3",
+    "react-doctor": "0.7.3",
+    "react-grab": "0.1.48",
+    "react-scan": "0.5.7",
     "tailwindcss": "3.4.17",
     "typescript": "5.7.3",
     "vitest": "3.0.5"

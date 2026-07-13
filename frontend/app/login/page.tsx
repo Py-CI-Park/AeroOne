@@ -4,6 +4,7 @@ import { getAppTheme } from '@/lib/server-theme';
 
 type SearchParams = {
   theme?: string;
+  next?: string;
 };
 
 export default async function LoginPage({
@@ -16,7 +17,7 @@ export default async function LoginPage({
 
   return (
     <AppShell title="로그인" theme={theme} themePath="/login" contentClassName="max-w-5xl" hideTitle>
-      <LoginForm />
+      <LoginForm next={params.next} />
     </AppShell>
   );
 }

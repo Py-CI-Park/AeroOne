@@ -2,6 +2,9 @@
 
 이 문서는 **폐쇄망 PC 운영자가 처음부터 끝까지 그대로 따라 하는** 단일 설치·사용 매뉴얼입니다. AeroOne(뉴스레터·문서·AeroAI)과 Open Notebook(NotebookLM 대안)을 **코드 병합 없이 나란히(co-deploy)** 띄워 모든 기능을 폐쇄망에서 사용하는 절차를 다룹니다. 이 문서는 AeroOne 오프라인 ZIP(`docs/`)에 함께 포함되어 반입됩니다.
 
+> [!CAUTION]
+> `1.12.2` 오프라인 ZIP과 Release asset은 철회되었습니다. 신규 설치·재배포에 사용하지 말고 정식 `1.13.0` asset과 checksum이 게시될 때까지 반입을 보류합니다. 이미 설치했다면 서비스를 중지하고 1.13.0으로 교체한 뒤 [`credential-rotation.md`](credential-rotation.md)의 전체 회전을 수행합니다.
+
 - 빠른 요약은 [`README.md`](../../README.md), 종합 가이드는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) §18, Open Notebook 내부 세부는 [`docs/runbook/open-notebook-airgap.md`](open-notebook-airgap.md).
 - 새 오픈소스를 같은 방식으로 도입하는 절차는 [`docs/closed-network-oss-adoption-process.md`](../closed-network-oss-adoption-process.md).
 
@@ -19,12 +22,12 @@
 
 ---
 
-## 1. 인터넷 PC에서 반입물 모으기 (릴리즈 1.12.2 기준 4가지)
+## 1. 인터넷 PC에서 반입물 모으기 (릴리즈 1.13.0 기준 4가지)
 
 USB 등 **단방향 허용 매체**로 폐쇄망 PC에 복사할 4가지:
 
-1. **AeroOne 오프라인 ZIP** — GitHub Release `1.12.2` 의 `AeroOne-offline-1.12.2-YYYYMMDD-HHMMSS.zip` asset 을 받거나, 인터넷 PC 저장소 루트에서 `offline_package.bat` 실행 → `dist\AeroOne-offline-1.12.2-<스탬프>.zip`
-   - 소스·wheelhouse·`node_modules`·prebuilt `.next`·옵션 인스톨러 포함. (vendored open-notebook 트리는 의도적으로 제외)
+1. **AeroOne 오프라인 ZIP** — 정식 GitHub Release `1.13.0`의 `AeroOne-offline-1.13.0.zip`과 `.sha256` asset을 함께 받습니다. 태그 전 `artifacts\qa\...\AeroOne-offline-1.13.0-pr-<SHA>.zip`은 `publishable=false` 검증물이며 운영 반입에 사용하지 않습니다.
+   - allow-list source·production wheelhouse/node_modules·prebuilt `.next`·정확한 Python/Node 인스톨러 포함. runtime data와 vendored open-notebook 트리는 제외.
 2. **Open Notebook 번들 ZIP** — 같은 Release 의 `AeroOne-bundle.zip` asset 을 받거나, open-notebook 저장소에서 `airgap\1-online-package.bat` 실행 → `dist\AeroOne-bundle.zip`
    - 자체 Python/uv/Node/SurrealDB/ffmpeg + prebuilt frontend + 자동 프로비저닝 스크립트 포함(자기완결).
 3. **Ollama 설치파일** — 폐쇄망 PC에 Ollama가 없으면 `OllamaSetup.exe` (https://ollama.com/download). 있으면 생략.
@@ -124,7 +127,8 @@ cd D:\AeroOne-bundle && 3-run.bat --local
 |---|---|
 | 기동 / 정지 | `scripts\run_all.bat` / `scripts\stop_all.bat` |
 | 뉴스레터·문서 추가 | `_database\*` 에 파일 복사 후 해당 페이지 새로고침 ([`windows-offline.md`](windows-offline.md) §7) |
-| 관리자 비밀번호 교체 | `setup_offline.bat` 재실행 (`.env` 는 `.bak` 백업) |
+| 단일 관리자 비밀번호 변경 | `/admin` 콘솔의 **관리자 계정 / 비밀번호** 사용 |
+| 자격 증명 노출 사고 | AeroOne 서비스를 중지한 뒤 `scripts\rotate_aeroone_credentials.ps1` 실행. 완료 후 `scripts\view_aeroone_credentials.ps1 -ValidateOnly`와 current-SID WPF 뷰어로 새 자격 확인. setup 재실행은 DB 전체 사용자·세션 회전을 대신하지 않음 ([`credential-rotation.md`](credential-rotation.md)) |
 | Open Notebook 데이터 | `D:\AeroOne-bundle\data\` (surrealdb / uploads / sqlite-db). 백업·업그레이드 시 보존 |
 | AI 모델 추가/변경 | Ollama 에 모델 적재 후 ON `Models` 화면에서 등록·할당 |
 

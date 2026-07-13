@@ -10,7 +10,7 @@ vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return {
     ...actual,
-    fetchAdminSummary: vi.fn(),
+    fetchAdminOverview: vi.fn(),
     fetchAdminUsers: vi.fn(),
     fetchConnectedUsers: vi.fn(),
     fetchAdminPermissions: vi.fn(),
@@ -36,12 +36,24 @@ vi.mock('@/lib/api', async () => {
   };
 });
 
+const overviewFixture = {
+  generated_at: '2026-07-05T00:00:00Z',
+  anchor: '2026-06-28T00:00:00Z',
+  users: { total: 2, active: 2, inactive: 0, roles: { admin: 1, user: 1, pending: 0 }, created: { current: 1, prior: 0, delta: 1 } },
+  logins: { success: { current: 3, prior: 2, delta: 1 }, failure: { current: 0, prior: 1, delta: -1 }, logout: { current: 2, prior: 1, delta: 1 } },
+  ai: { total: { current: 5, prior: 4, delta: 1 }, failure: { current: 0, prior: 0, delta: 0 } },
+  sessions: { active_session_count: 1, active_user_count: 1, active_count: 1 },
+  modules: { total: 2, buckets: { unavailable: [], coming: [], development: [], active: [{ key: 'ov-dashboard', label: 'Overview Dashboard' }] } },
+  system: { app_version: '1.11.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 1, asset_health: { ok: 1, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 1, total_reads: 3 } },
+  recent_audit: [{ id: 41, action: 'overview.audit.sample', target_type: 'backup', status: 'success', created_at: '2026-07-05T00:00:00Z' }],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 function mockAdminData() {
-  vi.mocked(api.fetchAdminSummary).mockResolvedValue({ app_version: '1.11.0', app_env: 'test', database_url: 'sqlite:///test.db', db_ok: true, newsletter_total: 1, latest_newsletter_title: '최근 뉴스', active_modules: 0, coming_soon_modules: 0, asset_health: {}, read_summary: {}, ai_status: { status: 'ok' }, recent_audit_events: [] } as never);
+  vi.mocked(api.fetchAdminOverview).mockResolvedValue(overviewFixture as never);
   vi.mocked(api.fetchAdminUsers).mockResolvedValue([{ id: 1, username: 'operator', email: 'op@example.com', role: 'admin', is_active: true, permissions: ['admin.read'] }, { id: 2, username: 'analyst', email: 'analyst@example.com', role: 'user', is_active: true, permissions: [] }] as never);
   vi.mocked(api.fetchConnectedUsers).mockResolvedValue({ active_sessions: [{ user_id: 1, username: 'operator', last_seen_at: '2026-07-05T00:00:00Z' }], active_count: 1, recent_login_events: [{ id: 9, user_id: 1, username: 'operator', status: 'success', created_at: '2026-07-05T00:00:00Z' }], login_failure_count: 0, read_tracking_summary: { rows: 1, total_reads: 3 } } as never);
   vi.mocked(api.fetchAdminPermissions).mockResolvedValue([{ key: 'admin.read', description: 'Admin read' }] as never);
@@ -385,7 +397,7 @@ test('successful actions render a dismissible toast stack item', async () => {
   await waitFor(() => expect(screen.queryByText('대시보드 모듈을 추가했습니다.')).not.toBeInTheDocument());
 });
 
-test('module create performs scoped refresh for modules, summary, and audits', async () => {
+test('module create performs scoped refresh for modules, overview, and audits', async () => {
   mockAdminData();
   render(<AdminConsoleTabs />);
 
@@ -399,7 +411,7 @@ test('module create performs scoped refresh for modules, summary, and audits', a
 
   await waitFor(() => expect(api.createServiceModule).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(api.fetchServiceModulesAdmin).toHaveBeenCalledTimes(1));
-  expect(api.fetchAdminSummary).toHaveBeenCalledTimes(1);
+  expect(api.fetchAdminOverview).toHaveBeenCalledTimes(1);
   expect(api.fetchAuditEvents).toHaveBeenCalledTimes(1);
   expect(api.fetchAdminUsers).not.toHaveBeenCalled();
   expect(api.fetchConnectedUsers).not.toHaveBeenCalled();
@@ -552,7 +564,7 @@ test('session purge performs scoped refresh for connected users and audits and u
   expect(api.fetchAuditEvents).toHaveBeenCalledTimes(1);
   expect(api.fetchServiceModulesAdmin).not.toHaveBeenCalled();
   expect(api.fetchBackups).not.toHaveBeenCalled();
-  expect(api.fetchAdminSummary).not.toHaveBeenCalled();
+  expect(api.fetchAdminOverview).not.toHaveBeenCalled();
   expect(api.fetchAdminUsers).not.toHaveBeenCalled();
   expect(await screen.findByText('활성 로그인 세션 없음')).toBeInTheDocument();
   expect(screen.queryByText('operator')).not.toBeInTheDocument();

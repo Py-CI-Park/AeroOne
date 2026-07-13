@@ -1,0 +1,17 @@
+공개 패키지 금지 정책을 검증 단계에서 강제한다
+
+폐쇄망 배포 ZIP은 코드와 런타임, 저장소 추적 비민감 seed만 담아야 하며 운영 비밀(.env, canonical DB, storage, agent/dev state)을 절대 포함하면 안 된다. 기존 `offline_package.bat`의 deny-list 복사 방식은 새 로컬 상태를 자동 포함할 수 있고 최종 ZIP verifier가 없어, 정책을 packaging 단계에서 fail-closed로 강제하는 검증기가 필요하다.
+
+정책 데이터(`packaging/installer-policy.json`)에 공개 top-level allow-list, forbidden 카테고리, release/QA profile의 required installer 두 개(Python 3.12.7·Node 20.18.0)를 exact filename·SHA-256·Authenticode thumbprint·subject로 고정했다. 검증 로직은 순수 테스트 가능한 Python(경로 안전성=traversal/symlink/duplicate, allow-list, forbidden 분류, manifest one-to-one, entry hash·provenance, installer 서명 신뢰)과 OS 계층 PowerShell(Authenticode·파일 존재)로 분리했다. pre-stage와 post-ZIP 두 단계에서 path 기반으로 검사하며, PowerShell 5.1이 ZIP stream Authenticode를 NotSigned로 판정하는 제약 때문에 post-ZIP은 archive를 extract하지 않고 entry SHA-256이 pre-stage에서 Valid 서명으로 검증된 값과 일치하는지만 stream으로 비교한다.
+
+실패는 모두 fail-closed다: 각 위반은 redacted 카테고리 코드로 non-zero 종료하며 파일명·secret을 노출하지 않는다. `.env.example`은 허용하되 실제 `.env`는 거부한다.
+
+책임을 Python(결정적 로직)과 PowerShell(서명 조회)로 나눈 이유는 실제 서명된 installer 바이너리 없이도 fail-closed 로직 전체를 pytest로 덮기 위해서다. 실제 정책 JSON이 스펙 값을 문자 그대로 담는지는 별도 contract 테스트로 고정했다. deny-list만으로 PASS하거나 archive를 풀어 내용 검사하는 대안은 우회·성능·신뢰 경계 문제로 제외했다.
+
+Constraint: 공개 ZIP은 코드/런타임/비민감 seed만, 운영 비밀 0; verifier는 pre/post 두 단계 fail-closed; secret/파일명 evidence 미기재
+Rejected: deny-list-only 검증(우회 위험), archive extract 후 내용 검사(성능·서명 경계 문제), 새 crypto runtime(검증된 PowerShell Authenticode로 충분)
+Confidence: high — RED 18/21→GREEN 21 passed로 TDD 확인, ruff clean, basedpyright 0 errors, PS AST 통과, 코드리뷰 CLEAR
+Scope-risk: low — 신규 파일만 추가, 기존 커밋 파일·production 무접촉
+Directive: Task 6 builder가 이 정책/verifier를 pre-stage와 post-ZIP에 연결하고, 실제 두 installer 바이너리로 서명 검증을 확인한다
+Tested: pytest tests/unit/test_package_policy_verifier.py tests/unit/test_installer_policy_json.py = 21 passed(happy + traversal/symlink/duplicate/real-.env/DB/storage/manifest/installer-hash·thumbprint·subject·unsigned/top-level 실패 param), CLI subprocess smoke exit 0, PowerShell AST 0 errors
+Not-tested: 실제 서명된 Python/Node installer 바이너리 대상 Authenticode(환경에 해당 hash 바이너리 부재; 서명 정보 주입으로 로직 검증 + 정책 JSON contract 테스트로 스펙 고정)

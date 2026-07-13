@@ -1,10 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import type { AdminUser } from '@/lib/types';
 import { Badge, userToDraft, useAdminConsoleData } from '../admin-console-tabs';
 import { PermissionCheckboxGrid } from '../widgets/permission-checkbox-grid';
-import { compareText, ListFilter, ListState, matchesListQuery, normalizeListQuery, stableSort } from '../widgets/list-filter';
+import { compareText, ListFilter, ListPagination, ListState, matchesListQuery, normalizeListQuery, paginate, stableSort } from '../widgets/list-filter';
+
+type AdminUserWithActivity = AdminUser & { created_at?: string | null; last_login_at?: string | null };
+
+function formatUserTimestamp(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleString('ko-KR') : '기록 없음';
+}
 
 export function AdminUsersSection() {
   const { state, userForm, setUserForm, userDrafts, setUserDrafts, createUser, saveUser, resetPassword } = useAdminConsoleData();
@@ -12,6 +19,7 @@ export function AdminUsersSection() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('username-asc');
   const [editingPermissionsUserId, setEditingPermissionsUserId] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
   const visibleUsers = useMemo(() => {
     const query = normalizeListQuery(search);
     const filtered = state.users.filter((user) => matchesListQuery(query, [user.username, user.display_name, user.email, user.role]));
@@ -23,6 +31,16 @@ export function AdminUsersSection() {
       return compareText(a.username, b.username) || a.id - b.id;
     });
   }, [search, sort, state.users]);
+  const pageSize = 10;
+  const pagedUsers = paginate(visibleUsers, page, pageSize);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, sort]);
+
+  useEffect(() => {
+    if (pagedUsers.page !== page) setPage(pagedUsers.page);
+  }, [page, pagedUsers.page]);
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -89,7 +107,8 @@ export function AdminUsersSection() {
 
       <div className="space-y-2">
         <ListState loading={state.busy === 'refresh'} error={state.error} totalCount={state.users.length} filteredCount={visibleUsers.length} emptyMessage="등록된 사용자가 없습니다." noMatchesMessage="검색 조건에 맞는 사용자가 없습니다." />
-        {visibleUsers.map((user) => {
+        {pagedUsers.pageItems.map((rawUser) => {
+          const user = rawUser as AdminUserWithActivity;
           const draft = userDrafts[user.id] ?? userToDraft(user);
           const editingPermissions = editingPermissionsUserId === user.id;
           return (
@@ -103,6 +122,7 @@ export function AdminUsersSection() {
                     <Badge tone={draft.is_active ? 'green' : 'red'}>{draft.is_active ? 'active' : 'inactive'}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">{draft.email || '이메일 없음'} · 직접 권한 {parsePermissions(draft.permissions_csv).length}개</p>
+                  <p className="mt-1 text-xs text-slate-400">가입일 {formatUserTimestamp(user.created_at)} · 마지막 로그인 {formatUserTimestamp(user.last_login_at)}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => setEditingPermissionsUserId(editingPermissions ? null : user.id)} className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700">
@@ -149,6 +169,7 @@ export function AdminUsersSection() {
             </div>
           );
         })}
+        {visibleUsers.length > 0 ? <ListPagination id="admin-users" page={pagedUsers.page} totalPages={pagedUsers.totalPages} onPageChange={setPage} /> : null}
       </div>
     </section>
   );

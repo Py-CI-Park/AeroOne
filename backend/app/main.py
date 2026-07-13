@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
+import logging
+
+from app.core.maintenance_gate_bootstrap import maintenance_gate_ready as _maintenance_gate_ready
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
@@ -20,6 +25,10 @@ from app.modules.read_tracking.api.admin import router as read_events_admin_rout
 from app.modules.read_tracking.api.public import router as read_beacon_router
 from app.modules.reports.api.public import router as reports_router
 from app.modules.render.api import router as render_router
+
+assert _maintenance_gate_ready
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -40,6 +49,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=['*'],
         allow_headers=['*'],
     )
+
+    @app.middleware('http')
+    async def protect_activity_response(request: Request, call_next):
+        if request.url.path != '/api/v1/auth/activity':
+            return await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception('Unhandled activity response failure')
+            response = JSONResponse(
+                status_code=500,
+                content={'detail': 'Activity data is temporarily unavailable.'},
+            )
+        response.headers['Cache-Control'] = 'no-store'
+        return response
     app.mount('/storage/thumbnails', StaticFiles(directory=settings.thumbnails_root), name='thumbnails')
 
     @app.get('/api/v1/health')

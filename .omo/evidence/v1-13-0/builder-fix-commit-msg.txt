@@ -1,0 +1,15 @@
+공개 패키지 builder의 태그 없는 QA fallback을 E2E로 강화한다
+
+릴리즈 승인 후 실 installer(Python 3.12.7·Node 20.18.0, SHA 정책 일치 확인)를 배치하고 builder를 처음으로 실제 실행하자, 태그가 없을 때 `git describe --tags --exact-match HEAD`의 stderr가 `$ErrorActionPreference='Stop'`+StrictMode 하에서 NativeCommandError로 종료돼 QA 모드 fallback이 동작하지 않는 버그가 드러났다. unit test는 정책 로직만 덮고 실 git 호출 동작을 덮지 못한 gap이다.
+
+해당 git describe 호출만 `$ErrorActionPreference='SilentlyContinue'`로 감싸고 finally에서 원복해, 태그 부재(정상적인 QA 모드 조건)를 우아하게 흡수하도록 고쳤다. 수정 후 dry-run은 plan을 정상 해석하고 dirty-worktree를 올바르게 fail-closed로 거부하며(릴리즈는 clean tree에서만), builder의 방어 설계가 확인됐다.
+
+이 발견은 builder를 offline_package.bat의 operator 기본 경로로 전환하기 전 실 E2E 검증이 필요하다는 판단(이전 커밋에서 wrapper 전환을 defer함)을 입증한다. 실 build(npm ci/build/wheelhouse full run)와 Windows Sandbox smoke는 여전히 미실행이다.
+
+Constraint: git describe 호출만 error 관용, 나머지 Stop 유지; 정책 로직 무변경; operator 경로(offline_package.bat) 무변경
+Rejected: builder 전역 ErrorActionPreference 완화(다른 실 오류 은폐 위험) — 문제 호출만 국소 완화
+Confidence: high — dry-run이 QA fallback 경로로 진행하고 dirty-worktree fail-closed 확인, PS AST OK, Task 6 unit 23 passed 회귀 0
+Scope-risk: low — 빌더 스크립트 1파일 국소 수정
+Directive: 후속 작업자는 clean tree에서 실 build(npm ci/wheelhouse)로 ZIP을 만들고 Task 5 verifier + Sandbox smoke로 E2E를 완결한 뒤에만 offline_package.bat wrapper 전환·릴리즈 게시를 진행한다
+Tested: builder dry-run(git describe 통과→dirty-worktree fail-closed), PowerShell AST OK, pytest tests/unit/test_offline_package_builder.py 23 passed
+Not-tested: 실 npm ci/build/wheelhouse full run, 실 ZIP 생성, Windows Sandbox smoke(clean tree + 기능 활성화 필요)

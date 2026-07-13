@@ -185,7 +185,7 @@ curl http://localhost:18437/api/v1/newsletters/latest
 |---|---|
 | PC 부팅 후 | `start_offline.bat` |
 | 신규 발행 추가 | `Newsletter\output\` 에 파일 복사 → 관리자 화면 **Import / Sync** |
-| 비밀번호 교체 | `setup_offline.bat` 재실행 → `backend\.env` 의 `ADMIN_PASSWORD` 재확인 |
+| 신규 설치의 초기 관리자 확인 | `setup_offline.bat` 실행 → `backend\.env`의 `ADMIN_PASSWORD` 확인. 기존 DB의 비밀번호·세션 교체는 자격 증명 회전 런북 사용 |
 | 백업 | `backend\data`, `storage`, `Newsletter\output` 3폴더 복사 |
 
 ---

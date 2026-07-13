@@ -1,0 +1,17 @@
+내부 데이터 번들의 승인 경계를 공개 패키지와 분리한다
+
+실제 `_database`(뉴스레터·민간항공·문서·NSA)는 공개 배포 ZIP과 절대 같은 경로로 나가면 안 되고, 별도 승인·서명·암호 경계를 통과한 내부 번들로만 전달돼야 한다. 새 crypto 런타임을 도입하지 않고 검증된 Windows PowerShell 5.1의 .NET SignedCms/EnvelopedCms만 사용해 이 경계를 강제한다.
+
+정책·경계 판정 로직(approval schema exactness, TTL≤24h, 역할 분리, trust policy digest 고정, ACL 형태, target 경로 봉쇄, inventory 무결성, EKU/AES OID 정확성)은 순수 Python 모듈로 분리해 실제 인증서·레지스트리 없이도 단위 테스트 가능하게 했다. PowerShell 계층은 실제 crypto I/O만 담당하고, 추출한 evidence(검증된 서명/체인 boolean, EKU OID, validity, ACL 항목)를 Python `--rpc` CLI에 넘겨 정책 결정을 재구현하지 않는다. `ConvertFrom-Json` 단독을 경계 검증으로 쓰지 않고, raw approval bytes를 duplicate-key 거부 strict parser로만 읽는다.
+
+이중 역할 서명은 선언된 role 라벨이 아니라 서로 다른 thumbprint로 강제해, 같은 물리 서명자가 두 역할을 주장해도 거부한다. normal 번들은 `{newsletter,civil_aircraft,document}` subset + `include_nsa=false`, NSA 번들은 `{nsa}` only + `include_nsa=true`로 고정하고 혼합을 금지한다. importer는 decrypt 후 policy/signature/chain/EKU/validity/inventory/path를 전부 사전 검증하고, Task 3 maintenance gate 아래 same-volume staging·durable journal·old-root backup/rollback로만 target을 교체한다.
+
+pydantic strict=True를 container/date 모델에서 뺀 것은 JSON의 str→datetime·list→tuple 정상 coercion을 strict가 거부하기 때문이며, field-level pattern/min_length 제약은 유지했다. 실제 trust provisioning과 real bundle은 이번 범위 밖으로, production trust absent 상태의 fail-closed 테스트를 기준으로 삼았다.
+
+Constraint: 새 crypto dependency 0(PS5.1 SignedCms/EnvelopedCms 고정); builder 서명 0; 실 cert store/레지스트리/ProgramData 무접촉(테스트는 주입 evidence 격리); production 무접촉; secret/실파일명 evidence 미기재
+Rejected: PowerShell ConvertFrom-Json 단독 경계검증(duplicate key·타입 우회), 같은 서명자 이중 역할 허용, self-signed/unpinned 체인, mixed normal+NSA 번들 — 신뢰 경계 붕괴로 제외
+Confidence: medium-high — 경계 로직 68 tests GREEN + ruff clean + basedpyright 0 errors + PowerShell AST 5/5. 단 live CMS crypto 미실행(아래)
+Scope-risk: medium — 신규 파일만, 기존 커밋·production 무접촉이나 PowerShell crypto I/O는 실 cert로 미검증
+Directive: 후속 작업자는 격리 cert 발급이 가능한 워크스테이션/CI에서 distinct owner/security/recipient cert로 build→import happy path와 signature/ciphertext bit-flip·wrong EKU·missing private key·ACL/registry live 실패를 실제 실행해 PowerShell 계층을 검증한다
+Tested: pytest tests/unit/test_internal_data_bundle.py = 68 passed(happy + 서명/암호/체인/EKU/역할/ACL/digest/inventory/path/TTL/mixed-root 실패 param, 주입 evidence 기반), ruff clean, basedpyright 0 errors, PowerShell AST 5/5, System.Security.Cryptography.Pkcs 로드 확인
+Not-tested: 실제 인증서 대상 SignedCms/EnvelopedCms live 실행(PS5.1이 격리 store에 test cert 생성 불가, 실 store 접촉 금지). PowerShell crypto I/O는 구현·구문검증 완료이나 실 cert 미실행 — 계획이 범위 밖으로 명시한 gap

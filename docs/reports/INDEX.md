@@ -1,8 +1,12 @@
 # 단계별 변경 보고서 색인
 
+> v1.13.0 현재 재개 상태는 [최신 Claude Code 핸드오프](../../.omo/evidence/v1-13-0/handoff-2026-07-12-claude-code.md)를 먼저 읽는다. [`v1-13-0-development-status-2026-07-11.md`](v1-13-0-development-status-2026-07-11.md)는 Task 3 중단 당시의 역사적 WIP 기록이다.
+
 폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
+
+> **보안 사고 대응 기록**: [`incident-2026-07-10-offline-asset-containment.md`](incident-2026-07-10-offline-asset-containment.md) — 공개 배포 ZIP의 운영 자산 노출을 봉쇄하고 재발 방지 도구(자격증명 회전·패키지 verifier·내부 번들 경계·builder)를 구축한 사고 대응 보고서(redacted, exact 식별자·비밀 미기재).
 
 ## 권장 읽기 순서
 
@@ -153,7 +157,7 @@
 - 분류: minor (`1.9.0`) — 관리자(서버 실행자) 전용 노출 제어와 대시보드 운영 편의 강화.
 - 무엇: `service_modules.visibility`(public/admin) 신설로 개발중(Development)·Coming soon 카드와 Admin 메뉴를 관리자에게만 노출, 헤더를 다크·사용법·Admin 순서로 정리, `/admin` 에서 모듈 추가·삭제·노출 대상 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight 로 stale-DB 500 예방, `개발중` 섹션 라벨 영어(Development)화.
 - 코드: `backend/alembic/versions/20260703_0005_service_module_visibility.py`, `backend/app/modules/admin/{models,schemas,api}.py`, `backend/app/modules/auth/{api,schemas,dependencies}.py`, `frontend/components/layout/{app-shell,admin-nav-link,help-manual-button}.tsx`, `frontend/app/page.tsx`, `frontend/components/admin/admin-home-console.tsx`, `frontend/lib/{api,types,server-auth,changelog}.ts`, `start_offline.bat`
-- 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 10개·`27882788` 로그인).
+- 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 자격 로그인·관리자 10개 공개 카드).
 
 
 ### 단계 23 — 관리자 권한 강화·NSA 서버측 접근제어·접속자 대시보드 (1.10.0)
@@ -189,10 +193,25 @@
 
 ### 1.12.2 patch — 대시보드 시간·로그인 UI 정리
 
-- 분류: patch (`1.12.2`) — 대시보드 날짜 오해 방지와 로그인/세션 화면 가독성 보강.
+- 분류: patch (`1.12.2`, **배포 철회**) — 화면 변경 이력은 보존하지만 Release asset/오프라인 ZIP은 신규 설치·재배포 금지.
 - 무엇: 헤더 버전 배지에서 날짜를 즉시 노출하지 않고 클릭한 업데이트 모달에서만 보이게 했으며, 대시보드 상단에 한국 시간을 실시간 표시합니다. 로그인 화면은 중앙 카드형 계정 접속 UI로 재배치하고, 로그인 후 헤더에는 `로그인:` 접두어 없이 아이디만 표시합니다. 세션 탭은 세로 공간을 키워 로그인/로그아웃 목록을 더 쉽게 읽게 했습니다.
 - 코드: `frontend/components/layout/{version-badge,korean-clock,admin-nav-link,app-shell}.tsx`, `frontend/components/auth/login-form.tsx`, `frontend/components/admin/sections/admin-sessions-section.tsx`, `frontend/lib/changelog.ts`
 - 회귀 방지: backend `pytest tests` 268 passed, frontend Vitest 313 passed(66 파일), `tsc --noEmit`, `next build`, live dashboard/admin smoke.
+
+### 단계 26 — 자격 증명 사고 대응 회전 강화 (1.13.0)
+
+- 파일: [`phase-26-credential-rotation-hardening.md`](phase-26-credential-rotation-hardening.md)
+- 분류: minor (`1.13.0`) — DB 전체 사용자·세션을 포함하는 별도 사고 대응 경계와 복구 계약 추가.
+- 무엇: setup-only 오해를 제거하고 service/listener preflight, production 물리 provenance, exact env/ACL/single-link, recovery→commit 연속 SQLite writer lock, unique ledger, DPAPI recovery, strict journal/quarantine manifest, actual process-kill 재개, ordinary backup 복원 뒤 old secure root archive→새 rotation, current-SID WPF 자격 인계를 구현.
+- 코드: `scripts/{rotate_aeroone_credentials,view_aeroone_credentials}.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/{sqlite_recovery,windows_dpapi}.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
+- 회귀 방지: backend full 347 passed, credential focused 79 passed, frontend 313 passed(66 파일), ruff·basedpyright·compileall, PowerShell AST, `tsc --noEmit`, `next build`, old 401/new 200. 실제 WPF 창 시각 조작과 web 브라우저 smoke는 미실행.
+
+### 단계 27 — v1.13.0 릴리스 후보 통합
+
+- 파일: [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)
+- 분류: minor (`1.13.0`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package를 직접 v1.13 릴리스 후보로 통합.
+- 검증: backend 567, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier.
+- 릴리스 경계: 정식 PR 승인 전 main merge 금지. exact annotated tag에서만 publishable ZIP/SHA 생성.
 
 ---
 

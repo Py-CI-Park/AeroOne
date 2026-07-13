@@ -214,6 +214,8 @@ class LoginEventResponse(BaseModel):
 
 class ConnectedUsersResponse(BaseModel):
     active_sessions: list[ConnectedSessionResponse]
+    active_session_count: int
+    active_user_count: int
     active_count: int
     recent_login_events: list[LoginEventResponse]
     login_failure_count: int
@@ -225,19 +227,81 @@ class SessionPurgeResponse(BaseModel):
     session_activity_deleted: int
 
 
-class AdminSummaryResponse(BaseModel):
+class AdminOverviewWindowCount(BaseModel):
+    current: int
+    prior: int
+    delta: int
+
+
+class AdminOverviewUsers(BaseModel):
+    total: int
+    active: int
+    inactive: int
+    roles: dict[str, int]
+    created: AdminOverviewWindowCount
+
+
+class AdminOverviewLogins(BaseModel):
+    success: AdminOverviewWindowCount
+    failure: AdminOverviewWindowCount
+    logout: AdminOverviewWindowCount
+
+
+class AdminOverviewAi(BaseModel):
+    total: AdminOverviewWindowCount
+    failure: AdminOverviewWindowCount
+
+
+class AdminOverviewSessions(BaseModel):
+    active_session_count: int
+    active_user_count: int
+    active_count: int
+
+
+class AdminOverviewModuleRef(BaseModel):
+    key: str
+    label: str
+
+
+class AdminOverviewModuleBuckets(BaseModel):
+    unavailable: list[AdminOverviewModuleRef]
+    coming: list[AdminOverviewModuleRef]
+    development: list[AdminOverviewModuleRef]
+    active: list[AdminOverviewModuleRef]
+
+
+class AdminOverviewModules(BaseModel):
+    total: int
+    buckets: AdminOverviewModuleBuckets
+
+
+class AdminOverviewSystem(BaseModel):
     app_version: str
     app_env: str
-    database_url: str
-    db_ok: bool
-    newsletter_total: int
-    latest_newsletter_title: str | None = None
-    active_modules: int
-    coming_soon_modules: int
+    database_kind: str
+    newsletter_count: int
     asset_health: dict[str, int]
     read_summary: dict[str, int]
-    ai_status: dict[str, Any]
-    recent_audit_events: list[AuditEventResponse]
+
+
+class AdminOverviewAuditEvent(BaseModel):
+    id: int
+    action: str
+    target_type: str | None = None
+    status: str
+    created_at: datetime
+
+
+class AdminOverviewResponse(BaseModel):
+    generated_at: datetime
+    anchor: datetime
+    users: AdminOverviewUsers
+    logins: AdminOverviewLogins
+    ai: AdminOverviewAi
+    sessions: AdminOverviewSessions
+    modules: AdminOverviewModules
+    system: AdminOverviewSystem
+    recent_audit: list[AdminOverviewAuditEvent]
 
 
 class AssetHealthItem(BaseModel):

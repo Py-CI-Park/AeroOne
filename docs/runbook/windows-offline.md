@@ -10,12 +10,14 @@
 |---|---|---|
 | `setup.bat` | 온라인 PC | 개발/사전 설치 (가상환경, pip install, DB seed, npm install) |
 | `start.bat` | 온라인 PC | 백엔드/프런트 동시 실행 (개발용 dev 서버) |
-| `offline_package.bat` | 온라인 PC | 현재 리포 + Python wheelhouse + frontend node_modules + 동봉 인스톨러를 ZIP 으로 패키징 |
+| `offline_package.bat` | 온라인 PC | `scripts\build_offline_package.ps1` 호환 wrapper: tracked allow-list + clean frontend production build + production wheelhouse + 정확한 인스톨러를 검증해 ZIP/SHA 생성 |
 | `setup_offline.bat` | 폐쇄망 PC | Python/Node 사전 점검, `.env` 재작성, 오프라인 pip install, DB, frontend production 빌드 |
 | `start_offline.bat` | 폐쇄망 PC | 운영 모드 실행 (`next start` + uvicorn). 1.0.22+ 기본은 LAN(`0.0.0.0`, IP 자동 감지), 이 PC 전용은 `--local` |
 | `scripts\run_all.bat` | 폐쇄망/개발 PC | AeroOne + Open Notebook co-deploy 실행. AeroOne backend health, Open Notebook API/Frontend/`/config` 준비를 순서대로 확인한 뒤 READY 처리 |
 
 주요 배치 파일은 `--dry-run` 을 지원하며, `start_offline.bat` 계열은 `--no-pause` 로 자동화 실행에 붙일 수 있습니다. `scripts\run_all.bat` 은 `--local` / `--allow-host` 를 AeroOne 과 Open Notebook adapter 양쪽에 전달합니다.
+
+`setup_offline.bat --dry-run`은 어떤 파일·DB·환경도 바꾸지 않으므로 maintenance gate를 획득하지 않습니다. 실행 중인 AeroOne을 중단하지 않고 설치·LAN 분기만 미리 볼 수 있으며, 옵션을 제거한 실제 설치는 기존대로 gate 안에서 직렬 실행됩니다.
 
 ---
 
@@ -33,7 +35,7 @@ offline_package.bat    ─┘──→ ZIP 복사 ──→  압축 해제
 
 1. 온라인 PC 에서 `setup.bat` 으로 의존성과 DB 시드 완료
 2. 필요 시 `start.bat` 으로 동작 검증
-3. `offline_package.bat` 으로 ZIP 생성 (`dist\AeroOne-offline-X.Y.Z-YYYYMMDD-HHMMSS.zip`)
+3. `offline_package.bat` 으로 ZIP 생성 (정확한 annotated tag의 clean tree: `dist\AeroOne-offline-X.Y.Z.zip`; 태그 전 QA: `artifacts\qa\X.Y.Z\X.Y.Z-pr-<SHA>\`)
 4. ZIP 을 USB / 사내 파일서버 등 허용된 경로로 전달
 5. 폐쇄망 PC 에서 압축 해제 (권장 위치는 §4 참고)
 6. `setup_offline.bat` 실행 — 사전 점검 통과 후 자동 설치 진행
@@ -184,14 +186,14 @@ scripts\run_all.bat --dry-run --on-bundle ..\AeroOne-bundle --local
 [PRE  ] Python / Node / npm 사전 요건 점검
 [1   ] backend\.env, frontend\.env.local 재작성 (랜덤 secret/admin 비밀번호)
 [2   ] backend\.venv 생성 또는 재사용
-[3   ] pip install --no-index --find-links offline_assets\python-wheels -r requirements-dev.txt
+[3   ] pip install --no-index --find-links offline_assets\python-wheels -r requirements.txt
 [4   ] backend\data\aeroone.db 점검 → alembic upgrade head 또는 stamp head
 [5   ] python scripts\seed.py (관리자 / 카테고리 / 태그 / 샘플 Markdown / Newsletter import-sync)
 [6   ] frontend\node_modules 존재 확인 → frontend\.next\BUILD_ID 가 있으면 npm run build 건너뛰기 (1.0.6 부터 ZIP 에 prebuild .next 동봉)
 [OK  ] 다음 단계 안내
 ```
 
-> 1.0.6 부터는 `offline_package.bat` 가 본 PC 에서 `npm run build` 까지 끝낸 `frontend\.next` (cache 폴더 제외) 를 ZIP 에 동봉합니다. 폐쇄망 PC 의 `setup_offline.bat` 는 `.next\BUILD_ID` 가 보이면 webpack 단계를 통째로 건너뛰어 native binding mismatch (본 PC 와 폐쇄망 PC 의 Node 버전 / arch 차이로 SWC, bcrypt 등이 webpack 단계에서 실패하는 사고) 를 구조적으로 회피합니다. 1.0.5 이하 ZIP 으로 `setup_offline.bat` 를 돌리면 `.next` 가 없으므로 옛 동작 (폐쇄망 PC 에서 직접 build) 으로 fallback 합니다.
+> 1.13.0부터 `offline_package.bat`은 workspace robocopy 대신 tracked source allow-list를 clean stage에 풀고 `npm ci`→`npm run build`→`npm prune --omit=dev`를 수행합니다. 생성한 `frontend\.next`(cache 제외)와 production `node_modules`만 ZIP에 동봉합니다. 폐쇄망 PC의 `setup_offline.bat`는 `.next\BUILD_ID`가 보이면 webpack 단계를 건너뛰어 native binding mismatch를 회피합니다. source workspace의 기존 `node_modules`/`.next`/wheelhouse는 재사용하지 않습니다.
 
 ### 6.1 alembic upgrade vs stamp
 
@@ -243,12 +245,14 @@ _database\
 
 ### 7.4 관리자 비밀번호 교체
 
-`setup_offline.bat` 또는 `setup.bat` 을 다시 실행하면 새 랜덤 값으로 교체됩니다. 기존 `.env` 는 `.bak` 로 자동 백업됩니다. (이전 버전 문서에서 §7.3 으로 안내한 내용과 동일합니다.)
+일상적인 단일 관리자 비밀번호 변경은 `/admin` 콘솔의 **관리자 계정 / 비밀번호**에서 수행합니다. 자격 증명 노출이 의심되면 setup 배치를 재실행하지 말고 서비스를 중지한 뒤 전체 사고 대응 회전을 실행합니다. setup은 환경 파일과 초기 시드를 준비하지만 기존 DB의 모든 사용자 비밀번호와 세션을 원자적으로 회전하지 않습니다.
 
-```cmd
-setup_offline.bat
-type backend\.env | findstr ADMIN_PASSWORD
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\rotate_aeroone_credentials.ps1 -DryRun
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\rotate_aeroone_credentials.ps1
 ```
+
+중단 재개, DB 복원 뒤 명시적 신규 회전, DPAPI bundle과 보존·삭제 책임은 [`credential-rotation.md`](credential-rotation.md)를 따릅니다. 비활성 계정은 회전으로 활성화되지 않으며 로그인 실패는 기존 사용자 상태 비공개 정책대로 401입니다.
 
 ---
 
@@ -336,7 +340,7 @@ curl -i -X POST -H "Content-Type: application/json" ^
 |---|---|---|
 | `setup_offline.bat` 가 사전 점검에서 `[ERROR] Python` 출력 후 종료 | Python 미설치 또는 PATH 누락 | `offline_assets\installers\python-*.exe` 실행 후 PowerShell 재시작 |
 | 같은 자리에서 `[ERROR] Node.js` | Node 미설치 또는 PATH 누락 | `offline_assets\installers\node-*.msi` 실행 후 재시작 |
-| 사전 점검은 통과하지만 wheelhouse 단계에서 실패 | wheel 파일 일부 누락 (온라인 PC 에서 transitive dep 누락) | 온라인 PC 에서 `offline_package.bat --dry-run` 으로 wheelhouse 재수집 후 재패키징 |
+| 사전 점검은 통과하지만 wheelhouse 단계에서 실패 | wheel 파일 일부 누락 또는 현재 Python과 폐쇄망 Python 버전 불일치 | 온라인 PC의 clean tree에서 `offline_package.bat`을 다시 실행해 production wheelhouse와 verifier 통과 ZIP을 재생성 |
 | 포트 충돌 (`port 18437/29501 is already in use`) | 다른 프로세스가 점유 | `netstat -ano | findstr 18437` 로 PID 확인 후 종료, 또는 `.env` 의 포트 변경 (CORS_ORIGINS, NEXT_PUBLIC_API_BASE_URL 도 함께 수정) |
 | 페이지 로딩 후 `Failed to fetch` (뉴스레터·관리자) | 페이지 호스트와 API 호스트가 다름 (`127.0.0.1` vs `localhost` 쿠키 격리) | 브라우저 주소를 `http://localhost:29501/...` 로 통일 |
 | Document·Civil·NSA 본문이 외부 PC 에서 `Failed to fetch` | 1.4.0 이전 버전 — 클라이언트가 `localhost:18437` 직접 호출 | **1.4.0 이상에서 자동 해결** (same-origin 프록시 경유). 구버전이면 ZIP 을 1.4.0 으로 재배포 |
@@ -354,7 +358,7 @@ curl -i -X POST -H "Content-Type: application/json" ^
   A. 온라인 PC 에서 의존성을 추가하고 `offline_package.bat` 을 다시 실행해 ZIP 을 새로 만들어 옮기세요. 폐쇄망 PC 에서는 `pip install --no-index --find-links` 가 항상 동봉된 wheelhouse 만 참조합니다.
 
 - **Q. 동일 폐쇄망 PC 에 이미 설치되어 있는데 다시 `setup_offline.bat` 을 돌려도 되는가?**
-  A. 네. `JWT_SECRET_KEY` 와 `ADMIN_PASSWORD` 가 새 랜덤 값으로 다시 생성되며 기존 값은 `.bak` 파일로 백업됩니다. DB 는 유지됩니다 (alembic stamp head 분기).
+  A. 재설치·의존성 갱신 목적으로는 가능합니다. 환경 파일 값은 다시 생성되고 기존 값은 `.bak` 파일로 백업되며 DB는 유지됩니다. 그러나 노출 사고 때 DB 전체 사용자와 세션을 회전하는 절차는 아닙니다. 사고 대응은 서비스를 중지하고 `scripts\rotate_aeroone_credentials.ps1`을 사용하세요.
 
 - **Q. 운영 PC 가 잠시 꺼지거나 재부팅된 뒤 다시 켜졌을 때 어떻게 띄우나?**
   A. `start_offline.bat` 한 번이면 됩니다. 데이터는 `backend\data\aeroone.db` 에 그대로 있습니다.
@@ -372,4 +376,5 @@ curl -i -X POST -H "Content-Type: application/json" ^
 - [README.md](../../README.md) — 시스템 정체성과 빠른 시작
 - [docs/runbook/local-dev.md](local-dev.md) — 개발자 로컬 실행 가이드
 - [docs/runbook/admin-auth.md](admin-auth.md) — 관리자 인증 정책
+- [docs/runbook/credential-rotation.md](credential-rotation.md) — 자격 증명 노출 사고 전체 회전·재개·복원 절차
 - [docs/dev_plan/20260327_newsletter_platform_mvp.md](../dev_plan/20260327_newsletter_platform_mvp.md) — MVP 개발 계획 원본

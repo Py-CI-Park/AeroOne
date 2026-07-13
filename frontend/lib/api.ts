@@ -1,5 +1,6 @@
 import type {
-  AdminSummary,
+  AdminOverviewResponse,
+  AuthActivityResponse,
   AdminUser,
   AdminGroup,
   AssetHealthResponse,
@@ -61,6 +62,17 @@ export class ApiError extends Error {
   }
 }
 
+// 백엔드 원문 응답 본문을 절대 노출하지 않는 안전한 한국어 카테고리 메시지.
+// UI 컴포넌트가 동일한 매핑을 재사용할 수 있도록 export 한다.
+export function getSafeApiErrorMessage(status: number): string {
+  if (status === 401) return '로그인이 필요합니다';
+  if (status === 403) return '접근 권한이 없습니다';
+  if (status === 422) return '요청 형식이 올바르지 않습니다';
+  if (status === 429) return '요청이 너무 잦습니다';
+  if (status >= 500) return '서버 오류가 발생했습니다';
+  return '요청 처리에 실패했습니다';
+}
+
 async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     credentials: 'include',
@@ -73,8 +85,7 @@ async function browserFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
   }
 
   if (response.status === 204) {
@@ -91,9 +102,15 @@ export async function fetchClientSession(): Promise<ClientSession> {
     cache: 'no-store',
   });
   if (!response.ok) {
-    throw new Error(`Failed to load session: ${response.status}`);
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
   }
   return (await response.json()) as ClientSession;
+}
+
+// 자기 자신의 활동 요약. same-origin BFF 를 통해 쿠키만으로 조회하며
+// query/body/클라이언트 사용자 ID 를 절대 보내지 않는다(계약: 422 방어는 백엔드 몫).
+export async function fetchAuthActivity(): Promise<AuthActivityResponse> {
+  return browserFetch<AuthActivityResponse>('/api/frontend/auth/activity');
 }
 export async function fetchNewsletters(params?: Record<string, string>) {
   const query = params ? `?${new URLSearchParams(params).toString()}` : '';
@@ -335,8 +352,8 @@ export async function fetchPublicServiceModules(cookieHeader?: string) {
   });
 }
 
-export async function fetchAdminSummary() {
-  return browserFetch<AdminSummary>('/api/frontend/admin/dashboard', { method: 'GET' });
+export async function fetchAdminOverview() {
+  return browserFetch<AdminOverviewResponse>('/api/frontend/admin/overview', { method: 'GET' });
 }
 
 

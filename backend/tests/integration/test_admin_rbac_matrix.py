@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import pytest
 from app.core.security import hash_password
-from app.modules.admin.models import Group, GroupPermission, ResourceGrant, UserGroup, UserPermission
+from app.modules.admin.models import UserPermission
 from app.modules.auth.models import User
 
 
@@ -107,6 +108,10 @@ def test_session_version_fanout_for_authorization_changes(csrf_client, app) -> N
     assert _session_version(app, user_id) == 8
 
 
+def test_rbac_matrix_rejects_unknown_stored_roles(csrf_client, app) -> None:
+    _make_user(app, 'invalid-role-user', role='operator')
+    with pytest.raises(ValueError, match='Unsupported stored user role'):
+        csrf_client.get('/api/v1/admin/rbac-matrix')
 def test_self_registration_route_does_not_exist(client) -> None:
     assert client.post('/api/v1/auth/register', json={'username': 'new', 'password': 'password'}).status_code == 404
     assert client.post('/api/v1/register', json={'username': 'new', 'password': 'password'}).status_code == 404

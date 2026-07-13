@@ -18,7 +18,7 @@ import {
   fetchAdminAiStatus,
   fetchAdminGroups,
   fetchAdminPermissions,
-  fetchAdminSummary,
+  fetchAdminOverview,
   fetchAdminUsers,
   fetchRbacMatrix,
   fetchAssetHealth,
@@ -44,7 +44,7 @@ import {
 import { getCsrfCookie } from '@/lib/cookies';
 import type {
   AdminGroup,
-  AdminSummary,
+  AdminOverviewResponse,
   AdminUser,
   AiAdminStatus,
   AssetHealthResponse,
@@ -69,6 +69,7 @@ import { AdminTaxonomySection } from './sections/admin-taxonomy-section';
 import { AdminSearchSection } from './sections/admin-search-section';
 import { AdminBackupsSection } from './sections/admin-backups-section';
 import { AdminAuditSection } from './sections/admin-audit-section';
+import { AdminOverviewSection } from './sections/admin-overview-section';
 import { ConfirmProvider, useConfirm } from './widgets/confirm-dialog';
 import { ToastStack, type AdminToast } from './widgets/toast-stack';
 
@@ -77,7 +78,7 @@ export type UserDraft = Pick<AdminUser, 'display_name' | 'email' | 'role' | 'is_
 export type TaxonomyDraft = { name: string; description?: string; sort_order: number; is_active: boolean };
 
 type PanelState = {
-  summary?: AdminSummary;
+  overview?: AdminOverviewResponse;
   users: AdminUser[];
   permissions: Permission[];
   groups: AdminGroup[];
@@ -86,6 +87,8 @@ type PanelState = {
   audits: AuditEvent[];
   modules: ServiceModule[];
   connectedUsers?: ConnectedUsersResponse;
+  connectedUsersError?: string;
+  connectedUsersLoading?: boolean;
   health?: AssetHealthResponse;
   configHealth?: ConfigHealthResponse;
   backups: BackupRecord[];
@@ -111,6 +114,7 @@ const initialState: PanelState = {
   tags: [],
   searchResults: [],
   toasts: [],
+  busy: 'initial-load',
 };
 
 export function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'green' | 'amber' | 'red' | 'blue' }) {
@@ -227,8 +231,8 @@ const tabs = [
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
-type RefreshKey = 'summary' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai';
-const allRefreshKeys: RefreshKey[] = ['summary', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai'];
+type RefreshKey = 'overview' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai';
+const allRefreshKeys: RefreshKey[] = ['overview', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai'];
 
 export function AdminConsoleTabs() {
   return (
@@ -257,10 +261,15 @@ function AdminConsoleTabsContent() {
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const toastIdRef = useRef(0);
+  const connectedUsersRequestRef = useRef(0);
 
   function pushToast(type: AdminToast['type'], text: string) {
     toastIdRef.current += 1;
-    setState((current) => ({ ...current, toasts: [...current.toasts, { id: toastIdRef.current, type, text }] }));
+    const id = toastIdRef.current;
+    setState((current) => ({
+      ...current,
+      toasts: [...current.toasts, { id, type, text }],
+    }));
   }
 
   function dismissToast(id: number) {
@@ -268,37 +277,72 @@ function AdminConsoleTabsContent() {
   }
 
   async function refresh(keys: RefreshKey[] = allRefreshKeys) {
-    setState((current) => ({ ...current, busy: current.busy ?? 'refresh' }));
-    const next: Partial<PanelState> = { error: undefined };
+    setState((current) => ({
+      ...current,
+      busy: current.busy ?? 'refresh',
+      ...(keys.includes('connectedUsers') ? { connectedUsersLoading: true } : {}),
+    }));
+    const connectedUsersRequestId = keys.includes('connectedUsers')
+      ? ++connectedUsersRequestRef.current
+      : undefined;
+    const next: Partial<PanelState> = {
+      error: undefined,
+      ...(connectedUsersRequestId !== undefined ? { connectedUsersError: undefined } : {}),
+    };
+    const errors: string[] = [];
+    let connectedUsersError: string | undefined;
     try {
       await Promise.all(keys.map(async (key) => {
-        if (key === 'summary') next.summary = await fetchAdminSummary();
-        if (key === 'users') next.users = await fetchAdminUsers();
-        if (key === 'connectedUsers') next.connectedUsers = await fetchConnectedUsers();
-        if (key === 'permissions') next.permissions = await fetchAdminPermissions();
-        if (key === 'groups') next.groups = await fetchAdminGroups();
-        if (key === 'rbacMatrix') next.rbacMatrix = await fetchRbacMatrix();
-        if (key === 'resourceGrants') next.resourceGrants = await listResourceGrants();
-        if (key === 'audits') next.audits = await fetchAuditEvents();
-        if (key === 'modules') next.modules = await fetchServiceModulesAdmin();
-        if (key === 'health') next.health = await fetchAssetHealth();
-        if (key === 'configHealth') next.configHealth = await fetchConfigHealth();
-        if (key === 'backups') next.backups = await fetchBackups();
-        if (key === 'categories') next.categories = await fetchCategories();
-        if (key === 'tags') next.tags = await fetchTags();
-        if (key === 'ai') next.ai = await fetchAdminAiStatus();
+        try {
+          if (key === 'overview') next.overview = await fetchAdminOverview();
+          if (key === 'users') next.users = await fetchAdminUsers();
+          if (key === 'connectedUsers') next.connectedUsers = await fetchConnectedUsers();
+          if (key === 'permissions') next.permissions = await fetchAdminPermissions();
+          if (key === 'groups') next.groups = await fetchAdminGroups();
+          if (key === 'rbacMatrix') next.rbacMatrix = await fetchRbacMatrix();
+          if (key === 'resourceGrants') next.resourceGrants = await listResourceGrants();
+          if (key === 'audits') next.audits = await fetchAuditEvents();
+          if (key === 'modules') next.modules = await fetchServiceModulesAdmin();
+          if (key === 'health') next.health = await fetchAssetHealth();
+          if (key === 'configHealth') next.configHealth = await fetchConfigHealth();
+          if (key === 'backups') next.backups = await fetchBackups();
+          if (key === 'categories') next.categories = await fetchCategories();
+          if (key === 'tags') next.tags = await fetchTags();
+          if (key === 'ai') next.ai = await fetchAdminAiStatus();
+        } catch (error) {
+          const text = error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.';
+          if (key === 'connectedUsers') {
+            connectedUsersError = text;
+            next.connectedUsersError = text;
+          } else {
+            errors.push(text);
+          }
+        }
       }));
+      if (
+        connectedUsersRequestId !== undefined
+        && connectedUsersRequestId !== connectedUsersRequestRef.current
+      ) {
+        delete next.connectedUsers;
+        delete next.connectedUsersError;
+        connectedUsersError = undefined;
+      }
+      if (
+        connectedUsersRequestId !== undefined
+        && connectedUsersRequestId === connectedUsersRequestRef.current
+      ) {
+        next.connectedUsersLoading = false;
+      }
+      next.error = errors[0];
+      if (connectedUsersError) pushToast('error', connectedUsersError);
+      if (next.error) pushToast('error', next.error);
       setState((current) => ({ ...current, ...next }));
       if (next.modules) setModuleDrafts(Object.fromEntries(next.modules.map((module) => [module.id, moduleToDraft(module)])));
       if (next.users) setUserDrafts(Object.fromEntries(next.users.map((user) => [user.id, userToDraft(user)])));
       if (next.categories) setCategoryDrafts(Object.fromEntries(next.categories.map((category) => [category.id, categoryToDraft(category)])));
       if (next.tags) setTagDrafts(Object.fromEntries(next.tags.map((tag) => [tag.id, tagToDraft(tag)])));
-    } catch (error) {
-      const text = error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.';
-      pushToast('error', text);
-      setState((current) => ({ ...current, error: text }));
     } finally {
-      setState((current) => ({ ...current, busy: current.busy === 'refresh' ? undefined : current.busy }));
+      setState((current) => ({ ...current, busy: current.busy === 'refresh' || current.busy === 'initial-load' ? undefined : current.busy }));
     }
   }
 
@@ -319,20 +363,20 @@ function AdminConsoleTabsContent() {
 
   async function saveModule(module: ServiceModule) {
     const draft = moduleDrafts[module.id] ?? moduleToDraft(module);
-    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await updateServiceModule(module.id, draft, getCsrfCookie()); return `${draft.title} 모듈을 저장했습니다.`; });
+    await runBusy(`module-${module.id}`, ['modules', 'overview', 'audits'], async () => { await updateServiceModule(module.id, draft, getCsrfCookie()); return `${draft.title} 모듈을 저장했습니다.`; });
   }
   async function toggleModule(module: ServiceModule) {
     const draft = moduleDrafts[module.id] ?? moduleToDraft(module);
-    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await updateServiceModule(module.id, { is_enabled: !draft.is_enabled }, getCsrfCookie()); return `${module.title} 모듈 상태를 변경했습니다.`; });
+    await runBusy(`module-${module.id}`, ['modules', 'overview', 'audits'], async () => { await updateServiceModule(module.id, { is_enabled: !draft.is_enabled }, getCsrfCookie()); return `${module.title} 모듈 상태를 변경했습니다.`; });
   }
   async function createModule() {
     if (!moduleForm.key.trim() || !moduleForm.title.trim()) return;
-    await runBusy('module-create', ['modules', 'summary', 'audits'], async () => { await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie()); setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' }); return '대시보드 모듈을 추가했습니다.'; });
+    await runBusy('module-create', ['modules', 'overview', 'audits'], async () => { await createServiceModule({ ...moduleForm, description: moduleForm.description || null }, getCsrfCookie()); setModuleForm({ key: '', title: '', section: 'Development', status: 'development', href: '', description: '', sort_order: 0, is_external: false, visibility: 'admin' }); return '대시보드 모듈을 추가했습니다.'; });
   }
   async function removeModule(module: ServiceModule) {
     const result = await confirm({ title: '모듈 삭제', message: `${module.key} 모듈을 삭제할까요?\n삭제 후 대시보드 노출 및 관리자 목록에서 제거됩니다.`, confirmLabel: '삭제', tone: 'danger' });
     if (!result.confirmed) return;
-    await runBusy(`module-${module.id}`, ['modules', 'summary', 'audits'], async () => { await deleteServiceModule(module.id, getCsrfCookie()); return `${module.title} 모듈을 삭제했습니다.`; });
+    await runBusy(`module-${module.id}`, ['modules', 'overview', 'audits'], async () => { await deleteServiceModule(module.id, getCsrfCookie()); return `${module.title} 모듈을 삭제했습니다.`; });
   }
   async function changePassword() {
     if (!passwordForm.current || !passwordForm.next) return;
@@ -398,13 +442,13 @@ function AdminConsoleTabsContent() {
     await runBusy('search', [], async () => { const payload = await fetchUnifiedSearch(searchForm.q, searchForm.includeNsa); setState((current) => ({ ...current, searchResults: payload.results })); return `통합 검색 결과 ${payload.results.length}건`; });
   }
   async function runBackup() {
-    await runBusy('backup', ['backups', 'summary', 'audits'], async () => { await createBackup(getCsrfCookie()); return '백업을 생성했습니다.'; });
+    await runBusy('backup', ['backups', 'overview', 'audits'], async () => { await createBackup(getCsrfCookie()); return '백업을 생성했습니다.'; });
   }
   async function runValidate(id: number) {
-    await runBusy(`backup-${id}`, ['backups', 'summary', 'audits'], async () => { const result = await validateBackup(id, getCsrfCookie()); return result.valid ? '백업 검증 성공' : `백업 검증 실패: ${result.issues.join(', ')}`; });
+    await runBusy(`backup-${id}`, ['backups', 'overview', 'audits'], async () => { const result = await validateBackup(id, getCsrfCookie()); return result.valid ? '백업 검증 성공' : `백업 검증 실패: ${result.issues.join(', ')}`; });
   }
   async function runRestoreDryRun(id: number) {
-    await runBusy(`restore-${id}`, ['backups', 'summary', 'audits'], async () => { const result = await dryRunRestoreBackup(id, getCsrfCookie()); return result.compatible ? `복원 점검 성공: ${result.would_restore.join(', ')}` : `복원 점검 실패: ${result.issues.join(', ')}`; });
+    await runBusy(`restore-${id}`, ['backups', 'overview', 'audits'], async () => { const result = await dryRunRestoreBackup(id, getCsrfCookie()); return result.compatible ? `복원 점검 성공: ${result.would_restore.join(', ')}` : `복원 점검 실패: ${result.issues.join(', ')}`; });
   }
 
   const context = useMemo<AdminConsoleContextValue>(() => ({ state, refresh, moduleDrafts, setModuleDrafts, userDrafts, setUserDrafts, categoryDrafts, setCategoryDrafts, tagDrafts, setTagDrafts, moduleForm, setModuleForm, userForm, setUserForm, groupForm, setGroupForm, grantForm, setGrantForm, membershipForm, setMembershipForm, categoryForm, setCategoryForm, tagForm, setTagForm, searchForm, setSearchForm, passwordForm, setPasswordForm, saveModule, toggleModule, createModule, removeModule, changePassword, createUser, saveUser, resetPassword, saveGroup, saveResourceGrant, removeResourceGrant, changeMembership, createTaxonomy, saveCategory, saveTag, purgeSessionMetadata, runSearch, runBackup, runValidate, runRestoreDryRun }), [state, moduleDrafts, userDrafts, categoryDrafts, tagDrafts, moduleForm, userForm, groupForm, grantForm, membershipForm, categoryForm, tagForm, searchForm, passwordForm]);
@@ -482,12 +526,9 @@ function AdminConsoleTabsContent() {
           <p className="mt-3 text-xs text-slate-500">입력 필드가 아닌 곳에서는 숫자 키 1~9로 탭을 바로 전환할 수 있습니다.</p>
         </details>
         <ToastStack toasts={state.toasts} onDismiss={dismissToast} />
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">버전 / 모드</p><p className="mt-2 text-2xl font-semibold">v{state.summary?.app_version ?? '-'}</p><p className="text-sm text-slate-500">{state.summary?.app_env ?? '-'}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">뉴스레터</p><p className="mt-2 text-2xl font-semibold">{state.summary?.newsletter_total ?? 0}</p><p className="text-sm text-slate-500">최근: {state.summary?.latest_newsletter_title ?? '-'}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">자산</p><p className="mt-2 text-2xl font-semibold">{state.health?.ok ?? 0} OK</p><p className="text-sm text-slate-500">누락 {state.health?.missing ?? 0} · checksum {state.health?.checksum_mismatch ?? 0} · 설정 {state.health?.misconfig ?? 0}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-semibold uppercase text-slate-500">AI 운영</p><p className="mt-2 text-2xl font-semibold">{String(state.summary?.ai_status?.status ?? '-')}</p><p className="text-sm text-slate-500">로그 {state.ai?.request_logs_total ?? 0} · 실패 {state.ai?.request_failures ?? 0}</p></div>
-        </section>
+        <AdminOverviewSection />
+        {state.busy === 'initial-load' ? null : (
+          <>
         <nav className="flex flex-wrap gap-2" aria-label="관리자 콘솔 탭" role="tablist">
           {tabs.map((tab) => {
             const selected = activeTab === tab.key;
@@ -521,6 +562,8 @@ function AdminConsoleTabsContent() {
           {activeTab === 'backups' ? <AdminBackupsSection /> : null}
           {activeTab === 'audit' ? <AdminAuditSection /> : null}
         </div>
+          </>
+        )}
       </div>
     </AdminConsoleContext.Provider>
   );

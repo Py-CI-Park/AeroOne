@@ -1,0 +1,17 @@
+자격증명 회전을 복원-가드·멱등 재개·journal v2 토폴로지로 Round 4 완성한다
+
+Round 3 리뷰가 남긴 차단점(중단 시 부분 변형 복구, 비원자 journal, 복원 후 재회전, ordinary-user ACL, TOCTOU, clipboard 잔류, maintenance gate 부재)을 자격증명 회전 도구에 완전히 반영해야 폐쇄망 사고 대응 회전을 중단에도 안전하게 실행할 수 있다.
+
+커맨드 프로토콜을 discriminated union(BeginTransaction | BeginRestoreGuard)로 확장하고 assert_never로 exhaustiveness를 강제했다. 회전을 멱등 forward-only로 만들어 이미 커밋된 회전은 find_existing_rotation_result로 감지해 이중 회전 없이 AlreadyCommitted를 반환한다. restore-guard는 BEGIN IMMEDIATE writer lock을 복원 확인부터 archive ack까지 유지한다. journal schema를 v2로 올려 root_environment_present로 환경 토폴로지를 묶고, artifact를 다른 위치와 맞바꾸면 live 변경 전에 실패한다. maintenance gate로 회전과 backend 부팅을 interlock하고, SQLite recovery는 read-only 스냅샷과 zeroize로 분리했다. clipboard는 history/cloud 제외·owned-only atomic clear·5회 재시도·잔류 시 창 닫기 거부로 보강했다.
+
+production .env, canonical DB, %USERPROFILE%\AeroOne-secure는 절대 건드리지 않고 합성 fixture로만 검증했으며 secret/hash/DB row/clipboard 평문을 출력하지 않는다. 변경 pure LOC는 250 이하를 유지했다.
+
+journal을 v1로 유지하며 환경 토폴로지를 별도 파일로 두는 방식은 artifact 맞바꿈 공격 표면을 늘려 제외했다. 복원 후 완료된 회전의 old bundle을 재사용하도록 허용하는 방식은 완료 자격의 부활 위험 때문에 제외했다.
+
+Constraint: production .env·canonical DB·%USERPROFILE%\AeroOne-secure 무접촉, 합성 fixture 전용, secret/hash/평문 미출력, 변경 pure LOC 250 이하
+Rejected: journal v1 유지+환경 토폴로지 분리(맞바꿈 표면 증가), 복원 후 old completed bundle 재사용(완료 자격 부활 위험)
+Confidence: high — 모든 자동 검증 GREEN이고 Round 4 backend src diff 코드리뷰가 CLEAR
+Scope-risk: medium — 자격증명 회전·부팅 interlock·setup/start 배치까지 변경 표면이 넓음
+Directive: 후속 작업자는 실제 자격증명 회전(Task 4) 실행 전에 WPF viewer 인터랙티브 desktop 시각 QA를 사람이 수행하고, 그 뒤에만 운영 회전을 실행한다
+Tested: backend 369 passed(credential focused 100 + 부하 flake 1건 단독 격리 PASS, 비-credential 268), frontend 313 passed/66 files + typecheck + production build, ruff clean, basedpyright 0 errors, compileall, PowerShell AST 30/30, Round 4 diff 코드리뷰 CLEAR
+Not-tested: WPF viewer 실제 창 시각 조작(대화형 desktop 필요, headless 자율 불가; 자동 계약 테스트 test_credential_rotation_viewer.py는 통과)

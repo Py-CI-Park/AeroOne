@@ -24,7 +24,19 @@ beforeEach(() => {
 // - 테마는 data-theme 속성으로 표현 (토큰 CSS 변수가 색을 스위치).
 // - 헤더 nav 는 Dashboard + Newsletter 영문 라벨 (디자인 시안 기준).
 // - 관리자 링크는 헤더 메인 nav 가 아니라 확인된 관리자용 클라이언트 링크로만 노출한다.
-test('renders the default shell with light data-theme and a theme selector', () => {
+test('renders the default shell with light data-theme and a theme selector', async () => {
+  fetchClientSessionMock.mockResolvedValue({
+    authenticated: false,
+    username: null,
+    role: null,
+    is_admin: false,
+    can_view_document: true,
+    can_view_nsa: false,
+    can_use_ai: false,
+    permissions: [],
+    resources: [],
+  });
+
   render(
     <AppShell title="Light Shell">
       <p>content</p>
@@ -45,7 +57,7 @@ test('renders the default shell with light data-theme and a theme selector', () 
   expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/');
   expect(within(nav).getByRole('link', { name: 'Newsletter' })).toHaveAttribute('href', '/newsletters');
   expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
+  expect(await screen.findByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '검색' })).not.toBeInTheDocument();
 });
@@ -75,6 +87,9 @@ test('opens the usage manual popup from the header', async () => {
   await user.click(screen.getByRole('button', { name: '대시보드' }));
   expect(screen.getAllByText(/현재 서비스 중/).length).toBeGreaterThan(0);
   expect(screen.getByText(/Viewer, AeroAI, Notebook, Ladder/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '관리자' }));
+  expect(screen.getByText(/자격 증명 사고 대응 런북/)).toBeInTheDocument();
+  expect(screen.queryByText(/초기 비밀번호는 \d+/)).not.toBeInTheDocument();
 
   await user.click(screen.getByRole('button', { name: '닫기' }));
 

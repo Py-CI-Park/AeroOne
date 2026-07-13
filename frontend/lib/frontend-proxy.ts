@@ -5,6 +5,7 @@ import { getServerApiBase } from '@/lib/api';
 const DEFAULT_ALLOWED_METHODS = ['GET', 'POST', 'PATCH', 'DELETE'] as const;
 const REQUEST_HEADERS_TO_RELAY = ['cookie', 'x-csrf-token', 'content-type', 'accept'] as const;
 const RESPONSE_HEADERS_TO_RELAY = ['content-type', 'content-disposition', 'content-length'] as const;
+const NO_STORE = 'no-store';
 
 type RelayMode =
   | {
@@ -102,12 +103,12 @@ export async function relayFrontendRequest(
   const method = request.method.toUpperCase();
   const allowedMethods = allowlist.methods ?? DEFAULT_ALLOWED_METHODS;
   if (!allowedMethods.includes(method)) {
-    return new NextResponse('Method not allowed', { status: 405 });
+    return new NextResponse('Method not allowed', { status: 405, headers: { 'cache-control': NO_STORE } });
   }
 
   const upstreamPath = resolveAllowedBackendPath(request, allowlist);
   if (!upstreamPath) {
-    return new NextResponse('Not found', { status: 404 });
+    return new NextResponse('Not found', { status: 404, headers: { 'cache-control': NO_STORE } });
   }
 
   const init: RequestInit & { duplex?: 'half' } = {
@@ -122,11 +123,17 @@ export async function relayFrontendRequest(
 
   try {
     const upstreamResponse = await fetch(`${getServerApiBase()}${upstreamPath}`, init);
-    const response = new NextResponse(upstreamResponse.body, { status: upstreamResponse.status });
-    for (const headerName of RESPONSE_HEADERS_TO_RELAY) {
-      const value = upstreamResponse.headers.get(headerName);
-      if (value) {
-        response.headers.set(headerName, value);
+    const responseBody = upstreamResponse.status >= 400
+      ? '요청을 처리할 수 없습니다.'
+      : upstreamResponse.body;
+    const response = new NextResponse(responseBody, { status: upstreamResponse.status });
+    response.headers.set('cache-control', NO_STORE);
+    if (upstreamResponse.status < 400) {
+      for (const headerName of RESPONSE_HEADERS_TO_RELAY) {
+        const value = upstreamResponse.headers.get(headerName);
+        if (value) {
+          response.headers.set(headerName, value);
+        }
       }
     }
     for (const cookie of getSetCookieHeaders(upstreamResponse.headers)) {
@@ -135,6 +142,6 @@ export async function relayFrontendRequest(
     return response;
   } catch (error) {
     console.error(`[FRONTEND][PROXY] Failed ${method} ${upstreamPath}`, error);
-    return new NextResponse('Failed to reach backend', { status: 502 });
+    return new NextResponse('Failed to reach backend', { status: 502, headers: { 'cache-control': NO_STORE } });
   }
 }

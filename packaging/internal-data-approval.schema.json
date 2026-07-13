@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aeroone.internal/schemas/internal-data-approval.schema.json",
+  "title": "AeroOne Internal Data Bundle Approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "ticket_id",
+    "purpose",
+    "issued_at",
+    "expires_at",
+    "target_environment_id",
+    "recipient_thumbprint",
+    "allowed_roots",
+    "source_inventory_sha256",
+    "include_nsa"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "request_id": { "type": "string", "minLength": 1 },
+    "ticket_id": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "target_environment_id": { "type": "string", "minLength": 1 },
+    "recipient_thumbprint": { "type": "string", "pattern": "^[0-9A-F]{40}$" },
+    "allowed_roots": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["newsletter", "civil_aircraft", "document", "nsa"]
+      }
+    },
+    "source_inventory_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "include_nsa": { "type": "boolean" }
+  },
+  "description": "TTL (expires_at - issued_at) MUST be <= 24 hours. Mixing 'nsa' with any other root is forbidden: allowed_roots is either a non-empty subset of {newsletter, civil_aircraft, document} with include_nsa=false (normal bundle), or exactly {nsa} with include_nsa=true (NSA bundle). MUST be read with a strict, duplicate-key-rejecting parser (ConvertFrom-Json alone is insufficient boundary validation)."
+}

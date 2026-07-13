@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "active_work_id": "v1-13-0-operator-experience-plan",
+  "works": {
+    "v1-13-0-operator-experience-plan": {
+      "work_id": "v1-13-0-operator-experience-plan",
+      "active_plan": ".omo/plans/v1-13-0-operator-experience-plan.md",
+      "plan_name": "v1-13-0-operator-experience-plan",
+      "session_ids": [
+        "codex:019f3b73-4187-7d80-9bd2-9dca5ed36c6b"
+      ],
+      "status": "active",
+      "started_at": "2026-07-10T18:05:33.1836532+09:00",
+      "resumed_at": "2026-07-10T19:21:37+09:00",
+      "ended_at": null,
+      "duration_ms": null,
+      "worktree_path": "D:/Chanil_Park/Project/Programming/AeroOne"
+    }
+  }
+}
