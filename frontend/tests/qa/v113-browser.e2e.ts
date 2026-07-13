@@ -42,14 +42,28 @@ function installGuards(page: Page, testInfo: TestInfo) {
   return () => expect(failures, failures.join('\n')).toEqual([]);
 }
 
+async function gotoNetworkIdle(page: Page, route: string) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await page.goto(route, { waitUntil: 'networkidle' });
+    } catch (error) {
+      const aborted = error instanceof Error && error.message.includes('net::ERR_ABORTED');
+      if (!aborted || attempt === 2) throw error;
+      await page.waitForTimeout(50);
+    }
+  }
+  throw new Error(`navigation retry exhausted: ${route}`);
+}
+
 async function visit(page: Page, route: string) {
   const qaPage = page as QaPage;
   qaPage.__qaNavigating = true;
   try {
-    const response = await page.goto(route, { waitUntil: 'networkidle' });
+    const response = await gotoNetworkIdle(page, route);
     expect(response?.status(), `${route} response`).toBeGreaterThanOrEqual(200);
     expect(response?.status(), `${route} response`).toBeLessThan(400);
     await expect(page.locator('body')).not.toHaveText('');
+    await page.waitForTimeout(50);
   } finally {
     qaPage.__qaNavigating = false;
   }
@@ -71,7 +85,7 @@ async function assertPageQuality(page: Page, route: string, zoom = false) {
   const qaPage = page as QaPage;
   qaPage.__qaNavigating = true;
   try {
-    const response = await page.goto(route, { waitUntil: 'networkidle' });
+    const response = await gotoNetworkIdle(page, route);
     if (zoom) await page.evaluate(() => { document.documentElement.style.zoom = '200%'; });
     expect(response?.status(), `${route} response`).toBe(200);
     const quality = await page.evaluate(() => ({
@@ -82,6 +96,7 @@ async function assertPageQuality(page: Page, route: string, zoom = false) {
     expect(quality.replacement, `${route} replacement character`).toBe(false);
     await page.keyboard.press('Tab');
     await expect(page.locator(':focus')).toBeVisible();
+    await page.waitForTimeout(50);
   } finally {
     qaPage.__qaNavigating = false;
   }
