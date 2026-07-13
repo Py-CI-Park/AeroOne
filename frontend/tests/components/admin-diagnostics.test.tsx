@@ -100,7 +100,7 @@ test('admin home console lists config-health roots', async () => {
 
   render(<AdminHomeConsole />);
 
-  fireEvent.click(screen.getByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
   const panel = await screen.findByText('DB/자산 경로 상태');
   const section = panel.closest('section')!;
   expect(within(section).getByText('import')).toBeInTheDocument();
