@@ -1,4 +1,4 @@
-# 단계 27 — v1.13.0 정식 릴리스 (역사 보존) 및 1.13.1 forward-only patch 교정
+# 단계 27 — v1.13.0 정식 릴리스 (역사 보존) 및 1.13.1 정식 immutable Release
 
 ## 변경 배경
 
@@ -48,11 +48,12 @@
 4. 승인 후 `--no-ff` 병합, annotated `1.13.0` tag, exact-tag ZIP/SHA 생성, push, GitHub Release asset 업로드와 재다운로드 digest 검증을 수행한다.
 5. 태그는 이동하지 않으며 실패는 forward fix로 처리한다.
 
-### Forward-only 1.13.1 교정과 immutable 게시 조건
+### Forward-only 1.13.1 정식 immutable Release
 1.13.0의 역사 릴리스는 다음 기록을 보존한다.
-
 1. PR #22가 main에 `c1cbc01062f0d30a97be0ea3df47973d040d2638`로 병합되었다.
 2. annotated `1.13.0` tag, GitHub Release asset, `.sha256`, 재다운로드 digest 검증과 공식 ZIP SHA-256 `18038dd056e0d1209cb3b889402f2d84f1dc1a51b10ba653b517b6e65bad56d1`은 완료된 역사 사실이다.
 3. `1.13.0` tag·asset·digest는 이동·교체·삭제하지 않는다. 기존 PR #23 기록도 역사 사실로 유지한다.
-
-최종 Architect finding에 따라 GitHub immutable releases policy는 `enabled=true`이고, 정책이 기존 Release에 소급 적용되지 않아 `1.13.0`은 `immutable=false`이다. 따라서 1.13.1은 제품 기능 변경 없이 1.13.0을 움직이지 않는 forward-only patch로 준비한다. 현재 1.13.1은 아직 게시 전이며, exact annotated `1.13.1` tag → draft Release 생성 → asset upload → publish → `immutable:true` 확인을 모두 완료해야 정식 게시 완료로 간주한다. 새 digest는 게시 전이므로 만들거나 기록하지 않는다. immutable=true로 게시된 1.13.1 Release의 ZIP과 `.sha256`을 확인한 뒤에만 운영 반입을 권장한다.
+GitHub immutable releases policy는 `enabled=true`이며, 정책이 기존 Release에 소급 적용되지 않아 `1.13.0`은 `immutable=false`인 역사 릴리스다.
+1.13.1은 제품 기능 변경 없이 1.13.0을 움직이지 않는 forward-only patch로 게시 완료했다. merge/tag commit은 `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag는 `1.13.1`, [GitHub Release URL](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1), published는 `2026-07-13T23:31:18Z`, Release API는 `immutable=true`다.
+운영 asset은 `AeroOne-offline-1.13.1.zip`(size `158727170`)과 함께 업로드된 `.sha256`이며, 재다운로드 SHA-256은 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`으로 검증 완료했다. `gh release verify` attestation은 현재 생성 확인 중이므로 검증 완료라고 쓰지 않는다.
+제품 tree는 1.13.0과 동일하며, 직접 영향 검증 backend 88, frontend 10, `tsc --noEmit`, exact-tag pre/post verifier를 추가 통과했다. 기존 전체 제품 게이트 backend 570, frontend 397/73 files, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier는 계승 근거로 유지한다.
