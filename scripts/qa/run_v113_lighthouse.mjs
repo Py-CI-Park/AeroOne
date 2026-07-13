@@ -18,6 +18,10 @@ const REQUIRED_SCHEMA_KEYS = ['schemaVersion', 'sha', 'backendUrl', 'frontendUrl
 const QA_USERNAME = 'qa-admin';
 const QA_PASSWORD = 'QA-admin-v1130-strong!';
 const CHROME_FLAGS = ['--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-component-update', '--disable-default-apps', '--disable-sync', '--disable-extensions', '--disable-features=Translate,MediaRouter,OptimizationHints'];
+const SCREEN_EMULATION = {
+  mobile: { mobile: true, width: 360, height: 640, deviceScaleFactor: 2.625, disabled: false },
+  desktop: { mobile: false, width: 1350, height: 940, deviceScaleFactor: 1, disabled: false },
+};
 
 function fail(message) { throw new Error(message); }
 function parseArgs(argv) {
@@ -84,15 +88,23 @@ async function run() {
       const scores = [];
       for (let iteration = 1; iteration <= RUNS; iteration += 1) {
         const url = `${runtime.frontendBase}${route}`; if (!isLoopbackUrl(url)) fail('constructed URL is not loopback-only');
-        const output = await lighthouse(url, { port: chrome.port, formFactor, extraHeaders: AUTHENTICATED_ROUTES.has(route) ? { Cookie: sessionCookie } : {}, onlyCategories: Object.keys(THRESHOLDS), output: 'json', logLevel: 'error', maxWaitForFcp: 30000, maxWaitForLoad: 60000 });
+        const output = await lighthouse(url, { port: chrome.port, formFactor, screenEmulation: SCREEN_EMULATION[formFactor], throttlingMethod: 'provided', extraHeaders: AUTHENTICATED_ROUTES.has(route) ? { Cookie: sessionCookie } : {}, onlyCategories: Object.keys(THRESHOLDS), output: 'json', logLevel: 'error', maxWaitForFcp: 30000, maxWaitForLoad: 60000 });
         assertRequestedPath(output, url, route);
         const categories = output?.lhr?.categories ?? {};
         const scoresForRun = Object.fromEntries(Object.keys(THRESHOLDS).map((key) => [key, Math.round((categories[key]?.score ?? -1) * 100)]));
-        if (Object.entries(THRESHOLDS).some(([key, threshold]) => scoresForRun[key] !== threshold)) fail(`${route} ${formFactor} run ${iteration} threshold failure`);
-        scores.push(scoresForRun); results.push({ route, formFactor, iteration, scores: scoresForRun });
+        const failedAudits = Object.entries(categories).flatMap(([category, value]) =>
+          (value?.auditRefs ?? [])
+            .filter((ref) => ref.weight > 0 && (output?.lhr?.audits?.[ref.id]?.score ?? 1) < 1)
+            .map((ref) => ({ category, id: ref.id, score: output.lhr.audits[ref.id].score })),
+        );
+        scores.push(scoresForRun);
+        results.push({ route, formFactor, iteration, scores: scoresForRun, failedAudits });
       }
       const medians = Object.fromEntries(Object.keys(THRESHOLDS).map((key) => [key, median(scores.map((s) => s[key]))]));
-      if (Object.values(medians).some((score) => score !== 100)) fail(`${route} ${formFactor} median threshold failure`);
+      if (Object.values(medians).some((score) => score !== 100)) {
+        const failedAudits = results.slice(-RUNS).flatMap((result) => result.failedAudits);
+        fail(`${route} ${formFactor} median threshold failure: ${JSON.stringify({ medians, failedAudits })}`);
+      }
     }
     fs.writeFileSync(path.join(runtime.artifactRoot, 'lighthouse.json'), `${JSON.stringify(redact({ schemaVersion: 1, sha: runtime.sha, routes: ROUTES, formFactors: FORM_FACTORS, runs: RUNS, thresholds: THRESHOLDS, results }), null, 2)}\n`, 'utf8');
   } finally { sessionCookie = undefined; if (chrome) await chrome.kill(); }

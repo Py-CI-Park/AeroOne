@@ -45,7 +45,7 @@ const config: Config = {
         mono: 'var(--font-mono)',
       },
       fontSize: {
-        xs: ['11px', '16px'],
+        xs: ['12px', '16px'],
         sm: ['12px', '18px'],
         base: ['13px', '20px'],
         md: ['14px', '22px'],
