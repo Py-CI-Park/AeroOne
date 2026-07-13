@@ -9,7 +9,7 @@ from typing import ClassVar
 from pydantic import BaseModel, ConfigDict
 
 
-POWERSHELL_TIMEOUT_SECONDS = 30
+POWERSHELL_TIMEOUT_SECONDS = 90
 
 
 class ClipboardProbeResult(BaseModel):
