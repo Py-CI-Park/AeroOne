@@ -199,7 +199,7 @@ export function AdminModulesSection() {
           <VisibilitySelect value={moduleForm.visibility} onChange={(visibility) => setModuleForm((current) => ({ ...current, visibility }))} label="new module visibility" />
         </div>
         <FieldErrors errors={validationErrors.create} />
-        <button type="button" disabled={state.busy === 'module-create'} onClick={() => void validateAndCreate()} className="mt-2 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">모듈 추가</button>
+        <button type="button" disabled={state.busy === 'module-create'} onClick={() => void validateAndCreate()} className="mt-2 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">모듈 추가</button>
       </div>
     </section>
   );

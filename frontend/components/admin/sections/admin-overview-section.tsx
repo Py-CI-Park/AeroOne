@@ -8,9 +8,9 @@ import type { AdminOverviewModuleRef, AdminOverviewWindowCount } from '@/lib/typ
 function StatCard({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
+      <p className="text-xs font-semibold uppercase text-ink-3">{label}</p>
       <p className="mt-2 text-2xl font-semibold">{value}</p>
-      {hint ? <p className="text-sm text-slate-500">{hint}</p> : null}
+      {hint ? <p className="text-sm text-ink-3">{hint}</p> : null}
     </div>
   );
 }
@@ -28,13 +28,13 @@ function ModuleBucket({ title, tone, modules }: { title: string; tone: 'red' | '
         <Badge tone={tone}>{modules.length}개</Badge>
       </div>
       {modules.length === 0 ? (
-        <p className="text-xs text-slate-400">없음</p>
+        <p className="text-xs text-ink-3">없음</p>
       ) : (
         <ul className="space-y-1">
           {modules.map((module) => (
             <li key={module.key} className="flex items-center justify-between gap-2 text-xs text-slate-600">
               <span>{module.label}</span>
-              <span className="font-mono text-slate-400">{module.key}</span>
+              <span className="font-mono text-ink-3">{module.key}</span>
             </li>
           ))}
         </ul>
@@ -51,7 +51,7 @@ export function AdminOverviewSection() {
     if (state.busy === 'refresh') {
       return (
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500" role="status" aria-live="polite">개요를 불러오는 중입니다.</p>
+          <p className="text-sm text-ink-3" role="status" aria-live="polite">개요를 불러오는 중입니다.</p>
         </section>
       );
     }
@@ -64,7 +64,7 @@ export function AdminOverviewSection() {
     }
     return (
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-slate-500">표시할 개요 데이터가 없습니다.</p>
+        <p className="text-sm text-ink-3">표시할 개요 데이터가 없습니다.</p>
       </section>
     );
   }
@@ -74,7 +74,7 @@ export function AdminOverviewSection() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-3">
         <span>생성 시각 {overview.generated_at}</span>
         <span>비교 기준(anchor) {overview.anchor}</span>
       </div>
@@ -108,7 +108,7 @@ export function AdminOverviewSection() {
 
       <div>
         <h2 className="mb-3 text-lg font-semibold">모듈 게이트 현황</h2>
-        <p className="mb-2 text-xs text-slate-500">전체 {modules.total}개</p>
+        <p className="mb-2 text-xs text-ink-3">전체 {modules.total}개</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <ModuleBucket title="이용 불가" tone="red" modules={modules.buckets.unavailable} />
           <ModuleBucket title="예정" tone="amber" modules={modules.buckets.coming} />
@@ -131,17 +131,17 @@ export function AdminOverviewSection() {
       <div>
         <h2 className="mb-3 text-lg font-semibold">최근 감사 (최대 10건)</h2>
         {recentAuditVisible.length === 0 ? (
-          <p className="text-sm text-slate-500">최근 감사 이벤트가 없습니다.</p>
+          <p className="text-sm text-ink-3">최근 감사 이벤트가 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {recentAuditVisible.map((event) => (
               <div key={event.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-slate-500">{event.action}</span>
+                  <span className="font-mono text-xs text-ink-3">{event.action}</span>
                   <Badge>{event.status}</Badge>
                 </div>
                 <p className="mt-1 text-slate-600">{event.target_type ?? '-'}</p>
-                <p className="mt-1 text-xs text-slate-400">{event.created_at}</p>
+                <p className="mt-1 text-xs text-ink-3">{event.created_at}</p>
               </div>
             ))}
           </div>
