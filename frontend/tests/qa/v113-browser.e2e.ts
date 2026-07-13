@@ -40,7 +40,7 @@ async function visit(page: Page, route: string) {
 }
 
 async function login(page: Page) {
-  await visit(page, '/login');
+  await visit(page, '/login?next=/admin');
   await page.locator('input[autocomplete="username"]').fill(QA_USERNAME);
   await page.locator('input[autocomplete="current-password"]').fill(QA_PASSWORD);
   await page.getByRole('button', { name: '로그인' }).click();
