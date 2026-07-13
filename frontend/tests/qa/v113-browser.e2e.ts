@@ -179,7 +179,7 @@ test.describe('behavioral authorization matrix @matrix', () => {
 
   test('anonymous redirect and invalid credentials remain safe @matrix', async ({ page }) => {
     await withExpectedHttpStatuses(page, [401], async () => {
-      await page.goto('/activity', { waitUntil: 'networkidle' });
+      await page.goto('/activity', { waitUntil: 'domcontentloaded' });
       await expect(page).toHaveURL(/\/activity$/);
       await expect(page.getByText('로그인이 필요합니다.')).toBeVisible();
       await page.getByRole('link', { name: '로그인 페이지로 이동' }).click();
