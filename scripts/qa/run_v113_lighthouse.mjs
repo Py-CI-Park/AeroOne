@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import process from 'node:process';
+import { redact as redactValue } from './redact_v113.mjs';
 
 const VERSION = 'v1.13.0';
 const REPO_ROOT = path.resolve(import.meta.dirname, '../..');
@@ -51,10 +52,10 @@ function validateRuntime(runtimeFile, expectedSha) {
   fs.mkdirSync(artifactRoot, { recursive: true }); return { ...value, runtimePath, artifactRoot, frontendBase: new URL(value.frontendUrl).origin };
 }
 function redact(value) {
-  if (typeof value === 'string') return value.replaceAll(QA_PASSWORD, '[REDACTED]').replace(/(authorization|cookie|token|secret|password|api[-_]?key)\s*[:=]\s*[^,\s]+/gi, '$1=[REDACTED]').replace(/[A-Za-z0-9+/_=-]{32,}/g, '[REDACTED]');
-  if (Array.isArray(value)) return value.map(redact);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, /secret|token|password|cookie|authorization|credential|header/i.test(k) ? '[REDACTED]' : redact(v)]));
-  return value;
+  return redactValue(value, {
+    replacements: [[QA_PASSWORD, '[REDACTED]']],
+    preserveShaFields: true,
+  });
 }
 function median(values) { const sorted = values.slice().sort((a, b) => a - b); return sorted[Math.floor(sorted.length / 2)]; }
 async function authenticate(frontendBase) {
@@ -109,5 +110,6 @@ async function run() {
     fs.writeFileSync(path.join(runtime.artifactRoot, 'lighthouse.json'), `${JSON.stringify(redact({ schemaVersion: 1, sha: runtime.sha, routes: ROUTES, formFactors: FORM_FACTORS, runs: RUNS, thresholds: THRESHOLDS, results }), null, 2)}\n`, 'utf8');
   } finally { sessionCookie = undefined; if (chrome) await chrome.kill(); }
 }
-run().catch((error) => { console.error(`lighthouse QA failed: ${redact(error.message)}`); process.exitCode = 1; });
+const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (invokedPath && import.meta.url === invokedPath) run().catch((error) => { console.error(`lighthouse QA failed: ${redact(error.message)}`); process.exitCode = 1; });
 export { parseArgs, validateRuntime, redact, authenticate, assertRequestedPath, ROUTES, FORM_FACTORS, RUNS, THRESHOLDS };

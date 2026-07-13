@@ -16,11 +16,12 @@ function redactString(value, replacements = []) {
   return output;
 }
 
-function redact(value, options = {}) {
+function redact(value, options = {}, key = '') {
   const replacements = options.replacements ?? [];
+  if (options.preserveShaFields === true && key === 'sha' && typeof value === 'string' && /^[a-f0-9]{40}$/.test(value)) return value;
   if (typeof value === 'string') return redactString(value, replacements);
-  if (Array.isArray(value)) return value.map(item => redact(item, options));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, SENSITIVE_LABEL.test(key) ? '[REDACTED]' : redact(child, options)]));
+  if (Array.isArray(value)) return value.map(item => redact(item, options, key));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([childKey, child]) => [childKey, SENSITIVE_LABEL.test(childKey) ? '[REDACTED]' : redact(child, options, childKey)]));
   return value;
 }
 

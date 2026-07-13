@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error TS7016: no implicit-any MJS import; the seam is validated by behavioral tests below.
 import { assertCleanSha, browserRequestGuard, prepareReceiptRun, redact, verifyInstallation } from '../../../scripts/qa/run_v113_react_diagnostics.mjs';
 // @ts-expect-error TS7016: shared JavaScript QA seams are runtime-tested below.
-import { redactString } from '../../../scripts/qa/redact_v113.mjs';
+import { redact as redactShared, redactString } from '../../../scripts/qa/redact_v113.mjs';
 
 const root = path.resolve(__dirname, '../../..');
 const lighthouse = fs.readFileSync(path.join(root, 'scripts/qa/run_v113_lighthouse.mjs'), 'utf8');
@@ -96,6 +96,12 @@ describe('v1.13 browser QA runner contract', () => {
       path: 'C:\\Users\\qa-user\\Documents\\secret.txt',
     });
     expect(JSON.stringify(sensitive)).not.toMatch(/secret value|quoted value|C:\\\\Users/);
+
+    const sha = 'a'.repeat(40);
+    expect(redactShared({ sha, token: 'sensitive-token-value-that-must-be-redacted' }, { preserveShaFields: true })).toEqual({
+      sha,
+      token: '[REDACTED]',
+    });
   });
 
   it('behaviorally rejects installed package drift and non-loopback browser egress', async () => {
