@@ -145,7 +145,7 @@
 
 ## 7. 회귀 테스트 위치
 
-최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0` RC는 backend 전체 567, frontend 397/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
+최신 회귀 통계는 README.md §검증과 각 phase report를 기준으로 한다. `1.13.0` RC는 backend 전체 570, frontend 397/73 files, `tsc --noEmit`, `next build`, production Chrome smoke/matrix/Axe/Lighthouse/React, QA 오프라인 ZIP pre/post verifier를 통과했다. `1.12.2`의 과거 기록은 철회 배포본의 승인 기준이 아니다.
 
 | 테스트 파일 | 건수 | 다루는 영역 |
 |---|---|---|
