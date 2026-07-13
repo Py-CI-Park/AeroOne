@@ -1,14 +1,17 @@
 import { execFileSync } from 'node:child_process';
 
-export type GitCommandRunner = (args: string[]) => string;
+/** @typedef {(args: string[]) => string} GitCommandRunner */
 
-const defaultGitCommandRunner: GitCommandRunner = (args) =>
+/** @type {GitCommandRunner} */
+const defaultGitCommandRunner = (args) =>
   execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
-export function deterministicBuildId(
-  gitRunner: GitCommandRunner = defaultGitCommandRunner,
-): string {
-  let inGitWorktree: string;
+/**
+ * @param {GitCommandRunner} [gitRunner]
+ * @returns {string}
+ */
+export function deterministicBuildId(gitRunner = defaultGitCommandRunner) {
+  let inGitWorktree;
   try {
     inGitWorktree = gitRunner(['rev-parse', '--is-inside-work-tree']).trim();
   } catch {

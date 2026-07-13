@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { deterministicBuildId } from '../../next.config';
+import { deterministicBuildId } from '../../next.config.mjs';
 
 type Manifest = {
   scripts: Record<string, string>;
@@ -80,7 +80,7 @@ describe('browser harness contract', () => {
     expect(config).toMatch(/grep:\s*\/@matrix\//);
     expect(config).toMatch(/grep:\s*\/@axe\//);
     expect(setup).toContain('frontend BUILD_ID does not match --sha');
-    expect(fs.readFileSync(path.join(frontendRoot, 'next.config.ts'), 'utf8')).toContain('generateBuildId');
+    expect(fs.readFileSync(path.join(frontendRoot, 'next.config.mjs'), 'utf8')).toContain('generateBuildId');
     expect(spec).toMatch(/requestfailed/);
     expect(spec).toContain("QA-admin-v1130-strong!");
     expect(spec).toContain("waitForURL(url => url.pathname === '/admin')");
@@ -140,7 +140,7 @@ describe('deterministic build provenance', () => {
       calls.push(args);
       if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') return 'true\n';
       if (args[0] === 'rev-parse') return `${sha}\n`;
-      return ' M frontend/next.config.ts\n';
+      return ' M frontend/next.config.mjs\n';
     });
 
     expect(buildId).toThrow('git worktree is dirty');
