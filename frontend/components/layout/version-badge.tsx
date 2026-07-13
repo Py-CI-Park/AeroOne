@@ -27,7 +27,7 @@ export function VersionBadge() {
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         title="업데이트 날짜와 내역 보기"
-        className="ml-1.5 rounded font-mono text-xs text-ink-3 transition-colors hover:text-accent hover:underline focus-visible:shadow-focus focus-visible:outline-none"
+        className="ml-1.5 rounded font-mono text-xs text-ink-2 transition-colors hover:text-accent hover:underline focus-visible:shadow-focus focus-visible:outline-none"
       >
         v{APP_VERSION}
       </button>
