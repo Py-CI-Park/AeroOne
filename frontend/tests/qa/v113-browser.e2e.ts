@@ -10,12 +10,18 @@ const VIEWPORTS = [{ width: 375, height: 812 }, { width: 768, height: 1024 }, { 
 type QaPage = Page & {
   __qaDone?: () => void;
   __qaNavigating?: boolean;
+  __qaExpectedStatuses?: Set<number>;
 };
 
 function installGuards(page: Page, testInfo: TestInfo) {
   const failures: string[] = [];
   const fail = (message: string) => failures.push(message);
-  page.on('console', message => { if (message.type() === 'error') fail(`console error: ${message.text()}`); });
+  page.on('console', message => {
+    const text = message.text();
+    const expectedStatus = [...((page as QaPage).__qaExpectedStatuses ?? [])]
+      .some(status => text.includes(String(status)));
+    if (message.type() === 'error' && !expectedStatus) fail(`console error: ${text}`);
+  });
   page.on('pageerror', error => fail(`page error: ${error.message}`));
   page.on('requestfailed', request => {
     const url = new URL(request.url());
@@ -36,7 +42,10 @@ function installGuards(page: Page, testInfo: TestInfo) {
     if (!LOOPBACK.has(hostname)) fail(`non-loopback request: ${request.url()}`);
   });
   page.on('response', response => {
-    if (response.status() >= 400) fail(`unexpected HTTP ${response.status()}: ${response.url()}`);
+    const expectedStatuses = (page as QaPage).__qaExpectedStatuses;
+    if (response.status() >= 400 && !expectedStatuses?.has(response.status())) {
+      fail(`unexpected HTTP ${response.status()}: ${response.url()}`);
+    }
   });
   testInfo.attach('qa-network-guard', { body: 'loopback-only', contentType: 'text/plain' });
   return () => expect(failures, failures.join('\n')).toEqual([]);
@@ -53,6 +62,16 @@ async function gotoNetworkIdle(page: Page, route: string) {
     }
   }
   throw new Error(`navigation retry exhausted: ${route}`);
+}
+
+async function withExpectedHttpStatuses<T>(page: Page, statuses: number[], action: () => Promise<T>): Promise<T> {
+  const qaPage = page as QaPage;
+  qaPage.__qaExpectedStatuses = new Set(statuses);
+  try {
+    return await action();
+  } finally {
+    delete qaPage.__qaExpectedStatuses;
+  }
 }
 
 async function visit(page: Page, route: string) {
@@ -159,17 +178,16 @@ test.describe('behavioral authorization matrix @matrix', () => {
   test.afterEach(async ({ page }) => (page as QaPage).__qaDone?.());
 
   test('anonymous redirect and invalid credentials remain safe @matrix', async ({ page }) => {
-    await visit(page, '/activity');
-    await expect(page).toHaveURL(/\/login\?next=%2Factivity/);
-    const probe = await page.context().newPage();
-    await probe.goto('/login?next=%2Factivity', { waitUntil: 'networkidle' });
-    await probe.locator('input[autocomplete="username"]').fill('qa-normal');
-    await probe.locator('input[autocomplete="current-password"]').fill('not-the-password');
-    await probe.getByRole('button', { name: '로그인' }).click();
-    await expect(probe.getByRole('alert')).toBeVisible();
-    await expect(probe).toHaveURL(/\/login\?next=%2Factivity/);
-    await expect(probe.getByRole('alert')).not.toContainText(/token|secret|password|hash|ip|user agent/i);
-    await probe.close();
+    await withExpectedHttpStatuses(page, [401], async () => {
+      await page.goto('/activity', { waitUntil: 'domcontentloaded' });
+      await page.waitForURL(/\/login\?next=%2Factivity/);
+      await page.locator('input[autocomplete="username"]').fill('qa-normal');
+      await page.locator('input[autocomplete="current-password"]').fill('not-the-password');
+      await page.getByRole('button', { name: '로그인' }).click();
+      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(page).toHaveURL(/\/login\?next=%2Factivity/);
+      await expect(page.getByRole('alert')).not.toContainText(/token|secret|password|hash|ip|user agent/i);
+    });
   });
 
   test('safe next succeeds and unsafe external next stays same-origin @matrix', async ({ page }) => {
@@ -178,15 +196,14 @@ test.describe('behavioral authorization matrix @matrix', () => {
     await page.getByRole('button', { name: /현재 로그인 사용자/ }).click();
     await page.getByRole('menuitem', { name: '로그아웃' }).click();
     await page.waitForURL(/\/login/);
-    const probe = await page.context().newPage();
-    await probe.goto('/login?next=https%3A%2F%2Fevil.example%2Fsteal', { waitUntil: 'networkidle' });
-    await probe.locator('input[autocomplete="username"]').fill('qa-normal');
-    await probe.locator('input[autocomplete="current-password"]').fill('QA-normal-v1130-strong!');
-    await probe.getByRole('button', { name: '로그인' }).click();
-    await probe.waitForLoadState('networkidle');
-    expect(new URL(probe.url()).hostname).not.toBe('evil.example');
-    expect(new URL(probe.url()).origin).toBe(new URL(page.url()).origin);
-    await probe.close();
+    const expectedOrigin = new URL(page.url()).origin;
+    await page.goto('/login?next=https%3A%2F%2Fevil.example%2Fsteal', { waitUntil: 'networkidle' });
+    await page.locator('input[autocomplete="username"]').fill('qa-normal');
+    await page.locator('input[autocomplete="current-password"]').fill('QA-normal-v1130-strong!');
+    await page.getByRole('button', { name: '로그인' }).click();
+    await page.waitForLoadState('networkidle');
+    expect(new URL(page.url()).hostname).not.toBe('evil.example');
+    expect(new URL(page.url()).origin).toBe(expectedOrigin);
   });
 
   test('authenticated account and activity expose privacy-safe session evidence @matrix', async ({ page }) => {
@@ -209,10 +226,12 @@ test.describe('behavioral authorization matrix @matrix', () => {
     await page.goto('/');
     await expect(page.getByRole('link', { name: 'NSA' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /AeroAI|AI/ })).toHaveCount(0);
-    await page.goto('/nsa');
-    await expect(page.getByText(/권한이 있는 계정|접근 권한/)).toBeVisible();
+    await withExpectedHttpStatuses(page, [403], async () => {
+      await page.goto('/nsa', { waitUntil: 'networkidle' });
+      await expect(page.getByText(/권한이 있는 계정|접근 권한/)).toBeVisible();
+    });
     await page.goto('/ai');
-    await expect(page.getByText(/권한|로그인|접근/)).toBeVisible();
+    await expect(page.getByText('NSA (권한 없음)', { exact: true })).toBeVisible();
 
     await loginAs(page, 'qa-nsa', 'QA-nsa-v1130-strong!', '/nsa');
     await expect(page.getByRole('heading', { name: 'NSA' })).toBeVisible();
@@ -237,7 +256,8 @@ test.describe('behavioral authorization matrix @matrix', () => {
     expect(activity.status()).toBe(200);
     const malformed = await page.request.get('/api/frontend/auth/activity?unexpected=1');
     expect(malformed.status()).toBe(422);
-    const payload = await malformed.json();
-    expect(JSON.stringify(payload)).not.toMatch(/token|hash|prompt|body|user[- ]agent|ip/i);
+    const payload = await malformed.text();
+    expect(payload).toBe('요청을 처리할 수 없습니다.');
+    expect(payload).not.toMatch(/token|hash|prompt|body|user[- ]agent|ip/i);
   });
 });
