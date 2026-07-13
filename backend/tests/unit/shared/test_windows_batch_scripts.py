@@ -29,6 +29,19 @@ def test_setup_secret_generation_is_compatible_with_windows_powershell_51() -> N
 def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -> None:
     assert 'pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt' in _SETUP_OFFLINE_SCRIPT
     assert "requirements-dev.txt" not in _SETUP_OFFLINE_SCRIPT
+
+
+def test_setup_offline_overrides_inherited_runtime_identity_before_migration() -> None:
+    app_env = 'set "APP_ENV=closed_network"'
+    database_url = 'set "DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db"'
+    admin_username = 'set "ADMIN_USERNAME=admin"'
+    migration = 'call python scripts\\ensure_db_state.py data\\aeroone.db'
+
+    assert _SETUP_OFFLINE_SCRIPT.index(app_env) < _SETUP_OFFLINE_SCRIPT.index(migration)
+    assert _SETUP_OFFLINE_SCRIPT.index(database_url) < _SETUP_OFFLINE_SCRIPT.index(migration)
+    assert _SETUP_OFFLINE_SCRIPT.index(admin_username) < _SETUP_OFFLINE_SCRIPT.index(migration)
+
+
 _START_OFFLINE_SCRIPT = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
 
 

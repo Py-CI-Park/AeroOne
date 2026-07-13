@@ -164,6 +164,11 @@ if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
 >"%FRONTEND_ENV%" echo NEXT_PUBLIC_API_BASE_URL=%EFFECTIVE_BACKEND_BASE%
 >>"%FRONTEND_ENV%" echo SERVER_API_BASE_URL=http://127.0.0.1:18437
 >>"%FRONTEND_ENV%" echo NEXT_PUBLIC_CSRF_COOKIE_NAME=csrf_token
+REM The generated offline environment is authoritative during setup.
+REM Inherited developer/service variables must not redirect migrations or seeding.
+set "APP_ENV=closed_network"
+set "DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db"
+set "ADMIN_USERNAME=admin"
 
 if not exist "%BACKEND_VENV%\Scripts\python.exe" (
   py -3.12 -m venv "%BACKEND_VENV%" || py -3 -m venv "%BACKEND_VENV%" || python -m venv "%BACKEND_VENV%" || goto :fail
