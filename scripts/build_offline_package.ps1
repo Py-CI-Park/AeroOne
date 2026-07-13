@@ -47,7 +47,8 @@ param(
     [switch]$IncludeDevDependencies,
     [switch]$AllowPublicData,
     [switch]$AllowTimestampFallback,
-    [string]$PythonExecutable = 'python',
+    [string]$PythonExecutable = 'py',
+    [string[]]$PythonArguments = @('-3.12'),
     [string]$NpmExecutable = 'npm'
 )
 
@@ -68,6 +69,13 @@ $PlanCli = Join-Path $RepoRoot 'packaging\build_offline_package_plan.py'
 $PolicyPath = Join-Path $RepoRoot 'packaging\installer-policy.json'
 $VerifierModule = Join-Path $RepoRoot 'scripts\packaging\Verify-OfflinePackage.psm1'
 $VerifierCli = Join-Path $RepoRoot 'packaging\verify_offline_package.py'
+
+function Assert-Python312 {
+    $version = & $PythonExecutable @PythonArguments -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+    if ($LASTEXITCODE -ne 0 -or ([string]$version).Trim() -ne '3.12') {
+        throw 'python-version-mismatch'
+    }
+}
 function Write-Utf8NoBom {
     param(
         [Parameter(Mandatory = $true)] [string]$Path,
@@ -156,7 +164,7 @@ function Invoke-BuildPlan {
     if ($AllowPublicData) { $planArgs += '--allow-public-data' }
     if ($AllowTimestampFallback) { $planArgs += '--allow-timestamp-fallback' }
 
-    $output = & $PythonExecutable @planArgs
+    $output = & $PythonExecutable @PythonArguments @planArgs
     $exitCode = $LASTEXITCODE
     $result = $output | ConvertFrom-Json
     if ($exitCode -ne 0 -or -not $result.ok) {
@@ -253,7 +261,7 @@ function Invoke-BackendWheelhouse {
         throw 'offline-package-build-policy-violation:dev-dependencies-forbidden'
     }
     New-Item -ItemType Directory -Path $WheelDir -Force | Out-Null
-    & $PythonExecutable -m pip download -r $RequirementsPath -d $WheelDir
+    & $PythonExecutable @PythonArguments -m pip download -r $RequirementsPath -d $WheelDir
     if ($LASTEXITCODE -ne 0) { throw 'pip-download-failed' }
 }
 
@@ -297,7 +305,7 @@ function New-PackageManifest {
             '--manifest-out', $ManifestOut
         )
         if ($GitState.HeadTag) { $manifestArgs += @('--tag', $GitState.HeadTag) }
-        $output = & $PythonExecutable @manifestArgs
+        $output = & $PythonExecutable @PythonArguments @manifestArgs
         if ($LASTEXITCODE -ne 0) { throw "offline-package-manifest-failed:$output" }
     }
     finally {
@@ -309,6 +317,7 @@ function New-PackageManifest {
 # Main
 # ---------------------------------------------------------------------------
 
+Assert-Python312
 $gitState = Get-GitState
 $trackedPathsFile = [System.IO.Path]::GetTempFileName()
 $selectedOutFile = [System.IO.Path]::GetTempFileName()
@@ -370,7 +379,7 @@ try {
             '--digests-out', $digestsPath
         )
         if ($gitState.HeadTag) { $verifyArgs += @('--tag', $gitState.HeadTag) }
-        & $PythonExecutable @verifyArgs
+        & $PythonExecutable @PythonArguments @verifyArgs
         $preStageExit = $LASTEXITCODE
         if ($preStageExit -ne 0) { throw 'pre-stage-verification-failed' }
 
@@ -379,7 +388,7 @@ try {
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [System.IO.Compression.ZipFile]::CreateFromDirectory($stageRoot, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
-        & $PythonExecutable $VerifierCli post-zip --zip $zipPath --manifest $manifestPath --digests $digestsPath
+        & $PythonExecutable @PythonArguments $VerifierCli post-zip --zip $zipPath --manifest $manifestPath --digests $digestsPath
         $postZipExit = $LASTEXITCODE
         if ($postZipExit -ne 0) { throw 'post-zip-verification-failed' }
 

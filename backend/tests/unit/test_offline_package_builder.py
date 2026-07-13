@@ -53,6 +53,10 @@ def test_powershell_builder_writes_python_inputs_without_utf8_bom() -> None:
     assert "foreach ($cachePath in @('.next\\cache', 'node_modules\\.cache'))" in script
     assert "Remove-Item -LiteralPath $cachePath -Recurse -Force" in script
     assert "foreach ($installer in $policy.required_installers)" in script
+    assert "[string]$PythonExecutable = 'py'" in script
+    assert "[string[]]$PythonArguments = @('-3.12')" in script
+    assert "Assert-Python312" in script
+    assert "& $PythonExecutable @PythonArguments -m pip download" in script
     assert "Copy-Item -LiteralPath $source" in script
     assert "robocopy $InstallerSourceDir" not in script
 
