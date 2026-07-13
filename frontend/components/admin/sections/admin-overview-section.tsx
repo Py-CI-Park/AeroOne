@@ -48,7 +48,7 @@ export function AdminOverviewSection() {
   const overview = state.overview;
 
   if (!overview) {
-    if (state.busy === 'refresh') {
+    if (state.busy === 'refresh' || state.busy === 'initial-load') {
       return (
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm text-ink-3" role="status" aria-live="polite">개요를 불러오는 중입니다.</p>

@@ -112,6 +112,7 @@ const initialState: PanelState = {
   tags: [],
   searchResults: [],
   toasts: [],
+  busy: 'initial-load',
 };
 
 export function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'green' | 'amber' | 'red' | 'blue' }) {
@@ -299,7 +300,7 @@ function AdminConsoleTabsContent() {
       pushToast('error', text);
       setState((current) => ({ ...current, error: text }));
     } finally {
-      setState((current) => ({ ...current, busy: current.busy === 'refresh' ? undefined : current.busy }));
+      setState((current) => ({ ...current, busy: current.busy === 'refresh' || current.busy === 'initial-load' ? undefined : current.busy }));
     }
   }
 
@@ -484,6 +485,8 @@ function AdminConsoleTabsContent() {
         </details>
         <ToastStack toasts={state.toasts} onDismiss={dismissToast} />
         <AdminOverviewSection />
+        {state.busy === 'initial-load' ? null : (
+          <>
         <nav className="flex flex-wrap gap-2" aria-label="관리자 콘솔 탭" role="tablist">
           {tabs.map((tab) => {
             const selected = activeTab === tab.key;
@@ -517,6 +520,8 @@ function AdminConsoleTabsContent() {
           {activeTab === 'backups' ? <AdminBackupsSection /> : null}
           {activeTab === 'audit' ? <AdminAuditSection /> : null}
         </div>
+          </>
+        )}
       </div>
     </AdminConsoleContext.Provider>
   );
