@@ -35,6 +35,8 @@ public static class AeroOneRotationClipboardNative
 }
 '@
 }
+$script:ClipboardMaximumAttempts = 20
+$script:ClipboardRetryMilliseconds = 250
 
 function Set-RotationSecureClipboard {
     param([Parameter(Mandatory = $true)][string]$Text)
@@ -52,18 +54,18 @@ function Set-RotationSecureClipboard {
     }
     try {
         $publishedSuccessfully = $false
-        for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+        for ($attempt = 1; $attempt -le $script:ClipboardMaximumAttempts; $attempt += 1) {
             try {
                 [Windows.Clipboard]::SetDataObject($data, $true)
                 $publishedSuccessfully = $true
                 break
             } catch [Runtime.InteropServices.COMException] {
-                if ($attempt -lt 5) {
-                    Start-Sleep -Milliseconds 100
+                if ($attempt -lt $script:ClipboardMaximumAttempts) {
+                    Start-Sleep -Milliseconds $script:ClipboardRetryMilliseconds
                 }
             } catch [Runtime.InteropServices.ExternalException] {
-                if ($attempt -lt 5) {
-                    Start-Sleep -Milliseconds 100
+                if ($attempt -lt $script:ClipboardMaximumAttempts) {
+                    Start-Sleep -Milliseconds $script:ClipboardRetryMilliseconds
                 }
             }
         }
@@ -87,14 +89,14 @@ function Get-RotationSecureClipboardStatus {
     param([Parameter(Mandatory = $true)][string]$Expected)
 
     Add-Type -AssemblyName PresentationCore
-    for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+    for ($attempt = 1; $attempt -le $script:ClipboardMaximumAttempts; $attempt += 1) {
         try {
             $published = [Windows.Clipboard]::GetDataObject()
             if ($null -eq $published) {
-                if ($attempt -eq 5) {
+                if ($attempt -eq $script:ClipboardMaximumAttempts) {
                     throw 'clipboard-read-timeout'
                 }
-                Start-Sleep -Milliseconds 100
+                Start-Sleep -Milliseconds $script:ClipboardRetryMilliseconds
                 continue
             }
             return [PSCustomObject]@{
@@ -104,15 +106,15 @@ function Get-RotationSecureClipboardStatus {
                 Cloud = [int]$published.GetData('CanUploadToCloudClipboard', $false)
             }
         } catch [Runtime.InteropServices.COMException] {
-            if ($attempt -eq 5) {
+            if ($attempt -eq $script:ClipboardMaximumAttempts) {
                 throw 'clipboard-read-timeout'
             }
-            Start-Sleep -Milliseconds 100
+            Start-Sleep -Milliseconds $script:ClipboardRetryMilliseconds
         } catch [Runtime.InteropServices.ExternalException] {
-            if ($attempt -eq 5) {
+            if ($attempt -eq $script:ClipboardMaximumAttempts) {
                 throw 'clipboard-read-timeout'
             }
-            Start-Sleep -Milliseconds 100
+            Start-Sleep -Milliseconds $script:ClipboardRetryMilliseconds
         }
     }
 }

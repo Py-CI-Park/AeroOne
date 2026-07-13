@@ -69,15 +69,17 @@ def test_secure_clipboard_excludes_history_and_cloud_and_clears_only_owned_text(
 $ErrorActionPreference = 'Stop'
 Import-Module $env:AEROONE_CLIPBOARD_MODULE -Force -DisableNameChecking
 Add-Type -AssemblyName PresentationCore
+$maximumAttempts = 20
+$retryDelayMilliseconds = 250
 $originalCaptured = $false
-for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+for ($attempt = 1; $attempt -le $maximumAttempts; $attempt += 1) {
     try {
         $original = [Windows.Clipboard]::GetDataObject()
         $originalCaptured = $true
         break
     } catch [Runtime.InteropServices.COMException] {
-        if ($attempt -eq 5) { throw }
-        Start-Sleep -Milliseconds 100
+        if ($attempt -eq $maximumAttempts) { throw }
+        Start-Sleep -Milliseconds $retryDelayMilliseconds
     }
 }
 $result = [ordered]@{}
@@ -88,19 +90,19 @@ try {
     $result.excluded = $status.Excluded
     $result.history = $status.History
     $result.cloud = $status.Cloud
-    for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+    for ($attempt = 1; $attempt -le $maximumAttempts; $attempt += 1) {
         $result.clearOwned = Clear-RotationOwnedClipboard -Expected $env:AEROONE_CLIPBOARD_TEST_SECRET
         if ($result.clearOwned -ne 'Failed') { break }
-        Start-Sleep -Milliseconds 100
+        Start-Sleep -Milliseconds $retryDelayMilliseconds
     }
     Set-RotationSecureClipboard -Text $env:AEROONE_CLIPBOARD_TEST_SECRET
-    for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+    for ($attempt = 1; $attempt -le $maximumAttempts; $attempt += 1) {
         try {
             [Windows.Clipboard]::SetText('synthetic-unrelated')
             break
         } catch [Runtime.InteropServices.COMException] {
-            if ($attempt -eq 5) { throw }
-            Start-Sleep -Milliseconds 100
+            if ($attempt -eq $maximumAttempts) { throw }
+            Start-Sleep -Milliseconds $retryDelayMilliseconds
         }
     }
     $result.clearUnrelated = Clear-RotationOwnedClipboard -Expected $env:AEROONE_CLIPBOARD_TEST_SECRET
@@ -109,32 +111,32 @@ try {
 } finally {
     $restored = $false
     if ($originalCaptured -and $null -ne $original) {
-        for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+        for ($attempt = 1; $attempt -le $maximumAttempts; $attempt += 1) {
             try {
                 [Windows.Clipboard]::SetDataObject($original, $true)
                 $restored = $true
                 break
             } catch [Runtime.InteropServices.COMException] {
-                if ($attempt -lt 5) { Start-Sleep -Milliseconds 100 }
+                if ($attempt -lt $maximumAttempts) { Start-Sleep -Milliseconds $retryDelayMilliseconds }
             }
         }
     } else {
         $restored = $true
         foreach ($owned in @($env:AEROONE_CLIPBOARD_TEST_SECRET, 'synthetic-unrelated')) {
-            for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+            for ($attempt = 1; $attempt -le $maximumAttempts; $attempt += 1) {
                 $clearResult = Clear-RotationOwnedClipboard -Expected $owned
                 if ($clearResult -ne 'Failed') { break }
-                Start-Sleep -Milliseconds 100
+                Start-Sleep -Milliseconds $retryDelayMilliseconds
             }
             if ($clearResult -eq 'Failed') { $restored = $false }
         }
     }
     if (-not $restored) {
         foreach ($owned in @($env:AEROONE_CLIPBOARD_TEST_SECRET, 'synthetic-unrelated')) {
-            for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+            for ($attempt = 1; $attempt -le $maximumAttempts; $attempt += 1) {
                 $clearResult = Clear-RotationOwnedClipboard -Expected $owned
                 if ($clearResult -ne 'Failed') { break }
-                Start-Sleep -Milliseconds 100
+                Start-Sleep -Milliseconds $retryDelayMilliseconds
             }
         }
         throw 'clipboard-test-restore-failed'

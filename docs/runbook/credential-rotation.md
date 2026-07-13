@@ -72,7 +72,7 @@ powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File scripts\vie
 - 임의 bundle 경로를 받지 않으며 `%USERPROFILE%\AeroOne-secure\incident-20260710\credentials.dpapi` 한 자리만 읽습니다.
 - current Windows SID의 DPAPI purpose, physical containment, single-link, exact ACL, strict bundle schema를 모두 검증합니다.
 - 계정을 선택할 수 있고 비밀번호는 기본 마스킹입니다. 표시와 복사는 운영자가 명시적으로 선택합니다.
-- 복사 시 Windows clipboard history와 cloud roaming에서 제외하는 형식을 함께 게시합니다. clipboard가 여전히 방금 복사한 비밀번호일 때만 30초 후 원자적으로 삭제하며, 그 뒤 운영자가 복사한 다른 내용은 지우지 않습니다.
+- 복사 시 Windows clipboard history와 cloud roaming에서 제외하는 형식을 함께 게시합니다. 다른 앱의 일시적 clipboard 점유는 250ms 간격, 최대 20회로 제한해 게시·확인을 재시도합니다. clipboard가 여전히 방금 복사한 비밀번호일 때만 30초 후 원자적으로 삭제하며, 그 뒤 운영자가 복사한 다른 내용은 지우지 않습니다.
 - 자동 삭제가 일시적으로 실패하면 최대 5회 재시도합니다. 마지막 실패 뒤에도 소유 상태를 잊지 않고 명시적 재시도 버튼을 표시하며, 해당 비밀번호가 clipboard에 남아 있는 동안 창 닫기를 거부합니다.
 - 콘솔 출력, transcript, 별도 평문 파일로 자격을 내보내지 않습니다.
 
