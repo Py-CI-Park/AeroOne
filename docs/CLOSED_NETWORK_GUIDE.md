@@ -2,16 +2,16 @@
 
 이 문서는 **사람 운영자와 AI 에이전트가 동일하게 참조할 수 있는 단일 진실 원천(single source of truth)** 입니다. 폐쇄망 배포의 모든 흐름·검증·운영·문제 해결을 한 자리에 모았습니다. 더 깊은 세부는 §13의 참조 문서로 분기합니다.
 
-- 기준 브랜치: `main` (1.13.2 release candidate, 정식 immutable 1.13.1 및 역사적 1.13.0 릴리스 계보)
+- 기준 브랜치: `main` (현재 immutable 정식 `1.13.2`, immutable historical `1.13.1` 및 역사적 `1.13.0` 릴리스 계보)
 - 갱신일: 2026-07-14
-- 최근 완료 검증: 1.13.1은 동일 product tree에서 backend **88 passed**, frontend **10 passed**, `tsc --noEmit`, exact-tag pre/post verifier를 추가 통과했다. 1.13.2 후보의 fresh source-bound full gates와 exact-tag package verification은 아직 실행하지 않았다.
-- 1.13.1 Release API `immutable=true`; merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag `1.13.1`, published `2026-07-13T23:31:18Z`.
-- 1.13.2는 예기치 않은 Git tag inspection 실패를 정상 QA fallback으로 처리하지 않고 `git-tag-inspection-failed`로 fail closed 한다. exact-tag immutable publication과 attestation 전까지 1.13.1이 최신 운영 반입물이다.
+- 최근 완료 검증: 1.13.2는 backend full **570 passed**, focused **88 passed**, frontend full **397 passed / 73 files**, `tsc --noEmit`, Next production build, GitHub CLI 2.96.0 release/asset verification, 재다운로드 ZIP/sidecar digest, exact-tag pre/post verifier **10,317 entries**를 통과했다. 패치는 package fail-closed behavior와 QA contract seam만 변경하며 제품 feature behavior는 변경하지 않는다.
+- 1.13.2 Release API `immutable=true`; PR #28 no-ff merge `a3dd77b93027dccffb36d663bb7ee1220c9fcdf5`, annotated tag object `62ba67eef7e2c2ac2357dc67d1cffb1c9eeedcc5` (merge commit으로 peel), published `2026-07-14T01:40:21Z`.
+- 1.13.2는 현재 최신 운영 import이다. publication은 완료되었지만 사람이 air-gapped network에 물리적으로 import했다는 의미는 아니다.
 - GitHub immutable releases 정책은 `enabled=true`; 기존 1.13.0 Release는 소급 적용되지 않아 `immutable=false`.
 - 라이선스: All Rights Reserved (사내 사용 전제)
 
 > [!CAUTION]
-> `1.12.2` Release와 오프라인 ZIP은 철회되었습니다. `1.13.0` tag·asset·digest는 역사 릴리스로 보존되며 이동·교체·삭제하지 않습니다. 현재 운영 반입은 정식 immutable `1.13.1` Release의 `AeroOne-offline-1.13.1.zip`과 업로드된 `.sha256`입니다. ZIP size는 `158727170` bytes, 재다운로드 SHA-256은 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`이며 [Release URL](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1)에서 받습니다. `1.13.2`는 2026-07-14 release candidate로, exact-tag immutable publication과 attestation 전에는 운영 반입물로 사용하지 않습니다.
+> `1.12.2` Release와 오프라인 ZIP은 철회되었습니다. `1.13.0` tag·asset·digest는 역사 릴리스로 보존되며 이동·교체·삭제하지 않습니다. 현재 운영 import는 정식 immutable `1.13.2` Release의 `AeroOne-offline-1.13.2.zip`과 업로드된 `.sha256`입니다. ZIP size는 `158728639` bytes, SHA-256은 `92d5178d6fb67573a1f0b36e0a744e00b4b559548081b463d45a4ba1d669d8a4`, sidecar asset SHA-256은 `02bb4827b149bbe36ffad1bdb7d6dd43b95a5c3c71b168671e7da854a4f2c6d5`이며 [Release URL](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.2)에서 받습니다. published `2026-07-14T01:40:21Z`, API `immutable=true`입니다. `1.13.1`은 immutable historical patch로 보존하고, `1.13.0`은 `immutable=false` 역사 릴리스로 보존합니다. 물리적 air-gapped import 수행은 주장하지 않습니다.
 
 ---
 
@@ -49,7 +49,7 @@
 
 ## 2. 한 문장 요약 — 폐쇄망 사용 가능 여부
 
-**현재 운영 반입물은 정식 immutable `1.13.1`입니다.** `1.12.2`는 철회되었고 `1.13.0`은 `immutable=false` 역사 보존 대상입니다. `1.13.2`는 예기치 않은 Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed 하는 forward-only 후보입니다. exact-tag immutable Release 게시와 attestation이 완료되기 전까지는 `1.13.1`을 사용합니다. 1.13.2의 fresh source-bound full gates와 exact-tag package verification은 아직 실행하지 않았으므로 결과를 주장하지 않습니다.
+**현재 최신 운영 import는 정식 immutable `1.13.2`입니다.** `1.12.2`는 철회되었고 `1.13.0`은 `immutable=false` 역사 보존 대상이며 `1.13.1`은 immutable historical patch입니다. `1.13.2`는 예기치 않은 Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed 합니다. 이 패치는 package fail-closed behavior와 QA contract seam만 변경하며 제품 feature behavior는 변경하지 않습니다. backend full 570, focused 88, frontend full 397/73, typecheck/build, GitHub CLI release/asset verification, 재다운로드 digest/sidecar, exact-tag pre/post verifier 10,317 entries가 통과했습니다. publication과 물리적 air-gapped import는 별개입니다.
 
 ---
 
@@ -61,8 +61,8 @@
 |---|---|---|
 | `1.13.0` | 역사 릴리스 | 단계 26–27 기능·검증, PR #22/merge/tag/asset/digest 기록을 보존. tag·asset·digest는 이동·교체·삭제하지 않음 |
 | `1.12.2` | **철회** | 화면 개선 이력만 보존. Release asset과 오프라인 ZIP은 신규 설치·재배포 금지 |
-| `1.13.1` | 정식 immutable Release | 제품 tree는 1.13.0과 동일. API `immutable=true`, ZIP 및 `.sha256` 업로드·재다운로드 digest 검증 완료. 1.13.2 게시 전까지 최신 운영 반입물 |
-| `1.13.2` | release candidate | Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed. exact-tag immutable publication, attestation, fresh source-bound full gates 및 exact-tag package verification 보류 |
+| `1.13.1` | immutable historical patch | 제품 tree와 historical digest/time을 보존. 1.13.2 이전 최신 운영 반입물이었던 역사 기록 |
+| `1.13.2` | 정식 immutable Release | Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed. package fail-closed behavior와 QA contract seam만 변경하며 제품 feature behavior는 변경하지 않음. 현재 최신 운영 import |
 | `1.12.1` | patch | 헤더 `로그인: <username>`/로그아웃 버튼, `login_events.status='logout'` 기록과 현재 세션 활동 제거, 사용자 생성의 필수 ID/PW·선택 이름/이메일(`users.display_name`, Alembic `20260707_0008`), 사용자 행별 **권한 수정** 패널, 감사 로그 페이지네이션·필터 초기화·현재 결과 CSV, 세션 마지막 갱신/15초 자동 새로고침 안내, 버전 배지 업데이트 날짜 표시 |
 | `1.12.0` | 단계 25 | 권한 키 한국어 라벨·설명·카테고리 카탈로그와 RBAC 매트릭스 pill/유효권한 요약, 감사 로그 전용 탭(작업자/액션/상태/기간 검색·필터·CSV), 세션 상대시간·접속자 스코프 자동 새로고침·로그인 목록 페이지네이션, 탭 숫자 단축키 1~9·접이식 온보딩 도움말 (프론트-only, 백엔드/스키마 무변경) |
 | `1.11.0` | 단계 24 | 관리자 로그인/CRUD same-origin `/api/frontend/auth/*`, `/api/frontend/admin/*` 프록시 통합, 전용 `/api/frontend/search/unified`, 탭형 `/admin` 콘솔(모듈/사용자/RBAC/세션/시스템/분류/검색/백업), RBAC 입력 위젯, 목록 검색/정렬/상태, ARIA Tabs, ResourceGrant key 방어 |
@@ -95,12 +95,12 @@
 - browser/package: production Chrome smoke·matrix·Axe·Lighthouse·React 및 QA ZIP pre-stage/post-ZIP verifier 통과
 - 핵심 회귀: 모드 정책, LAN/loopback 배치, `run_all.bat` Open Notebook readiness, allow-list package builder/pre-post verifier, 관리자 auth/admin same-origin 프록시, ResourceGrant 방어, 자격 회전 service/listener preflight·연속 DB lock·DPAPI recovery·crash 재개·WPF ValidateOnly, Activity privacy, 관리자 Overview/Users/Sessions/Modules, 뉴스레터 상태/자산/bulk, 문서/컬렉션/AI API
 
-### 3.4 릴리즈 1.13.1 현재 반입물 및 1.13.2 후보
-`1.13.0` tag·asset·digest는 역사 릴리스로 보존합니다. 현재 운영 반입은 [정식 immutable Release `1.13.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1)의 `AeroOne-offline-1.13.1.zip`과 함께 업로드된 `.sha256`입니다. Release API `immutable=true`, merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, published `2026-07-13T23:31:18Z`, ZIP size `158727170`, 재다운로드 SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`은 완료된 1.13.1 사실입니다. 1.13.2는 fail-closed Git tag inspection 교정 후보이며, exact-tag immutable publication과 attestation 전에는 최신 운영 반입물로 승격하지 않습니다.
+### 3.4 릴리즈 1.13.2 현재 운영 import
+`1.13.0` tag·asset·digest와 `1.13.1`의 게시 사실·정확한 commit/tag/URL/digest/size는 역사 기록으로 보존합니다. 현재 운영 import는 [정식 immutable Release `1.13.2`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.2)의 `AeroOne-offline-1.13.2.zip`과 함께 업로드된 `.sha256`입니다. PR #28 no-ff merge `a3dd77b93027dccffb36d663bb7ee1220c9fcdf5`, annotated tag object `62ba67eef7e2c2ac2357dc67d1cffb1c9eeedcc5` (merge commit으로 peel), published `2026-07-14T01:40:21Z`, API `immutable=true`, ZIP size `158728639`, ZIP SHA-256 `92d5178d6fb67573a1f0b36e0a744e00b4b559548081b463d45a4ba1d669d8a4`, sidecar SHA-256 `02bb4827b149bbe36ffad1bdb7d6dd43b95a5c3c71b168671e7da854a4f2c6d5`입니다. immutable historical patch `1.13.1`의 published `2026-07-13T23:31:18Z`과 ZIP SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290` 및 `1.13.0`의 역사 digest/time은 변경하지 않습니다. 물리적 air-gapped import 수행은 주장하지 않습니다.
 
 | 반입물 | 릴리즈/생성 위치 | 폐쇄망 배치 | 필수 여부 |
 |---|---|---|---|
-| `AeroOne-offline-1.13.1.zip` + `.sha256` | immutable=true로 확인된 정식 AeroOne GitHub Release `1.13.1` asset | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
+| `AeroOne-offline-1.13.2.zip` + `.sha256` | immutable=true로 확인된 정식 AeroOne GitHub Release `1.13.2` asset | `D:\AeroOne\` 로 압축 해제 후 `setup_offline.bat` | 필수 |
 | `AeroOne-bundle.zip` + `.sha256` | immutable=true로 확인된 같은 Release asset 또는 Open Notebook `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 후 `2-airgap-install.bat` | Open Notebook 사용 시 필수 |
 | Ollama 모델 폴더(`manifests\`, `blobs\`) | 인터넷 PC `%USERPROFILE%\.ollama\models` | 폐쇄망 PC `%USERPROFILE%\.ollama\models` | AeroAI/Open Notebook AI 사용 시 필수 |
 | `OllamaSetup.exe` | 인터넷 PC에서 별도 다운로드 | 폐쇄망 PC에 1회 설치 | 폐쇄망 PC에 Ollama 없을 때 필수 |
@@ -330,7 +330,7 @@ set PYTHONPATH=.
 python -m pytest tests -q
 ```
 
-역사 릴리스 `1.13.0`의 전체 제품 게이트(backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build, production Chrome·package gate)는 계승 근거로 보존합니다. 동일 product tree의 `1.13.1`에서 추가 통과한 backend **88** / frontend **10** 직접 영향 테스트와 exact-tag pre/post verifier도 역사 사실로 보존합니다. 1.13.2 후보는 source-bound full gates와 exact-tag package verification을 fresh 실행해야 하며 아직 결과가 없습니다. `1.12.2` 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다.
+역사 릴리스 `1.13.0`의 전체 제품 게이트(backend **570 passed**, frontend **397 passed / 73 files**, typecheck/build, production Chrome·package gate)는 계승 근거로 보존합니다. `1.13.2`는 backend **570 passed**, focused **88 passed**, frontend **397 passed / 73 files**, typecheck/build, GitHub CLI 2.96.0의 `release verify` 및 두 asset `verify-asset`, 재다운로드 ZIP/sidecar digest, exact-tag pre/post verifier **10,317 entries**를 통과했습니다. 이 패치는 package fail-closed behavior와 QA contract seam만 변경하며 제품 feature behavior는 변경하지 않습니다. `1.13.2` publication은 물리적 air-gapped import를 주장하지 않습니다. `1.12.2` 기록은 철회 배포본의 승인 기준으로 재사용하지 않습니다.
 
 ### 8.4 단계 8 시뮬레이션 결과 (참고)
 
