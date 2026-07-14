@@ -71,3 +71,6 @@ frontend/.env.local.bak
 /AeroOne Tool/_originals/
 /AeroOne Tool/tool-mvp-v0.1.0/
 /AeroOne Tool/saas-kit-v2.0.0/
+
+# Leantime co-deploy stack build scratch (portable PHP/MariaDB/Leantime binaries)
+leantime_stack/
