@@ -10,8 +10,8 @@ passlib[bcrypt]==1.7.4
 bcrypt<5
 beautifulsoup4==4.12.3
 Markdown==3.7
-# 차트 스튜디오(svc02) 데이터 집계. 폐쇄망 오프라인 wheel 확보 필요(BUILD_CONTRACT §7).
+# Chart Studio (svc02) data aggregation. Offline wheels required for closed network (BUILD_CONTRACT section 7).
 pandas==2.2.3
 numpy==2.2.6
-# xlsx/xlsm 입력 지원(선택). 미설치 시 xlsx 업로드만 422 로 안내한다.
+# xlsx/xlsm input support (optional). Without it, xlsx uploads return 422.
 openpyxl==3.1.5
