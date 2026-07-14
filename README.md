@@ -18,7 +18,7 @@
 </div>
 
 > [!CAUTION]
-> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.13.2`이며, 1.13.1은 immutable historical patch로 보존하고 1.13.0은 변경하지 않는 역사 릴리스로 보존합니다. 1.13.2는 예기치 않은 Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed 하는 forward-only package/QA correction입니다. 이 패치는 제품 기능 동작을 변경하지 않고 package fail-closed behavior와 QA contract seam만 변경합니다. 이미 철회본을 반입했다면 서비스를 중지하고 [GitHub Release 1.13.2](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.2)의 asset으로 교체한 뒤 [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md)의 회전 절차를 적용합니다. Release publication은 완료되었지만 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
+> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.14.0`이며, 1.13.2/1.13.1/1.13.0은 변경하지 않는 역사 릴리스로 보존합니다. 1.14.0은 대시보드에 로그인 후 노출되는 Open WebUI 실행 카드(같은 호스트 8080 포트 링크, 링크만)와 관리자 콘솔의 OpenAI 호환 AI provider 병행 관리(Ollama 와 나란히, 명시 선택·자동 폴백 없음, write-only DPAPI 키)를 추가한 forward-only feature 릴리스입니다. 이전 immutable 릴리스의 tag·asset·digest는 변경하지 않습니다. Release publication은 완료되어도 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
 
 <table>
   <tr>
@@ -78,7 +78,7 @@
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | 1.13.2는 backend full **570 passed**, focused **88 passed**, frontend full **397 passed / 73 files**, `tsc --noEmit`, Next production build, GitHub CLI 2.96.0 `release verify` 및 ZIP/sidecar `verify-asset`, 재다운로드 ZIP digest/sidecar digest, exact-tag pre/post verifier **10,317 entries**를 통과했습니다. 이 패치는 제품 feature behavior가 아니라 package fail-closed behavior와 QA contract seam을 검증합니다. 1.13.0/1.13.1의 역사적 검증 사실은 그대로 보존합니다. |
+| 검증 | 1.14.0은 backend unit **354 passed**, 비회전 integration **240 passed**, provider/AI integration **28 passed**, 신규 provider focused unit **84 passed**(실 Windows DPAPI roundtrip 포함), frontend **423 passed / 74 files**, `tsc --noEmit`, Next production build, 격리 스택 라이브 브라우저 e2e(대시보드 Open WebUI 카드→host:8080 + 관리자 AI provider 패널), 오프라인 패키지 QA 빌드+pre/post verifier를 통과했습니다. 발견된 결함 1건(호환 채팅 경로 메시지 조립)을 수정하고 회귀 테스트로 고정했습니다. 1.13.0/1.13.1/1.13.2의 역사적 검증 사실은 그대로 보존합니다. |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
