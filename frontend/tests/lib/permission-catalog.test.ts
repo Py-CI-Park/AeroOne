@@ -1,7 +1,7 @@
 import { describePermission, groupPermissionsByCategory, PERMISSION_CATALOG } from '@/lib/permission-catalog';
 
 test('permission catalog covers the admin permission taxonomy', () => {
-  expect(Object.keys(PERMISSION_CATALOG)).toHaveLength(30);
+  expect(Object.keys(PERMISSION_CATALOG)).toHaveLength(31);
 });
 
 test('describePermission returns Korean metadata for known keys', () => {

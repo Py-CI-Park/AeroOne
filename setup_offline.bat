@@ -126,12 +126,18 @@ if not exist "%WHEEL_DIR%" (
   echo [ERROR] offline wheelhouse not found: %WHEEL_DIR%
   goto :fail
 )
+echo [PRE  ] Provider credential store root check ^(SID-scoped, ProgramData^)
+call :ensure_provider_credential_root
+if errorlevel 1 goto :fail
+echo [OK   ] Provider credential store root verified for this runtime identity
 
 for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(32); $rng=[Security.Cryptography.RandomNumberGenerator]::Create(); try{$rng.GetBytes($bytes)}finally{$rng.Dispose()}; [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "JWT_SECRET_KEY=%%S"
 for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$bytes=[byte[]]::new(24); $rng=[Security.Cryptography.RandomNumberGenerator]::Create(); try{$rng.GetBytes($bytes)}finally{$rng.Dispose()}; [BitConverter]::ToString($bytes).Replace('-','').ToLowerInvariant()"') do set "ADMIN_PASSWORD=%%S"
 if not defined JWT_SECRET_KEY goto :fail
 if not defined ADMIN_PASSWORD goto :fail
 
+set "UPGRADE_DETECTED="
+if exist "%BACKEND_ENV%" set "UPGRADE_DETECTED=1"
 if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >"%BACKEND_ENV%" echo APP_ENV=closed_network
 >>"%BACKEND_ENV%" echo APP_NAME=AeroOne Newsletter Platform
@@ -224,6 +230,11 @@ echo        관리자 페이지의 Import / Sync 버튼으로 동기화하세요
 echo [DATA] _database/document 폴더에 HTML 문서를 넣으면 Document 탭에서 바로 보입니다
 echo        ^(하위 폴더로 분류하면 폴더 트리로 구분, 재시작 불필요^).
 echo [DATA] _database/nsa 폴더의 HTML 은 NSA 탭 잠금 해제 뒤 표시됩니다.
+echo [INFO] Provider API key ^(OpenAI-compatible provider^) enrollment is a separate admin
+echo        operation performed later via loopback/HTTPS admin UI. setup_offline.bat never
+echo        generates, imports, or stores a provider key.
+if defined UPGRADE_DETECTED echo [INFO] In-place upgrade detected: existing provider API key enrollment, if any, is
+if defined UPGRADE_DETECTED echo        untouched by this script and remains a loopback/HTTPS admin operation.
 echo ==================================================
 goto :success
 
@@ -274,4 +285,99 @@ echo --allow-host=auto   Explicitly auto-detect this PC's LAN IPv4 ^(same as def
 echo                     Environment fallback: AEROONE_ALLOW_HOST.
 echo.
 echo Use --no-pause when launching from an existing terminal and you do not want the window to wait at the end.
+exit /b 0
+
+:ensure_provider_credential_root
+REM Provisions/validates %ProgramData%\AeroOne\provider-credentials\{current-user-SID}
+REM (the SID-scoped provider-credential DPAPI store root for this runtime identity).
+REM Fail-closed on unexpected owner/DACL/inheritance/reparse/hardlink conditions.
+REM Never creates, reads, or prints a provider key; only provisions/validates the root
+REM directory security so the backend can safely bind a key later via loopback/HTTPS admin.
+set "PCR_SCRIPT=%TEMP%\aeroone_pcr_%RANDOM%%RANDOM%.ps1"
+if exist "%PCR_SCRIPT%" del /f /q "%PCR_SCRIPT%" >nul 2>&1
+>"%PCR_SCRIPT%" echo Set-StrictMode -Version Latest
+>>"%PCR_SCRIPT%" echo $ErrorActionPreference = 'Stop'
+>>"%PCR_SCRIPT%" echo try {
+>>"%PCR_SCRIPT%" echo     $moduleRoot = Join-Path $env:AEROONE_ROOT 'scripts\credential_rotation'
+>>"%PCR_SCRIPT%" echo     Import-Module (Join-Path $moduleRoot 'Rotation.PathSecurity.psm1') -Force -DisableNameChecking
+>>"%PCR_SCRIPT%" echo     $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+>>"%PCR_SCRIPT%" echo     $systemSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
+>>"%PCR_SCRIPT%" echo     $programData = [Environment]::GetFolderPath('CommonApplicationData')
+>>"%PCR_SCRIPT%" echo     $vendorRoot = Join-Path $programData 'AeroOne'
+>>"%PCR_SCRIPT%" echo     $familyRoot = Join-Path $vendorRoot 'provider-credentials'
+>>"%PCR_SCRIPT%" echo     $sidRoot = Join-Path $familyRoot $currentSid.Value
+>>"%PCR_SCRIPT%" echo     foreach ($ancestor in @($vendorRoot, $familyRoot)) {
+>>"%PCR_SCRIPT%" echo         if (-not (Test-Path -LiteralPath $ancestor -PathType Container)) {
+>>"%PCR_SCRIPT%" echo             New-Item -ItemType Directory -Path $ancestor -Force ^| Out-Null
+>>"%PCR_SCRIPT%" echo         }
+>>"%PCR_SCRIPT%" echo         Assert-NoReparseComponents -Path $ancestor
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     $inheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
+>>"%PCR_SCRIPT%" echo     $propagation = [Security.AccessControl.PropagationFlags]::None
+>>"%PCR_SCRIPT%" echo     $allow = [Security.AccessControl.AccessControlType]::Allow
+>>"%PCR_SCRIPT%" echo     if (-not (Test-Path -LiteralPath $sidRoot -PathType Container)) {
+>>"%PCR_SCRIPT%" echo         $acl = New-Object Security.AccessControl.DirectorySecurity
+>>"%PCR_SCRIPT%" echo         $acl.SetOwner($currentSid)
+>>"%PCR_SCRIPT%" echo         $acl.SetAccessRuleProtection($true, $false)
+>>"%PCR_SCRIPT%" echo         $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($currentSid, 'FullControl', $inheritance, $propagation, $allow)))
+>>"%PCR_SCRIPT%" echo         $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($systemSid, 'FullControl', $inheritance, $propagation, $allow)))
+>>"%PCR_SCRIPT%" echo         [IO.Directory]::CreateDirectory($sidRoot, $acl) ^| Out-Null
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     Assert-NoReparseComponents -Path $sidRoot
+>>"%PCR_SCRIPT%" echo     $identity = Get-PhysicalPathIdentity -Path $sidRoot
+>>"%PCR_SCRIPT%" echo     if (-not $identity.IsDirectory) {
+>>"%PCR_SCRIPT%" echo         throw 'provider-credential-root-not-directory'
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     if ($identity.LinkCount -ne 1) {
+>>"%PCR_SCRIPT%" echo         throw 'provider-credential-root-unexpected-hardlink'
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     $acl = Get-Acl -LiteralPath $sidRoot
+>>"%PCR_SCRIPT%" echo     if (-not $acl.AreAccessRulesProtected) {
+>>"%PCR_SCRIPT%" echo         throw 'provider-credential-root-unprotected-acl'
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     $ownerValue = $acl.Owner
+>>"%PCR_SCRIPT%" echo     if ($ownerValue -notmatch '^^S-') {
+>>"%PCR_SCRIPT%" echo         $ownerValue = (New-Object Security.Principal.NTAccount($ownerValue)).Translate([Security.Principal.SecurityIdentifier]).Value
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     if ($ownerValue -ne $currentSid.Value) {
+>>"%PCR_SCRIPT%" echo         throw 'provider-credential-root-owner-mismatch'
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     $rules = @($acl.GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier]))
+>>"%PCR_SCRIPT%" echo     $expectedSids = @($currentSid.Value, $systemSid.Value) ^| Sort-Object
+>>"%PCR_SCRIPT%" echo     $actualSids = @($rules ^| ForEach-Object { $_.IdentityReference.Value }) ^| Sort-Object
+>>"%PCR_SCRIPT%" echo     if ($rules.Count -ne 2 -or @(Compare-Object $actualSids $expectedSids).Count -ne 0) {
+>>"%PCR_SCRIPT%" echo         throw 'provider-credential-root-unexpected-dacl'
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     foreach ($rule in $rules) {
+>>"%PCR_SCRIPT%" echo         if ($rule.AccessControlType -ne $allow) {
+>>"%PCR_SCRIPT%" echo             throw 'provider-credential-root-unexpected-dacl'
+>>"%PCR_SCRIPT%" echo         }
+>>"%PCR_SCRIPT%" echo         if ($rule.PropagationFlags -ne $propagation) {
+>>"%PCR_SCRIPT%" echo             throw 'provider-credential-root-unexpected-dacl'
+>>"%PCR_SCRIPT%" echo         }
+>>"%PCR_SCRIPT%" echo         $hasFullControl = ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -eq [Security.AccessControl.FileSystemRights]::FullControl
+>>"%PCR_SCRIPT%" echo         if (-not $hasFullControl) {
+>>"%PCR_SCRIPT%" echo             throw 'provider-credential-root-unexpected-dacl'
+>>"%PCR_SCRIPT%" echo         }
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     Write-Output 'provider-credential-root-ok'
+>>"%PCR_SCRIPT%" echo     exit 0
+>>"%PCR_SCRIPT%" echo } catch {
+>>"%PCR_SCRIPT%" echo     $code = $_.Exception.Message
+>>"%PCR_SCRIPT%" echo     if ($code -notmatch '^^[a-z0-9-]+$') {
+>>"%PCR_SCRIPT%" echo         $code = 'provider-credential-root-check-failed'
+>>"%PCR_SCRIPT%" echo     }
+>>"%PCR_SCRIPT%" echo     [Console]::Error.WriteLine("status=error code=$code")
+>>"%PCR_SCRIPT%" echo     exit 1
+>>"%PCR_SCRIPT%" echo }
+set "AEROONE_ROOT=%ROOT%"
+powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PCR_SCRIPT%"
+set "PCR_EXIT=%ERRORLEVEL%"
+set "AEROONE_ROOT="
+del /f /q "%PCR_SCRIPT%" >nul 2>&1
+if not "%PCR_EXIT%"=="0" (
+  echo [ERROR] Provider credential store root failed identity/DACL/reparse/hardlink validation ^(fail-closed^).
+  echo [INFO ] No provider key was created, read, or written by this check.
+  exit /b 1
+)
 exit /b 0

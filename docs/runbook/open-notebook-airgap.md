@@ -3,6 +3,7 @@
 이 문서는 AeroOne 옆에 **Open Notebook**(NotebookLM 대안, MIT)을 **별도 프로세스 군으로 나란히(co-deploy)** 배치해 폐쇄망에서 함께 운영하기 위한 단일 진실 원천(SoT)입니다. 근거 계획: 승인된 ralplan `2026-06-13-0254-bd02` (`.gjc/plans/ralplan/2026-06-13-0254-bd02/pending-approval.md`).
 
 > **경계(절대 규칙).** 두 스택은 코드 병합 없이 동거합니다. DB(AeroOne SQLite vs Open Notebook SurrealDB)·세션·포트를 공유하지 않으며 결합점은 단 둘 — **대시보드 진입 링크**(개발중 섹션의 Notebook 카드 → `http://<host>:8502`)와 **공유 Ollama 엔드포인트**. AeroOne 자체 스택(same-origin proxy / backend-only Ollama / SQLite / path-guard)과 `AGENTS.md` §6 위험신호 6종은 미접촉입니다.
+> **1.14+ 경계 참고.** OpenWebUI 는 이 문서의 co-deploy 대상이 **아닙니다.** OpenWebUI 는 별도의 예약 대시보드 런처(`:8080`, 활성 admin/user 세션 전용, `dashboard.openwebui.launch`)로 코드 병합·co-deploy 절차 없이 독립 기동·독립 인증됩니다. 상세는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) §19 를 따르고, 본 문서의 vendoring/adapter/동시성 절차는 Open Notebook 전용으로 그대로 유지됩니다.
 
 ---
 
@@ -197,7 +198,7 @@ git add vendor\open-notebook && git commit
 
 ## 7. 관련 문서
 
-- 폐쇄망 종합 가이드: [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) — Open Notebook co-deploy 섹션 + AeroAI vs Open Notebook 포지셔닝 SoT.
+- 폐쇄망 종합 가이드: [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) — Open Notebook co-deploy 섹션(§18) + AeroAI vs Open Notebook 포지셔닝 SoT + OpenWebUI 예약 런처/AI 프로바이더(§19, 별도 대상).
 - AeroOne 폐쇄망 런북: [`docs/runbook/windows-offline.md`](windows-offline.md).
 - 승인 계획: `.gjc/plans/ralplan/2026-06-13-0254-bd02/pending-approval.md`.
 - 공동 기동 래퍼: [`scripts/run_all.bat`](../../scripts/run_all.bat) / [`scripts/stop_all.bat`](../../scripts/stop_all.bat).

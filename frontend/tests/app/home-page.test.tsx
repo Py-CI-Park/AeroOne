@@ -9,16 +9,17 @@ const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClient
   fetchPublicServiceModulesMock: vi.fn(),
   fetchClientSessionMock: vi.fn(),
   MODULES: [
-    { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, visibility: 'public' },
-    { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, visibility: 'public' },
-    { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, visibility: 'public' },
-    { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
-    { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, visibility: 'admin' },
-    { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, visibility: 'admin' },
-    { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, visibility: 'admin' },
-    { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, visibility: 'admin' },
-    { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, visibility: 'admin' },
-    { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, visibility: 'admin' },
+    { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, launcher_kind: 'none', visibility: 'public' },
+    { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, launcher_kind: 'none', visibility: 'public' },
+    { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, launcher_kind: 'none', visibility: 'public' },
+    { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, launcher_kind: 'none', visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
+    { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
+    { id: 11, key: 'openwebui', title: 'OpenWebUI', description: 'Ollama 호환 챗 UI (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
+    { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   ],
 }));
 
@@ -142,6 +143,7 @@ test('operator dashboard groups cards into ordered sections and keeps coming-soo
   const viewerLink = screen.getByRole('link', { name: /Viewer/i });
   const ladderLink = screen.getByRole('link', { name: /Ladder/i });
   const notebookLink = screen.getByRole('link', { name: /Notebook/i });
+  const openwebuiLink = screen.getByRole('link', { name: /OpenWebUI/i });
   const announcement = screen.getByRole('heading', { name: 'Announcement' });
   const schedule = screen.getByRole('heading', { name: 'Schedule' });
 
@@ -151,13 +153,14 @@ test('operator dashboard groups cards into ordered sections and keeps coming-soo
   expect(developmentSection.compareDocumentPosition(viewerLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(developmentSection.compareDocumentPosition(aiLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(developmentSection.compareDocumentPosition(notebookLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(developmentSection.compareDocumentPosition(openwebuiLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(developmentSection.compareDocumentPosition(ladderLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
   expect(screen.queryByRole('heading', { name: 'Coming soon' })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /Announcement/i })).not.toBeInTheDocument();
   expect(announcement.closest('[aria-disabled="true"]')).not.toBeNull();
   expect(schedule.closest('[aria-disabled="true"]')).toHaveTextContent('Coming soon');
-  expect(screen.getByText('8 active · 2 coming soon')).toBeInTheDocument();
+  expect(screen.getByText('9 active · 2 coming soon')).toBeInTheDocument();
 });
 
 test('adds an active NSA card linking to /nsa', async () => {
@@ -231,6 +234,41 @@ test('operator dashboard shows an external Notebook card opening the co-deploy a
   expect(notebookLink.getAttribute('href')).toMatch(/^http:\/\/[^/]+:8502$/);
   expect(notebookLink).toHaveTextContent('Active');
   expect(within(notebookLink).getByTestId('service-card-description')).toHaveTextContent(/NotebookLM 대안/);
+});
+
+test('operator dashboard shows an external OpenWebUI card opening the co-deploy app on port 8080, coexisting with Notebook', async () => {
+  isAdminMock.mockReturnValue(true);
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const notebookLink = within(main).getByRole('link', { name: /Notebook/i });
+  const openwebuiLink = within(main).getByRole('link', { name: /OpenWebUI/i });
+
+  expect(openwebuiLink).toHaveAttribute('target', '_blank');
+  expect(openwebuiLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  expect(openwebuiLink.getAttribute('href')).toMatch(/^http:\/\/[^/]+:8080$/);
+  expect(openwebuiLink).toHaveTextContent('Active');
+  expect(within(openwebuiLink).getByTestId('service-card-description')).toHaveTextContent(/Ollama 호환 챗 UI/);
+  // Notebook (8502) and OpenWebUI (8080) are independent reserved launchers that coexist.
+  expect(notebookLink.getAttribute('href')).not.toBe(openwebuiLink.getAttribute('href'));
+});
+
+test('non-admin dashboard (active session, no dashboard.openwebui.launch grant) hides the OpenWebUI card', async () => {
+  isAdminMock.mockReturnValue(false);
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
+});
+
+test('degraded fallback hides the OpenWebUI card for non-admins even though it is visibility: public', async () => {
+  fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
+  isAdminMock.mockReturnValue(false);
+
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  // required_permission is unverifiable in degraded mode, so the conservative fallback filter
+  // must drop it for non-admins even though visibility is 'public'.
+  expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
 });
 
 test('home page uses dark theme from cookie', async () => {

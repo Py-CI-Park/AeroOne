@@ -24,6 +24,7 @@ _ENTROPY_PREFIX: Final = b"AeroOne.CredentialRotation.v1:"
 @unique
 class DpapiPurpose(StrEnum):
     CREDENTIAL_BUNDLE = "credential-bundle"
+    PROVIDER_CREDENTIAL = "provider-credential"
     DATABASE_RECOVERY = "database-recovery"
     ROTATION_JOURNAL = "rotation-journal"
     PENDING_ROOT_ENVIRONMENT = "pending-root-environment"

@@ -37,6 +37,7 @@ ADMIN_PERMISSIONS: set[str] = {
     'search.use',
     'ai.use',
     'ai.history.manage_own',
+    'dashboard.openwebui.launch',
 }
 # ResourceGrant 로 부여 가능한 resource_type 별 안전 권한 키. 읽기 전용만 두고 전역
 # admin.* 키는 절대 포함하지 않는다. 'collections.read' 는 향후 비공개(비-NSA) 컬렉션
@@ -59,7 +60,7 @@ def is_valid_resource_id(resource_id: str) -> bool:
 
 DEFAULT_ROLE_PERMISSIONS: dict[str, set[str]] = {
     'admin': set(ADMIN_PERMISSIONS),
-    'user': {'search.use', 'ai.use', 'ai.history.manage_own'},
+    'user': {'search.use', 'ai.use', 'ai.history.manage_own', 'dashboard.openwebui.launch'},
     'pending': set(),
 }
 

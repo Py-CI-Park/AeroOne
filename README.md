@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.13.2-1f6feb)
+![version](https://img.shields.io/badge/version-1.14.0-1f6feb)
 ![status](https://img.shields.io/badge/status-immutable-release-success)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
@@ -18,7 +18,7 @@
 </div>
 
 > [!CAUTION]
-> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.13.2`이며, 1.13.1은 immutable historical patch로 보존하고 1.13.0은 변경하지 않는 역사 릴리스로 보존합니다. 1.13.2는 예기치 않은 Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed 하는 forward-only package/QA correction입니다. 이 패치는 제품 기능 동작을 변경하지 않고 package fail-closed behavior와 QA contract seam만 변경합니다. 이미 철회본을 반입했다면 서비스를 중지하고 [GitHub Release 1.13.2](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.2)의 asset으로 교체한 뒤 [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md)의 회전 절차를 적용합니다. Release publication은 완료되었지만 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
+> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.14.0`이며, 1.13.2/1.13.1/1.13.0은 변경하지 않는 역사 릴리스로 보존합니다. 1.14.0은 대시보드에 로그인 후 노출되는 Open WebUI 실행 카드(같은 호스트 8080 포트 링크, 링크만)와 관리자 콘솔의 OpenAI 호환 AI provider 병행 관리(Ollama 와 나란히, 명시 선택·자동 폴백 없음, write-only DPAPI 키)를 추가한 forward-only feature 릴리스입니다. 이전 immutable 릴리스의 tag·asset·digest는 변경하지 않습니다. Release publication은 완료되어도 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
 
 <table>
   <tr>
@@ -70,13 +70,15 @@
 | 사용자 화면 | 대시보드 모듈 카드(뉴스레터·민간항공기 보고서·문서 보관소 등), 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, 민간항공기 규격 카탈로그(/reports/civil-aircraft, 달력 없음), 문서 보관소(/documents, `_database/document` HTML 을 폴더 트리로 열람), `[data-theme]` 라이트·다크 테마 토글 |
 | AeroAI 어시스턴트 (1.7+) | 대시보드 개발중 섹션의 `/ai` — 사내 폐쇄망 문서(Document/Civil/NSA)를 **근거로 답하는** RAG 챗. 대화 영속화·인용(citation) 근거연결·3분할 워크스페이스·프롬프트 프리셋. 답변은 안전한 Markdown 으로 렌더링하고 복사는 원문 텍스트를 유지합니다. HTML 본문 검색 결과는 새 탭으로 열립니다. backend-only Ollama(`gemma4:12b`), same-origin 프록시, reasoning-only 빈 응답 1회 재시도. 1.8.0 부터 운영 로그는 metadata-only 로 저장하며 prompt/answer/snippet 원문은 기록하지 않습니다. |
 | Open Notebook 동거 배포 (1.5+) | NotebookLM 대안(MIT)을 **코드 병합 없이 나란히(co-deploy)** — 대시보드 개발중 섹션의 Notebook 카드 → `:8502`. 분리 번들(airgap) + 공유 Ollama + 무인 자동 프로비저닝(모델 자동등록). `run_all.bat` 는 ON API/Frontend/runtime config readiness 확인 후 READY 표시. 상세: [`docs/runbook/closed-network-install-manual.md`](docs/runbook/closed-network-install-manual.md) |
+| OpenWebUI 예약 런처 (1.14+) | 대시보드의 OpenWebUI 카드는 **활성 로그인 admin/user 세션 전원**에게 노출되고(anonymous/pending 제외) 현재 브라우저 host 의 `:8080` 새 탭으로만 연결합니다. Open Notebook 과 마찬가지로 별도 프로세스로 기동·인증되며, AeroOne 은 SSO·기동·헬스체크를 제공하지 않습니다. 상세: [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) §19 |
+| AI 프로바이더 — Ollama 병행 (1.14+, 관리자) | `/admin` 콘솔에서 Ollama 와 별도로 OpenAI-호환 프로바이더(Base URL/모델/API 키)를 구성할 수 있습니다. 후보 테스트(무저장) → 저장 → 영속 테스트 `ok` → Activate 순서를 강제하며, 선택은 명시 전환만 가능하고 자동 폴백이 없습니다. API 키는 write-only 이며 Windows DPAPI 로만 암호화 보관되어 DB·백업·로그·문서 어디에도 평문으로 남지 않습니다. 상세: [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) §19 |
 | 콘텐츠 분기 | HTML(sandbox iframe + sanitize + CSP), PDF(direct delivery), Markdown(서버 렌더) |
 | 관리자 화면 (1.8+) | 로그인 후 `/admin` 홈 콘솔에서 버전/모드, DB, 최신 뉴스레터, 자산 상태, 읽음 요약, AI 상태, 최근 감사, 사용자/RBAC, 대시보드 모듈, 백업 상태를 확인합니다. 뉴스레터 목록은 검색/상태 필터/일괄 게시·보관/자산 점검을 지원합니다. |
 | 인증/권한 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰. 서버 권한은 `admin/user/pending` 역할과 additive permissions/groups/resource grants 로 판단하며, 관리자 mutation 은 permission + CSRF + same-transaction audit 를 통과해야 합니다. |
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | 1.13.2는 backend full **570 passed**, focused **88 passed**, frontend full **397 passed / 73 files**, `tsc --noEmit`, Next production build, GitHub CLI 2.96.0 `release verify` 및 ZIP/sidecar `verify-asset`, 재다운로드 ZIP digest/sidecar digest, exact-tag pre/post verifier **10,317 entries**를 통과했습니다. 이 패치는 제품 feature behavior가 아니라 package fail-closed behavior와 QA contract seam을 검증합니다. 1.13.0/1.13.1의 역사적 검증 사실은 그대로 보존합니다. |
+| 검증 | 1.14.0은 backend unit **354 passed**, 비회전 integration **240 passed**, provider/AI integration **28 passed**, 신규 provider focused unit **84 passed**(실 Windows DPAPI roundtrip 포함), frontend **423 passed / 74 files**, `tsc --noEmit`, Next production build, 격리 스택 라이브 브라우저 e2e(대시보드 Open WebUI 카드→host:8080 + 관리자 AI provider 패널), 오프라인 패키지 QA 빌드+pre/post verifier를 통과했습니다. 발견된 결함 1건(호환 채팅 경로 메시지 조립)을 수정하고 회귀 테스트로 고정했습니다. 1.13.0/1.13.1/1.13.2의 역사적 검증 사실은 그대로 보존합니다. |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -325,7 +327,7 @@ npm run build
 
 | 분류 | 위치 |
 |---|---|
-| 폐쇄망 운영 종합 가이드 | [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) (18장 + 부록, Open Notebook co-deploy §18) |
+| 폐쇄망 운영 종합 가이드 | [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) (19장 + 부록, Open Notebook co-deploy §18, OpenAI-호환 AI 프로바이더 + 예약 런처 §19) |
 | **폐쇄망 상세 설치·사용 매뉴얼 (AeroOne + Open Notebook)** | [`docs/runbook/closed-network-install-manual.md`](docs/runbook/closed-network-install-manual.md) |
 | Open Notebook 동거 배포 런북 | [`docs/runbook/open-notebook-airgap.md`](docs/runbook/open-notebook-airgap.md) |
 | 폐쇄망 오픈소스 도입 프로세스 (재사용 플레이북) | [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |

@@ -230,3 +230,144 @@ def test_ollama_client_retries_once_when_first_answer_is_reasoning_only(settings
     assert ollama.chat([AiChatMessage(role='user', content='질문')]) == '최종 답변입니다'
     assert len(calls) == 2
     assert '최종 답변만 작성' in calls[1]['messages'][0]['content']
+
+
+def test_ai_chat_ollama_selected_preserves_anonymous_access_no_fallback_check(client, monkeypatch) -> None:
+    from app.modules.ai.provider_config_service import ProviderConfigService
+    from app.modules.admin.schemas import AiProviderConfigResponse
+    from datetime import UTC, datetime
+
+    monkeypatch.setattr(
+        ProviderConfigService,
+        'get_state',
+        lambda self: AiProviderConfigResponse(
+            selected_kind='ollama',
+            compatible_state='absent',
+            compatible_display_url=None,
+            compatible_model=None,
+            compatible_generation=None,
+            compatible_test_proof_at=None,
+            compatible_test_proof_model=None,
+            config_version=1,
+            updated_at=datetime.now(UTC),
+        ),
+    )
+
+    def fake_chat(self, messages, roots, use_search, limit, **kwargs):
+        return 'ollama answer', []
+
+    monkeypatch.setattr('app.modules.ai.service.AiChatService.chat', fake_chat)
+
+    response = client.post('/api/v1/ai/chat', json={'messages': [{'role': 'user', 'content': '안녕'}]})
+    assert response.status_code == 200
+    assert response.json()['message']['content'] == 'ollama answer'
+
+
+def test_ai_chat_compatible_selected_blocks_anonymous_before_any_network_access(client, monkeypatch) -> None:
+    from app.modules.ai.provider_config_service import ProviderConfigService
+    from app.modules.admin.schemas import AiProviderConfigResponse
+    from datetime import UTC, datetime
+
+    monkeypatch.setattr(
+        ProviderConfigService,
+        'get_state',
+        lambda self: AiProviderConfigResponse(
+            selected_kind='openai_compatible',
+            compatible_state='verified',
+            compatible_display_url='https://provider.example',
+            compatible_model='gpt-x',
+            compatible_generation='2024-01',
+            compatible_test_proof_at=datetime.now(UTC),
+            compatible_test_proof_model='gpt-x',
+            config_version=3,
+            updated_at=datetime.now(UTC),
+        ),
+    )
+
+    called = {'chat': False}
+
+    def fake_chat(self, *args, **kwargs):
+        called['chat'] = True
+        return 'should not run', []
+
+    monkeypatch.setattr('app.modules.ai.service.AiChatService.chat', fake_chat)
+
+    response = client.post('/api/v1/ai/chat', json={'messages': [{'role': 'user', 'content': '안녕'}]})
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'ai_use_required'
+    assert called['chat'] is False
+
+
+def test_ai_chat_compatible_selected_authenticated_without_ai_use_permission_forbidden(client, app, monkeypatch) -> None:
+    from app.modules.ai.provider_config_service import ProviderConfigService
+    from app.modules.admin.schemas import AiProviderConfigResponse
+    from datetime import UTC, datetime
+
+    with app.state.db.session() as session:
+        user = User(username='no-ai-use', password_hash=hash_password('password'), role='pending', is_active=True)
+        session.add(user)
+        session.commit()
+
+    login = client.post('/api/v1/auth/login', json={'username': 'no-ai-use', 'password': 'password'})
+    assert login.status_code == 200
+
+    monkeypatch.setattr(
+        ProviderConfigService,
+        'get_state',
+        lambda self: AiProviderConfigResponse(
+            selected_kind='openai_compatible',
+            compatible_state='verified',
+            compatible_display_url='https://provider.example',
+            compatible_model='gpt-x',
+            compatible_generation='2024-01',
+            compatible_test_proof_at=datetime.now(UTC),
+            compatible_test_proof_model='gpt-x',
+            config_version=3,
+            updated_at=datetime.now(UTC),
+        ),
+    )
+
+    response = client.post('/api/v1/ai/chat', json={'messages': [{'role': 'user', 'content': '안녕'}]})
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'ai_use_required'
+
+
+def test_ai_chat_compatible_selected_authenticated_with_ai_use_permission_allowed(client, app, monkeypatch) -> None:
+    from app.modules.ai.provider_config_service import ProviderConfigService
+    from app.modules.admin.schemas import AiProviderConfigResponse
+    from datetime import UTC, datetime
+
+    with app.state.db.session() as session:
+        user = User(username='compatible-user', password_hash=hash_password('password'), role='user', is_active=True)
+        session.add(user)
+        session.flush()
+        session.add(UserPermission(user_id=user.id, permission_key='ai.use'))
+        session.commit()
+
+    login = client.post('/api/v1/auth/login', json={'username': 'compatible-user', 'password': 'password'})
+    assert login.status_code == 200
+
+    monkeypatch.setattr(
+        ProviderConfigService,
+        'get_state',
+        lambda self: AiProviderConfigResponse(
+            selected_kind='openai_compatible',
+            compatible_state='verified',
+            compatible_display_url='https://provider.example',
+            compatible_model='gpt-x',
+            compatible_generation='2024-01',
+            compatible_test_proof_at=datetime.now(UTC),
+            compatible_test_proof_model='gpt-x',
+            config_version=3,
+            updated_at=datetime.now(UTC),
+        ),
+    )
+
+    def fake_chat(self, messages, roots, use_search, limit, **kwargs):
+        return 'compatible answer', []
+
+    monkeypatch.setattr('app.modules.ai.service.AiChatService.chat', fake_chat)
+
+    response = client.post('/api/v1/ai/chat', json={'messages': [{'role': 'user', 'content': '안녕'}]})
+    assert response.status_code == 200
+    assert response.json()['message']['content'] == 'compatible answer'

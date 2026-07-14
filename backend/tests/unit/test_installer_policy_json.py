@@ -30,7 +30,16 @@ def test_installer_policy_declares_forbidden_categories_beyond_a_bare_deny_list(
     policy = load_policy(_POLICY_PATH)
 
     categories = {category.category for category in policy.forbidden_categories}
-    assert categories == {"env-secret", "database", "storage-runtime", "agent-state", "dev-artifact"}
+    assert categories == {
+        "env-secret",
+        "database",
+        "storage-runtime",
+        "agent-state",
+        "dev-artifact",
+        "provider-credential-root",
+        "credential-dpapi-blob",
+        "credential-secure-state",
+    }
 
     env_category = next(c for c in policy.forbidden_categories if c.category == "env-secret")
     assert ".env.example" not in env_category.patterns

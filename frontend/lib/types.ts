@@ -200,6 +200,10 @@ export interface ServiceModule {
   sort_order: number;
   is_enabled: boolean;
   is_external: boolean;
+  // Reserved external launcher dispatch. 'none' = not a reserved launcher (legacy/manual
+  // is_external usage); 'open_notebook'/'open_webui' are fixed same-host co-deploy ports the
+  // frontend resolves itself — never a persisted/arbitrary href. Non-nullable, DB default 'none'.
+  launcher_kind: 'none' | 'open_notebook' | 'open_webui';
   visibility: 'public' | 'admin' | string;
   required_permission?: string | null;
   resource_type?: string | null;

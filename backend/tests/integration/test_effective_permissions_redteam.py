@@ -53,7 +53,9 @@ def test_plain_user_sees_only_role_defaults_not_admin_permissions(client: TestCl
 
     assert response.status_code == 200
     payload = response.json()
-    assert set(payload['permissions']) == {'search.use', 'ai.use', 'ai.history.manage_own'}
+    # v1.14.0: 'dashboard.openwebui.launch' is a default 'user' role permission so the
+    # OpenWebUI launcher card shows for every active logged-in user (admin + user).
+    assert set(payload['permissions']) == {'search.use', 'ai.use', 'ai.history.manage_own', 'dashboard.openwebui.launch'}
     assert 'admin.users.manage' not in payload['permissions']
     assert 'admin.users.read' not in payload['permissions']
     assert payload['resources'] == []

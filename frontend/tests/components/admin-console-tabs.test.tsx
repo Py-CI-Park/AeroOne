@@ -33,6 +33,13 @@ vi.mock('@/lib/api', async () => {
     fetchCategories: vi.fn(),
     fetchTags: vi.fn(),
     fetchAdminAiStatus: vi.fn(),
+    fetchAiProviderConfig: vi.fn(),
+    stageAiProviderCompatibleConfig: vi.fn(),
+    testAiProviderStagedConfig: vi.fn(),
+    activateAiProviderCompatible: vi.fn(),
+    selectAiProviderKind: vi.fn(),
+    deleteAiProviderCredential: vi.fn(),
+    reconcileAiProviderConfig: vi.fn(),
   };
 });
 
@@ -46,6 +53,31 @@ const overviewFixture = {
   modules: { total: 2, buckets: { unavailable: [], coming: [], development: [], active: [{ key: 'ov-dashboard', label: 'Overview Dashboard' }] } },
   system: { app_version: '1.11.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 1, asset_health: { ok: 1, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 1, total_reads: 3 } },
   recent_audit: [{ id: 41, action: 'overview.audit.sample', target_type: 'backup', status: 'success', created_at: '2026-07-05T00:00:00Z' }],
+};
+
+
+const aiProviderConfigFixture = {
+  selected_kind: 'ollama' as const,
+  compatible_state: 'absent' as const,
+  compatible_display_url: null,
+  compatible_model: null,
+  compatible_generation: null,
+  compatible_test_proof_at: null,
+  compatible_test_proof_model: null,
+  config_version: 1,
+  updated_at: '2026-07-05T00:00:00Z',
+};
+
+const aiProviderConfigWithCompatibleFixture = {
+  selected_kind: 'openai_compatible' as const,
+  compatible_state: 'verified' as const,
+  compatible_display_url: 'https://api.example.com/***',
+  compatible_model: 'gpt-4o-mini',
+  compatible_generation: 'gen-3',
+  compatible_test_proof_at: '2026-07-05T00:00:00Z',
+  compatible_test_proof_model: 'gpt-4o-mini',
+  config_version: 4,
+  updated_at: '2026-07-05T00:00:00Z',
 };
 
 beforeEach(() => {
@@ -68,6 +100,7 @@ function mockAdminData() {
   vi.mocked(api.fetchCategories).mockResolvedValue([{ id: 7, name: '분류', description: '설명', sort_order: 0, is_active: true }] as never);
   vi.mocked(api.fetchTags).mockResolvedValue([{ id: 8, name: '태그', sort_order: 0, is_active: true }] as never);
   vi.mocked(api.fetchAdminAiStatus).mockResolvedValue({ status: { ok: true }, request_logs_total: 2, request_failures: 0 } as never);
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValue(aiProviderConfigFixture as never);
   vi.mocked(api.createServiceModule).mockResolvedValue({ id: 10, key: 'new-module', title: 'New Module', description: null, href: '/new', section: 'Development', status: 'development', badge: null, sort_order: 0, is_enabled: true, is_external: false, visibility: 'admin' } as never);
   vi.mocked(api.updateServiceModule).mockResolvedValue({ id: 5, key: 'dashboard', title: 'Dashboard', description: 'Main', href: '/', section: 'Core', status: 'active', badge: 'Live', sort_order: 2, is_enabled: true, is_external: false, visibility: 'admin' } as never);
   vi.mocked(api.deleteServiceModule).mockResolvedValue(undefined as never);
@@ -131,13 +164,17 @@ const parityMatrix = [
   },
   {
     tab: '시스템',
-    expected: ['config-health', 'asset/config root', 'AI status', 'password change'],
+    expected: ['config-health', 'asset/config root', 'AI status', 'AI provider config', 'password change'],
     assertPresent: async () => {
       fireEvent.click(screen.getByRole('tab', { name: '시스템' }));
       expect(await screen.findByText('DB/자산 경로 상태')).toBeInTheDocument();
       expect(screen.getByText('config-health')).toBeInTheDocument();
       expect(screen.getByText('import')).toBeInTheDocument();
       expect(screen.getByText('AI 운영 상태')).toBeInTheDocument();
+      expect(await screen.findByText('AI 제공자 설정')).toBeInTheDocument();
+      expect(screen.getByText('provider-config')).toBeInTheDocument();
+      expect(screen.getByLabelText('compatible canonical url')).toBeInTheDocument();
+      expect(screen.getByLabelText('compatible api key')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '비밀번호 변경' })).toBeInTheDocument();
       expect(screen.getByLabelText('current password')).toBeInTheDocument();
     },
@@ -579,4 +616,207 @@ test('admin page keeps the server guard, sync AppShell, and client island import
   expect(pageSource).toContain('<AppShell');
   expect(shellSource.startsWith("'use client'")).toBe(false);
   expect(shellSource.startsWith('"use client"')).toBe(false);
+});
+
+test('AI provider panel masks compatible config: only compatible_display_url renders, canonical URL/credential ref are never part of the safe DTO', async () => {
+  mockAdminData();
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValue(aiProviderConfigWithCompatibleFixture as never);
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  expect(await screen.findByText(aiProviderConfigWithCompatibleFixture.compatible_display_url)).toBeInTheDocument();
+  expect(document.body.innerHTML).not.toContain('dpapi-ref-should-never-render');
+  expect(document.body.innerHTML).not.toContain('internal-secret-upstream');
+  expect(await screen.findByText('통과(최신)')).toBeInTheDocument();
+});
+
+test('API key field is an uncontrolled input with no value attribute that is cleared from the DOM immediately after a settled stage submission', async () => {
+  mockAdminData();
+  vi.mocked(api.stageAiProviderCompatibleConfig).mockResolvedValue(aiProviderConfigFixture as never);
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  const canonicalUrlInput = await screen.findByLabelText('compatible canonical url');
+  const displayUrlInput = screen.getByLabelText('compatible display url');
+  const modelInput = screen.getByLabelText('compatible model');
+  const generationInput = screen.getByLabelText('compatible generation');
+  const apiKeyInput = screen.getByLabelText('compatible api key') as HTMLInputElement;
+
+  expect(apiKeyInput).toHaveAttribute('type', 'password');
+  expect(apiKeyInput).not.toHaveAttribute('value');
+
+  fireEvent.change(canonicalUrlInput, { target: { value: 'https://internal.example.net/v1' } });
+  fireEvent.change(displayUrlInput, { target: { value: 'https://api.example.com/***' } });
+  fireEvent.change(modelInput, { target: { value: 'gpt-4o-mini' } });
+  fireEvent.change(generationInput, { target: { value: 'gen-1' } });
+  fireEvent.change(apiKeyInput, { target: { value: 'super-secret-key-value' } });
+  expect(apiKeyInput.value).toBe('super-secret-key-value');
+
+  fireEvent.click(screen.getByRole('button', { name: '설정 저장/회전' }));
+
+  await waitFor(() => expect(api.stageAiProviderCompatibleConfig).toHaveBeenCalledTimes(1));
+  expect(api.stageAiProviderCompatibleConfig).toHaveBeenCalledWith(
+    {
+      canonical_url: 'https://internal.example.net/v1',
+      display_url: 'https://api.example.com/***',
+      model: 'gpt-4o-mini',
+      generation: 'gen-1',
+      api_key: 'super-secret-key-value',
+      expected_config_version: 1,
+    },
+    '',
+  );
+  await waitFor(() => expect(apiKeyInput.value).toBe(''));
+  expect(document.body.innerHTML).not.toContain('super-secret-key-value');
+});
+
+test('API key input is cleared even when the stage request rejects', async () => {
+  mockAdminData();
+  vi.mocked(api.stageAiProviderCompatibleConfig).mockRejectedValue(new Error('요청 처리에 실패했습니다'));
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.change(await screen.findByLabelText('compatible canonical url'), { target: { value: 'https://internal.example.net/v1' } });
+  fireEvent.change(screen.getByLabelText('compatible display url'), { target: { value: 'https://api.example.com/***' } });
+  fireEvent.change(screen.getByLabelText('compatible model'), { target: { value: 'gpt-4o-mini' } });
+  fireEvent.change(screen.getByLabelText('compatible generation'), { target: { value: 'gen-1' } });
+  const apiKeyInput = screen.getByLabelText('compatible api key') as HTMLInputElement;
+  fireEvent.change(apiKeyInput, { target: { value: 'another-secret' } });
+
+  fireEvent.click(screen.getByRole('button', { name: '설정 저장/회전' }));
+
+  await waitFor(() => expect(api.stageAiProviderCompatibleConfig).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(apiKeyInput.value).toBe(''));
+  expect(document.body.innerHTML).not.toContain('another-secret');
+});
+
+test('staging is blocked client-side with a safe validation toast when URL, model, generation, or key are missing, and testing is blocked while no compatible config is staged', async () => {
+  mockAdminData();
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(screen.getByRole('button', { name: '설정 저장/회전' }));
+
+  expect(await screen.findByText('Canonical URL, Display URL, 모델, 세대, API 키를 모두 입력하세요.')).toBeInTheDocument();
+  expect(api.stageAiProviderCompatibleConfig).not.toHaveBeenCalled();
+
+  expect(screen.getByRole('button', { name: '저장 설정 테스트' })).toBeDisabled();
+  expect(api.testAiProviderStagedConfig).not.toHaveBeenCalled();
+});
+
+test('activation is gated on compatible_state === verified and reports a generic safe success message, refreshing only the provider config', async () => {
+  mockAdminData();
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValueOnce({ ...aiProviderConfigWithCompatibleFixture, compatible_state: 'unverified' } as never);
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  expect(await screen.findByText('미검증')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '활성화 확인' })).toBeDisabled();
+  expect(api.activateAiProviderCompatible).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: '저장 설정 테스트' })).not.toBeDisabled();
+
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValue(aiProviderConfigWithCompatibleFixture as never);
+  fireEvent.click(screen.getByRole('button', { name: '정합성 점검' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '활성화 확인' })).not.toBeDisabled());
+
+  const usersCallsBefore = vi.mocked(api.fetchAdminUsers).mock.calls.length;
+  vi.mocked(api.activateAiProviderCompatible).mockResolvedValue(aiProviderConfigWithCompatibleFixture as never);
+  fireEvent.click(screen.getByRole('button', { name: '활성화 확인' }));
+
+  await waitFor(() => expect(api.activateAiProviderCompatible).toHaveBeenCalledWith(4, ''));
+  expect(await screen.findByText('활성화 확인을 완료했습니다.')).toBeInTheDocument();
+  expect(vi.mocked(api.fetchAdminUsers).mock.calls.length).toBe(usersCallsBefore);
+});
+
+test('explicit provider selection requires an in-app apply action and calls the selection endpoint with the bound config version and the runtime empty-string CSRF token', async () => {
+  mockAdminData();
+  vi.mocked(api.selectAiProviderKind).mockResolvedValue(aiProviderConfigFixture as never);
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  await screen.findByText('AI 제공자 설정');
+  const kindSelect = screen.getByLabelText('provider kind') as HTMLSelectElement;
+  fireEvent.change(kindSelect, { target: { value: 'openai_compatible' } });
+  expect(api.selectAiProviderKind).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '선택 적용' }));
+  await waitFor(() => expect(api.selectAiProviderKind).toHaveBeenCalledWith('openai_compatible', 1, ''));
+});
+
+test('deleting the compatible credential requires in-app confirm before calling the delete endpoint', async () => {
+  mockAdminData();
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValue(aiProviderConfigWithCompatibleFixture as never);
+  vi.mocked(api.deleteAiProviderCredential).mockResolvedValue(aiProviderConfigFixture as never);
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('button', { name: '자격 증명 삭제' }));
+  expect(api.deleteAiProviderCredential).not.toHaveBeenCalled();
+
+  const dialog = await screen.findByRole('dialog', { name: 'AI 제공자 자격 증명 삭제' });
+  fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
+  expect(api.deleteAiProviderCredential).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: '자격 증명 삭제' }));
+  const dialogAgain = await screen.findByRole('dialog', { name: 'AI 제공자 자격 증명 삭제' });
+  fireEvent.click(within(dialogAgain).getByRole('button', { name: '삭제' }));
+
+  await waitFor(() => expect(api.deleteAiProviderCredential).toHaveBeenCalledWith(4, ''));
+  expect(await screen.findByText('자격 증명 삭제 완료')).toBeInTheDocument();
+});
+
+test('reconcile reports safe reconciled/drift status from the flat reconcile response and an unrecognized test reason_code falls back to a generic safe message instead of raw text', async () => {
+  mockAdminData();
+  vi.mocked(api.reconcileAiProviderConfig).mockResolvedValue({ reconciled: false, compatible_state: 'unverified', config_version: 2 } as never);
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(screen.getByRole('button', { name: '정합성 점검' }));
+  expect(await screen.findByText('정합성 점검: 불일치가 감지되어 재보정했습니다')).toBeInTheDocument();
+
+  expect(api.getSafeAiProviderReasonMessage(null)).toBe('연동 테스트 성공');
+  expect(api.getSafeAiProviderReasonMessage('connect-failed')).toBe('연동 테스트 실패: 연결할 수 없습니다');
+  expect(api.getSafeAiProviderReasonMessage('some_upstream_raw_error_text')).toBe('알 수 없는 상태입니다. 관리자에게 문의하세요.');
+});
+
+test('staged-config test uses the current canonical_url/model/generation with the runtime empty-string CSRF token and reports the safe reason label on failure', async () => {
+  mockAdminData();
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValue(aiProviderConfigWithCompatibleFixture as never);
+  vi.mocked(api.testAiProviderStagedConfig).mockResolvedValue({ success: false, reason_code: 'connect-failed', tested_at: '2026-07-05T00:00:00Z', canonical_url: 'https://internal.example.net/v1', model: 'gpt-4o-mini', generation: 'gen-3' } as never);
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.change(await screen.findByLabelText('compatible canonical url'), { target: { value: 'https://internal.example.net/v1' } });
+  fireEvent.change(screen.getByLabelText('compatible model'), { target: { value: 'gpt-4o-mini' } });
+  fireEvent.change(screen.getByLabelText('compatible generation'), { target: { value: 'gen-3' } });
+
+  fireEvent.click(screen.getByRole('button', { name: '저장 설정 테스트' }));
+
+  await waitFor(() => expect(api.testAiProviderStagedConfig).toHaveBeenCalledWith(
+    { canonical_url: 'https://internal.example.net/v1', model: 'gpt-4o-mini', generation: 'gen-3' },
+    '',
+  ));
+  expect(await screen.findByText('연동 테스트 실패: 연결할 수 없습니다')).toBeInTheDocument();
+});
+
+test('AI provider actions disable their triggers while busy and re-enable once the request settles', async () => {
+  mockAdminData();
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValue(aiProviderConfigWithCompatibleFixture as never);
+  let resolveStage: (value: api.AiProviderConfigResponse) => void = () => {};
+  vi.mocked(api.stageAiProviderCompatibleConfig).mockImplementation(() => new Promise<api.AiProviderConfigResponse>((resolve) => { resolveStage = resolve; }));
+  render(<AdminConsoleTabs />);
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.change(await screen.findByLabelText('compatible canonical url'), { target: { value: 'https://internal.example.net/v1' } });
+  fireEvent.change(screen.getByLabelText('compatible display url'), { target: { value: 'https://api.example.com/***' } });
+  fireEvent.change(screen.getByLabelText('compatible model'), { target: { value: 'gpt-4o-mini' } });
+  fireEvent.change(screen.getByLabelText('compatible generation'), { target: { value: 'gen-1' } });
+  fireEvent.change(screen.getByLabelText('compatible api key'), { target: { value: 'busy-secret' } });
+
+  const stageButton = screen.getByRole('button', { name: '설정 저장/회전' });
+  fireEvent.click(stageButton);
+  await waitFor(() => expect(stageButton).toBeDisabled());
+
+  resolveStage(aiProviderConfigFixture);
+  await waitFor(() => expect(stageButton).not.toBeDisabled());
 });

@@ -658,3 +658,130 @@ export async function purgeReadEvents(csrfToken: string, newsletterId?: number) 
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
+
+// AeroOne v1.14.0 AI 제공자(Provider) 설정 계약.
+// 백엔드 안전 DTO(app/modules/admin/schemas.py)와 1:1로 대응하는 평면(flat) 구조만 사용한다.
+// canonical_url/credential_ref/credential_binding_version 은 서버가 절대 응답으로 내려주지
+// 않는다 — GET 응답에는 표시용 compatible_display_url 만 존재한다. 스테이징(설정 저장/회전)
+// 직후에만, 방금 사용자가 입력한 canonical_url/model/generation 값을 폼에 유지해 두었다가
+// (평문 API 키는 제외) "저장 설정 테스트" 호출에 그대로 재사용한다.
+export type AiProviderKind = 'ollama' | 'openai_compatible';
+export type AiProviderCompatibleState = 'absent' | 'unverified' | 'verified';
+
+export interface AiProviderConfigResponse {
+  selected_kind: AiProviderKind;
+  compatible_state: AiProviderCompatibleState;
+  compatible_display_url: string | null;
+  compatible_model: string | null;
+  compatible_generation: string | null;
+  compatible_test_proof_at: string | null;
+  compatible_test_proof_model: string | null;
+  config_version: number;
+  updated_at: string;
+}
+
+export interface AiProviderTestResultResponse {
+  success: boolean;
+  reason_code: string | null;
+  tested_at: string;
+  canonical_url: string;
+  model: string;
+  generation: string;
+}
+
+export interface AiProviderReconcileResponse {
+  reconciled: boolean;
+  compatible_state: AiProviderCompatibleState;
+  config_version: number;
+}
+
+// 실패한 연동 테스트의 reason_code 는 egress 계층(app/modules/ai/egress_transport.py)의
+// 고정 안전 카테고리 값이다. 원문 예외 메시지는 절대 내려오지 않는다.
+const AI_PROVIDER_TEST_REASON_LABELS: Record<string, string> = {
+  'url-invalid': '연동 테스트 실패: URL 형식이 올바르지 않습니다',
+  'url-unsafe-component': '연동 테스트 실패: URL에 허용되지 않는 구성요소가 있습니다',
+  'scheme-not-allowed': '연동 테스트 실패: 허용되지 않는 URL 스킴입니다',
+  'host-invalid': '연동 테스트 실패: 호스트가 올바르지 않습니다',
+  'host-ambiguous': '연동 테스트 실패: 호스트를 특정할 수 없습니다',
+  'port-not-allowed': '연동 테스트 실패: 허용되지 않는 포트입니다',
+  'peer-policy-denied': '연동 테스트 실패: 대상 접속이 정책에 의해 차단되었습니다',
+  'dns-resolution-failed': '연동 테스트 실패: DNS 확인에 실패했습니다',
+  'peer-equality-failed': '연동 테스트 실패: 접속 대상 검증에 실패했습니다',
+  'tls-verification-failed': '연동 테스트 실패: TLS 인증서 검증에 실패했습니다',
+  'connect-failed': '연동 테스트 실패: 연결할 수 없습니다',
+  'redirect-rejected': '연동 테스트 실패: 리디렉션이 거부되었습니다',
+  'request-too-large': '연동 테스트 실패: 요청 크기가 너무 큽니다',
+  'response-too-large': '연동 테스트 실패: 응답 크기가 너무 큽니다',
+  'invalid-json': '연동 테스트 실패: 응답이 올바른 JSON 형식이 아닙니다',
+  'http-error': '연동 테스트 실패: 원격 서버 오류가 반환되었습니다',
+  'upstream-shape-invalid': '연동 테스트 실패: 응답 형식이 예상과 다릅니다',
+};
+
+// 백엔드가 반환하는 reason_code 는 이미 고정된 안전 카테고리이지만, 알 수 없는 값이
+// 오더라도 원문을 그대로 노출하지 않고 방어적으로 매핑한다.
+export function getSafeAiProviderReasonMessage(code: string | null | undefined): string {
+  if (!code) return '연동 테스트 성공';
+  return AI_PROVIDER_TEST_REASON_LABELS[code] ?? '알 수 없는 상태입니다. 관리자에게 문의하세요.';
+}
+
+export async function fetchAiProviderConfig() {
+  return browserFetch<AiProviderConfigResponse>('/api/frontend/admin/ai-provider/config', { method: 'GET' });
+}
+
+// 설정 저장/회전: URL/모델/세대/키를 스테이징한다. 성공 시 compatible_state 는 'unverified'
+// 로 전환되고(테스트 증빙은 즉시 무효화), 이전에 openai_compatible 이 선택되어 있었다면
+// 서버가 자동으로 'ollama' 로 되돌린다(입증되지 않은 바인딩으로는 절대 트래픽을 흘리지 않음).
+export async function stageAiProviderCompatibleConfig(
+  payload: { canonical_url: string; display_url: string; model: string; generation: string; api_key: string; expected_config_version: number },
+  csrfToken: string,
+) {
+  return browserFetch<AiProviderConfigResponse>('/api/frontend/admin/ai-provider/config', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// 저장 설정 테스트는 직전 스테이징 값과 정확히 일치하는
+// canonical_url/model/generation만 보내며, 서버가 DPAPI 저장소의 키를 사용한다.
+export async function testAiProviderStagedConfig(
+  payload: { canonical_url: string; model: string; generation: string },
+  csrfToken: string,
+) {
+  return browserFetch<AiProviderTestResultResponse>('/api/frontend/admin/ai-provider/test', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function activateAiProviderCompatible(expectedConfigVersion: number, csrfToken: string) {
+  return browserFetch<AiProviderConfigResponse>('/api/frontend/admin/ai-provider/activate', {
+    method: 'POST',
+    body: JSON.stringify({ expected_config_version: expectedConfigVersion }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function selectAiProviderKind(kind: AiProviderKind, expectedConfigVersion: number, csrfToken: string) {
+  return browserFetch<AiProviderConfigResponse>('/api/frontend/admin/ai-provider/selection', {
+    method: 'POST',
+    body: JSON.stringify({ selected_kind: kind, expected_config_version: expectedConfigVersion }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteAiProviderCredential(expectedConfigVersion: number, csrfToken: string) {
+  return browserFetch<AiProviderConfigResponse>('/api/frontend/admin/ai-provider/credential', {
+    method: 'DELETE',
+    body: JSON.stringify({ expected_config_version: expectedConfigVersion }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function reconcileAiProviderConfig(csrfToken: string) {
+  return browserFetch<AiProviderReconcileResponse>('/api/frontend/admin/ai-provider/reconcile', {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}

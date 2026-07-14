@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.security import hash_password
-from app.modules.admin.audit import record_admin_audit
+from app.modules.admin.audit import build_ai_provider_audit_metadata, record_admin_audit
 from app.modules.admin.models import (
     AdminAuditEvent,
     BackupRecord,
@@ -59,12 +59,31 @@ from app.modules.admin.schemas import (
     UserCreateRequest,
     UserUpdateRequest,
     PasswordResetRequest,
+    AiProviderConfigResponse,
+    AiProviderCompatibleWriteRequest,
+    AiProviderCompatibleTestRequest,
+    AiProviderTestResultResponse,
+    AiProviderSelectionRequest,
+    AiProviderCompatibleRotateRequest,
+    AiProviderCompatibleDeleteRequest,
+    AiProviderReconcileResponse,
+    AiProviderActivateRequest,
 )
 from app.modules.admin.module_policy import validate_module_gate
 from app.modules.admin.module_access_service import user_can_access_module, validate_role
 from app.modules.admin.overview_service import build_overview
 from app.modules.admin.health_service import asset_health, config_health, read_tracking_summary
 from app.modules.ai.service import AiChatService
+from app.modules.ai.provider_config_service import (
+    ProviderCandidateInvalid,
+    ProviderConfigService,
+    ProviderConfigVersionConflict,
+    ProviderCredentialUnavailable,
+    ProviderProofMismatch,
+    ProviderProofMissing,
+    ProviderSelectionInvalid,
+    ProviderUpstreamUnavailable,
+)
 from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf, require_permission
 from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
@@ -719,3 +738,272 @@ def admin_ai_status(settings: Settings = Depends(get_settings), db: Session = De
     logs_total = db.scalar(select(func.count(AiRequestLog.id))) or 0
     failures = db.scalar(select(func.count(AiRequestLog.id)).where(AiRequestLog.status != 'ok')) or 0
     return {'status': status_payload, 'request_logs_total': logs_total, 'request_failures': failures}
+
+
+_AI_PROVIDER_EXCEPTION_STATUS: tuple[tuple[type[Exception], int], ...] = (
+    (ProviderCandidateInvalid, status.HTTP_422_UNPROCESSABLE_ENTITY),
+    (ProviderSelectionInvalid, status.HTTP_422_UNPROCESSABLE_ENTITY),
+    (ProviderConfigVersionConflict, status.HTTP_409_CONFLICT),
+    (ProviderProofMissing, status.HTTP_409_CONFLICT),
+    (ProviderProofMismatch, status.HTTP_409_CONFLICT),
+    (ProviderCredentialUnavailable, status.HTTP_409_CONFLICT),
+    (ProviderUpstreamUnavailable, status.HTTP_503_SERVICE_UNAVAILABLE),
+)
+
+
+def _ai_provider_service(db: Session, settings: Settings) -> ProviderConfigService:
+    return ProviderConfigService(db, settings)
+
+
+def _raise_ai_provider_error(exc: Exception) -> None:
+    """예외를 고정된 안전 status/코드로만 변환한다. str(exc) 원문은 절대 노출하지 않는다."""
+    for exc_type, http_status in _AI_PROVIDER_EXCEPTION_STATUS:
+        if isinstance(exc, exc_type):
+            raise HTTPException(status_code=http_status, detail=getattr(exc, 'reason_code', 'ai_provider_error')) from exc
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='ai_provider_error') from exc
+
+
+def _no_store(response: Response) -> None:
+    response.headers['Cache-Control'] = 'no-store'
+
+
+def _audit_ai_provider(
+    db: Session,
+    *,
+    actor: User,
+    request: Request,
+    action: str,
+    operation: str,
+    result_state: AiProviderConfigResponse,
+    reason_code: str = 'ok',
+) -> None:
+    record_admin_audit(
+        db,
+        actor=actor,
+        action=action,
+        target_type='ai_provider_config',
+        target_id='singleton',
+        request=request,
+        metadata=build_ai_provider_audit_metadata(
+            operation=operation,
+            result='success',
+            reason_code=reason_code,
+            selected_kind=result_state.selected_kind,
+            compatible_state=result_state.compatible_state,
+            config_version=result_state.config_version,
+        ),
+    )
+
+
+@router.get(
+    '/ai-provider/config',
+    response_model=AiProviderConfigResponse,
+    dependencies=[Depends(require_permission('admin.ai.read'))],
+)
+def get_ai_provider_config(
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+) -> AiProviderConfigResponse:
+    _no_store(response)
+    return _ai_provider_service(db, settings).get_state()
+
+
+@router.post(
+    '/ai-provider/config',
+    response_model=AiProviderConfigResponse,
+    dependencies=[Depends(require_permission('admin.ai.manage')), Depends(require_csrf)],
+)
+def write_ai_provider_config(
+    payload: AiProviderCompatibleWriteRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> AiProviderConfigResponse:
+    _no_store(response)
+    service = _ai_provider_service(db, settings)
+    try:
+        result = service.write_candidate(payload, actor, expected_config_version=payload.expected_config_version)
+    except Exception as exc:  # noqa: BLE001 — mapped to fixed safe statuses below
+        _raise_ai_provider_error(exc)
+    db.commit()
+    _audit_ai_provider(db, actor=actor, request=request, action='ai_provider.write', operation='select', result_state=result)
+    db.commit()
+    return result
+
+
+@router.post(
+    '/ai-provider/test',
+    response_model=AiProviderTestResultResponse,
+    dependencies=[Depends(require_permission('admin.ai.manage')), Depends(require_csrf)],
+)
+def test_ai_provider_candidate(
+    payload: AiProviderCompatibleTestRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> AiProviderTestResultResponse:
+    _no_store(response)
+    service = _ai_provider_service(db, settings)
+    try:
+        result = service.test_candidate(payload, actor)
+    except Exception as exc:  # noqa: BLE001
+        _raise_ai_provider_error(exc)
+    db.commit()
+    record_admin_audit(
+        db,
+        actor=actor,
+        action='ai_provider.test',
+        target_type='ai_provider_config',
+        target_id='singleton',
+        request=request,
+        metadata=build_ai_provider_audit_metadata(
+            operation='test',
+            result='success' if result.success else 'failure',
+            reason_code=result.reason_code or 'ok',
+        ),
+    )
+    db.commit()
+    return result
+
+
+@router.post(
+    '/ai-provider/activate',
+    response_model=AiProviderConfigResponse,
+    dependencies=[Depends(require_permission('admin.ai.manage')), Depends(require_csrf)],
+)
+def activate_ai_provider(
+    payload: AiProviderActivateRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> AiProviderConfigResponse:
+    _no_store(response)
+    service = _ai_provider_service(db, settings)
+    try:
+        result = service.activate(actor, payload.expected_config_version)
+    except Exception as exc:  # noqa: BLE001
+        _raise_ai_provider_error(exc)
+    db.commit()
+    _audit_ai_provider(db, actor=actor, request=request, action='ai_provider.activate', operation='select', result_state=result)
+    db.commit()
+    return result
+
+
+@router.post(
+    '/ai-provider/selection',
+    response_model=AiProviderConfigResponse,
+    dependencies=[Depends(require_permission('admin.ai.manage')), Depends(require_csrf)],
+)
+def select_ai_provider(
+    payload: AiProviderSelectionRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> AiProviderConfigResponse:
+    _no_store(response)
+    service = _ai_provider_service(db, settings)
+    try:
+        result = service.set_selection(payload, actor)
+    except Exception as exc:  # noqa: BLE001
+        _raise_ai_provider_error(exc)
+    db.commit()
+    _audit_ai_provider(db, actor=actor, request=request, action='ai_provider.selection', operation='select', result_state=result)
+    db.commit()
+    return result
+
+
+@router.post(
+    '/ai-provider/rotate',
+    response_model=AiProviderConfigResponse,
+    dependencies=[Depends(require_permission('admin.ai.manage')), Depends(require_csrf)],
+)
+def rotate_ai_provider_credential(
+    payload: AiProviderCompatibleRotateRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> AiProviderConfigResponse:
+    _no_store(response)
+    service = _ai_provider_service(db, settings)
+    try:
+        result = service.rotate_credential(payload, actor)
+    except Exception as exc:  # noqa: BLE001
+        _raise_ai_provider_error(exc)
+    db.commit()
+    _audit_ai_provider(db, actor=actor, request=request, action='ai_provider.rotate', operation='rotate', result_state=result)
+    db.commit()
+    return result
+
+
+@router.delete(
+    '/ai-provider/credential',
+    response_model=AiProviderConfigResponse,
+    dependencies=[Depends(require_permission('admin.ai.manage')), Depends(require_csrf)],
+)
+def delete_ai_provider_credential(
+    payload: AiProviderCompatibleDeleteRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> AiProviderConfigResponse:
+    _no_store(response)
+    service = _ai_provider_service(db, settings)
+    try:
+        result = service.delete_credential(payload, actor)
+    except Exception as exc:  # noqa: BLE001
+        _raise_ai_provider_error(exc)
+    db.commit()
+    _audit_ai_provider(db, actor=actor, request=request, action='ai_provider.delete', operation='delete', result_state=result)
+    db.commit()
+    return result
+
+
+@router.post(
+    '/ai-provider/reconcile',
+    response_model=AiProviderReconcileResponse,
+    dependencies=[Depends(require_permission('admin.ai.manage')), Depends(require_csrf)],
+)
+def reconcile_ai_provider(
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_user),
+) -> AiProviderReconcileResponse:
+    _no_store(response)
+    service = _ai_provider_service(db, settings)
+    try:
+        result = service.reconcile(actor)
+    except Exception as exc:  # noqa: BLE001
+        _raise_ai_provider_error(exc)
+    db.commit()
+    record_admin_audit(
+        db,
+        actor=actor,
+        action='ai_provider.reconcile',
+        target_type='ai_provider_config',
+        target_id='singleton',
+        request=request,
+        metadata=build_ai_provider_audit_metadata(
+            operation='reconcile',
+            result='success',
+            reason_code='reconciled' if result.reconciled else 'noop',
+            compatible_state=result.compatible_state,
+            config_version=result.config_version,
+        ),
+    )
+    db.commit()
+    return result

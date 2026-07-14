@@ -152,6 +152,7 @@ class ServiceModuleResponse(BaseModel):
     is_enabled: bool
     is_external: bool
     visibility: str = 'public'
+    launcher_kind: str = 'none'
     required_permission: str | None = None
     resource_type: str | None = None
     resource_id: str | None = None
@@ -172,6 +173,7 @@ class ServiceModuleUpdateRequest(BaseModel):
     is_enabled: bool | None = None
     is_external: bool | None = None
     visibility: Literal['public', 'admin'] | None = None
+    launcher_kind: Literal['none', 'open_notebook', 'open_webui'] | None = None
     required_permission: str | None = None
     resource_type: str | None = None
     resource_id: str | None = None
@@ -189,6 +191,7 @@ class ServiceModuleCreateRequest(BaseModel):
     is_enabled: bool = True
     is_external: bool = False
     visibility: Literal['public', 'admin'] = 'admin'
+    launcher_kind: Literal['none', 'open_notebook', 'open_webui'] = 'none'
     required_permission: str | None = None
     resource_type: str | None = None
     resource_id: str | None = None
@@ -393,3 +396,116 @@ class BulkNewsletterRequest(BaseModel):
 
 class BulkNewsletterResponse(BaseModel):
     updated: int
+
+
+AiProviderKind = Literal['ollama', 'openai_compatible']
+AiProviderCompatibleState = Literal['absent', 'unverified', 'verified']
+AiProviderOperation = Literal['select', 'test', 'rotate', 'delete', 'reconcile']
+
+
+class AiProviderConfigResponse(BaseModel):
+    """Safe-result read model for the singleton AI provider configuration.
+
+    Never includes the compatible credential ref, its binding version, or any
+    ciphertext/raw upstream detail — those stay server-internal.
+    """
+
+    selected_kind: AiProviderKind
+    compatible_state: AiProviderCompatibleState
+    compatible_display_url: str | None = None
+    compatible_model: str | None = None
+    compatible_generation: str | None = None
+    compatible_test_proof_at: datetime | None = None
+    compatible_test_proof_model: str | None = None
+    config_version: int
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AiProviderCompatibleWriteRequest(BaseModel):
+    """Frozen, write-only submission of OpenAI-compatible connection + credential material.
+
+    `api_key` is never echoed back by any response schema and is excluded from repr to
+    avoid accidental logging. `expected_config_version` is carried in the body (never a
+    query parameter) so optimistic-concurrency checks apply to the same CSRF-protected,
+    schema-validated payload.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    canonical_url: str = Field(min_length=1, max_length=500)
+    display_url: str = Field(min_length=1, max_length=500)
+    model: str = Field(min_length=1, max_length=160)
+    generation: str = Field(min_length=1, max_length=60)
+    api_key: str = Field(min_length=1, repr=False)
+    expected_config_version: int
+
+
+class AiProviderCompatibleTestRequest(BaseModel):
+    """Probe the exact persisted compatible candidate.
+
+    The API key is loaded only from the DPAPI credential store. It is deliberately
+    absent from this request so a connection check never retransmits or re-persists
+    secret material.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    canonical_url: str = Field(min_length=1, max_length=500)
+    model: str = Field(min_length=1, max_length=160)
+    generation: str = Field(min_length=1, max_length=60)
+
+
+class AiProviderTestResultResponse(BaseModel):
+    """Safe-result of a candidate test: outcome + the exact binding it was proven against.
+
+    Never includes the candidate api_key or any raw upstream request/response body.
+    """
+
+    success: bool
+    reason_code: str | None = None
+    tested_at: datetime
+    canonical_url: str
+    model: str
+    generation: str
+
+
+class AiProviderSelectionRequest(BaseModel):
+    selected_kind: AiProviderKind
+    expected_config_version: int
+
+
+class AiProviderCompatibleRotateRequest(AiProviderCompatibleWriteRequest):
+    """Frozen, write-only rotation of the compatible credential; optimistic-locked via
+    the inherited body-carried `expected_config_version`."""
+
+
+class AiProviderCompatibleDeleteRequest(BaseModel):
+    expected_config_version: int
+
+
+class AiProviderActivateRequest(BaseModel):
+    """Body-carried optimistic version for activation; never a query parameter."""
+
+    expected_config_version: int
+
+
+class AiProviderReconcileResponse(BaseModel):
+    reconciled: bool
+    compatible_state: AiProviderCompatibleState
+    config_version: int
+
+
+class AiProviderOperationJournalResponse(BaseModel):
+    id: int
+    operation: AiProviderOperation
+    kind: AiProviderKind
+    result: Literal['success', 'failure']
+    reason_code: str | None = None
+    actor_user_id: int | None = None
+    config_version_before: int | None = None
+    config_version_after: int | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

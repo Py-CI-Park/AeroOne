@@ -38,9 +38,9 @@
 
 | 문서 | 역할 | 길이 |
 |---|---|---|
-| [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | **폐쇄망 운영 종합 가이드** (18장 + 부록, 9단계 진행 체크리스트, Open Notebook co-deploy §18, 관리자 콘솔/RBAC) — 입구 추천 | 700줄+ |
+| [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | **폐쇄망 운영 종합 가이드** (19장 + 부록, 9단계 진행 체크리스트, Open Notebook co-deploy §18, OpenAI-호환 AI 프로바이더 + 예약 런처 §19, 관리자 콘솔/RBAC) — 입구 추천 | 880줄+ |
 | [`runbook/closed-network-install-manual.md`](runbook/closed-network-install-manual.md) | **폐쇄망 상세 설치·사용 매뉴얼** — AeroOne + Open Notebook + Ollama, 운영자 단계별(반입물→설치→기동→확인→트러블슈팅). 패키지 동봉 | 중간 |
-| [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 13장) | 375줄 |
+| [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 14장) | 435줄 |
 | [`runbook/local-dev.md`](runbook/local-dev.md) | 개발자 로컬 실행 가이드 (worktree 주의 포함) | 92줄 |
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
 | [`runbook/credential-rotation.md`](runbook/credential-rotation.md) | 자격 증명 노출 사고 시 JWT·전체 사용자 비밀번호·세션 회전, 중단 재개, DB 복원 뒤 신규 회전, 보존·삭제 책임 | 중간 |
@@ -144,6 +144,8 @@
 | Ollama AI / 본문 검색 | `backend/app/modules/ai/`, `backend/app/modules/collections/search_service.py`, `frontend/app/ai/page.tsx`, `frontend/components/ai/ai-chat-workspace.tsx`, `frontend/app/api/frontend/ai/` | 대시보드 개발중 섹션의 AeroAI 카드 → `/ai`. 브라우저는 same-origin AI 프록시만 호출하고 백엔드가 `OLLAMA_BASE_URL` 의 `gemma4:12b` 와 통신. reasoning-only 빈 응답은 1회 재시도 후 계속 비면 502 로 구분. 1.7.0 부터 답변은 안전한 Markdown 으로 렌더링하고 복사는 원문 텍스트를 유지하며, `_database` HTML 본문 검색 결과는 새 탭으로 열린다. 1.8.0 부터 `ai_request_logs` 에 metadata-only 운영 로그를 남기며 prompt/answer/snippet/citation 원문은 저장하지 않는다. 기본 scope 는 `document,civil`, NSA 는 서버측 권한/ResourceGrant 통과 후에만 포함 |
 | 헤더 버전 팝업 | `frontend/components/layout/version-badge.tsx` + `frontend/lib/changelog.ts` (AppShell 헤더에서 사용) | 헤더 버전 라벨 클릭 시 업데이트 내역 + 문의(박찬일) 모달. `APP_VERSION = CHANGELOG[0].version` 으로 헤더 라벨을 단일 원천화 |
 | 읽음추적(IP 기반) | `backend/app/modules/read_tracking/` (모델 `models/read_event.py`, 디바운스 upsert `repositories/read_event_repository.py`, 공개 비콘 `api/public.py`, 관리자 조회·purge `api/admin.py`) + 프런트 `frontend/components/newsletter/read-beacon.tsx` · `frontend/app/admin/read-events/page.tsx` | 브라우저가 백엔드를 직접 호출하는 무인증 비콘으로 `request.client.host`(독자 LAN IP)를 (newsletter_id, client_ip) upsert. 30분 디바운스로 read_count 집계. SSR/프록시 경로는 IP 가 loopback 으로 퇴화. 상세 [`runbook/read-tracking.md`](runbook/read-tracking.md) |
+| 예약 대시보드 런처 (Open Notebook / OpenWebUI, 1.14+) | `backend/app/modules/admin/{models,schemas,module_policy}.py` (`service_modules.launcher_kind: none\|open_notebook\|open_webui`), `backend/app/modules/admin/permissions.py`(`dashboard.openwebui.launch`), `frontend/app/page.tsx`, `frontend/components/dashboard/notebook-link-card.tsx` | 예약 `launcher_kind` 행은 빈 href 고정이며 코드가 현재 브라우저 host 기준으로 포트를 붙인다 — Open Notebook `:8502`(기존, 권한 게이트 없음, 로그인 여부 무관 공개), OpenWebUI `:8080`(신규, `visibility='public'` + `required_permission='dashboard.openwebui.launch'`로 활성 admin/user 세션에만 노출, anonymous/pending 제외). 두 카드 모두 새 탭 링크만 제공하며 AeroOne 은 SSO·기동·헬스체크·프록시를 일절 수행하지 않는다. `module_policy.py` 는 예약 키 삭제/개명/kind 변경/href 주입을 거부한다 |
+| 관리자 AI 프로바이더 설정 (Ollama 병행, 1.14+) | `backend/app/modules/ai/`(provider config/egress transport), `backend/app/operations/windows_dpapi.py`(신규 purpose), `backend/alembic/versions/20260714_0011_*.py`, `backend/app/modules/admin/api.py` `/api/v1/admin/ai-provider/*`, `frontend/app/api/frontend/admin/ai-provider/*`, `frontend/components/admin/sections/admin-system-section.tsx` | `ai_provider_config` 싱글턴이 `selected_kind(ollama\|openai_compatible)` 와 `compatible_state(absent\|pending\|active\|credential_unavailable)` 를 관리한다. base URL/모델/API 키는 admin.ai.manage 로만 저장(stage)되고, candidate 테스트는 아무 것도 영속화하지 않으며, persisted 테스트가 통과(`ok`)해야만 activate 로 전환할 수 있다. 선택은 명시 API 호출로만 바뀌며 자동 폴백이 없다. API 키는 write-only — DB/백업/로그/감사/URL 에 절대 남지 않고 Windows CurrentUser DPAPI(`%ProgramData%\AeroOne\provider-credentials\<backend-service-SID>\`)에만 암호화 보관된다. 등록은 신뢰된 HTTPS 또는 loopback 경로에서만 허용 |
 
 ---
 
@@ -192,8 +194,9 @@
 | `_database/nsa/` | NSA 탭 문서 보관소 (서버측 권한/ResourceGrant 통과 후 표시, 암호화 저장소 아님) | NO (정책상 비공개) |
 | `storage/` | 운영 storage (썸네일·markdown·첨부) | NO |
 | `backend/data/aeroone.db` | 운영 DB | NO |
+| `%ProgramData%\AeroOne\provider-credentials\<backend-service-SID>\` (1.14+) | OpenAI-호환 프로바이더 API 키 DPAPI 암호문 + metadata-only journal (앱 저장소 밖, Windows OS 경로) | NO (백업/오프라인 패키지 모두 제외) |
 
-위 7자리는 **저장소 공개에 부적합** 하므로 wiki 색인에서 의도적으로 git 외 자리로 분리했습니다. 폐쇄망 PC 운영 시 백업 대상은 [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §10 참고.
+위 8자리는 **저장소 공개에 부적합** 하므로 wiki 색인에서 의도적으로 git 외 자리로 분리했습니다. 폐쇄망 PC 운영 시 백업 대상은 [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §10 참고.
 
 ---
 

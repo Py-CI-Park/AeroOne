@@ -2,7 +2,7 @@
 
 > v1.13.0은 tag·asset·digest를 보존하는 역사 릴리스이며 `immutable=false` 상태를 유지한다. 정식 상태와 검증 수치는 [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)를 기준으로 한다. `1.13.1`은 제품 기능 변경 없는 immutable historical patch로 보존한다. `1.13.2`는 현재 운영 import인 정식 immutable Release이며 Git tag inspection을 fail closed 한다. publication은 물리적 air-gapped import 수행을 의미하지 않는다.
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건 + 1.13.2 fail-closed release fix 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건 + 1.13.2 fail-closed release fix 1건 + 1.14.0 Open WebUI 링크 실행/OpenAI 호환 AI provider 병행 관리 1건(검증 pending)의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -213,6 +213,16 @@
 - 1.13.0 릴리스의 tag·asset·digest는 이동·교체·삭제하지 않으며 `immutable=false` 역사 기록으로 보존한다.
 - 1.13.1 릴리스: merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag `1.13.1`, [GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1), published `2026-07-13T23:31:18Z`, API `immutable=true`.
 - 운영 asset: `AeroOne-offline-1.13.2.zip` size `158728639`, SHA-256 `92d5178d6fb67573a1f0b36e0a744e00b4b559548081b463d45a4ba1d669d8a4`; sidecar SHA-256 `02bb4827b149bbe36ffad1bdb7d6dd43b95a5c3c71b168671e7da854a4f2c6d5`. PR #28 no-ff merge `a3dd77b93027dccffb36d663bb7ee1220c9fcdf5`, annotated tag object `62ba67eef7e2c2ac2357dc67d1cffb1c9eeedcc5` (merge commit으로 peel), published `2026-07-14T01:40:21Z`, [GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.2), API `immutable=true`. `1.13.1` historical facts remain unchanged; publication is not a physical air-gapped import.
+
+### 단계 28 — Open WebUI 링크 실행 + OpenAI 호환 AI Provider (1.14.0)
+
+- 파일: [`phase-11-v1-14-0-openwebui-openai-provider.md`](phase-11-v1-14-0-openwebui-openai-provider.md)
+- 분류: minor (`1.14.0`) — 대시보드 Open WebUI 링크 카드 신설(Open Notebook 카드와 동일 launcher 패턴) + 관리자 전용 OpenAI 호환 AI provider 병행 관리(Ollama 와 나란히, 명시 선택·no-fallback).
+- 기준 계획: `.gjc/_session-019f5ed2-bcd4-7000-8455-34da0bed5a92/plans/ralplan/019f5ed2-bcd4-7000-8455-34da0bed5a92/pending-approval.md`(Architect CLEAR/APPROVE, Critic OKAY — SHA는 보고서 참고)
+- 무엇: `dashboard.openwebui.launch` 로 노출을 통제하는 host:8080 새 탭 링크 카드, `admin.ai.read`/`admin.ai.manage` 로 나뉘는 provider 설정/등록/활성화/회전/폐기, write-only DPAPI(현재 Windows SID scope) 키 보호, 신뢰된 HTTPS/loopback allow-list 만 허용하는 fail-closed enrollment, JWT/사용자 비밀번호 사고 대응 회전과 완전히 분리된 provider 키 회전·폐기 경계, metadata-only 감사 카테고리를 구현한다.
+- 코드: `backend/alembic/versions/20260714_0011_ai_provider_and_launchers.py`, `backend/app/modules/ai/`, `backend/app/modules/admin/`, `frontend/lib/changelog.ts`, `frontend/app/page.tsx`, launcher 카드 컴포넌트
+- 검증: 이 보고서 작성 시점 기준 backend/frontend 테스트·타입체크·빌드·브라우저 스모크·오프라인 패키지 검증은 **미실행(pending)**. 실제 수치는 구현 병합 후 리더가 갱신한다.
+
 
 ---
 
