@@ -1,0 +1,56 @@
+﻿id,org,title,tier,officialUrl,archiveStatus,localArchiveCount
+AIRBUS_A220_FF_2026,Airbus,A220 Family Facts & Figures,A2,https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a220-family,local,1
+AIRBUS_A220_ACAP_2025,Airbus,A220 Aircraft Characteristics for Airport Planning,A2,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A320_FF_2026,Airbus,A320 Family Facts & Figures,A2,https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a320-family,local,1
+AIRBUS_A319_ACAP_2026,Airbus,A319 Aircraft Characteristics for Airport Planning,A2,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A320_ACAP_2026,Airbus,A320 Aircraft Characteristics for Airport Planning,A2,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A321_ACAP_2026,Airbus,A321 Aircraft Characteristics for Airport Planning,A2,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A330_FF_2026,Airbus,A330 Family Facts & Figures,A2,https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a330-family,local,1
+AIRBUS_A330_ACAP_2025,Airbus,A330 Aircraft Characteristics for Airport Planning,A2,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A340_200_300_AC_2025,Airbus,A340-200/-300 Aircraft Characteristics,B1,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A340_500_600_AC_2025,Airbus,A340-500/-600 Aircraft Characteristics,B1,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A350_FF_2026,Airbus,A350 Family Facts & Figures — April 2026,A2,https://mediaassets.airbus.com/pm_38_898_898668-3xlxpks93j.pdf?fileName=airbus-a350-family-facts-and-figures-april-2026.pdf,local,1
+AIRBUS_A350_AC_2025,Airbus,A350 Aircraft Characteristics for Airport Planning,A2,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_A380_AC_2025,Airbus,A380 Aircraft Characteristics for Airport Planning,B1,https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics,local,1
+AIRBUS_CURRENT_LINEUP,Airbus,Commercial Aircraft Current Line-up,A2,https://www.airbus.com/en/products-services/commercial-aircraft,external,0
+AIRBUS_FREIGHTERS,Airbus,Airbus Freighter Aircraft Portfolio,A2,https://www.aircraft.airbus.com/en/aircraft/freighters,local,1
+EFW_A320_A321_P2F,Elbe Flugzeugwerke,A320/A321 Passenger-to-Freighter Programme,A2,https://www.elbeflugzeugwerke.com/en/freighter-conversion/a321p2f/,local,1
+EFW_A330_P2F,Elbe Flugzeugwerke,A330 Passenger-to-Freighter Programme,A2,https://www.elbeflugzeugwerke.com/en/freighter-conversion/a330p2f/,local,1
+BOEING_PLAN_MANUALS,Boeing,Commercial Airplanes Airport Planning Manuals,A2,https://www.boeing.com/commercial/airports/plan-manuals,external,0
+BOEING_737_MAX,Boeing,737 MAX Technical Specifications,A2,https://www.boeing.com/commercial/737max,external,0
+BOEING_737_NG,Boeing,Next-Generation 737 Technical Specifications,B1,https://www.boeing.com/commercial/737ng,external,0
+BOEING_787,Boeing,787 Dreamliner Family,A2,https://www.boeing.com/commercial/787,external,0
+BOEING_787_IMTOW_2026,Boeing,FAA Clears Higher Takeoff Weight for 787-9 and 787-10,A2,https://www.boeing.com/features/2026/03/faa-clears-higher-takeoff-weight-for-787-9-and-787-10,external,0
+BOEING_777,Boeing,777 Design Highlights and Technical Characteristics,B1,https://www.boeing.com/commercial/777/design-highlights,external,0
+BOEING_777X,Boeing,777X Technical Specifications,A2,https://www.boeing.com/commercial/777x,external,0
+BOEING_767F,Boeing,767-300 Freighter Technical Characteristics,B1,https://www.boeing.com/commercial/freighters/767-300f,external,0
+BOEING_FREIGHTERS,Boeing,Boeing Freighters Portfolio,A2,https://www.boeing.com/commercial/freighters,external,0
+BOEING_747_8,Boeing,747-8 Programme Page,B1,https://www.boeing.com/commercial/747-8,external,0
+BOEING_737_BCF,Boeing,737-800 Boeing Converted Freighter,B1,https://www.boeing.com/content/dam/boeing/boeingdotcom/commercial/services/assets/brochure/737_800BCF.pdf,external,0
+EASA_B737_CURRENT,EASA,EASA.IM.A.120 — Boeing 737,A1,https://www.easa.europa.eu/en/document-library/type-certificates/noise/easaima120-boeing-737,external,0
+EASA_B787_CURRENT,EASA,EASA.IM.A.115 — Boeing 787,A1,https://www.easa.europa.eu/en/document-library/type-certificates/easaima115-boeing-787,external,0
+EASA_B777_CURRENT,EASA,EASA.IM.A.003 — Boeing 777,A1,https://www.easa.europa.eu/en/document-library/type-certificates/easaima003-boeing-777,local,1
+EASA_B767_CURRENT,EASA,EASA.IM.A.035 — Boeing 767,A1,https://www.easa.europa.eu/en/document-library/type-certificates/easaima035-boeing-767,local,1
+EASA_B747_CURRENT,EASA,EASA.IM.A.196 — Boeing 747,A1,https://www.easa.europa.eu/en/document-library/type-certificates/easaima196-boeing-747,external,0
+EASA_ERJ170_CURRENT_PDF,EASA,ERJ-170 Type Certificate Data Sheet,A1,https://www.easa.europa.eu/en/downloads/7525/en,external,0
+EASA_ERJ190_CURRENT_PDF,EASA,ERJ-190 Type Certificate Data Sheet,A1,https://www.easa.europa.eu/en/document-library/type-certificates/easaima071-embraer-erj-190,local,1
+EMBRAER_E170_SPEC,Embraer,E170 Legacy Technical Specifications,B1,https://www.embraercommercialaviation.com/commercial-jets/e-jets/,external,0
+EMBRAER_E175_SPEC,Embraer,E175 Technical Specifications,A2,https://www.embraercommercialaviation.com/commercial-jets/e-jets/,local,1
+EMBRAER_E190E1_SPEC,Embraer,E190 E1 Technical Specifications,B1,https://www.embraercommercialaviation.com/commercial-jets/e-jets/,external,0
+EMBRAER_E195E1_SPEC,Embraer,E195 E1 Technical Specifications,B1,https://www.embraercommercialaviation.com/commercial-jets/e-jets/,external,0
+EMBRAER_E175E2_SPEC,Embraer,E175-E2 Technical Specifications,A2,https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/,local,1
+EMBRAER_E190E2_SPEC,Embraer,E190-E2 Technical Specifications,A2,https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/,local,1
+EMBRAER_E195E2_SPEC,Embraer,E195-E2 Technical Specifications,A2,https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/,local,1
+EMBRAER_MARKET_OUTLOOK_2025,Embraer,Market Outlook 2025,A2,https://www.embraercommercialaviation.com/market-outlook/,external,0
+COMAC_C909_PAGE,COMAC,C909 Official Product Page,A2,http://english.comac.cc/products/rj/,local,1
+COMAC_C919_PAGE,COMAC,C919 Official Product Page,A2,http://english.comac.cc/products/ca/,external,0
+COMAC_C919_ACAP,COMAC,C919 Aircraft Characteristics for Airport Planning,A2,http://english.comac.cc/products/ca/,local,1
+COMAC_C929_PAGE,COMAC,C929 Official Product Page,A2,http://english.comac.cc/products/wb/,external,0
+UAC_SSJ100_PAGE,United Aircraft Corporation,Superjet 100 Official Product Specifications,B1,https://uacrussia.ru/en/aircraft/lineup/lineup/superjet-100/,external,0
+UAC_SJ100_PAGE,United Aircraft Corporation,SJ-100 Programme Page,A2,https://uacrussia.ru/en/aircraft/lineup/civil/sj-100/,external,0
+UAC_MC21_PAGE,United Aircraft Corporation,MC-21 Official Product Specifications,A2,https://uacrussia.ru/en/aircraft/lineup/civil/ms-21/,external,0
+ATR_42_600,ATR,ATR 42-600 Official Product Specifications,A2,https://www.atr-aircraft.com/aircraft-services/aircraft-family/atr-42-600/,external,0
+ATR_72_600,ATR,ATR 72-600 Official Product Specifications,A2,https://www.atr-aircraft.com/aircraft-services/aircraft-family/atr-72-600/,external,0
+ATR_72_600F,ATR,ATR 72-600F Official Product Specifications,A2,https://www.atr-aircraft.com/aircraft-services/aircraft-family/atr-72-600f-freighter/,external,0
+FAA_TC_DATA_INDEX,FAA,FAA Type Certificate Data Sheet Index,A1,https://drs.faa.gov/browse/TCDSMODEL/doctypeDetails,external,0
+BOEING_2026Q1_RESULTS,Boeing,Boeing First Quarter 2026 Results,A2,https://investors.boeing.com/investors/news/press-release-details/2026/Boeing-Reports-First-Quarter-Results/default.aspx,external,0

@@ -1,20 +1,19 @@
-import React from 'react';
 import { cookies } from 'next/headers';
 
 import { AppShell } from '@/components/layout/app-shell';
-import { DocumentsWorkspace } from '@/components/documents/documents-workspace';
-import { fetchCollectionListServer } from '@/lib/api';
 import { NEWSLETTER_THEME_COOKIE, resolveNewsletterThemeFromSearchParam } from '@/lib/theme';
-import type { DocumentListItem } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 const REPORT_TITLE = 'Civil Aircraft Spec Catalog';
 const REPORT_PATH = '/reports/civil-aircraft';
+// Same-origin proxy entry for the bundled interactive v1.7 dashboard. Relative links
+// inside the bundle (assets/, apps/, data/) resolve under this base and are proxied
+// back to the backend static-app route, which enforces a self-only CSP.
+const APP_SRC = '/api/frontend/reports/civil-aircraft/app/';
 
 type SearchParams = {
   theme?: string;
-  path?: string;
 };
 
 export default async function CivilAircraftReportPage({
@@ -23,16 +22,6 @@ export default async function CivilAircraftReportPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  let documents: DocumentListItem[] = [];
-  let errorMessage = '';
-
-  try {
-    const payload = await fetchCollectionListServer('civil');
-    documents = payload.documents;
-  } catch (error) {
-    errorMessage = error instanceof Error ? error.message : '카탈로그 목록을 불러오지 못했습니다.';
-  }
-
   const cookieStore = await cookies();
   const cookieTheme = cookieStore.getAll().find((cookie) => cookie.name === NEWSLETTER_THEME_COOKIE)?.value;
   const theme = resolveNewsletterThemeFromSearchParam(params.theme, process.env.NEWSLETTERS_THEME, cookieTheme);
@@ -45,19 +34,29 @@ export default async function CivilAircraftReportPage({
       showThemeSelector
       themePath={REPORT_PATH}
       active="none"
-      titleMeta={documents.length > 0 ? `${documents.length} catalogs` : undefined}
+      titleMeta="v1.7 Encyclopedia · Comparison · Sources"
     >
-      {documents.length > 0 ? (
-        <DocumentsWorkspace documents={documents} collection="civil" initialPath={params.path} />
-      ) : (
-        <div className="rounded-lg border border-dashed border-line bg-surface-raised p-8 text-sm text-ink-2">
-          표시할 카탈로그가 없습니다.
-          <div className="mt-2 text-xs text-ink-3">
-            _database/civil_aircraft 폴더에 HTML 카탈로그를 넣은 뒤 새로고침하세요.
-            {errorMessage ? <span className="ml-1">({errorMessage})</span> : null}
-          </div>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-ink-2">
+            민간 항공기 백과 · 비교 대시보드 · 출처 아카이브 (v1.7). 아래에서 바로 탐색하거나 새 창으로 크게 볼 수 있습니다.
+          </p>
+          <a
+            href={APP_SRC}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 rounded-md border border-line bg-surface-raised px-3 py-1.5 text-sm font-medium text-ink-1 hover:bg-surface"
+          >
+            새 창으로 열기 ↗
+          </a>
         </div>
-      )}
+        <iframe
+          title="Civil Aircraft Data Portal v1.7"
+          src={APP_SRC}
+          className="h-[calc(100dvh-11rem)] min-h-[600px] w-full rounded-lg border border-line bg-white"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-downloads allow-modals allow-forms"
+        />
+      </div>
     </AppShell>
   );
 }

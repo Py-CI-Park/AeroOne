@@ -1,0 +1,2978 @@
+{
+  "metadata": {
+    "title": "Civil Aircraft Unified Source Registry v1.7",
+    "version": "1.7",
+    "releaseDate": "2026-07-14",
+    "sourceSnapshotDate": "2026-07-13",
+    "sourceRecordCount": 55,
+    "localPdfAttachmentCount": 25,
+    "model": "One canonical source record with zero or more official local-PDF attachments in localAttachments[]. Related legacy/supplementary PDFs are attached to the current source record instead of appearing as duplicate archive cards.",
+    "integrity": "25/25 local PDF attachments retain the v1.6-validated SHA-256, byte size and page count."
+  },
+  "sources": [
+    {
+      "id": "AIRBUS_A220_FF_2026",
+      "org": "Airbus",
+      "title": "A220 Family Facts & Figures",
+      "issued": "2026",
+      "type": "OEM publication",
+      "tier": "A2",
+      "url": "https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a220-family",
+      "local": "sources/pdfs/Airbus_A220_Facts_and_Figures_April_2026.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "payload",
+        "engine"
+      ],
+      "applies": [
+        "A220-100",
+        "A220-300"
+      ],
+      "notes": "Current family-level performance reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 1-3",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a220-family",
+      "pdfUrl": "https://mediaassets.airbus.com/pm_38_897_897717-5df29bl1vt.pdf?fileName=airbus-a220-facts-and-figures-april-2026-english.pdf",
+      "sizeBytes": 251736,
+      "sha256": "d1263db3deadb64f7e6e3b24877c664e55614aceec3bf4fe764af5eec7c76ad4",
+      "pages": 4,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A220_FF_2026",
+          "title": "A220 Family Facts & Figures",
+          "filename": "Airbus_A220_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A220_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_897_897717-5df29bl1vt.pdf?fileName=airbus-a220-facts-and-figures-april-2026-english.pdf",
+          "pages": 4,
+          "sizeBytes": 251736,
+          "sha256": "d1263db3deadb64f7e6e3b24877c664e55614aceec3bf4fe764af5eec7c76ad4",
+          "pageRefs": "PDF pp. 1-3",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 251736,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A220_FF_2026",
+          "org": "Airbus",
+          "title": "A220 Family Facts & Figures",
+          "issued": "2026",
+          "type": "OEM publication",
+          "tier": "A2",
+          "filename": "Airbus_A220_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A220_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_897_897717-5df29bl1vt.pdf?fileName=airbus-a220-facts-and-figures-april-2026-english.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "payload",
+            "engine"
+          ],
+          "applies": [
+            "A220-100",
+            "A220-300"
+          ],
+          "notes": "Current family-level performance reference.",
+          "pageRefs": "PDF pp. 1-3",
+          "sizeBytes": 251736,
+          "sha256": "d1263db3deadb64f7e6e3b24877c664e55614aceec3bf4fe764af5eec7c76ad4",
+          "pages": 4,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A220_ACAP_2025",
+      "org": "Airbus",
+      "title": "A220 Aircraft Characteristics for Airport Planning",
+      "issued": "2025",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A220_Aircraft_Characteristics_November_2025.pdf",
+      "fields": [
+        "dimensions",
+        "geometry",
+        "airport planning"
+      ],
+      "applies": [
+        "A220-100",
+        "A220-300"
+      ],
+      "notes": "Geometry and three-view reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 147-154",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/A220-ACP-Issue013-00-27Nov2025.pdf",
+      "sizeBytes": 32733365,
+      "sha256": "ac489084ac6fd0b68f7d8df65bde42f01644442dc6069b9c0562b42bc7ae678b",
+      "pages": 650,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A220_ACAP_2025",
+          "title": "A220 Aircraft Characteristics for Airport Planning",
+          "filename": "Airbus_A220_Aircraft_Characteristics_November_2025.pdf",
+          "local": "sources/pdfs/Airbus_A220_Aircraft_Characteristics_November_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/A220-ACP-Issue013-00-27Nov2025.pdf",
+          "pages": 650,
+          "sizeBytes": 32733365,
+          "sha256": "ac489084ac6fd0b68f7d8df65bde42f01644442dc6069b9c0562b42bc7ae678b",
+          "pageRefs": "PDF pp. 147-154",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 32733365,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A220_ACAP_2025",
+          "org": "Airbus",
+          "title": "A220 Aircraft Characteristics for Airport Planning",
+          "issued": "2025",
+          "type": "OEM airport planning",
+          "tier": "A2",
+          "filename": "Airbus_A220_Aircraft_Characteristics_November_2025.pdf",
+          "local": "sources/pdfs/Airbus_A220_Aircraft_Characteristics_November_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/A220-ACP-Issue013-00-27Nov2025.pdf",
+          "fields": [
+            "dimensions",
+            "geometry",
+            "airport planning"
+          ],
+          "applies": [
+            "A220-100",
+            "A220-300"
+          ],
+          "notes": "Geometry and three-view reference.",
+          "pageRefs": "PDF pp. 147-154",
+          "sizeBytes": 32733365,
+          "sha256": "ac489084ac6fd0b68f7d8df65bde42f01644442dc6069b9c0562b42bc7ae678b",
+          "pages": 650,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A320_FF_2026",
+      "org": "Airbus",
+      "title": "A320 Family Facts & Figures",
+      "issued": "2026",
+      "type": "OEM publication",
+      "tier": "A2",
+      "url": "https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a320-family",
+      "local": "sources/pdfs/Airbus_A320_Family_Facts_and_Figures_April_2026.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "payload",
+        "engine",
+        "status"
+      ],
+      "applies": [
+        "A319neo",
+        "A320neo",
+        "A321neo",
+        "A321LR",
+        "A321XLR"
+      ],
+      "notes": "Variant-consistent family performance reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 3-5",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a320-family",
+      "pdfUrl": "https://mediaassets.airbus.com/pm_38_897_897777-mpqe0f9rw9.pdf?fileName=airbus-a320-family-facts-and-figures-april-2026.pdf",
+      "sizeBytes": 966175,
+      "sha256": "9d43b1086fe205008cf89ddecf92d7fd5ad6e09fa5f0c0d3516fccd6338cf995",
+      "pages": 6,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A320_FF_2026",
+          "title": "A320 Family Facts & Figures",
+          "filename": "Airbus_A320_Family_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A320_Family_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_897_897777-mpqe0f9rw9.pdf?fileName=airbus-a320-family-facts-and-figures-april-2026.pdf",
+          "pages": 6,
+          "sizeBytes": 966175,
+          "sha256": "9d43b1086fe205008cf89ddecf92d7fd5ad6e09fa5f0c0d3516fccd6338cf995",
+          "pageRefs": "PDF pp. 3-5",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 966175,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A320_FF_2026",
+          "org": "Airbus",
+          "title": "A320 Family Facts & Figures",
+          "issued": "2026",
+          "type": "OEM publication",
+          "tier": "A2",
+          "filename": "Airbus_A320_Family_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A320_Family_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_897_897777-mpqe0f9rw9.pdf?fileName=airbus-a320-family-facts-and-figures-april-2026.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "payload",
+            "engine",
+            "status"
+          ],
+          "applies": [
+            "A319neo",
+            "A320neo",
+            "A321neo",
+            "A321LR",
+            "A321XLR"
+          ],
+          "notes": "Variant-consistent family performance reference.",
+          "pageRefs": "PDF pp. 3-5",
+          "sizeBytes": 966175,
+          "sha256": "9d43b1086fe205008cf89ddecf92d7fd5ad6e09fa5f0c0d3516fccd6338cf995",
+          "pages": 6,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A319_ACAP_2026",
+      "org": "Airbus",
+      "title": "A319 Aircraft Characteristics for Airport Planning",
+      "issued": "2026",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A319_Aircraft_Characteristics_July_2026.pdf",
+      "fields": [
+        "dimensions",
+        "geometry"
+      ],
+      "applies": [
+        "A319neo"
+      ],
+      "notes": "Current geometry reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 50-58",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916263-0hxcf0237y.pdf?fileName=aca31901-jul-2026-2.pdf",
+      "sizeBytes": 6503918,
+      "sha256": "e766872e4a7555a89d6e7af871484c1f488769280db7fe0d1800ca4f521c93a5",
+      "pages": 387,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A319_ACAP_2026",
+          "title": "A319 Aircraft Characteristics for Airport Planning",
+          "filename": "Airbus_A319_Aircraft_Characteristics_July_2026.pdf",
+          "local": "sources/pdfs/Airbus_A319_Aircraft_Characteristics_July_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916263-0hxcf0237y.pdf?fileName=aca31901-jul-2026-2.pdf",
+          "pages": 387,
+          "sizeBytes": 6503918,
+          "sha256": "e766872e4a7555a89d6e7af871484c1f488769280db7fe0d1800ca4f521c93a5",
+          "pageRefs": "PDF pp. 50-58",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 6503918,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A319_ACAP_2026",
+          "org": "Airbus",
+          "title": "A319 Aircraft Characteristics for Airport Planning",
+          "issued": "2026",
+          "type": "OEM airport planning",
+          "tier": "A2",
+          "filename": "Airbus_A319_Aircraft_Characteristics_July_2026.pdf",
+          "local": "sources/pdfs/Airbus_A319_Aircraft_Characteristics_July_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916263-0hxcf0237y.pdf?fileName=aca31901-jul-2026-2.pdf",
+          "fields": [
+            "dimensions",
+            "geometry"
+          ],
+          "applies": [
+            "A319neo"
+          ],
+          "notes": "Current geometry reference.",
+          "pageRefs": "PDF pp. 50-58",
+          "sizeBytes": 6503918,
+          "sha256": "e766872e4a7555a89d6e7af871484c1f488769280db7fe0d1800ca4f521c93a5",
+          "pages": 387,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A320_ACAP_2026",
+      "org": "Airbus",
+      "title": "A320 Aircraft Characteristics for Airport Planning",
+      "issued": "2026",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A320_Aircraft_Characteristics_July_2026.pdf",
+      "fields": [
+        "dimensions",
+        "geometry"
+      ],
+      "applies": [
+        "A320neo"
+      ],
+      "notes": "Current geometry reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 58-66",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916266-iujedqawwy.pdf?fileName=aca32001-jul-2026-2.pdf",
+      "sizeBytes": 7141230,
+      "sha256": "38ea27dbe76b510fb4fc83ae991f81732c5c28b2a29266f145a8356133876831",
+      "pages": 435,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A320_ACAP_2026",
+          "title": "A320 Aircraft Characteristics for Airport Planning",
+          "filename": "Airbus_A320_Aircraft_Characteristics_July_2026.pdf",
+          "local": "sources/pdfs/Airbus_A320_Aircraft_Characteristics_July_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916266-iujedqawwy.pdf?fileName=aca32001-jul-2026-2.pdf",
+          "pages": 435,
+          "sizeBytes": 7141230,
+          "sha256": "38ea27dbe76b510fb4fc83ae991f81732c5c28b2a29266f145a8356133876831",
+          "pageRefs": "PDF pp. 58-66",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 7141230,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A320_ACAP_2026",
+          "org": "Airbus",
+          "title": "A320 Aircraft Characteristics for Airport Planning",
+          "issued": "2026",
+          "type": "OEM airport planning",
+          "tier": "A2",
+          "filename": "Airbus_A320_Aircraft_Characteristics_July_2026.pdf",
+          "local": "sources/pdfs/Airbus_A320_Aircraft_Characteristics_July_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916266-iujedqawwy.pdf?fileName=aca32001-jul-2026-2.pdf",
+          "fields": [
+            "dimensions",
+            "geometry"
+          ],
+          "applies": [
+            "A320neo"
+          ],
+          "notes": "Current geometry reference.",
+          "pageRefs": "PDF pp. 58-66",
+          "sizeBytes": 7141230,
+          "sha256": "38ea27dbe76b510fb4fc83ae991f81732c5c28b2a29266f145a8356133876831",
+          "pages": 435,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A321_ACAP_2026",
+      "org": "Airbus",
+      "title": "A321 Aircraft Characteristics for Airport Planning",
+      "issued": "2026",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A321_Aircraft_Characteristics_July_2026.pdf",
+      "fields": [
+        "dimensions",
+        "geometry"
+      ],
+      "applies": [
+        "A321neo",
+        "A321LR",
+        "A321XLR",
+        "A321P2F"
+      ],
+      "notes": "Current geometry reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 66-74",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916230-7u6neg4lfg.pdf?fileName=aca32101-jul-2026.pdf",
+      "sizeBytes": 12765980,
+      "sha256": "50ae7a11b9834cbb1b0f8b862fcb6e85aa7817e77596cd12903033e81456d40d",
+      "pages": 471,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A321_ACAP_2026",
+          "title": "A321 Aircraft Characteristics for Airport Planning",
+          "filename": "Airbus_A321_Aircraft_Characteristics_July_2026.pdf",
+          "local": "sources/pdfs/Airbus_A321_Aircraft_Characteristics_July_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916230-7u6neg4lfg.pdf?fileName=aca32101-jul-2026.pdf",
+          "pages": 471,
+          "sizeBytes": 12765980,
+          "sha256": "50ae7a11b9834cbb1b0f8b862fcb6e85aa7817e77596cd12903033e81456d40d",
+          "pageRefs": "PDF pp. 66-74",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 12765980,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A321_ACAP_2026",
+          "org": "Airbus",
+          "title": "A321 Aircraft Characteristics for Airport Planning",
+          "issued": "2026",
+          "type": "OEM airport planning",
+          "tier": "A2",
+          "filename": "Airbus_A321_Aircraft_Characteristics_July_2026.pdf",
+          "local": "sources/pdfs/Airbus_A321_Aircraft_Characteristics_July_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_916_916230-7u6neg4lfg.pdf?fileName=aca32101-jul-2026.pdf",
+          "fields": [
+            "dimensions",
+            "geometry"
+          ],
+          "applies": [
+            "A321neo",
+            "A321LR",
+            "A321XLR",
+            "A321P2F"
+          ],
+          "notes": "Current geometry reference.",
+          "pageRefs": "PDF pp. 66-74",
+          "sizeBytes": 12765980,
+          "sha256": "50ae7a11b9834cbb1b0f8b862fcb6e85aa7817e77596cd12903033e81456d40d",
+          "pages": 471,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A330_FF_2026",
+      "org": "Airbus",
+      "title": "A330 Family Facts & Figures",
+      "issued": "2026",
+      "type": "OEM publication",
+      "tier": "A2",
+      "url": "https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a330-family",
+      "local": "sources/pdfs/Airbus_A330_Family_Facts_and_Figures_March_2026.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "payload",
+        "engine",
+        "cargo"
+      ],
+      "applies": [
+        "A330-200",
+        "A330-300",
+        "A330-800",
+        "A330-900",
+        "A330-200F"
+      ],
+      "notes": "Current and legacy family reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 2-5",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.airbus.com/en/products-services/commercial-aircraft/passenger-aircraft/a330-family",
+      "pdfUrl": "https://mediaassets.airbus.com/pm_38_875_875697-o7kfb7fu3q.pdf",
+      "sizeBytes": 249546,
+      "sha256": "b6b514c46f32287c8f21c698093deebb7c11a43846d8cde5d0fb56e0b2a0c98c",
+      "pages": 6,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A330_FF_2026",
+          "title": "A330 Family Facts & Figures",
+          "filename": "Airbus_A330_Family_Facts_and_Figures_March_2026.pdf",
+          "local": "sources/pdfs/Airbus_A330_Family_Facts_and_Figures_March_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_875_875697-o7kfb7fu3q.pdf",
+          "pages": 6,
+          "sizeBytes": 249546,
+          "sha256": "b6b514c46f32287c8f21c698093deebb7c11a43846d8cde5d0fb56e0b2a0c98c",
+          "pageRefs": "PDF pp. 2-5",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 249546,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A330_FF_2026",
+          "org": "Airbus",
+          "title": "A330 Family Facts & Figures",
+          "issued": "2026",
+          "type": "OEM publication",
+          "tier": "A2",
+          "filename": "Airbus_A330_Family_Facts_and_Figures_March_2026.pdf",
+          "local": "sources/pdfs/Airbus_A330_Family_Facts_and_Figures_March_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_875_875697-o7kfb7fu3q.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "payload",
+            "engine",
+            "cargo"
+          ],
+          "applies": [
+            "A330-200",
+            "A330-300",
+            "A330-800",
+            "A330-900",
+            "A330-200F"
+          ],
+          "notes": "Current and legacy family reference.",
+          "pageRefs": "PDF pp. 2-5",
+          "sizeBytes": 249546,
+          "sha256": "b6b514c46f32287c8f21c698093deebb7c11a43846d8cde5d0fb56e0b2a0c98c",
+          "pages": 6,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A330_ACAP_2025",
+      "org": "Airbus",
+      "title": "A330 Aircraft Characteristics for Airport Planning",
+      "issued": "2025",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A330_Aircraft_Characteristics_December_2025.pdf",
+      "fields": [
+        "dimensions",
+        "geometry"
+      ],
+      "applies": [
+        "A330 family"
+      ],
+      "notes": "Geometry and weight-variant reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 59-71",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A330_20251201.pdf",
+      "sizeBytes": 14689603,
+      "sha256": "5c250198eb571231abc5460f5ab07b086f394e0384660c8d7e35c32fa21415e1",
+      "pages": 647,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A330_ACAP_2025",
+          "title": "A330 Aircraft Characteristics for Airport Planning",
+          "filename": "Airbus_A330_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A330_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A330_20251201.pdf",
+          "pages": 647,
+          "sizeBytes": 14689603,
+          "sha256": "5c250198eb571231abc5460f5ab07b086f394e0384660c8d7e35c32fa21415e1",
+          "pageRefs": "PDF pp. 59-71",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 14689603,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A330_ACAP_2025",
+          "org": "Airbus",
+          "title": "A330 Aircraft Characteristics for Airport Planning",
+          "issued": "2025",
+          "type": "OEM airport planning",
+          "tier": "A2",
+          "filename": "Airbus_A330_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A330_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A330_20251201.pdf",
+          "fields": [
+            "dimensions",
+            "geometry"
+          ],
+          "applies": [
+            "A330 family"
+          ],
+          "notes": "Geometry and weight-variant reference.",
+          "pageRefs": "PDF pp. 59-71",
+          "sizeBytes": 14689603,
+          "sha256": "5c250198eb571231abc5460f5ab07b086f394e0384660c8d7e35c32fa21415e1",
+          "pages": 647,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A340_200_300_AC_2025",
+      "org": "Airbus",
+      "title": "A340-200/-300 Aircraft Characteristics",
+      "issued": "2025",
+      "type": "OEM airport planning",
+      "tier": "B1",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A340-200-300_Aircraft_Characteristics_December_2025.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload"
+      ],
+      "applies": [
+        "A340-300"
+      ],
+      "notes": "Legacy official reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 30-52",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A340-200-300_20251201.pdf",
+      "sizeBytes": 8111028,
+      "sha256": "d348009de9d687cdaa9bbeba4919ae337c14263c0149123c21e653217ffcd3ba",
+      "pages": 397,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A340_200_300_AC_2025",
+          "title": "A340-200/-300 Aircraft Characteristics",
+          "filename": "Airbus_A340-200-300_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A340-200-300_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A340-200-300_20251201.pdf",
+          "pages": 397,
+          "sizeBytes": 8111028,
+          "sha256": "d348009de9d687cdaa9bbeba4919ae337c14263c0149123c21e653217ffcd3ba",
+          "pageRefs": "PDF pp. 30-52",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 8111028,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A340_200_300_AC_2025",
+          "org": "Airbus",
+          "title": "A340-200/-300 Aircraft Characteristics",
+          "issued": "2025",
+          "type": "OEM airport planning",
+          "tier": "B1",
+          "filename": "Airbus_A340-200-300_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A340-200-300_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A340-200-300_20251201.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "dimensions",
+            "payload"
+          ],
+          "applies": [
+            "A340-300"
+          ],
+          "notes": "Legacy official reference.",
+          "pageRefs": "PDF pp. 30-52",
+          "sizeBytes": 8111028,
+          "sha256": "d348009de9d687cdaa9bbeba4919ae337c14263c0149123c21e653217ffcd3ba",
+          "pages": 397,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A340_500_600_AC_2025",
+      "org": "Airbus",
+      "title": "A340-500/-600 Aircraft Characteristics",
+      "issued": "2025",
+      "type": "OEM airport planning",
+      "tier": "B1",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A340-500-600_Aircraft_Characteristics_December_2025.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload"
+      ],
+      "applies": [
+        "A340-500",
+        "A340-600"
+      ],
+      "notes": "Legacy official reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 30-61",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A340-500-600.pdf",
+      "sizeBytes": 10508107,
+      "sha256": "13e6ae25ab7fa9191432d40dee02b9aefb4bd4799317b5fc9f3e30b6d0b7dd93",
+      "pages": 411,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A340_500_600_AC_2025",
+          "title": "A340-500/-600 Aircraft Characteristics",
+          "filename": "Airbus_A340-500-600_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A340-500-600_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A340-500-600.pdf",
+          "pages": 411,
+          "sizeBytes": 10508107,
+          "sha256": "13e6ae25ab7fa9191432d40dee02b9aefb4bd4799317b5fc9f3e30b6d0b7dd93",
+          "pageRefs": "PDF pp. 30-61",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 10508107,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A340_500_600_AC_2025",
+          "org": "Airbus",
+          "title": "A340-500/-600 Aircraft Characteristics",
+          "issued": "2025",
+          "type": "OEM airport planning",
+          "tier": "B1",
+          "filename": "Airbus_A340-500-600_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A340-500-600_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A340-500-600.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "dimensions",
+            "payload"
+          ],
+          "applies": [
+            "A340-500",
+            "A340-600"
+          ],
+          "notes": "Legacy official reference.",
+          "pageRefs": "PDF pp. 30-61",
+          "sizeBytes": 10508107,
+          "sha256": "13e6ae25ab7fa9191432d40dee02b9aefb4bd4799317b5fc9f3e30b6d0b7dd93",
+          "pages": 411,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A350_FF_2026",
+      "org": "Airbus",
+      "title": "A350 Family Facts & Figures — April 2026",
+      "issued": "2026-04",
+      "type": "OEM publication",
+      "tier": "A2",
+      "url": "https://mediaassets.airbus.com/pm_38_898_898668-3xlxpks93j.pdf?fileName=airbus-a350-family-facts-and-figures-april-2026.pdf",
+      "local": "sources/pdfs/Airbus_A350_Family_Facts_and_Figures_April_2026.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "payload",
+        "engine",
+        "status"
+      ],
+      "applies": [
+        "A350-900",
+        "A350-900ULR",
+        "A350-1000",
+        "A350-1000 HGW (2030)",
+        "A350F"
+      ],
+      "notes": "Separates current and target weight variants.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 3-4",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "pdfUrl": "https://mediaassets.airbus.com/pm_38_898_898668-3xlxpks93j.pdf?fileName=airbus-a350-family-facts-and-figures-april-2026.pdf",
+      "sizeBytes": 305153,
+      "sha256": "fbae02f4d8462e591a57611336c7bb58d02fff060defc44ac70af726d09ed668",
+      "pages": 5,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A350_FF_2026",
+          "title": "A350 Family Facts & Figures — April 2026",
+          "filename": "Airbus_A350_Family_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A350_Family_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_898_898668-3xlxpks93j.pdf?fileName=airbus-a350-family-facts-and-figures-april-2026.pdf",
+          "pages": 5,
+          "sizeBytes": 305153,
+          "sha256": "fbae02f4d8462e591a57611336c7bb58d02fff060defc44ac70af726d09ed668",
+          "pageRefs": "PDF pp. 3-4",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 305153,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A350_FF_2026",
+          "org": "Airbus",
+          "title": "A350 Family Facts & Figures — April 2026",
+          "issued": "2026-04",
+          "type": "OEM publication",
+          "tier": "A2",
+          "filename": "Airbus_A350_Family_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A350_Family_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_898_898668-3xlxpks93j.pdf?fileName=airbus-a350-family-facts-and-figures-april-2026.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "payload",
+            "engine",
+            "status"
+          ],
+          "applies": [
+            "A350-900",
+            "A350-900ULR",
+            "A350-1000",
+            "A350-1000 HGW (2030)",
+            "A350F"
+          ],
+          "notes": "Separates current and target weight variants.",
+          "pageRefs": "PDF pp. 3-4",
+          "sizeBytes": 305153,
+          "sha256": "fbae02f4d8462e591a57611336c7bb58d02fff060defc44ac70af726d09ed668",
+          "pages": 5,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A350_AC_2025",
+      "org": "Airbus",
+      "title": "A350 Aircraft Characteristics for Airport Planning",
+      "issued": "2025",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A350_Aircraft_Characteristics_July_2025.pdf",
+      "fields": [
+        "dimensions",
+        "geometry",
+        "cargo"
+      ],
+      "applies": [
+        "A350 family"
+      ],
+      "notes": "Geometry and airport-planning reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 48-54",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-07/AC_A350_20250715.pdf",
+      "sizeBytes": 46899979,
+      "sha256": "a03ea3616bfce026ba53883bf1d16143770cc6b4352779606379dcce2e8d35e5",
+      "pages": 539,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A350_AC_2025",
+          "title": "A350 Aircraft Characteristics for Airport Planning",
+          "filename": "Airbus_A350_Aircraft_Characteristics_July_2025.pdf",
+          "local": "sources/pdfs/Airbus_A350_Aircraft_Characteristics_July_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-07/AC_A350_20250715.pdf",
+          "pages": 539,
+          "sizeBytes": 46899979,
+          "sha256": "a03ea3616bfce026ba53883bf1d16143770cc6b4352779606379dcce2e8d35e5",
+          "pageRefs": "PDF pp. 48-54",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 46899979,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A350_AC_2025",
+          "org": "Airbus",
+          "title": "A350 Aircraft Characteristics for Airport Planning",
+          "issued": "2025",
+          "type": "OEM airport planning",
+          "tier": "A2",
+          "filename": "Airbus_A350_Aircraft_Characteristics_July_2025.pdf",
+          "local": "sources/pdfs/Airbus_A350_Aircraft_Characteristics_July_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-07/AC_A350_20250715.pdf",
+          "fields": [
+            "dimensions",
+            "geometry",
+            "cargo"
+          ],
+          "applies": [
+            "A350 family"
+          ],
+          "notes": "Geometry and airport-planning reference.",
+          "pageRefs": "PDF pp. 48-54",
+          "sizeBytes": 46899979,
+          "sha256": "a03ea3616bfce026ba53883bf1d16143770cc6b4352779606379dcce2e8d35e5",
+          "pages": 539,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_A380_AC_2025",
+      "org": "Airbus",
+      "title": "A380 Aircraft Characteristics for Airport Planning",
+      "issued": "2025",
+      "type": "OEM airport planning",
+      "tier": "B1",
+      "url": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "local": "sources/pdfs/Airbus_A380_Aircraft_Characteristics_December_2025.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "cargo"
+      ],
+      "applies": [
+        "A380-800"
+      ],
+      "notes": "Legacy official reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 40-68",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.aircraft.airbus.com/en/customer-care/fleet-wide-care/airport-operations-and-aircraft-characteristics",
+      "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A380_20251201.pdf",
+      "sizeBytes": 10164155,
+      "sha256": "0973c3655f544f92b9a48ec83cc11f9ece7185b7efecb076919611421c59de09",
+      "pages": 320,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A380_AC_2025",
+          "title": "A380 Aircraft Characteristics for Airport Planning",
+          "filename": "Airbus_A380_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A380_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A380_20251201.pdf",
+          "pages": 320,
+          "sizeBytes": 10164155,
+          "sha256": "0973c3655f544f92b9a48ec83cc11f9ece7185b7efecb076919611421c59de09",
+          "pageRefs": "PDF pp. 40-68",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 10164155,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A380_AC_2025",
+          "org": "Airbus",
+          "title": "A380 Aircraft Characteristics for Airport Planning",
+          "issued": "2025",
+          "type": "OEM airport planning",
+          "tier": "B1",
+          "filename": "Airbus_A380_Aircraft_Characteristics_December_2025.pdf",
+          "local": "sources/pdfs/Airbus_A380_Aircraft_Characteristics_December_2025.pdf",
+          "pdfUrl": "https://www.aircraft.airbus.com/sites/g/files/jlcbta126/files/2025-12/AC_A380_20251201.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "dimensions",
+            "cargo"
+          ],
+          "applies": [
+            "A380-800"
+          ],
+          "notes": "Legacy official reference.",
+          "pageRefs": "PDF pp. 40-68",
+          "sizeBytes": 10164155,
+          "sha256": "0973c3655f544f92b9a48ec83cc11f9ece7185b7efecb076919611421c59de09",
+          "pages": 320,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "AIRBUS_CURRENT_LINEUP",
+      "org": "Airbus",
+      "title": "Commercial Aircraft Current Line-up",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.airbus.com/en/products-services/commercial-aircraft",
+      "local": "",
+      "fields": [
+        "program status",
+        "family scope"
+      ],
+      "applies": [
+        "Airbus commercial aircraft"
+      ],
+      "notes": "Program-status cross-check.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "AIRBUS_FREIGHTERS",
+      "org": "Airbus",
+      "title": "Airbus Freighter Aircraft Portfolio",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.aircraft.airbus.com/en/aircraft/freighters",
+      "local": "sources/pdfs/Airbus_A350F_Facts_and_Figures_April_2026.pdf",
+      "fields": [
+        "payload class",
+        "range",
+        "status"
+      ],
+      "applies": [
+        "A321P2F",
+        "A330-200F",
+        "A330P2F",
+        "A350F"
+      ],
+      "notes": "Freighter portfolio reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchives": [
+        {
+          "archiveId": "AIRBUS_A350F_FF_2026",
+          "title": "A350F Facts and Figures - April 2026",
+          "filename": "Airbus_A350F_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A350F_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_898_898671-ftut1pa2pm.pdf?fileName=airbus-a350f-facts-and-figures-april-2026.pdf",
+          "pages": 3,
+          "sizeBytes": 154842,
+          "sha256": "feef7944699e2555f160137e670494ad85814275fd862624e1724c5729cb114e",
+          "pageRefs": "PDF pp. 1-3",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "supplemental-legacy"
+        }
+      ],
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchiveCount": 1,
+      "localArchiveBytes": 154842,
+      "localAttachments": [
+        {
+          "id": "AIRBUS_A350F_FF_2026",
+          "org": "Airbus",
+          "title": "A350F Facts and Figures - April 2026",
+          "issued": "2026-04",
+          "type": "OEM PDF",
+          "tier": "A1",
+          "filename": "Airbus_A350F_Facts_and_Figures_April_2026.pdf",
+          "local": "sources/pdfs/Airbus_A350F_Facts_and_Figures_April_2026.pdf",
+          "pdfUrl": "https://mediaassets.airbus.com/pm_38_898_898671-ftut1pa2pm.pdf?fileName=airbus-a350f-facts-and-figures-april-2026.pdf",
+          "fields": [
+            "payload",
+            "payload-range condition",
+            "MTOW",
+            "dimensions",
+            "target EIS"
+          ],
+          "applies": [
+            "A350F"
+          ],
+          "notes": "4,700 nm is stated at 109 t payload; maximum structural payload is 111 t.",
+          "pageRefs": "PDF pp. 1-3",
+          "sizeBytes": 154842,
+          "sha256": "feef7944699e2555f160137e670494ad85814275fd862624e1724c5729cb114e",
+          "pages": 3,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "related-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EFW_A320_A321_P2F",
+      "org": "Elbe Flugzeugwerke",
+      "title": "A320/A321 Passenger-to-Freighter Programme",
+      "issued": "2025",
+      "type": "OEM/JV brochure",
+      "tier": "A2",
+      "url": "https://www.elbeflugzeugwerke.com/en/freighter-conversion/a321p2f/",
+      "local": "sources/pdfs/EFW_A320_A321_P2F_Brochure.pdf",
+      "fields": [
+        "payload",
+        "range",
+        "cargo volume",
+        "status"
+      ],
+      "applies": [
+        "A321P2F"
+      ],
+      "notes": "Conversion configuration and payload-range envelope.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF p. 2",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.elbeflugzeugwerke.com/en/freighter-conversion/a321p2f/",
+      "pdfUrl": "https://www.efw.aero/wp-content/uploads/2023/10/A320-A321P2F-Brochure.pdf",
+      "sizeBytes": 635169,
+      "sha256": "9b5ff3ef72897b593f2de5c1817bbda32122dd94ac4bfa27e319a157925a9a47",
+      "pages": 2,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "EFW_A320_A321_P2F",
+          "title": "A320/A321 Passenger-to-Freighter Programme",
+          "filename": "EFW_A320_A321_P2F_Brochure.pdf",
+          "local": "sources/pdfs/EFW_A320_A321_P2F_Brochure.pdf",
+          "pdfUrl": "https://www.efw.aero/wp-content/uploads/2023/10/A320-A321P2F-Brochure.pdf",
+          "pages": 2,
+          "sizeBytes": 635169,
+          "sha256": "9b5ff3ef72897b593f2de5c1817bbda32122dd94ac4bfa27e319a157925a9a47",
+          "pageRefs": "PDF p. 2",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 635169,
+      "localAttachments": [
+        {
+          "id": "EFW_A320_A321_P2F",
+          "org": "Elbe Flugzeugwerke",
+          "title": "A320/A321 Passenger-to-Freighter Programme",
+          "issued": "2025",
+          "type": "OEM/JV brochure",
+          "tier": "A2",
+          "filename": "EFW_A320_A321_P2F_Brochure.pdf",
+          "local": "sources/pdfs/EFW_A320_A321_P2F_Brochure.pdf",
+          "pdfUrl": "https://www.efw.aero/wp-content/uploads/2023/10/A320-A321P2F-Brochure.pdf",
+          "fields": [
+            "payload",
+            "range",
+            "cargo volume",
+            "status"
+          ],
+          "applies": [
+            "A321P2F"
+          ],
+          "notes": "Conversion configuration and payload-range envelope.",
+          "pageRefs": "PDF p. 2",
+          "sizeBytes": 635169,
+          "sha256": "9b5ff3ef72897b593f2de5c1817bbda32122dd94ac4bfa27e319a157925a9a47",
+          "pages": 2,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EFW_A330_P2F",
+      "org": "Elbe Flugzeugwerke",
+      "title": "A330 Passenger-to-Freighter Programme",
+      "issued": "2025",
+      "type": "OEM/JV brochure",
+      "tier": "A2",
+      "url": "https://www.elbeflugzeugwerke.com/en/freighter-conversion/a330p2f/",
+      "local": "sources/pdfs/EFW_A330_P2F_Brochure.pdf",
+      "fields": [
+        "payload",
+        "range",
+        "cargo volume"
+      ],
+      "applies": [
+        "A330-300P2F"
+      ],
+      "notes": "Conversion programme reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 1-2",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.elbeflugzeugwerke.com/en/freighter-conversion/a330p2f/",
+      "pdfUrl": "https://www.efw.aero/wp-content/uploads/2023/10/A330P2F-Brochure.pdf",
+      "sizeBytes": 778367,
+      "sha256": "e12379b674f58cf16e72a756da47d43c1b6eff6ba913d18cb7d85c2605a38539",
+      "pages": 2,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "EFW_A330_P2F",
+          "title": "A330 Passenger-to-Freighter Programme",
+          "filename": "EFW_A330_P2F_Brochure.pdf",
+          "local": "sources/pdfs/EFW_A330_P2F_Brochure.pdf",
+          "pdfUrl": "https://www.efw.aero/wp-content/uploads/2023/10/A330P2F-Brochure.pdf",
+          "pages": 2,
+          "sizeBytes": 778367,
+          "sha256": "e12379b674f58cf16e72a756da47d43c1b6eff6ba913d18cb7d85c2605a38539",
+          "pageRefs": "PDF pp. 1-2",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 778367,
+      "localAttachments": [
+        {
+          "id": "EFW_A330_P2F",
+          "org": "Elbe Flugzeugwerke",
+          "title": "A330 Passenger-to-Freighter Programme",
+          "issued": "2025",
+          "type": "OEM/JV brochure",
+          "tier": "A2",
+          "filename": "EFW_A330_P2F_Brochure.pdf",
+          "local": "sources/pdfs/EFW_A330_P2F_Brochure.pdf",
+          "pdfUrl": "https://www.efw.aero/wp-content/uploads/2023/10/A330P2F-Brochure.pdf",
+          "fields": [
+            "payload",
+            "range",
+            "cargo volume"
+          ],
+          "applies": [
+            "A330-300P2F"
+          ],
+          "notes": "Conversion programme reference.",
+          "pageRefs": "PDF pp. 1-2",
+          "sizeBytes": 778367,
+          "sha256": "e12379b674f58cf16e72a756da47d43c1b6eff6ba913d18cb7d85c2605a38539",
+          "pages": 2,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "BOEING_PLAN_MANUALS",
+      "org": "Boeing",
+      "title": "Commercial Airplanes Airport Planning Manuals",
+      "issued": "2026",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "https://www.boeing.com/commercial/airports/plan-manuals",
+      "local": "",
+      "fields": [
+        "dimensions",
+        "weights",
+        "airport planning",
+        "3-view geometry"
+      ],
+      "applies": [
+        "Boeing commercial aircraft"
+      ],
+      "notes": "Geometry and configuration-class cross-check.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_737_MAX",
+      "org": "Boeing",
+      "title": "737 MAX Technical Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.boeing.com/commercial/737max",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "status"
+      ],
+      "applies": [
+        "737-7",
+        "737-8",
+        "737-8-200",
+        "737-9",
+        "737-10"
+      ],
+      "notes": "Current family product page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_737_NG",
+      "org": "Boeing",
+      "title": "Next-Generation 737 Technical Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "B1",
+      "url": "https://www.boeing.com/commercial/737ng",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions"
+      ],
+      "applies": [
+        "737-700",
+        "737-800",
+        "737-900ER"
+      ],
+      "notes": "Legacy family product page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_787",
+      "org": "Boeing",
+      "title": "787 Dreamliner Family",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.boeing.com/commercial/787",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "dimensions",
+        "status"
+      ],
+      "applies": [
+        "787-8",
+        "787-9",
+        "787-10"
+      ],
+      "notes": "Current product page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_787_IMTOW_2026",
+      "org": "Boeing",
+      "title": "FAA Clears Higher Takeoff Weight for 787-9 and 787-10",
+      "issued": "2026-03-23",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.boeing.com/features/2026/03/faa-clears-higher-takeoff-weight-for-787-9-and-787-10",
+      "local": "",
+      "fields": [
+        "MTOW",
+        "range impact",
+        "certification status"
+      ],
+      "applies": [
+        "787-9 iMTOW",
+        "787-10 iMTOW"
+      ],
+      "notes": "Current increased-MTOW values.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_777",
+      "org": "Boeing",
+      "title": "777 Design Highlights and Technical Characteristics",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "B1",
+      "url": "https://www.boeing.com/commercial/777/design-highlights",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload"
+      ],
+      "applies": [
+        "777-200ER",
+        "777-200LR",
+        "777-300ER",
+        "777F"
+      ],
+      "notes": "Legacy 777 family reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_777X",
+      "org": "Boeing",
+      "title": "777X Technical Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.boeing.com/commercial/777x",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "status"
+      ],
+      "applies": [
+        "777-8",
+        "777-9",
+        "777-8F"
+      ],
+      "notes": "Development programme values remain subject to change.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_767F",
+      "org": "Boeing",
+      "title": "767-300 Freighter Technical Characteristics",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "B1",
+      "url": "https://www.boeing.com/commercial/freighters/767-300f",
+      "local": "",
+      "fields": [
+        "payload",
+        "range",
+        "dimensions",
+        "MTOW"
+      ],
+      "applies": [
+        "767-300F",
+        "767-300ER",
+        "767-400ER"
+      ],
+      "notes": "Freighter page plus family geometry references.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_FREIGHTERS",
+      "org": "Boeing",
+      "title": "Boeing Freighters Portfolio",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.boeing.com/commercial/freighters",
+      "local": "",
+      "fields": [
+        "programme scope",
+        "payload class",
+        "status"
+      ],
+      "applies": [
+        "737-800BCF",
+        "767-300F",
+        "777F",
+        "777-8F",
+        "747-8F"
+      ],
+      "notes": "Portfolio/programme reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_747_8",
+      "org": "Boeing",
+      "title": "747-8 Programme Page",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "B1",
+      "url": "https://www.boeing.com/commercial/747-8",
+      "local": "",
+      "fields": [
+        "programme status",
+        "family scope",
+        "dimensions"
+      ],
+      "applies": [
+        "747-8I",
+        "747-8F"
+      ],
+      "notes": "Production ended; support continues.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_737_BCF",
+      "org": "Boeing",
+      "title": "737-800 Boeing Converted Freighter",
+      "issued": "2016",
+      "type": "OEM brochure",
+      "tier": "B1",
+      "url": "https://www.boeing.com/content/dam/boeing/boeingdotcom/commercial/services/assets/brochure/737_800BCF.pdf",
+      "local": "",
+      "fields": [
+        "payload",
+        "MTOW",
+        "range",
+        "cargo volume"
+      ],
+      "applies": [
+        "737-800BCF"
+      ],
+      "notes": "Legacy official conversion brochure.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "PDF pp. 1-4",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EASA_B737_CURRENT",
+      "org": "EASA",
+      "title": "EASA.IM.A.120 — Boeing 737",
+      "issued": "2026-06-24",
+      "type": "Regulator web",
+      "tier": "A1",
+      "url": "https://www.easa.europa.eu/en/document-library/type-certificates/noise/easaima120-boeing-737",
+      "local": "",
+      "fields": [
+        "certification status",
+        "model coverage"
+      ],
+      "applies": [
+        "737 family"
+      ],
+      "notes": "Current regulator issue index.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EASA_B787_CURRENT",
+      "org": "EASA",
+      "title": "EASA.IM.A.115 — Boeing 787",
+      "issued": "2026",
+      "type": "Regulator web",
+      "tier": "A1",
+      "url": "https://www.easa.europa.eu/en/document-library/type-certificates/easaima115-boeing-787",
+      "local": "",
+      "fields": [
+        "certification status",
+        "model coverage"
+      ],
+      "applies": [
+        "787 family"
+      ],
+      "notes": "Current regulator index.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EASA_B777_CURRENT",
+      "org": "EASA",
+      "title": "EASA.IM.A.003 — Boeing 777",
+      "issued": "2026",
+      "type": "Regulator web",
+      "tier": "A1",
+      "url": "https://www.easa.europa.eu/en/document-library/type-certificates/easaima003-boeing-777",
+      "local": "sources/pdfs/EASA_TCDSN_Boeing_777_Issue_12_January_2013.pdf",
+      "fields": [
+        "certification status",
+        "model coverage"
+      ],
+      "applies": [
+        "777 family"
+      ],
+      "notes": "Current regulator index.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchives": [
+        {
+          "archiveId": "EASA_B777_ARCHIVE",
+          "title": "TCDSN Boeing 777 - Issue 12",
+          "filename": "EASA_TCDSN_Boeing_777_Issue_12_January_2013.pdf",
+          "local": "sources/pdfs/EASA_TCDSN_Boeing_777_Issue_12_January_2013.pdf",
+          "pdfUrl": "https://www.easa.europa.eu/sites/default/files/dfu/certification-type-certificates-docs-noise-EASA-TCDS-A.003_%28IM%29_Boeing_777-12-24012013.pdf",
+          "pages": 45,
+          "sizeBytes": 198842,
+          "sha256": "ee41df2f2506e302e28be7a5d6ac08cc661cfb29bff3df2464640e0d1240a9ff",
+          "pageRefs": "PDF pp. 1, 3-45",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "supplemental-legacy"
+        }
+      ],
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchiveCount": 1,
+      "localArchiveBytes": 198842,
+      "localAttachments": [
+        {
+          "id": "EASA_B777_ARCHIVE",
+          "org": "EASA",
+          "title": "TCDSN Boeing 777 - Issue 12",
+          "issued": "2013-01-24",
+          "type": "Regulator PDF (archived)",
+          "tier": "A1",
+          "filename": "EASA_TCDSN_Boeing_777_Issue_12_January_2013.pdf",
+          "local": "sources/pdfs/EASA_TCDSN_Boeing_777_Issue_12_January_2013.pdf",
+          "pdfUrl": "https://www.easa.europa.eu/sites/default/files/dfu/certification-type-certificates-docs-noise-EASA-TCDS-A.003_%28IM%29_Boeing_777-12-24012013.pdf",
+          "fields": [
+            "certified model coverage",
+            "weight records"
+          ],
+          "applies": [
+            "777-200/-200LR/-300/-300ER/F"
+          ],
+          "notes": "Local archival supporting document; current issue is checked separately.",
+          "pageRefs": "PDF pp. 1, 3-45",
+          "sizeBytes": 198842,
+          "sha256": "ee41df2f2506e302e28be7a5d6ac08cc661cfb29bff3df2464640e0d1240a9ff",
+          "pages": 45,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "related-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EASA_B767_CURRENT",
+      "org": "EASA",
+      "title": "EASA.IM.A.035 — Boeing 767",
+      "issued": "2026",
+      "type": "Regulator web",
+      "tier": "A1",
+      "url": "https://www.easa.europa.eu/en/document-library/type-certificates/easaima035-boeing-767",
+      "local": "sources/pdfs/EASA_TCDSN_Boeing_767_Issue_9_April_2013.pdf",
+      "fields": [
+        "certification status",
+        "model coverage"
+      ],
+      "applies": [
+        "767 family"
+      ],
+      "notes": "Current regulator index.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchives": [
+        {
+          "archiveId": "EASA_B767_ARCHIVE",
+          "title": "TCDSN Boeing 767 - Issue 9",
+          "filename": "EASA_TCDSN_Boeing_767_Issue_9_April_2013.pdf",
+          "local": "sources/pdfs/EASA_TCDSN_Boeing_767_Issue_9_April_2013.pdf",
+          "pdfUrl": "https://www.easa.europa.eu/sites/default/files/dfu/certification-type-certificates-docs-noise-EASA-TCDS-A.035_%28IM%29_Boeing_767-09-09042013.pdf",
+          "pages": 79,
+          "sizeBytes": 298454,
+          "sha256": "db2623748beabf5160a9c7a87394910231c80c011d579e40c934638e1ce993bc",
+          "pageRefs": "PDF pp. 1, 3-79",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "supplemental-legacy"
+        }
+      ],
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchiveCount": 1,
+      "localArchiveBytes": 298454,
+      "localAttachments": [
+        {
+          "id": "EASA_B767_ARCHIVE",
+          "org": "EASA",
+          "title": "TCDSN Boeing 767 - Issue 9",
+          "issued": "2013-04-09",
+          "type": "Regulator PDF (archived)",
+          "tier": "A1",
+          "filename": "EASA_TCDSN_Boeing_767_Issue_9_April_2013.pdf",
+          "local": "sources/pdfs/EASA_TCDSN_Boeing_767_Issue_9_April_2013.pdf",
+          "pdfUrl": "https://www.easa.europa.eu/sites/default/files/dfu/certification-type-certificates-docs-noise-EASA-TCDS-A.035_%28IM%29_Boeing_767-09-09042013.pdf",
+          "fields": [
+            "certified model coverage",
+            "weight records"
+          ],
+          "applies": [
+            "767-200/-300/-400ER/-300F"
+          ],
+          "notes": "Local archival supporting document; current issue is checked separately on EASA web.",
+          "pageRefs": "PDF pp. 1, 3-79",
+          "sizeBytes": 298454,
+          "sha256": "db2623748beabf5160a9c7a87394910231c80c011d579e40c934638e1ce993bc",
+          "pages": 79,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "related-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EASA_B747_CURRENT",
+      "org": "EASA",
+      "title": "EASA.IM.A.196 — Boeing 747",
+      "issued": "2026",
+      "type": "Regulator web",
+      "tier": "A1",
+      "url": "https://www.easa.europa.eu/en/document-library/type-certificates/easaima196-boeing-747",
+      "local": "",
+      "fields": [
+        "certification status",
+        "model coverage"
+      ],
+      "applies": [
+        "747 family"
+      ],
+      "notes": "Current regulator index.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EASA_ERJ170_CURRENT_PDF",
+      "org": "EASA",
+      "title": "ERJ-170 Type Certificate Data Sheet",
+      "issued": "2026",
+      "type": "Regulator PDF",
+      "tier": "A1",
+      "url": "https://www.easa.europa.eu/en/downloads/7525/en",
+      "local": "",
+      "fields": [
+        "max seats",
+        "MTOW",
+        "dimensions",
+        "engine",
+        "model coverage"
+      ],
+      "applies": [
+        "E170",
+        "E175"
+      ],
+      "notes": "Used to keep E170 and E175 geometry/weights separate.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "PDF pp. 8-9",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EASA_ERJ190_CURRENT_PDF",
+      "org": "EASA",
+      "title": "ERJ-190 Type Certificate Data Sheet",
+      "issued": "2026",
+      "type": "Regulator PDF",
+      "tier": "A1",
+      "url": "https://www.easa.europa.eu/en/document-library/type-certificates/easaima071-embraer-erj-190",
+      "local": "sources/pdfs/EASA_TCDS_Embraer_ERJ_190_Issue_11_October_2010.pdf",
+      "fields": [
+        "weights",
+        "dimensions",
+        "model coverage"
+      ],
+      "applies": [
+        "E190",
+        "E195",
+        "E190-E2",
+        "E195-E2"
+      ],
+      "notes": "Current issue cross-check.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 2-18",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchives": [
+        {
+          "archiveId": "EASA_ERJ190_ARCHIVE",
+          "title": "EASA TCDS ERJ 190 - Issue 11",
+          "filename": "EASA_TCDS_Embraer_ERJ_190_Issue_11_October_2010.pdf",
+          "local": "sources/pdfs/EASA_TCDS_Embraer_ERJ_190_Issue_11_October_2010.pdf",
+          "pdfUrl": "https://www.easa.europa.eu/sites/default/files/dfu/certification-type-certificates-docs-aircraft-EASA-TCDS-A.071_%28IM%29_Embraer_ERJ_190-11-21102010.pdf",
+          "pages": 18,
+          "sizeBytes": 82196,
+          "sha256": "1c175ba7a444f7787a3d89ebbcb08e8d48d7db2c037c2ce947c414fe9bb41838",
+          "pageRefs": "PDF pp. 2-8; PDF pp. 14-18",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "supplemental-legacy"
+        }
+      ],
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchiveCount": 1,
+      "localArchiveBytes": 82196,
+      "localAttachments": [
+        {
+          "id": "EASA_ERJ190_ARCHIVE",
+          "org": "EASA",
+          "title": "EASA TCDS ERJ 190 - Issue 11",
+          "issued": "2010-10-21",
+          "type": "Regulator PDF (archived)",
+          "tier": "A1",
+          "filename": "EASA_TCDS_Embraer_ERJ_190_Issue_11_October_2010.pdf",
+          "local": "sources/pdfs/EASA_TCDS_Embraer_ERJ_190_Issue_11_October_2010.pdf",
+          "pdfUrl": "https://www.easa.europa.eu/sites/default/files/dfu/certification-type-certificates-docs-aircraft-EASA-TCDS-A.071_%28IM%29_Embraer_ERJ_190-11-21102010.pdf",
+          "fields": [
+            "certified model coverage",
+            "certification basis"
+          ],
+          "applies": [
+            "E190",
+            "E195"
+          ],
+          "notes": "Local archival regulator document; current EASA issue is checked via document library.",
+          "pageRefs": "PDF pp. 2-8; PDF pp. 14-18",
+          "sizeBytes": 82196,
+          "sha256": "1c175ba7a444f7787a3d89ebbcb08e8d48d7db2c037c2ce947c414fe9bb41838",
+          "pages": 18,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "related-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EMBRAER_E170_SPEC",
+      "org": "Embraer",
+      "title": "E170 Legacy Technical Specifications",
+      "issued": "2025",
+      "type": "OEM specification",
+      "tier": "B1",
+      "url": "https://www.embraercommercialaviation.com/commercial-jets/e-jets/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "payload",
+        "status"
+      ],
+      "applies": [
+        "E170"
+      ],
+      "notes": "Legacy product specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EMBRAER_E175_SPEC",
+      "org": "Embraer",
+      "title": "E175 Technical Specifications",
+      "issued": "2025",
+      "type": "OEM specification",
+      "tier": "A2",
+      "url": "https://www.embraercommercialaviation.com/commercial-jets/e-jets/",
+      "local": "sources/pdfs/Embraer_E175_Specification.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "payload",
+        "status"
+      ],
+      "applies": [
+        "E175"
+      ],
+      "notes": "Primary E175 specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF p. 2",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.embraercommercialaviation.com/commercial-jets/e-jets/",
+      "pdfUrl": "https://www.embraer.com/media/o3sjzbwl/e175_spec.pdf",
+      "sizeBytes": 3722120,
+      "sha256": "945308796883d2b58bd91ec122b73769c2c4800cc2a2869253495a60047617b5",
+      "pages": 2,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "EMBRAER_E175_SPEC",
+          "title": "E175 Technical Specifications",
+          "filename": "Embraer_E175_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E175_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/o3sjzbwl/e175_spec.pdf",
+          "pages": 2,
+          "sizeBytes": 3722120,
+          "sha256": "945308796883d2b58bd91ec122b73769c2c4800cc2a2869253495a60047617b5",
+          "pageRefs": "PDF p. 2",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 3722120,
+      "localAttachments": [
+        {
+          "id": "EMBRAER_E175_SPEC",
+          "org": "Embraer",
+          "title": "E175 Technical Specifications",
+          "issued": "2025",
+          "type": "OEM specification",
+          "tier": "A2",
+          "filename": "Embraer_E175_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E175_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/o3sjzbwl/e175_spec.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "payload",
+            "status"
+          ],
+          "applies": [
+            "E175"
+          ],
+          "notes": "Primary E175 specification.",
+          "pageRefs": "PDF p. 2",
+          "sizeBytes": 3722120,
+          "sha256": "945308796883d2b58bd91ec122b73769c2c4800cc2a2869253495a60047617b5",
+          "pages": 2,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EMBRAER_E190E1_SPEC",
+      "org": "Embraer",
+      "title": "E190 E1 Technical Specifications",
+      "issued": "2025",
+      "type": "OEM specification",
+      "tier": "B1",
+      "url": "https://www.embraercommercialaviation.com/commercial-jets/e-jets/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "payload",
+        "status"
+      ],
+      "applies": [
+        "E190 (E1)"
+      ],
+      "notes": "Legacy official specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EMBRAER_E195E1_SPEC",
+      "org": "Embraer",
+      "title": "E195 E1 Technical Specifications",
+      "issued": "2025",
+      "type": "OEM specification",
+      "tier": "B1",
+      "url": "https://www.embraercommercialaviation.com/commercial-jets/e-jets/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "payload",
+        "status"
+      ],
+      "applies": [
+        "E195 (E1)"
+      ],
+      "notes": "Legacy official specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "EMBRAER_E175E2_SPEC",
+      "org": "Embraer",
+      "title": "E175-E2 Technical Specifications",
+      "issued": "2025",
+      "type": "OEM specification",
+      "tier": "A2",
+      "url": "https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/",
+      "local": "sources/pdfs/Embraer_E175-E2_Specification.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload",
+        "status"
+      ],
+      "applies": [
+        "E175-E2"
+      ],
+      "notes": "Development/target specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF p. 2",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/",
+      "pdfUrl": "https://www.embraer.com/media/hnfo13wz/embraer_spec_e175-e2_web-en_edit-2.pdf",
+      "sizeBytes": 3147735,
+      "sha256": "31e4b7d15bc290f424aa7e0211c5b667c77e2115af5345c5edd8ee6142b5f909",
+      "pages": 2,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "EMBRAER_E175E2_SPEC",
+          "title": "E175-E2 Technical Specifications",
+          "filename": "Embraer_E175-E2_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E175-E2_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/hnfo13wz/embraer_spec_e175-e2_web-en_edit-2.pdf",
+          "pages": 2,
+          "sizeBytes": 3147735,
+          "sha256": "31e4b7d15bc290f424aa7e0211c5b667c77e2115af5345c5edd8ee6142b5f909",
+          "pageRefs": "PDF p. 2",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 3147735,
+      "localAttachments": [
+        {
+          "id": "EMBRAER_E175E2_SPEC",
+          "org": "Embraer",
+          "title": "E175-E2 Technical Specifications",
+          "issued": "2025",
+          "type": "OEM specification",
+          "tier": "A2",
+          "filename": "Embraer_E175-E2_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E175-E2_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/hnfo13wz/embraer_spec_e175-e2_web-en_edit-2.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "dimensions",
+            "payload",
+            "status"
+          ],
+          "applies": [
+            "E175-E2"
+          ],
+          "notes": "Development/target specification.",
+          "pageRefs": "PDF p. 2",
+          "sizeBytes": 3147735,
+          "sha256": "31e4b7d15bc290f424aa7e0211c5b667c77e2115af5345c5edd8ee6142b5f909",
+          "pages": 2,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EMBRAER_E190E2_SPEC",
+      "org": "Embraer",
+      "title": "E190-E2 Technical Specifications",
+      "issued": "2025",
+      "type": "OEM specification",
+      "tier": "A2",
+      "url": "https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/",
+      "local": "sources/pdfs/Embraer_E190-E2_Specification.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload"
+      ],
+      "applies": [
+        "E190-E2"
+      ],
+      "notes": "Current official specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF p. 2",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/",
+      "pdfUrl": "https://www.embraer.com/media/qn2j13lk/e190-e2_spec.pdf",
+      "sizeBytes": 1602686,
+      "sha256": "f0456551538ebfca736818570a020377faa12d6d328aaeba33854b94e6c3ce4c",
+      "pages": 2,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "EMBRAER_E190E2_SPEC",
+          "title": "E190-E2 Technical Specifications",
+          "filename": "Embraer_E190-E2_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E190-E2_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/qn2j13lk/e190-e2_spec.pdf",
+          "pages": 2,
+          "sizeBytes": 1602686,
+          "sha256": "f0456551538ebfca736818570a020377faa12d6d328aaeba33854b94e6c3ce4c",
+          "pageRefs": "PDF p. 2",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 1602686,
+      "localAttachments": [
+        {
+          "id": "EMBRAER_E190E2_SPEC",
+          "org": "Embraer",
+          "title": "E190-E2 Technical Specifications",
+          "issued": "2025",
+          "type": "OEM specification",
+          "tier": "A2",
+          "filename": "Embraer_E190-E2_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E190-E2_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/qn2j13lk/e190-e2_spec.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "dimensions",
+            "payload"
+          ],
+          "applies": [
+            "E190-E2"
+          ],
+          "notes": "Current official specification.",
+          "pageRefs": "PDF p. 2",
+          "sizeBytes": 1602686,
+          "sha256": "f0456551538ebfca736818570a020377faa12d6d328aaeba33854b94e6c3ce4c",
+          "pages": 2,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EMBRAER_E195E2_SPEC",
+      "org": "Embraer",
+      "title": "E195-E2 Technical Specifications",
+      "issued": "2025",
+      "type": "OEM specification",
+      "tier": "A2",
+      "url": "https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/",
+      "local": "sources/pdfs/Embraer_E195-E2_Specification.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload"
+      ],
+      "applies": [
+        "E195-E2"
+      ],
+      "notes": "Current official specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF p. 2",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "https://www.embraercommercialaviation.com/commercial-jets/e-jets-e2/",
+      "pdfUrl": "https://www.embraer.com/media/ue1bdfnq/e195-e2-spec-1.pdf",
+      "sizeBytes": 2115525,
+      "sha256": "3057072980230f5e4967bea6dcbcfe2b80058db67f31d95eaffd54c86471cd4a",
+      "pages": 2,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "EMBRAER_E195E2_SPEC",
+          "title": "E195-E2 Technical Specifications",
+          "filename": "Embraer_E195-E2_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E195-E2_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/ue1bdfnq/e195-e2-spec-1.pdf",
+          "pages": 2,
+          "sizeBytes": 2115525,
+          "sha256": "3057072980230f5e4967bea6dcbcfe2b80058db67f31d95eaffd54c86471cd4a",
+          "pageRefs": "PDF p. 2",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 2115525,
+      "localAttachments": [
+        {
+          "id": "EMBRAER_E195E2_SPEC",
+          "org": "Embraer",
+          "title": "E195-E2 Technical Specifications",
+          "issued": "2025",
+          "type": "OEM specification",
+          "tier": "A2",
+          "filename": "Embraer_E195-E2_Specification.pdf",
+          "local": "sources/pdfs/Embraer_E195-E2_Specification.pdf",
+          "pdfUrl": "https://www.embraer.com/media/ue1bdfnq/e195-e2-spec-1.pdf",
+          "fields": [
+            "seating",
+            "range",
+            "MTOW",
+            "dimensions",
+            "payload"
+          ],
+          "applies": [
+            "E195-E2"
+          ],
+          "notes": "Current official specification.",
+          "pageRefs": "PDF p. 2",
+          "sizeBytes": 2115525,
+          "sha256": "3057072980230f5e4967bea6dcbcfe2b80058db67f31d95eaffd54c86471cd4a",
+          "pages": 2,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "EMBRAER_MARKET_OUTLOOK_2025",
+      "org": "Embraer",
+      "title": "Market Outlook 2025",
+      "issued": "2025",
+      "type": "OEM market outlook",
+      "tier": "A2",
+      "url": "https://www.embraercommercialaviation.com/market-outlook/",
+      "local": "",
+      "fields": [
+        "market segment",
+        "fleet demand"
+      ],
+      "applies": [
+        "Up to 150-seat market"
+      ],
+      "notes": "Market context only; not a primary specification source.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "COMAC_C909_PAGE",
+      "org": "COMAC",
+      "title": "C909 Official Product Page",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "http://english.comac.cc/products/rj/",
+      "local": "sources/pdfs/COMAC_C909_Airplane_Characteristics_for_Airport_Planning.pdf",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "status"
+      ],
+      "applies": [
+        "C909"
+      ],
+      "notes": "Official programme page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchives": [
+        {
+          "archiveId": "COMAC_C909_ACAP",
+          "title": "C909/ARJ21 Aircraft Characteristics for Airport Planning",
+          "filename": "COMAC_C909_Airplane_Characteristics_for_Airport_Planning.pdf",
+          "local": "sources/pdfs/COMAC_C909_Airplane_Characteristics_for_Airport_Planning.pdf",
+          "pdfUrl": "https://www.comac.cc/pdf/acap_en.pdf",
+          "pages": 196,
+          "sizeBytes": 16368662,
+          "sha256": "2201aa2bfa9103b43077b480cd97b174b142812ecfd8b852ade7a7e36e90f7b2",
+          "pageRefs": "PDF pp. 15, 19-25; PDF pp. 47-49",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "supplemental-legacy"
+        }
+      ],
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchiveCount": 1,
+      "localArchiveBytes": 16368662,
+      "localAttachments": [
+        {
+          "id": "COMAC_C909_ACAP",
+          "org": "COMAC",
+          "title": "C909/ARJ21 Aircraft Characteristics for Airport Planning",
+          "issued": "2020",
+          "type": "OEM PDF",
+          "tier": "A1",
+          "filename": "COMAC_C909_Airplane_Characteristics_for_Airport_Planning.pdf",
+          "local": "sources/pdfs/COMAC_C909_Airplane_Characteristics_for_Airport_Planning.pdf",
+          "pdfUrl": "https://www.comac.cc/pdf/acap_en.pdf",
+          "fields": [
+            "dimensions",
+            "weights",
+            "airport planning"
+          ],
+          "applies": [
+            "C909"
+          ],
+          "notes": "Primary airport-planning document.",
+          "pageRefs": "PDF pp. 15, 19-25; PDF pp. 47-49",
+          "sizeBytes": 16368662,
+          "sha256": "2201aa2bfa9103b43077b480cd97b174b142812ecfd8b852ade7a7e36e90f7b2",
+          "pages": 196,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "related-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "COMAC_C919_PAGE",
+      "org": "COMAC",
+      "title": "C919 Official Product Page",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "http://english.comac.cc/products/ca/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "status"
+      ],
+      "applies": [
+        "C919"
+      ],
+      "notes": "Current product/programme page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "COMAC_C919_ACAP",
+      "org": "COMAC",
+      "title": "C919 Aircraft Characteristics for Airport Planning",
+      "issued": "2025",
+      "type": "OEM airport planning",
+      "tier": "A2",
+      "url": "http://english.comac.cc/products/ca/",
+      "local": "sources/pdfs/COMAC_C919_Airplane_Characteristics_for_Airport_Planning_October_2025.pdf",
+      "fields": [
+        "MTOW",
+        "dimensions",
+        "geometry",
+        "payload"
+      ],
+      "applies": [
+        "C919"
+      ],
+      "notes": "Current ACAP revision.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "local-attached",
+      "pageRefs": "PDF pp. 10-45",
+      "snapshotNote": "v1.3 source-registry snapshot retained; exact v1.2/v1.3 local PDF bytes restored and revalidated for v1.7.",
+      "officialLandingPage": "http://english.comac.cc/products/ca/",
+      "pdfUrl": "https://www.comac.cc/fujian/c919acap_en.pdf",
+      "sizeBytes": 28787931,
+      "sha256": "f610f13bf340954167538efaf928af5d40bedf09b6df4018cef8aa0483caa3cf",
+      "pages": 260,
+      "localPdfVerified": true,
+      "localPdfVerifiedDate": "2026-07-14",
+      "localArchives": [
+        {
+          "archiveId": "COMAC_C919_ACAP",
+          "title": "C919 Aircraft Characteristics for Airport Planning",
+          "filename": "COMAC_C919_Airplane_Characteristics_for_Airport_Planning_October_2025.pdf",
+          "local": "sources/pdfs/COMAC_C919_Airplane_Characteristics_for_Airport_Planning_October_2025.pdf",
+          "pdfUrl": "https://www.comac.cc/fujian/c919acap_en.pdf",
+          "pages": 260,
+          "sizeBytes": 28787931,
+          "sha256": "f610f13bf340954167538efaf928af5d40bedf09b6df4018cef8aa0483caa3cf",
+          "pageRefs": "PDF pp. 10-45",
+          "integrity": "EXACT_MATCH",
+          "verifiedDate": "2026-07-14",
+          "role": "primary"
+        }
+      ],
+      "localArchiveCount": 1,
+      "localArchiveBytes": 28787931,
+      "localAttachments": [
+        {
+          "id": "COMAC_C919_ACAP",
+          "org": "COMAC",
+          "title": "C919 Aircraft Characteristics for Airport Planning",
+          "issued": "2025",
+          "type": "OEM airport planning",
+          "tier": "A2",
+          "filename": "COMAC_C919_Airplane_Characteristics_for_Airport_Planning_October_2025.pdf",
+          "local": "sources/pdfs/COMAC_C919_Airplane_Characteristics_for_Airport_Planning_October_2025.pdf",
+          "pdfUrl": "https://www.comac.cc/fujian/c919acap_en.pdf",
+          "fields": [
+            "MTOW",
+            "dimensions",
+            "geometry",
+            "payload"
+          ],
+          "applies": [
+            "C919"
+          ],
+          "notes": "Current ACAP revision.",
+          "pageRefs": "PDF pp. 10-45",
+          "sizeBytes": 28787931,
+          "sha256": "f610f13bf340954167538efaf928af5d40bedf09b6df4018cef8aa0483caa3cf",
+          "pages": 260,
+          "header": "%PDF-",
+          "verifiedDate": "2026-07-14",
+          "integrity": "EXACT_MATCH",
+          "sizeMatch": true,
+          "sha256Match": true,
+          "pageCountMatch": true,
+          "relationship": "primary-local-snapshot"
+        }
+      ],
+      "localPdfCount": 1
+    },
+    {
+      "id": "COMAC_C929_PAGE",
+      "org": "COMAC",
+      "title": "C929 Official Product Page",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "http://english.comac.cc/products/wb/",
+      "local": "",
+      "fields": [
+        "seating",
+        "programme status"
+      ],
+      "applies": [
+        "C929"
+      ],
+      "notes": "Current page publishes seating envelope but not frozen MTOW/range/dimensions.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "UAC_SSJ100_PAGE",
+      "org": "United Aircraft Corporation",
+      "title": "Superjet 100 Official Product Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "B1",
+      "url": "https://uacrussia.ru/en/aircraft/lineup/lineup/superjet-100/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions"
+      ],
+      "applies": [
+        "Superjet 100"
+      ],
+      "notes": "Legacy programme reference.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "UAC_SJ100_PAGE",
+      "org": "United Aircraft Corporation",
+      "title": "SJ-100 Programme Page",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://uacrussia.ru/en/aircraft/lineup/civil/sj-100/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "status"
+      ],
+      "applies": [
+        "SJ-100"
+      ],
+      "notes": "Development programme values.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "UAC_MC21_PAGE",
+      "org": "United Aircraft Corporation",
+      "title": "MC-21 Official Product Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://uacrussia.ru/en/aircraft/lineup/civil/ms-21/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "status"
+      ],
+      "applies": [
+        "MC-21-310"
+      ],
+      "notes": "Official product specification.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "ATR_42_600",
+      "org": "ATR",
+      "title": "ATR 42-600 Official Product Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.atr-aircraft.com/aircraft-services/aircraft-family/atr-42-600/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload"
+      ],
+      "applies": [
+        "ATR 42-600"
+      ],
+      "notes": "Current official product page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "ATR_72_600",
+      "org": "ATR",
+      "title": "ATR 72-600 Official Product Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.atr-aircraft.com/aircraft-services/aircraft-family/atr-72-600/",
+      "local": "",
+      "fields": [
+        "seating",
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload"
+      ],
+      "applies": [
+        "ATR 72-600"
+      ],
+      "notes": "Current official product page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "ATR_72_600F",
+      "org": "ATR",
+      "title": "ATR 72-600F Official Product Specifications",
+      "issued": "2026",
+      "type": "OEM web",
+      "tier": "A2",
+      "url": "https://www.atr-aircraft.com/aircraft-services/aircraft-family/atr-72-600f-freighter/",
+      "local": "",
+      "fields": [
+        "range",
+        "MTOW",
+        "dimensions",
+        "payload",
+        "cargo volume"
+      ],
+      "applies": [
+        "ATR 72-600F"
+      ],
+      "notes": "Current official freighter page.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "FAA_TC_DATA_INDEX",
+      "org": "FAA",
+      "title": "FAA Type Certificate Data Sheet Index",
+      "issued": "2026",
+      "type": "Regulator index",
+      "tier": "A1",
+      "url": "https://drs.faa.gov/browse/TCDSMODEL/doctypeDetails",
+      "local": "",
+      "fields": [
+        "certification cross-check"
+      ],
+      "applies": [
+        "US-certified commercial aircraft"
+      ],
+      "notes": "Regulator cross-check index.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    },
+    {
+      "id": "BOEING_2026Q1_RESULTS",
+      "org": "Boeing",
+      "title": "Boeing First Quarter 2026 Results",
+      "issued": "2026-04-22",
+      "type": "OEM investor release",
+      "tier": "A2",
+      "url": "https://investors.boeing.com/investors/news/press-release-details/2026/Boeing-Reports-First-Quarter-Results/default.aspx",
+      "local": "",
+      "fields": [
+        "777-9 status",
+        "787 iMTOW status"
+      ],
+      "applies": [
+        "777-9",
+        "787-9 iMTOW",
+        "787-10 iMTOW"
+      ],
+      "notes": "Programme status cross-check.",
+      "accessed": "2026-07-13",
+      "archiveStatus": "external-only",
+      "pageRefs": "",
+      "snapshotNote": "v1.3 source-registry snapshot carried into v1.7; link availability was not re-downloaded in this runtime.",
+      "localArchiveCount": 0,
+      "localArchiveBytes": 0,
+      "localAttachments": [],
+      "localPdfCount": 0
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+## v1.4 아웃풋 패키지
+
+v1.3의 **단일 데이터 원본·필드별 근거·미공개값 비추정 구조**와 v1.2의 **정규화 레이더·실척 외형 비교·직접 레이블 포지션 맵**을 결합해 v1.4로 재구성했습니다. fileciteturn0file5 fileciteturn0file6
+
+### 권장 다운로드
+
+[**Civil Aircraft Encyclopedia & Dashboard v1.4 — 전체 통합 패키지 ZIP**](sandbox:/mnt/data/Civil_Aircraft_Encyclopedia_Dashboard_v1.4_Package.zip)
+
+압축 해제 후 아래 파일을 실행하면 됩니다.
+
+```text
+Civil_Aircraft_Encyclopedia_Dashboard_v1.4/index.html
+```
+
+포함 내용:
+
+- 통합 Portal / Encyclopedia / Comparison / Sources
+- 65개 항공기 데이터
+- 55개 출처 레지스트리
+- 한 번 클릭으로 전체 상세정보 표시
+- Size·MTOW·Seats/Payload·Range 통합 카드
+- 지표 직접 선택 버튼
+- 원값과 기준 기체 대비 증감 동시 표시
+- 정규화 6각 레이더 및 원값 표
+- 상면·측면·정면 실척 비율 오버레이
+- 직접 레이블·툴팁·클릭 상세 포지션 맵
+- `A350`, `B737`, `MAX 8`, `ARJ21` 등 별칭 검색
+- 제조사·비교 선택 색상 규정 및 범례
+- A+ / A / B+ / B 검증등급 정의
+- JSON, Schema, 데이터 사전, QA, SHA-256 포함
+
+### Standalone HTML
+
+각 파일은 CSS·JavaScript·데이터를 내부에 포함하여 단독 실행할 수 있습니다.
+
+- [통합 Portal v1.4](sandbox:/mnt/data/Civil_Aircraft_Portal_v1.4.html)
+- [Aircraft Encyclopedia v1.4](sandbox:/mnt/data/Civil_Aircraft_Encyclopedia_v1.4.html)
+- [Comparison Dashboard v1.4](sandbox:/mnt/data/Civil_Aircraft_Comparison_Dashboard_v1.4.html)
+- [Source Archive v1.4](sandbox:/mnt/data/Civil_Aircraft_Source_Archive_v1.4.html)
+
+### 데이터·출처
+
+- [Aircraft Data v1.4 JSON](sandbox:/mnt/data/Civil_Aircraft_Data_v1.4.json)
+- [Data Schema v1.4 JSON](sandbox:/mnt/data/Civil_Aircraft_Data_Schema_v1.4.json)
+- [Data Dictionary v1.4](sandbox:/mnt/data/Civil_Aircraft_Data_Dictionary_v1.4.md)
+- [Source Registry v1.4 JSON](sandbox:/mnt/data/Civil_Aircraft_Source_Registry_v1.4.json)
+- [External Source Links v1.4 CSV](sandbox:/mnt/data/Civil_Aircraft_External_Source_Links_v1.4.csv)
+- [Source Registry Package v1.4 ZIP](sandbox:/mnt/data/Civil_Aircraft_Source_Registry_v1.4_Package.zip)
+
+### 검증 결과
+
+- 정적 데이터·파일·JavaScript 검사: **41/41 통과**
+- 실제 화면 기능·별칭 검색·모달·차트·툴팁·모바일 검사: **15/15 통과**
+- ZIP CRC 검사: **오류 없음**
+
+검증 파일:
+
+- [Static QA Report v1.4](sandbox:/mnt/data/Civil_Aircraft_QA_Report_v1.4.json)
+- [Runtime QA Report v1.4](sandbox:/mnt/data/Civil_Aircraft_QA_Runtime_v1.4.json)
+- [Delivery SHA-256 Checksums](sandbox:/mnt/data/Civil_Aircraft_v1.4_Delivery_Checksums.txt)
+- [README v1.4](sandbox:/mnt/data/Civil_Aircraft_README_v1.4.md)
+- [CHANGELOG v1.4](sandbox:/mnt/data/Civil_Aircraft_CHANGELOG_v1.4.md)
+
+> **패키지 범위:** 현재 실행 환경에 기존 v1.3의 약 175MB 통합 ZIP과 25개 PDF 원본 바이트가 남아 있지 않아, 이번 결과물은 기존 바이너리를 직접 수정한 것이 아니라 제공된 v1.2·v1.3 소스 구조와 요구사항을 바탕으로 만든 **v1.4 재빌드 패키지**입니다. 따라서 출처 55건은 공식 외부 원문으로 연결되며, 로컬 PDF가 포함됐다고 표시하지 않았습니다.

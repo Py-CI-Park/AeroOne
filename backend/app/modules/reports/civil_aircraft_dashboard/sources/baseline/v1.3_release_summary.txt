@@ -1,0 +1,471 @@
+# Civil Aircraft Encyclopedia & Comparison Dashboard v1.3
+
+v1.3 업데이트를 완료했습니다. 이번 버전은 신규 기능을 무리하게 늘리기보다 **데이터 신뢰성, 필드 단위 근거 추적, 비교조건 명시, 미공개값 처리, 코드 구조와 접근성**을 강화한 `Hardening & Traceability Release`입니다.
+
+## 권장 다운로드
+
+### 전체 통합 패키지
+
+[**Civil Aircraft Encyclopedia & Dashboard v1.3 — Full Package ZIP**](sandbox:/mnt/data/Civil_Aircraft_Encyclopedia_Dashboard_v1.3_Package.zip)
+
+- 약 175 MB
+- 루트의 `index.html`에서 전체 기능 시작
+- 백과·비교 대시보드·출처 아카이브 통합
+- 65개 기체 형상
+- 55개 출처 레지스트리
+- 로컬 공식 PDF 25개
+- 데이터 JSON·JSON Schema·데이터 사전
+- QA 보고서·모바일/데스크톱 검증 화면
+- 출처 및 배포 파일 SHA-256
+- 기존 기준 보고서 보관본 포함
+
+압축을 해제한 뒤 다음 파일을 여십시오.
+
+```text
+Civil_Aircraft_Encyclopedia_Dashboard_v1.3/index.html
+```
+
+### 출처 PDF 전용 패키지
+
+[**Civil Aircraft Source PDFs v1.3 — Source Archive ZIP**](sandbox:/mnt/data/Civil_Aircraft_Source_PDFs_v1.3.zip)
+
+- 약 168 MB
+- 공식 PDF 25개
+- PDF 검색·필터용 `index.html`
+- PDF별 페이지 근거, 페이지 수, 파일 크기, SHA-256
+- 외부 공식 원문 링크 레지스트리
+- 사용자 제공 기준 보고서 보관본
+
+---
+
+# 개별 HTML 파일
+
+빠르게 확인할 수 있도록 JavaScript·CSS·데이터를 내부에 포함한 Standalone HTML도 제공합니다.
+
+| 파일 | 용도 |
+|---|---|
+| [Civil Aircraft Portal v1.3](sandbox:/mnt/data/Civil_Aircraft_Portal_v1.3.html) | 통합 포털 단독 실행본 |
+| [Civil Aircraft Encyclopedia v1.3](sandbox:/mnt/data/Civil_Aircraft_Encyclopedia_v1.3.html) | 65개 기체 백과 |
+| [Civil Aircraft Comparison Dashboard v1.3](sandbox:/mnt/data/Civil_Aircraft_Comparison_Dashboard_v1.3.html) | 선택 기체 비교 워크스페이스 |
+| [Civil Aircraft Source Archive v1.3](sandbox:/mnt/data/Civil_Aircraft_Source_Archive_v1.3.html) | 출처·PDF 검증 아카이브 |
+
+Standalone HTML의 검색·차트·SVG·비교 기능은 파일 하나만으로 작동합니다. 다만 **로컬 PDF 열기 기능은 전체 패키지 폴더가 Standalone HTML과 같은 위치에 있을 때 정상 작동**합니다.
+
+---
+
+# 데이터·출처·검증 파일
+
+| 파일 | 내용 |
+|---|---|
+| [Civil Aircraft Data v1.3 JSON](sandbox:/mnt/data/Civil_Aircraft_Data_v1.3.json) | 65개 기체 정규화 데이터 |
+| [Civil Aircraft Data Schema v1.3](sandbox:/mnt/data/Civil_Aircraft_Data_Schema_v1.3.json) | 데이터 구조 검증용 JSON Schema |
+| [Civil Aircraft Data Dictionary v1.3](sandbox:/mnt/data/Civil_Aircraft_Data_Dictionary_v1.3.md) | 필드와 상태값 설명 |
+| [Civil Aircraft Source Registry v1.3](sandbox:/mnt/data/Civil_Aircraft_Source_Registry_v1.3.json) | 55개 출처 상세 레지스트리 |
+| [Civil Aircraft Source Manifest v1.3](sandbox:/mnt/data/Civil_Aircraft_Source_Manifest_v1.3.csv) | 로컬 파일·페이지·해시 목록 |
+| [External Source Links v1.3](sandbox:/mnt/data/Civil_Aircraft_External_Source_Links_v1.3.csv) | 외부 공식 원문 목록 |
+| [QA Report v1.3](sandbox:/mnt/data/Civil_Aircraft_QA_Report_v1.3.json) | 최종 43개 검증 결과 |
+| [Runtime QA v1.3](sandbox:/mnt/data/Civil_Aircraft_QA_Runtime_v1.3.json) | 실제 화면 기능 검증 결과 |
+| [Build Integrity v1.3](sandbox:/mnt/data/Civil_Aircraft_Build_Integrity_v1.3.json) | 데이터·링크·코드·PDF 무결성 |
+| [Delivery SHA-256 Checksums](sandbox:/mnt/data/Civil_Aircraft_v1.3_Delivery_Checksums.txt) | 최종 배포 파일 해시 |
+| [Change Log v1.3](sandbox:/mnt/data/Civil_Aircraft_CHANGELOG_v1.3.md) | v1.2 대비 상세 변경이력 |
+| [README v1.3](sandbox:/mnt/data/Civil_Aircraft_README_v1.3.md) | 실행·구조·사용 제한 안내 |
+
+---
+
+# v1.3 주요 업데이트
+
+## 1. 미공개값을 임의로 시각화하던 문제 제거
+
+### C929
+
+v1.2까지는 실척 SVG를 생성하기 위해 치수가 없는 기체에 기본 길이·날개폭·높이가 적용될 가능성이 있었습니다. v1.3에서는 해당 로직을 완전히 제거했습니다.
+
+COMAC의 현재 공식 C929 제품 페이지에는 기준형의 **282~440석 좌석 범위**가 공개되어 있습니다. v1.3은 이 좌석 범위만 유지하고 공식적으로 확인되지 않은 MTOW·항속거리·길이·날개폭·높이는 입력하지 않습니다. ~~~~~~~~~~~~~~~~~~~~~~
+
+이에 따라 C929는 다음과 같이 처리됩니다.
+
+- MTOW: `—`
+- 항속거리: `—`
+- 길이·날개폭·높이: `—`
+- 실척 SVG: 제외
+- 크기지수: 제외
+- MTOW 버블 포지션 맵: 제외
+- 카드와 상세정보: `공식 치수 미공개`
+- 차트 하단: 제외 사유 명시
+- 어떠한 임의 기본 치수도 사용하지 않음
+
+이 처리 방식은 향후 다른 개발기체의 사양이 공개되지 않았을 때도 동일하게 적용됩니다.
+
+---
+
+## 2. E170과 E175의 출처 분리
+
+v1.2에서는 E170 일부 값에 E175 사양자료가 간접 적용되는 문제가 있었습니다. v1.3에서는 두 기체의 근거를 분리했습니다.
+
+E170의 기체 길이 29.9 m, 날개폭 26.0 m, 높이 9.82 m와 최대 38.6 t급 이륙중량 형상은 EASA ERJ-170 형식증명자료에 연결했습니다. 동일 자료의 E170-100 최대 인증 좌석은 80석으로 명시됩니다. ([easa.europa.eu](https://www.easa.europa.eu/en/downloads/7525/en))
+
+변경 내용:
+
+- E175 사양을 E170 수치 근거로 사용하지 않음
+- E170 형상·엔진·중량·최대 좌석: EASA TCDS
+- 전형 좌석·공표 항속: Embraer 공식 레거시 자료
+- E170과 E175의 필드 근거를 별도 표시
+- E170 검증등급을 필드별 근거 상태에 맞춰 재산정
+- 상세정보에서 TCDS 페이지 범위 확인 가능
+
+---
+
+## 3. A350-1000 현행형과 2030 HGW 형상 분리
+
+기존 `A350-1000ULR` 혼합 항목은 삭제하고 다음 두 항목으로 정리했습니다.
+
+- `A350-1000`: 현행 기본 형상
+- `A350-1000 HGW (2030)`: 2030 EIS 목표 형상
+
+Airbus의 2026년 4월 공식 자료는 A350-1000의 현행 형상에 대해 MTOW 308 t·최대 항속 8,100 nm를, 추가 고중량 형상에 대해 MTOW 322 t·최대 항속 9,000 nm와 2030 EIS를 구분합니다. ([mediaassets.airbus.com](https://mediaassets.airbus.com/pm_38_898_898668-3xlxpks93j.pdf?fileName=airbus-a350-family-facts-and-figures-april-2026.pdf))
+
+v1.3에서는 다음을 혼합하지 않습니다.
+
+- OEM의 일반 공표 사양
+- 특정 항공사의 238석 장거리 객실 구성
+- Project Sunrise 임무 조건
+- 현행 인증형
+- 2030 목표형
+
+따라서 차트와 테이블에서 목표형은 `target-2030` 상태로 별도 표시됩니다.
+
+---
+
+# 필드 단위 근거 체계
+
+각 기체의 주요 값에 `fieldEvidence`를 추가했습니다.
+
+```text
+수치
+├─ Source ID
+├─ 기관·문서명
+├─ PDF 페이지 또는 웹 페이지
+├─ 값의 적용 기준
+├─ Weight Variant
+├─ 항속 조건
+├─ 좌석 조건
+└─ 상태: current / legacy / target / provisional / unavailable
+```
+
+적용 대상:
+
+- 전형 좌석
+- 최대 좌석
+- MTOW
+- 항속거리
+- 길이
+- 날개폭
+- 높이
+- 엔진
+- 최대 페이로드
+- 화물용적
+- 프로그램 상태
+
+백과와 대시보드에서 단순히 `출처 1건`이라고 표시하지 않고 다음과 같은 형태로 확인할 수 있습니다.
+
+> MTOW 308 t  
+> AIRBUS_A350_FF_2026 · PDF p.3  
+> Current basic A350-1000 weight variant
+
+> Range 9,000 nm  
+> AIRBUS_A350_FF_2026 · PDF p.3  
+> Target HGW configuration · EIS 2030
+
+---
+
+# `index.html` 통합 포털 개선
+
+기존 단순 링크 페이지에서 실제 데이터 포털 홈으로 확장했습니다.
+
+- 65개 기체 통합 검색
+- 자동완성 결과에서 백과 상세로 직접 이동
+- 동적 데이터 KPI
+- 백과·비교·출처 아카이브 용도 설명
+- 대표 경쟁군 추천 비교 세트
+- 세그먼트별 수록 현황
+- 데이터 품질 분포
+- JSON·Schema·변경이력 바로가기
+- 완전 검증 기체와 실척 SVG 가능 기체 자동 집계
+- 외부 전용 출처 상태 안내
+
+추천 비교 세트:
+
+- A320neo · 737-8 · C919
+- A321XLR · 737-10
+- 787-9 · A350-900 · A330-900
+- 777F · A350F · 777-8F
+
+추천 세트를 클릭하면 비교 대시보드 URL에 선택 상태가 전달됩니다.
+
+---
+
+# Encyclopedia v1.3 개선
+
+## 1. 상세정보를 7개 탭으로 재구성
+
+기존 긴 단일 모달을 다음 탭으로 분리했습니다.
+
+1. 개요·3면도
+2. 중량·성능
+3. 치수·형상
+4. 객실·화물
+5. 파생지표
+6. 출처·근거
+7. 동일 패밀리
+
+각 탭에서는 해당 분야의 근거와 비교조건을 함께 표시합니다.
+
+## 2. SVG 중앙 정렬 및 기체군별 형상 고도화
+
+기체별 `visual.params`를 추가했습니다.
+
+- 주익 종방향 위치
+- 주익 후퇴각
+- 주익 테이퍼
+- 엔진 종방향 위치
+- 엔진 상대 직경
+- 기수 길이 비율
+- 꼬리 길이 비율
+- 수평미익 크기
+- 프로펠러 상대 직경
+- 윙렛 형식
+- 상부 데크 길이
+- 전장 복층 길이
+- 착륙장치 복잡도
+- 동체 단면 분류
+
+지원 형상:
+
+- 일반 저익 주익 하부 쌍발
+- 주익 하부 4발
+- 후방 동체 쌍발 + T-tail
+- 고익 터보프롭
+- 전방 상부 데크
+- 전장 복층
+- 일반 미익 및 T형 미익
+
+Boeing은 Airport Planning 문서가 공항계획용 표준 기체자료를 제공한다고 설명하며, 별도 3-view 자료는 게이트 계획용으로 제공되고 약 ±6인치 정확도를 목표로 한다고 명시합니다. v1.3에서는 이러한 자료를 외형 배치 검증에 활용하되 제조사 CAD를 복제하지 않고 파라메트릭 비교 도식으로만 표현했습니다. ([boeing.com](https://www.boeing.com/commercial/airports/plan-manuals))
+
+## 3. 접근 가능한 상세 카드
+
+- 카드 전체 키보드 포커스
+- Enter/Space로 상세 열기
+- `role="dialog"`
+- `aria-modal`
+- ESC 닫기
+- 모달 내부 포커스 트랩
+- 닫은 후 이전 카드로 포커스 복원
+- 화면읽기 프로그램용 기체 설명
+- 형상 내부 코드는 한국어 표시로 변환
+
+---
+
+# Comparison Dashboard v1.3 개선
+
+## 1. v1.0 비교 흐름 유지
+
+화면 순서를 다음과 같이 정리했습니다.
+
+```text
+전체 기체 카탈로그
+→ 한 기종 상세정보
+→ 선택 기체 차트
+→ 정밀 비교표
+→ 기준 기체 대비 증감표
+→ 실척 형상·포지션 맵·출처
+```
+
+차트와 정밀 비교표가 같은 탭 안에서 함께 갱신됩니다.
+
+## 2. 기본 5종 비교
+
+처음 열면 다음 기체가 즉시 비교됩니다.
+
+- A320neo
+- 737-8
+- A321XLR
+- 787-9 iMTOW
+- A350-900
+
+최대 6개까지 선택할 수 있습니다.
+
+## 3. 비교 지표
+
+- MTOW
+- 항속거리
+- 전형 좌석 또는 페이로드
+- 최대 페이로드
+- 길이
+- 날개폭
+- 높이
+- 외형 크기지수
+
+선택 지표를 바꾸면 막대 차트, 범례, 실제값 표와 기준 기체 대비 표가 동시에 변경됩니다.
+
+## 4. 기준 기체 대비 증감표
+
+첫 번째 선택 기체 또는 지정한 기준 기체를 0% 기준으로 사용합니다.
+
+예:
+
+```text
+A320neo 기준
+737-8       항속 +1.4%
+A321XLR     항속 +36.2%
+787-9       MTOW +228%
+```
+
+이는 절대값만 보던 기존 비교보다 형상 간 차이를 빠르게 인식하도록 돕습니다.
+
+## 5. 중립적 MAX/MIN 표시
+
+기존의 녹색·주황색 우열 표시를 제거했습니다.
+
+- `MAX`: 선택 집합의 수치적 최댓값
+- `MIN`: 선택 집합의 수치적 최솟값
+- 높은 MTOW나 큰 날개폭이 반드시 우수한 것이 아님
+- 긍정·부정 의미의 색상을 사용하지 않음
+
+## 6. 포지션 맵 개선
+
+- 기체명 직접 레이블
+- 대표+선택 레이블
+- 선택 기체만 표시
+- 전체 레이블
+- 기체별 고유 색상
+- 색상 외에 원·사각·다이아몬드 등 마커 모양 사용
+- 제조사 범례
+- 클릭 시 단일 기체 상세정보 연결
+- 누락값 기체 제외 사유 표시
+- C929는 좌석만 공개되어 MTOW·항속 포지션 맵에서 제외
+
+## 7. 비교 상태 저장 및 공유
+
+- URL에 선택 기체 저장
+- URL 복사 버튼
+- 브라우저 localStorage 상태 유지
+- 추천 비교 링크 지원
+- 필터 결과 CSV
+- 차트 SVG
+- 차트 PNG
+- 비교 데이터 내보내기
+
+---
+
+# Source Archive v1.3 개선
+
+출처 아카이브는 단순 PDF 목록에서 출처 검증 워크스페이스로 확장했습니다.
+
+- 전체 출처: 55건
+- 로컬 공식 PDF: 25건
+- 로컬 기준 HTML: 1건
+- 외부 공식 원문: 29건
+- A1/A2/B1 등급 분포
+- 검증 필드별 출처 커버리지
+- 기관·등급·보관상태 필터
+- PDF 페이지 등록 여부 필터
+- 발행일·기관·적용 기체 수 정렬
+- PDF 페이지 직접 열기
+- PDF별 SHA-256
+- 로컬 보관과 외부 전용을 색상과 문구로 명확히 구분
+
+사용자 제공 원본 보고서는 패키지 내 기준자료 폴더에 보존했습니다. fileciteturn0file0
+
+최신 EASA 및 일부 Embraer 자료처럼 발행기관이 직접 제공하는 자료 중 로컬 미러가 없는 항목은 `외부 공식 원문`으로 표시합니다. 로컬로 보관되지 않은 자료를 다운로드된 PDF라고 표시하지 않았습니다.
+
+---
+
+# 단일 데이터 원본 구조
+
+v1.2에서는 동일한 대형 데이터 객체가 Encyclopedia와 Dashboard HTML에 각각 포함되어 있었고, 동일 함수명이 중복 정의된 부분이 있었습니다.
+
+v1.3 구조:
+
+```text
+assets/js/
+├─ civil-aircraft-data.v1.3.js   ← 공통 데이터 원본
+├─ core.v1.3.js
+├─ aircraft-svg.v1.3.js
+├─ charts.v1.3.js
+├─ index.v1.3.js
+├─ encyclopedia.v1.3.js
+├─ dashboard.v1.3.js
+└─ source-archive.v1.3.js
+```
+
+개선 결과:
+
+- 공통 데이터 번들 1개
+- HTML 내 중복 데이터 제거
+- 모듈별 중복 함수 0개
+- JSON과 JavaScript 데이터가 동일 빌드 원본에서 생성
+- JSON Schema 검증 지원
+- 개별 Standalone HTML도 같은 데이터로 생성
+- 향후 기체 1건 수정 시 백과·대시보드·출처가 함께 갱신 가능
+
+---
+
+# 최종 QA 결과
+
+| 검증 항목 | 결과 |
+|---|---:|
+| 수록 기체 | 65 |
+| 출처 레지스트리 | 55 |
+| 로컬 공식 PDF | 25 |
+| 완전 검증 기체 | 48 |
+| 실척 SVG 가능 | 64 |
+| 포지션 맵 가능 | 64 |
+| QA 항목 | 43 |
+| 통과 | 43 |
+| 실패 | 0 |
+| 핵심 필드 근거 누락 | 0 |
+| 잘못된 Source ID | 0 |
+| 비교 기준 미등록 | 0 |
+| 로컬 파일 누락 | 0 |
+| PDF 해시 불일치 | 0 |
+| PDF 페이지 범위 오류 | 0 |
+| 로컬 PDF 페이지 근거 | 25/25 |
+| 깨진 내부 링크 | 0 |
+| 중복 함수 그룹 | 0 |
+| 브라우저 콘솔·페이지 오류 | 0 |
+| 모바일 390px 가로 넘침 | 0 |
+| 접근 가능한 이름 없는 컨트롤 | 0 |
+| 전체 ZIP CRC 오류 | 0 |
+| PDF ZIP CRC 오류 | 0 |
+
+실제 화면 검증 범위:
+
+- 포털 데스크톱·모바일
+- 백과 데스크톱·모바일
+- 대시보드 데스크톱·모바일
+- 출처 아카이브 데스크톱·모바일
+- 기체 카드 65개
+- 출처 카드 55개
+- 기본 5종 비교
+- 차트와 8개 지표 정밀표
+- 기준기체 증감표
+- 상면·측면·정면 SVG
+- 실척 오버레이
+- C929 비추정 안내
+- 모달 3면도와 필드 근거
+- 모바일 메뉴와 키보드 접근
+
+---
+
+# 사용 시 유의사항
+
+1. **항속거리 조건은 제조사마다 동일하지 않습니다.**  
+   전형 승객, 최대 승객, 특정 페이로드, 최대 페이로드, 예비연료 및 엔진 조건이 다를 수 있으므로 상세 `Range basis`를 확인해야 합니다.
+
+2. **SVG는 비교용 도식입니다.**  
+   공개된 길이·날개폭·높이와 기체군별 배치 특성을 반영하지만 공항 간섭 검토, 구조·공력 해석, 정비 또는 인증에 사용할 수 없습니다.
+
+3. **외부 출처는 인터넷 연결이 필요합니다.**  
+   로컬 공식 PDF 25개는 전체 ZIP에서 바로 열 수 있으며, 외부 전용 공식 자료는 발행기관 원문으로 연결됩니다.
+
+4. **Standalone HTML의 PDF 링크**는 전체 패키지 폴더를 함께 보관해야 작동합니다. 독립 HTML에는 168 MB 규모의 PDF를 Base64로 내장하지 않았습니다.
