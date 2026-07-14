@@ -15,6 +15,14 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.13.2',
+    date: '2026-07-14',
+    items: [
+      '패키지 빌더의 Git tag 검사 실패를 정상적인 QA fallback 으로 숨기지 않고 fail-closed `git-tag-inspection-failed` 로 명확히 중단하도록 수정했습니다.',
+      '1.13.1 tag와 asset은 immutable 상태로 보존하고, 변경 없이 forward-only patch 로 1.13.2를 게시합니다.',
+    ],
+  },
+  {
     version: '1.13.1',
     date: '2026-07-13',
     items: [

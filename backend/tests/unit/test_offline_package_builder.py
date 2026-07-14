@@ -32,7 +32,7 @@ from app.operations.package_policy_contracts import (
 )
 from app.operations.package_policy_verifier import compute_sha256, verify_post_zip, verify_pre_stage
 
-_VERSION = "1.13.1"
+_VERSION = "1.13.2"
 _PY_INSTALLER = "python-3.12.7-amd64.exe"
 _NODE_INSTALLER = "node-v20.18.0-x64.msi"
 _BUILDER_SCRIPT = Path(__file__).parents[3] / "scripts" / "build_offline_package.ps1"
@@ -49,8 +49,10 @@ def test_powershell_builder_writes_python_inputs_without_utf8_bom() -> None:
     assert "Set-Content -LiteralPath $selectedFile" not in script
     assert "Set-Content -LiteralPath $signaturesPath" not in script
     assert "if ($gitState.HeadTag) { $verifyArgs += @('--tag', $gitState.HeadTag) }" in script
-    assert 'refs/tags/$tagName^{tag}' in script
-    assert 'refs/tags/$tagName^{commit}' in script
+    assert 'git show-ref --verify --quiet $tagRef' in script
+    assert '$tagType = (git cat-file -t $tagRef | Out-String).Trim()' in script
+    assert "throw 'git-tag-inspection-failed'" in script
+    assert 'git rev-parse --verify "$tagRef^{commit}"' in script
     assert '$tagName = $RequestedVersion' in script
     assert '"v$RequestedVersion"' not in script
     assert "Release mode requires an exact annotated tag <Version> at HEAD." in script

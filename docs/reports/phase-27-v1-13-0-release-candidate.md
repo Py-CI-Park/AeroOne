@@ -1,4 +1,4 @@
-# 단계 27 — v1.13.0 정식 릴리스 (역사 보존) 및 1.13.1 정식 immutable Release
+# 단계 27 — v1.13.0 정식 릴리스 (역사 보존), 1.13.1 정식 immutable Release 및 1.13.2 release candidate
 
 ## 변경 배경
 
@@ -57,3 +57,10 @@ GitHub immutable releases policy는 `enabled=true`이며, 정책이 기존 Relea
 1.13.1은 제품 기능 변경 없이 1.13.0을 움직이지 않는 forward-only patch로 게시 완료했다. merge/tag commit은 `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag는 `1.13.1`, [GitHub Release URL](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1), published는 `2026-07-13T23:31:18Z`, Release API는 `immutable=true`다.
 운영 asset은 `AeroOne-offline-1.13.1.zip`(size `158727170`)과 함께 업로드된 `.sha256`이며, 재다운로드 SHA-256은 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`으로 검증 완료했다. GitHub CLI 2.96.0의 `gh release verify`와 두 asset의 `gh release verify-asset`도 cryptographic attestation 검증을 통과했다.
 제품 tree는 1.13.0과 동일하며, 직접 영향 검증 backend 88, frontend 10, `tsc --noEmit`, exact-tag pre/post verifier를 추가 통과했다. 기존 전체 제품 게이트 backend 570, frontend 397/73 files, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier는 계승 근거로 유지한다.
+### Forward-only 1.13.2 release candidate (2026-07-14)
+
+1.13.0의 tag·asset·digest와 1.13.1의 게시 사실·정확한 commit/tag/URL/digest/size는 변경하지 않고 역사 기록으로 보존한다. 1.13.2는 예기치 않은 Git tag inspection 실패를 정상 QA fallback으로 처리하지 않고 `git-tag-inspection-failed`로 fail closed 하는 forward-only 교정 후보이다. valid absence, lightweight tag, tag/HEAD mismatch는 기존처럼 QA 결과로 남긴다.
+
+1.13.2는 exact-tag immutable Release 게시와 cryptographic attestation이 완료되기 전까지 운영 반입물이나 최신 운영 버전이 아니다. 그때까지 최신 운영 반입물은 immutable 정식 `1.13.1`이며, 1.13.2의 최종 digest·size·tag commit·published time·Release URL은 게시 후 사실만으로 기록한다.
+
+게시 전 1.13.2 검증은 새 source-bound SHA에서 전체 backend/frontend/browser/package gates를 fresh 실행하고, exact-tag package verification과 Release/asset attestation을 확인해야 한다. 이 보고서는 해당 결과를 아직 실행·주장하지 않으며, 실패·부재를 정상 fallback으로 숨기지 않는다.
