@@ -30,6 +30,7 @@ export const PERMISSION_CATALOG: Record<string, { label: string; description: st
   'admin.sessions.purge': { label: '세션 정리', description: '만료되었거나 불필요한 세션을 정리합니다.', category: '감사/세션' },
   'admin.resource_grants.read': { label: '리소스 권한 조회', description: '사용자와 그룹의 리소스별 권한을 조회합니다.', category: '권한/RBAC' },
   'admin.resource_grants.manage': { label: '리소스 권한 관리', description: '리소스별 권한 부여와 회수를 관리합니다.', category: '권한/RBAC' },
+  'admin.office.manage': { label: 'Office Studio 보존·격리 관리', description: '만료 작업 purge, 작업 격리 보관함 인벤토리·복원·삭제, 미해결 복구 증적 인벤토리·비가역 폐기, 운영 스토리지 회계 현황을 관리합니다.', category: 'Office Studio' },
   'collections.read': { label: '문서 전체 열람', description: '허용된 컬렉션 문서를 열람합니다.', category: '문서 열람' },
   'collections.nsa.read': { label: 'NSA 문서 열람', description: 'NSA 컬렉션 문서를 열람합니다.', category: '문서 열람' },
   'search.nsa.read': { label: 'NSA 검색 열람', description: 'NSA 컬렉션 검색 결과를 조회합니다.', category: '검색' },
@@ -37,6 +38,10 @@ export const PERMISSION_CATALOG: Record<string, { label: string; description: st
   'ai.use': { label: 'AI 사용', description: 'AI 질의와 요약 기능을 사용합니다.', category: 'AI 사용' },
   'ai.history.manage_own': { label: '내 AI 기록 관리', description: '본인의 AI 대화 기록을 관리합니다.', category: 'AI 사용' },
   'dashboard.openwebui.launch': { label: 'Open WebUI 실행', description: '대시보드에서 같은 호스트 8080 포트의 Open WebUI 링크 카드를 노출합니다.', category: '대시보드' },
+  'office.use': { label: 'Office Studio 사용', description: '보고서·차트·다이어그램 생성과 본인 산출물 관리를 사용합니다.', category: 'Office Studio' },
+  'admin.leantime.read': { label: 'Leantime 연결 조회', description: 'Leantime 서버 연결 등록 정보(마스킹된 API 키)와 상태를 조회합니다.', category: 'Leantime' },
+  'admin.leantime.manage': { label: 'Leantime 연결 관리', description: 'Leantime 서버 연결의 등록·검증·회전·삭제를 수행합니다(평문 키는 저장·노출하지 않음).', category: 'Leantime' },
+  'leantime.read': { label: 'Leantime 읽기', description: 'Leantime 프로젝트·담당 작업·기간 일정 요약을 서버 프록시로 조회합니다.', category: 'Leantime' },
 };
 
 export function describePermission(key: string): PermissionCatalogEntry {

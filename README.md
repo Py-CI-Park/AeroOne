@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.14.0-1f6feb)
+![version](https://img.shields.io/badge/version-1.15.0-1f6feb)
 ![status](https://img.shields.io/badge/status-immutable-release-success)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
@@ -33,7 +33,7 @@
   </tr>
 </table>
 
-<sub>디자인 시스템 적용 화면 (<code>[data-theme]</code> 라이트·다크, 시스템 폰트만). <code>docs/images/</code> 의 <code>dashboard.png</code> · <code>newsletter.png</code> · <code>newsletter-dark.png</code> 를 교체하면 자동 렌더링됩니다.</sub>
+<sub>디자인 시스템 적용 화면 (<code>[data-theme]</code> 라이트·다크, 시스템 폰트만). README 스크린샷 세 장은 <code>docs/images/</code> 의 <code>dashboard.png</code> · <code>newsletter.png</code> · <code>newsletter-dark.png</code> 이며, <code>scripts/_capture_screenshots.py</code>가 검증된 세 캡처를 한 세트로 게시합니다.</sub>
 
 ---
 
@@ -101,6 +101,8 @@ start.bat
 | 헬스체크 | http://localhost:18437/api/v1/health |
 
 `setup.bat`은 새 작업공간의 환경 파일과 초기 시드 관리자용 랜덤 비밀번호를 생성합니다. 기존 DB가 있으면 환경 파일만 다시 만들어질 수 있으며 DB에 저장된 관리자 비밀번호 해시는 자동 교체되지 않습니다. 설치 직후에는 `backend/.env`의 `ADMIN_USERNAME` / `ADMIN_PASSWORD`를 확인하고, 기존 DB의 자격 노출 대응은 [자격 증명 회전 런북](docs/runbook/credential-rotation.md)을 따르세요.
+
+관리자 계정의 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 는 `setup.bat` 이 생성하는 **최초 bootstrap 자격 증명**입니다. 설치 직후 `backend/.env` 에서 확인해 `/login` 으로 로그인한 뒤, `/admin` 의 **관리자 계정 / 비밀번호**에서 현재 비밀번호를 확인하고 새 비밀번호(8자 이상)로 바꾸세요. 이후 실제 비밀번호는 DB의 사용자 계정에 저장되므로 `.env` 값을 바꿔도 기존 계정 비밀번호는 바뀌지 않습니다.
 
 추가 옵션:
 
@@ -180,6 +182,8 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
 
    `setup_offline.bat`는 폐쇄망 PC에서 `APP_ENV=closed_network`로 부팅하고 환경 파일의 `JWT_SECRET_KEY`와 초기 시드용 `ADMIN_PASSWORD`를 새 랜덤 값으로 생성합니다(기존 `.env`는 `.bak`로 자동 백업). 기존 DB의 사용자 비밀번호 해시·세션은 setup 재실행만으로 회전되지 않습니다. `closed_network` 모드는 HTTP 폐쇄망에서 secure cookie는 끄고 secret 강도 검증은 켜는 전용 모드입니다. 신규 설치 직후 `backend\.env`의 `ADMIN_PASSWORD`를 확인하고, 기존 DB의 노출 사고에는 회전 런북을 사용하세요.
 
+   이 `ADMIN_PASSWORD` 는 최초 관리자 계정을 만드는 bootstrap 값이지, 이미 DB에 있는 계정의 비밀번호 회전 수단이 아닙니다. 설치 직후 `backend\.env` 의 값을 이용해 로그인한 뒤 `/admin` 의 **관리자 계정 / 비밀번호**에서 즉시 변경하세요. `.env` 와 `.env.bak` 에는 비밀이 남으므로 접근을 제한하고, rollback 보존 기간이 끝난 `.env.bak` 는 안전하게 삭제하세요.
+
 3. **신규 뉴스레터 추가 (운영 PC에서 반복 작업)**
 
    - `_database\newsletter\` 폴더에 새 HTML / PDF 파일을 추가 (파일명: `newsletter_YYYYMMDD.html`)
@@ -245,7 +249,7 @@ AeroOne/
 | `BACKEND_PORT` / `FRONTEND_PORT` | 서비스 포트 | `18437` / `29501` |
 | `DATABASE_URL` | DB 연결 문자열 | SQLite 기본, PostgreSQL 가능 |
 | `JWT_SECRET_KEY` | 세션 서명 키 | setup이 환경 파일에 랜덤 생성(64자 hex). 기존 DB의 세션·사용자 자격 전체 회전을 뜻하지 않음 |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 단일 시드 관리자 | setup이 새 환경/초기 시드용 비밀번호를 랜덤 생성(48자 hex). 기존 DB 해시는 별도 회전 필요 |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | 단일 시드 관리자 | setup이 새 환경/초기 시드용 비밀번호를 랜덤 생성(48자 hex). 최초 계정 생성/legacy bootstrap에만 쓰며, 기존 DB 해시나 운영 중인 계정 비밀번호는 별도 회전 필요 |
 | `ADMIN_SESSION_COOKIE_NAME` | 관리자 세션 쿠키 이름 | `admin_session` |
 | `CSRF_COOKIE_NAME` | CSRF 토큰 쿠키 이름 | 프런트와 동일 값 사용 |
 | `NEWSLETTER_IMPORT_ROOT_HOST` / `_CONTAINER` | 원본 폴더 호스트/컨테이너 경로 | 컨테이너 실행 시 양쪽 사용 |
@@ -312,11 +316,13 @@ npm run build
 
 ## 보안과 운영 권장사항
 
-- 운영 모드는 `APP_ENV` 로 4 가지 — `development` (개발자 로컬), `test` (pytest 픽스처), `closed_network` (폐쇄망 HTTP, secret 강도 검증 ON / secure cookie OFF), `production` (인터넷 노출 HTTPS, 둘 다 ON). `closed_network` 와 `production` 은 `change-me` 또는 짧은 secret 을 부팅 시 거부합니다.
+- 운영 모드는 `APP_ENV` 로 4 가지 — `development` (개발자 로컬), `test` (pytest 픽스처), `closed_network` (폐쇄망 HTTP, secret 강도 검증 ON / secure cookie OFF), `production` (인터넷 노출 HTTPS, 둘 다 ON). `closed_network` 와 `production` 은 기본 예제값이나 짧은 secret 을 부팅 시 거부합니다.
 - HTTPS 종단을 두면 `production` 에서 `secure cookie` 가 자동 활성화됩니다. HTTP-only 폐쇄망은 `closed_network` 로 둬야 쿠키가 살아 있으면서 검증도 켜집니다.
 - **1.0.22+ 기본이 LAN** 이라 backend / frontend 를 `0.0.0.0` 으로 노출합니다(이 PC 의 LAN IP 자동 감지). **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. LAN 노출을 원치 않으면 `--local` 로 localhost 전용 실행이 가능합니다. 다른 PC 접속은 `scripts\allow_lan_firewall.cmd`(관리자, 로컬 서브넷 한정)로 허용하고, Windows 방화벽에서 `18437` / `29501` 두 포트의 LAN **외부** 차단 규칙을 함께 두세요. 인터넷 노출 production 으로 사용 금지.
 - `_database/newsletter` 와 `storage/` 는 운영 PC에 한정해 두고, 백업·접근 권한은 사내 정책에 맞춰 분리하세요.
-- 단일 관리자 비밀번호의 일상 변경은 `/admin` 콘솔을 사용합니다. 자격 증명 노출이 의심되면 setup 배치를 재실행하지 말고 서비스를 중지한 뒤 [`scripts\rotate_aeroone_credentials.ps1`](scripts/rotate_aeroone_credentials.ps1)을 실행합니다. 도구도 알려진 AeroOne Windows 서비스와 설정 포트 listener가 남아 있으면 파일·DB 변경 전에 거부합니다. 회전 후 자격은 current Windows SID 전용 [`scripts\view_aeroone_credentials.ps1`](scripts/view_aeroone_credentials.ps1)로 확인하며 기본 마스킹과 30초 clipboard 자동 삭제를 사용합니다. 상세 절차: [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md).
+- 관리자 비밀번호 회전은 **로그인한 관리자**가 `/admin` 의 **관리자 계정 / 비밀번호**에서 현재 비밀번호와 새 비밀번호(8자 이상)를 입력해 수행합니다(일상적인 방법). 이 작업은 DB의 `users` 레코드를 갱신하고 다른 세션을 무효화합니다. `setup.bat` / `setup_offline.bat` 재실행이나 `.env` 의 `ADMIN_PASSWORD` 변경은 이미 생성된 계정을 회전하지 않습니다.
+- 현재 비밀번호를 잃었거나 노출되어 로그인할 수 없는 비상 상황에는, 권한 있는 별도 관리자가 `/admin` 사용자/RBAC의 **비밀번호 재설정**으로 임시 비밀번호를 발급합니다. 사용할 수 있는 관리자 세션이 전혀 없다면, 자격 증명 노출이 의심되는 경우에는 setup 배치를 재실행하지 말고 서비스를 중지한 뒤 [`scripts\rotate_aeroone_credentials.ps1`](scripts/rotate_aeroone_credentials.ps1)을 실행합니다. 도구도 알려진 AeroOne Windows 서비스와 설정 포트 listener가 남아 있으면 파일·DB 변경 전에 거부합니다. 회전 후 자격은 current Windows SID 전용 [`scripts\view_aeroone_credentials.ps1`](scripts/view_aeroone_credentials.ps1)로 확인하며 기본 마스킹과 30초 clipboard 자동 삭제를 사용합니다. 상세 절차: [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md). 서비스를 멈추고 활성 `DATABASE_URL` 데이터베이스의 일관된 사본(기본 SQLite는 `backend\data\aeroone.db`, PostgreSQL은 DB 백업)을 먼저 보관한 뒤, 앱의 password hasher로 대상 `users.password_hash` 를 교체하고 `session_version` 및 `password_changed_at` 를 갱신하는 DB 인지형 복구 절차도 가능합니다. 복구 후 로그인과 세션 무효화를 확인하고 관리자 콘솔에 사고 기록을 남깁니다.
+- setup이 남긴 `backend\.env.bak` 에는 이전 bootstrap 비밀번호와 secret이 있을 수 있습니다. 활성 `backend\.env` 는 계속 보호하고, rollback 보존 기간이 지나 더 이상 필요하지 않은 `.env.bak` 는 접근 통제된 절차로 삭제하세요.
 - 관리자 인증은 `/admin/*` 모든 mutation/sync 엔드포인트의 신뢰 경계입니다. 정책 배경: [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md)
 
 ---

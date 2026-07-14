@@ -4,15 +4,16 @@ import { redirect } from 'next/navigation';
 import { getServerApiBase } from '@/lib/api';
 import type { AuthResponse } from '@/lib/types';
 
-function buildCookieHeader() {
-  return cookies()
+async function buildCookieHeader() {
+  // Next 15: cookies() 는 async — 동기 접근 경고를 피하려 await 로 읽는다.
+  return (await cookies())
     .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join('; ');
 }
 
 export async function requireAdminSession() {
-  const cookieHeader = buildCookieHeader();
+  const cookieHeader = await buildCookieHeader();
   if (!cookieHeader) {
     redirect('/login');
   }
@@ -36,7 +37,7 @@ export async function requireAdminSession() {
 }
 
 export async function resolveIsAdmin(): Promise<boolean> {
-  const cookieHeader = buildCookieHeader();
+  const cookieHeader = await buildCookieHeader();
   if (!cookieHeader) {
     return false;
   }

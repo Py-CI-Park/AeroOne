@@ -41,6 +41,13 @@ set "ON_API_PORT=5055"
 set "ON_FE_PORT=8502"
 set "ON_TIMEOUT=90"
 
+REM Leantime 동거(co-deploy): PHP+MariaDB+IIS 완제품(AGPL)이라 흡수하지 않고 링크+기동 훅으로만
+REM 통합한다. 런처가 있으면 위임 호출, 없으면 경고 후 AeroOne 진행(선택적 동거).
+REM 실제 설치·기동은 운영자 검증 필요 — docs\runbook\leantime-codeploy.md 참조.
+set "LEANTIME_PORT=8081"
+set "LEANTIME_LAUNCHER=%AEROONE_LEANTIME_LAUNCHER%"
+if not defined LEANTIME_LAUNCHER set "LEANTIME_LAUNCHER=%ROOT%\..\Leantime\start-leantime.bat"
+
 echo ==================================================
 echo [RUN-ALL] AeroOne + Open Notebook staggered launcher
 echo [RUN-ALL] AeroOne root : %ROOT%
@@ -57,6 +64,7 @@ if errorlevel 1 goto :abort
 call :probe_port %ON_DB_PORT%    "Open Notebook SurrealDB" warn
 call :probe_port %ON_API_PORT%   "Open Notebook API"       warn
 call :probe_port %ON_FE_PORT%    "Open Notebook Frontend"  warn
+call :probe_port %LEANTIME_PORT% "Leantime"                warn
 
 REM 2) AeroOne 기동 (extra args 는 start_offline.bat 으로 통과)
 echo [RUN-ALL] starting AeroOne...
@@ -75,7 +83,32 @@ if errorlevel 1 (
 )
 echo [RUN-ALL] AeroOne backend healthy.
 
-REM 4) Open Notebook 기동 (있으면), 없으면 단독 폴백
+REM 4) Leantime 동거 훅 (있으면 위임 기동, 없으면 통합면 카드만 — 운영자 설치 필요)
+REM    AeroOne 안정화 이후, Open Notebook 이전에 선택적으로 위임한다. Leantime 이 없어도
+REM    AeroOne/Open Notebook 흐름은 그대로 진행한다(동거는 선택적).
+if exist "%LEANTIME_LAUNCHER%" (
+  echo [RUN-ALL] starting Leantime via launcher...
+  call "%LEANTIME_LAUNCHER%"
+  if errorlevel 1 echo [RUN-ALL][WARN ] Leantime launcher returned error. AeroOne remains up.
+
+  REM 선택적 준비 대기(짧게, 최대 30s) — Leantime 이 준비되지 않아도 AeroOne/ON 흐름은 계속된다.
+  if not defined AEROONE_LEANTIME_HEALTH_URL (
+    set "LEANTIME_HEALTH_URL=http://127.0.0.1:%LEANTIME_PORT%"
+  ) else (
+    set "LEANTIME_HEALTH_URL=%AEROONE_LEANTIME_HEALTH_URL%"
+  )
+  echo [RUN-ALL] waiting for Leantime readiness ^(optional, max 30s^)...
+  call :wait_health "!LEANTIME_HEALTH_URL!" 30
+  if errorlevel 1 (
+    echo [RUN-ALL][LEANTIME][WARN ] Leantime not ready within 30s at !LEANTIME_HEALTH_URL!. AeroOne remains up ^(co-deploy is optional^).
+  ) else (
+    echo [RUN-ALL][LEANTIME][READY] Leantime responded at !LEANTIME_HEALTH_URL!.
+  )
+) else (
+  echo [RUN-ALL][INFO ] Leantime launcher not found ^(%LEANTIME_LAUNCHER%^) -^> integration surface only, operator install required.
+)
+
+REM 5) Open Notebook 기동 (있으면), 없으면 단독 폴백
 if not exist "%ON_RUN%" (
   echo [RUN-ALL][WARN ] Open Notebook bundle launcher not found:
   echo [RUN-ALL][WARN ]   %ON_RUN%
@@ -127,8 +160,15 @@ call :probe_port %FRONTEND_PORT% "AeroOne frontend"       warn
 call :probe_port %ON_DB_PORT%    "Open Notebook SurrealDB" warn
 call :probe_port %ON_API_PORT%   "Open Notebook API"       warn
 call :probe_port %ON_FE_PORT%    "Open Notebook Frontend"  warn
+call :probe_port %LEANTIME_PORT% "Leantime"                warn
 echo [DRY-RUN] would call "%ROOT%\start_offline.bat" --no-pause%PASSTHRU%
 echo [DRY-RUN] would wait backend health http://127.0.0.1:%BACKEND_PORT%/api/v1/health ^(max 30s^)
+if exist "%LEANTIME_LAUNCHER%" (
+  echo [DRY-RUN] would call Leantime launcher "%LEANTIME_LAUNCHER%"
+  echo [DRY-RUN] would wait Leantime readiness ^(optional, max 30s^) at http://127.0.0.1:%LEANTIME_PORT% ^(or AEROONE_LEANTIME_HEALTH_URL^)
+) else (
+  echo [DRY-RUN] Leantime launcher missing at "%LEANTIME_LAUNCHER%" -^> integration surface only, operator install required
+)
 if exist "%ON_RUN%" (
   echo [DRY-RUN] would call "%ON_RUN%"%ON_PASSTHRU%
   echo [DRY-RUN] would wait Open Notebook API health http://127.0.0.1:%ON_API_PORT%/health ^(max %ON_TIMEOUT%s^)
@@ -177,4 +217,11 @@ echo other extra args are passed through to start_offline.bat only.
 echo.
 echo   --dry-run           Print the launch plan + port preflight, change nothing.
 echo   --on-bundle ^<path^>  Open Notebook bundle dir (default ..\AeroOne-bundle or env AEROONE_ON_BUNDLE).
+echo.
+echo Leantime co-deploy (optional): after AeroOne is healthy, if a Leantime launcher exists it is
+echo delegated to (IIS/PHP/MariaDB stack on port 8081); if missing, only the dashboard link card is
+echo provided and the operator must install Leantime. Set env AEROONE_LEANTIME_LAUNCHER to point at
+echo the launcher (default ..\Leantime\start-leantime.bat). After delegating, run_all waits up to
+echo 30s (optional) for Leantime HTTP readiness and logs [RUN-ALL][LEANTIME][READY^|WARN], but never
+echo aborts AeroOne or Open Notebook. See docs\runbook\leantime-codeploy.md.
 exit /b 0

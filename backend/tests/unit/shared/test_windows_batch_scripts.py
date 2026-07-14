@@ -52,6 +52,9 @@ def test_start_offline_preserves_entry_path_before_argument_shifts() -> None:
     assert '-BatchPath "%~f0"' not in _START_OFFLINE_SCRIPT
 
 
+_RETIRED_CREDENTIAL = "change" + "-me"
+
+
 def _run_cmd(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     resolved = list(args)
     if resolved:
@@ -304,8 +307,8 @@ def test_setup_executes_full_flow_in_stub_repo(tmp_path: Path) -> None:
     assert (repo_root / "frontend" / ".env.local").exists()
     frontend_env = (repo_root / "frontend" / ".env.local").read_text(encoding="utf-8")
     backend_env = (repo_root / "backend" / ".env").read_text(encoding="utf-8")
-    assert "JWT_SECRET_KEY=change-me" not in backend_env
-    assert "ADMIN_PASSWORD=change-me" not in backend_env
+    assert f"JWT_SECRET_KEY={_RETIRED_CREDENTIAL}" not in backend_env
+    assert f"ADMIN_PASSWORD={_RETIRED_CREDENTIAL}" not in backend_env
     assert re.search(r"^JWT_SECRET_KEY=.{32,}$", backend_env, re.MULTILINE)
     assert re.search(r"^ADMIN_PASSWORD=.{24,}$", backend_env, re.MULTILINE)
     assert (repo_root / "_database" / "newsletter").is_dir()
@@ -769,3 +772,179 @@ def test_offline_package_delegates_to_allow_list_builder() -> None:
     assert "-Version 1.14.0 -DryRun" in script
     assert "robocopy" not in script.lower()
     assert "requirements-dev.txt" not in script
+
+
+def test_run_all_dry_run_plans_leantime_codeploy_hook() -> None:
+    # Leantime 동거 훅: launcher 가 없으면 dry-run 에서 통합면만 제공(운영자 설치 필요)을
+    # 출력하고, 포트 8081 preflight 를 warn 으로 계획한다. AeroOne 흐름은 막지 않는다.
+    result = _run_cmd(REPO_ROOT, r"scripts\run_all.bat", "--dry-run")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "Leantime" in combined
+    assert "8081" in combined
+    lines = _non_empty_lines(result.stdout)
+    assert any("Leantime" in line and ("launcher" in line or "integration surface" in line) for line in lines)
+
+
+def test_run_all_dry_run_mentions_leantime_readiness_wait(tmp_path: Path) -> None:
+    # 위임 훅이 있을 때, dry-run 계획에 선택적 준비 대기(readiness wait)도 명시해야 한다.
+    launcher_dir = tmp_path / "leantime-launcher"
+    launcher_dir.mkdir()
+    launcher = launcher_dir / "start-leantime.bat"
+    launcher.write_text("@echo off\r\nexit /b 0\r\n", encoding="utf-8")
+
+    env = os.environ.copy()
+    env["AEROONE_LEANTIME_LAUNCHER"] = str(launcher)
+
+    result = _run_cmd(REPO_ROOT, r"scripts\run_all.bat", "--dry-run", env=env)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any("readiness" in line.lower() and "leantime" in line.lower() for line in lines)
+
+
+def test_status_leantime_reports_absent_when_unreachable() -> None:
+    # 아무것도 리스닝하지 않는 로컬 포트를 대상으로 하면 absent + exit 3 이어야 한다.
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        free_port = probe.getsockname()[1]
+
+    env = os.environ.copy()
+    env["AEROONE_LEANTIME_HEALTH_URL"] = f"http://127.0.0.1:{free_port}"
+
+    result = _run_cmd(REPO_ROOT, r"scripts\leantime\status-leantime.bat", env=env)
+
+    assert result.returncode == 3, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any(
+        line.startswith("[LEANTIME][STATUS] absent") and f"target=127.0.0.1:{free_port}" in line
+        for line in lines
+    ), result.stdout
+
+
+def test_start_leantime_falls_back_when_stack_missing(tmp_path: Path) -> None:
+    # Start-All.ps1 이 없으면 폴백 종료 코드 0, 준비 대기는 시도하지 않는다(위임하지 않았으므로).
+    empty_scripts_dir = tmp_path / "no-leantime-scripts"
+    empty_scripts_dir.mkdir()
+
+    env = os.environ.copy()
+    env["AEROONE_LEANTIME_SCRIPTS"] = str(empty_scripts_dir)
+
+    result = _run_cmd(REPO_ROOT, r"scripts\leantime\start-leantime.bat", env=env)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "[LEANTIME][INFO ]" in combined
+    assert "not found" in combined
+    assert "[LEANTIME][READY]" not in combined
+    assert "[LEANTIME][WARN ]" not in combined
+
+
+def test_run_all_help_documents_leantime_launcher_env() -> None:
+    result = _run_cmd(REPO_ROOT, r"scripts\run_all.bat", "--help")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "AEROONE_LEANTIME_LAUNCHER" in combined
+    assert "Leantime co-deploy" in combined
+
+
+def test_verify_leantime_bundle_matches_sha256(tmp_path: Path) -> None:
+    import hashlib
+    import json
+
+    bundle_dir = tmp_path / "bundle"
+    bundle_dir.mkdir()
+    component_file = bundle_dir / "leantime-3.5.13.zip"
+    component_file.write_bytes(b"leantime-fixture-payload")
+    real_sha256 = hashlib.sha256(component_file.read_bytes()).hexdigest()
+
+    manifest_path = tmp_path / "manifest.json"
+    manifest = {
+        "schema_version": 1,
+        "components": [
+            {
+                "name": "leantime",
+                "filename": "leantime-3.5.13.zip",
+                "sha256": real_sha256,
+                "source_url": "https://example.invalid/leantime",
+                "license": "AGPL-3.0",
+            }
+        ],
+        "policy": {
+            "unmodified_release": True,
+            "no_plugin_patch": True,
+            "no_core_patch": True,
+        },
+    }
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = _run_cmd(
+        REPO_ROOT,
+        r"scripts\leantime\verify-bundle.bat",
+        str(bundle_dir),
+        str(manifest_path),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    lines = _non_empty_lines(result.stdout)
+    assert any(
+        line == "[LEANTIME][VERIFY] leantime ok" for line in lines
+    ), result.stdout
+
+    manifest["components"][0]["sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    mismatch_result = _run_cmd(
+        REPO_ROOT,
+        r"scripts\leantime\verify-bundle.bat",
+        str(bundle_dir),
+        str(manifest_path),
+    )
+    assert mismatch_result.returncode == 2, mismatch_result.stdout + mismatch_result.stderr
+    mismatch_lines = _non_empty_lines(mismatch_result.stdout)
+    assert any(
+        line == "[LEANTIME][VERIFY] leantime mismatch" for line in mismatch_lines
+    ), mismatch_result.stdout
+
+    # missing component file -> exit 2 + 'missing'
+    manifest["components"][0]["sha256"] = real_sha256
+    manifest["components"][0]["filename"] = "does-not-exist.zip"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    missing_result = _run_cmd(
+        REPO_ROOT,
+        r"scripts\leantime\verify-bundle.bat",
+        str(bundle_dir),
+        str(manifest_path),
+    )
+    assert missing_result.returncode == 2, missing_result.stdout + missing_result.stderr
+    assert any(
+        line == "[LEANTIME][VERIFY] leantime missing"
+        for line in _non_empty_lines(missing_result.stdout)
+    ), missing_result.stdout
+
+    # all-placeholder -> exit 0 + placeholder line + a WARN that nothing was verified
+    manifest["components"][0]["filename"] = "leantime-3.5.13.zip"
+    manifest["components"][0]["sha256"] = "<fill-on-staging>"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    placeholder_result = _run_cmd(
+        REPO_ROOT,
+        r"scripts\leantime\verify-bundle.bat",
+        str(bundle_dir),
+        str(manifest_path),
+    )
+    assert placeholder_result.returncode == 0, placeholder_result.stdout + placeholder_result.stderr
+    placeholder_lines = _non_empty_lines(placeholder_result.stdout)
+    assert any(line == "[LEANTIME][VERIFY] leantime placeholder" for line in placeholder_lines), placeholder_result.stdout
+    assert any("0 verified" in line for line in placeholder_lines), placeholder_result.stdout
+    assert any("[LEANTIME][WARN ]" in line for line in placeholder_lines), placeholder_result.stdout
+
+    # malformed manifest -> exit 1
+    manifest_path.write_text("{ not valid json", encoding="utf-8")
+    parse_result = _run_cmd(
+        REPO_ROOT,
+        r"scripts\leantime\verify-bundle.bat",
+        str(bundle_dir),
+        str(manifest_path),
+    )
+    assert parse_result.returncode == 1, parse_result.stdout + parse_result.stderr

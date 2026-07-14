@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 
+from contextlib import asynccontextmanager
+
 from app.core.maintenance_gate_bootstrap import maintenance_gate_ready as _maintenance_gate_ready
 
 from fastapi import FastAPI, Request
@@ -12,9 +14,11 @@ from sqlalchemy import text
 
 from app.core.config import Settings, ensure_runtime_directories, get_settings
 from app.db.session import Database, get_engine
+from app.modules.auth.services import preflight_configured_admin
 from app.modules.auth.api import router as auth_router
 from app.modules.admin.api import router as operations_admin_router
 from app.modules.ai.api.public import router as ai_router
+from app.modules.ai.api.admin import router as ai_admin_router
 from app.modules.newsletter.api.admin import router as newsletter_admin_router
 from app.modules.newsletter.api.imports import router as imports_router
 from app.modules.newsletter.api.public import router as public_router
@@ -25,6 +29,16 @@ from app.modules.read_tracking.api.admin import router as read_events_admin_rout
 from app.modules.read_tracking.api.public import router as read_beacon_router
 from app.modules.reports.api.public import router as reports_router
 from app.modules.render.api import router as render_router
+from app.modules.office_tools.api.router import router as office_tools_router
+from app.modules.leantime.api import router as leantime_router
+from app.modules.leantime.admin_api import router as leantime_admin_router
+from app.modules.leantime.read_api import router as leantime_read_router
+from app.modules.office_tools.core.job_store import OfficeJobStore
+from app.modules.office_tools.upload_limits import (
+    CHART_MULTIPART_LIMITS,
+    REPORT_MULTIPART_LIMITS,
+    OfficeMultipartIngressLimitMiddleware,
+)
 
 assert _maintenance_gate_ready
 
@@ -36,9 +50,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings.validate_runtime_security()
     ensure_runtime_directories(settings)
     database = Database(settings.database_url)
-    app = FastAPI(title=settings.app_name)
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        preflight_configured_admin(database, settings)
+        yield
+
+    app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.state.settings = settings
     app.state.db = database
+    office_job_store = OfficeJobStore.from_settings(settings)
+    office_job_recovery = office_job_store.recover()
+    app.state.office_job_store = office_job_store
+    app.state.office_job_recovery_report = office_job_recovery
     # 공개 읽기 경로의 지연 자동 동기화 상태(프로세스 1개 공유). 운영자가
     # _database/newsletter 에 파일을 넣으면 서버 재시작 없이 다음 페이지 로드에서 반영된다.
     app.state.autosync_state = AutoSyncState()
@@ -64,6 +87,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         response.headers['Cache-Control'] = 'no-store'
         return response
+    # FastAPI spools multipart bodies before endpoint code runs; count chunked
+    # Office uploads here so the parser never receives an over-limit part.
+    app.add_middleware(
+        OfficeMultipartIngressLimitMiddleware,
+        limits_by_path={
+            '/api/v1/office-tools/charts/inspect': CHART_MULTIPART_LIMITS,
+            '/api/v1/office-tools/charts/generate': CHART_MULTIPART_LIMITS,
+            '/api/v1/office-tools/reports/generate': REPORT_MULTIPART_LIMITS,
+        },
+    )
     app.mount('/storage/thumbnails', StaticFiles(directory=settings.thumbnails_root), name='thumbnails')
 
     @app.get('/api/v1/health')
@@ -76,9 +109,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 connection.execute(text('SELECT 1'))
         except Exception:
             db_ok = False
+
+        try:
+            recovery_inventory = app.state.office_job_store.list_recovery()
+            recovery_items = recovery_inventory['items']
+            if not isinstance(recovery_items, list):
+                raise TypeError('recovery inventory items must be a list')
+            office_job_unresolved_recovery_transactions = len(recovery_items)
+            office_job_recovery_ok = office_job_unresolved_recovery_transactions == 0
+        except Exception:
+            office_job_unresolved_recovery_transactions = 0
+            office_job_recovery_ok = False
+
         return {
-            'status': 'ok' if db_ok else 'degraded',
+            'status': 'ok' if db_ok and office_job_recovery_ok else 'degraded',
             'db_ok': db_ok,
+            'office_job_recovery_ok': office_job_recovery_ok,
+            'office_job_unresolved_recovery_transactions':
+                office_job_unresolved_recovery_transactions,
             'import_root_exists': import_root_exists,
             'storage_root_exists': storage_root_exists,
         }
@@ -99,8 +147,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(collections_router, prefix='/api/v1/collections')
     # 폐쇄망 Ollama AI — 브라우저는 same-origin 프록시만 호출하고, 백엔드가 Ollama 와 통신한다.
     app.include_router(ai_router, prefix='/api/v1/ai')
+    # LLM 연결 레지스트리(관리자) — OpenAI 호환 엔드포인트 등록/암호화/검증. admin 프록시 재사용을 위해 /api/v1/admin.
+    app.include_router(ai_admin_router, prefix='/api/v1/admin')
     # stateless 렌더 — 원본 텍스트(markdown/html)를 서버 sanitize HTML 로 변환한다. 저장소/경로 접근 없음.
     app.include_router(render_router, prefix='/api/v1/render')
+    # office-tools(보고서/차트/다이어그램) — 로그인 필수. 산출물은 파일 JobStore 에 사용자 스코프로 저장.
+    app.include_router(office_tools_router, prefix='/api/v1/office-tools')
+    app.include_router(leantime_router, prefix='/api/v1/leantime')
+    # Leantime 서버측 연결 레지스트리(관리자) — base_url + 암호화 scoped API key 등록/검증/회전/삭제.
+    app.include_router(leantime_admin_router, prefix='/api/v1/admin')
+    # Leantime 읽기 어댑터 — 프로젝트·작업·일정 요약을 서버 JSON-RPC 프록시로 제공(leantime.read).
+    app.include_router(leantime_read_router, prefix='/api/v1/leantime')
     return app
 
 

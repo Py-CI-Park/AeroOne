@@ -25,6 +25,7 @@ vi.mock('@/lib/api', async () => {
     fetchCategories: vi.fn(),
     fetchTags: vi.fn(),
     fetchAdminAiStatus: vi.fn(),
+    fetchLlmConnections: vi.fn().mockResolvedValue([]),
   };
 });
 

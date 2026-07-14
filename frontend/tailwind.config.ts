@@ -4,7 +4,10 @@ import type { Config } from 'tailwindcss';
  * 색/폰트/스케일/모서리/그림자는 app/globals.css 의 CSS 변수와 1:1 매핑.
  * data-theme="light|dark" 한 줄로 두 모드 전환 (변수만 스위치). */
 const config: Config = {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
+  content: {
+    relative: true,
+    files: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
+  },
   theme: {
     extend: {
       colors: {

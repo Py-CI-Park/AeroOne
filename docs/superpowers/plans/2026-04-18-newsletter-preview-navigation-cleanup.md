@@ -300,8 +300,9 @@ Development credentials are read from `backend/.env`:
 
 ```text
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-me
+ADMIN_PASSWORD=<SETUP_UNIQUE_PASSWORD>
 ```
+> A unique setup credential is required; do not reuse a fixed development password.
 
 Do not remove authentication from `/admin/*` routes unless all mutation and sync functionality is removed or moved behind another trust boundary.
 ```

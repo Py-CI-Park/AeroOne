@@ -12,8 +12,8 @@
 
 | 보호 대상 | 발동 조건 | 현재 폐쇄망 (development) 에서 |
 |---|---|---|
-| `JWT_SECRET_KEY` 가 `change-me` 또는 32자 미만일 때 거부 | `app_env == 'production'` | 비활성 — 운영자가 잘못 편집해도 통과 |
-| `ADMIN_PASSWORD` 가 `change-me` 또는 12자 미만일 때 거부 | `app_env == 'production'` | 비활성 — 동일 |
+|| `JWT_SECRET_KEY` 가 기본 sentinel이거나 32자 미만일 때 거부 | `app_env == 'production'` | 비활성 — 운영자가 잘못 편집해도 통과 |
+|| `ADMIN_PASSWORD` 가 기본 sentinel이거나 12자 미만일 때 거부 | `app_env == 'production'` | 비활성 — 동일 |
 
 `setup_offline.bat` 가 매 실행마다 강한 랜덤 값을 생성해 주긴 하지만, 운영자가 추후 `.env` 를 수동 편집하거나 `.bak` 으로 복원했을 때를 막아주는 안전망이 닫혀 있는 셈이다.
 
@@ -117,7 +117,7 @@ setup_offline.bat 는 매 실행 시 64자 hex JWT 와 48자 hex ADMIN_PASSWORD 
 
 | 테스트 | 시나리오 | 기대 |
 |---|---|---|
-| `test_closed_network_rejects_default_jwt_secret` | `APP_ENV=closed_network` + `JWT_SECRET_KEY=change-me` | `ValueError` |
+|| `test_closed_network_rejects_default_jwt_secret` | `APP_ENV=closed_network` + `JWT_SECRET_KEY=<기본 sentinel>` | `ValueError` |
 | `test_closed_network_rejects_short_admin_password` | `APP_ENV=closed_network` + `ADMIN_PASSWORD=short` | `ValueError` |
 | `test_closed_network_passes_with_strong_secrets` | 64자 hex JWT + 48자 hex ADMIN | 통과 |
 | `test_closed_network_secure_cookies_false` | `APP_ENV=closed_network` | `secure_cookies == False` |

@@ -40,6 +40,7 @@ vi.mock('@/lib/api', async () => {
     selectAiProviderKind: vi.fn(),
     deleteAiProviderCredential: vi.fn(),
     reconcileAiProviderConfig: vi.fn(),
+    fetchLlmConnections: vi.fn().mockResolvedValue([]),
   };
 });
 

@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -16,34 +17,60 @@ from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
 from app.modules.auth.session_hash import hash_session_token
 
+from app.modules.auth.services import requires_password_change
+
+
+_FIRST_CHANGE_ALLOWED_PATHS = frozenset({
+    '/api/v1/auth/change-password',
+    '/api/v1/auth/logout',
+    '/api/v1/auth/me',
+})
+
 
 def _record_session_activity(request: Request, db: Session, settings: Settings, user: User, token: str, payload: dict) -> None:
-    try:
-        now = datetime.now(UTC)
-        debounce_seconds = max(int(settings.session_activity_debounce_seconds), 0)
-        cutoff = now - timedelta(seconds=debounce_seconds)
-        session_hash = hash_session_token(token)
-        exp = payload.get('exp')
-        expires_at = datetime.fromtimestamp(exp, UTC) if isinstance(exp, (int, float)) else None
-        existing = db.execute(
-            select(UserSessionActivity).where(
-                UserSessionActivity.user_id == user.id,
-                UserSessionActivity.session_hash == session_hash,
-            )
-        ).scalar_one_or_none()
-        if existing is None:
-            db.add(UserSessionActivity(user_id=user.id, session_hash=session_hash, last_seen_at=now, expires_at=expires_at))
-            db.flush()
+    # 병합: HEAD(1.14.0)의 세션 추적 로직 + our 동시성-안전 저장(begin_nested/IntegrityError) 및 공용 hash_session_token 헬퍼 모두 유지
+    now = datetime.now(UTC)
+    debounce_seconds = max(int(settings.session_activity_debounce_seconds), 0)
+    cutoff = now - timedelta(seconds=debounce_seconds)
+    session_hash = hash_session_token(token)
+    exp = payload.get('exp')
+    expires_at = datetime.fromtimestamp(exp, UTC) if isinstance(exp, (int, float)) else None
+    existing = db.execute(
+        select(UserSessionActivity).where(
+            UserSessionActivity.user_id == user.id,
+            UserSessionActivity.session_hash == session_hash,
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        try:
+            with db.begin_nested():
+                db.add(
+                    UserSessionActivity(
+                        user_id=user.id,
+                        session_hash=session_hash,
+                        last_seen_at=now,
+                        expires_at=expires_at,
+                    )
+                )
+                db.flush()
             return
-        last_seen = existing.last_seen_at
-        if last_seen.tzinfo is None:
-            last_seen = last_seen.replace(tzinfo=UTC)
-        if last_seen < cutoff:
+        except IntegrityError:
+            existing = db.execute(
+                select(UserSessionActivity).where(
+                    UserSessionActivity.user_id == user.id,
+                    UserSessionActivity.session_hash == session_hash,
+                )
+            ).scalar_one_or_none()
+            if existing is None:
+                raise
+    last_seen = existing.last_seen_at
+    if last_seen.tzinfo is None:
+        last_seen = last_seen.replace(tzinfo=UTC)
+    if last_seen < cutoff:
+        with db.begin_nested():
             existing.last_seen_at = now
             existing.expires_at = expires_at
             db.flush()
-    except Exception:
-        db.rollback()
 
 
 def get_db(db: Session = Depends(get_db_session)) -> Session:
@@ -58,12 +85,20 @@ def _current_user_from_request(request: Request, db: Session, settings: Settings
         payload = decode_access_token(token, settings.jwt_secret_key)
     except jwt.PyJWTError as exc:  # pragma: no cover - library mapping
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid session') from exc
-    user = UserRepository(db).get_by_id(int(payload['sub']))
+    try:
+        user_id = int(payload['sub'])
+        token_session_version = payload['ver']
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid session') from exc
+    if isinstance(token_session_version, bool) or not isinstance(token_session_version, int):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid session')
+    user = UserRepository(db).get_by_id(user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid user')
-    token_session_version = payload.get('ver')
-    if token_session_version is not None and int(token_session_version) != user.session_version:
+    if token_session_version != user.session_version:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Session expired')
+    if requires_password_change(user) and request.url.path not in _FIRST_CHANGE_ALLOWED_PATHS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Password change required')
     request.state.auth_payload = payload
     request.state.current_user = user
     _record_session_activity(request, db, settings, user, token, payload)
@@ -86,8 +121,10 @@ def get_optional_user(
 ) -> User | None:
     try:
         user, _payload = _current_user_from_request(request, db, settings)
-    except HTTPException:
-        return None
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            return None
+        raise
     return user
 
 

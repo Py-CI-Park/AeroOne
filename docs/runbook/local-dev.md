@@ -2,12 +2,47 @@
 
 ## 1. 환경 변수 준비
 
-프로젝트 루트에서 `.env.example`을 복사해 `.env`를 만듭니다.
+로컬 백엔드 실행은 `backend/.env`를, Docker Compose 실행은 프로젝트 루트의 `.env`를 읽습니다. 아래 절차는 템플릿의 `JWT_SECRET_KEY=`와 `ADMIN_PASSWORD=` 값이 비어 있을 때만 두 값을 모두 생성합니다. 기본 sentinel이나 다른 setup의 비밀값을 재사용하지 않습니다.
 
 ```bash
-cp .env.example .env
+ENV_FILE=backend/.env
+# Docker Compose만 실행할 때는: ENV_FILE=.env
+cp .env.example "$ENV_FILE"
+
+python3 - "$ENV_FILE" <<'PY'
+from pathlib import Path
+from secrets import token_urlsafe
+import sys
+
+env_file = Path(sys.argv[1])
+lines = env_file.read_text(encoding='utf-8').splitlines()
+secret_generators = {
+    'JWT_SECRET_KEY': lambda: token_urlsafe(48),
+    'ADMIN_PASSWORD': lambda: token_urlsafe(24),
+}
+generated = set()
+
+for index, line in enumerate(lines):
+    name, separator, value = line.partition('=')
+    if name not in secret_generators:
+        continue
+    if not separator or name in generated:
+        raise SystemExit(f'Invalid or duplicate {name} entry')
+    if value:
+        raise SystemExit(f'Refusing to overwrite an existing {name}')
+    lines[index] = f'{name}={secret_generators[name]()}'
+    generated.add(name)
+
+missing = set(secret_generators) - generated
+if missing:
+    raise SystemExit(f'Missing required entries: {", ".join(sorted(missing))}')
+
+env_file.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+print(f'Generated unique JWT_SECRET_KEY and ADMIN_PASSWORD in {env_file}')
+PY
 ```
 
+관리자 사용자명은 같은 파일의 `ADMIN_USERNAME`에서 확인합니다. 생성한 비밀번호는 로컬 파일에서만 보관하며 저장소에 추가하거나 공유하지 않습니다.
 ## 2. 백엔드 로컬 실행
 
 ```bash
@@ -39,7 +74,7 @@ docker compose up --build
 - Public 목록: `http://localhost:29501/newsletters`
 - Login: `http://localhost:29501/login`
 - Backend health: `http://localhost:18437/api/v1/health`
-- 기본 관리자 계정: `.env`의 `ADMIN_USERNAME` / `ADMIN_PASSWORD`
+- 관리자 로그인 계정: 선택한 환경 파일의 `ADMIN_USERNAME` / setup마다 생성한 `ADMIN_PASSWORD`
 
 ## 6. Worktree에서 실행할 때 주의할 점
 

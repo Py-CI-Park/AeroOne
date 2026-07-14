@@ -1,0 +1,52 @@
+AeroOne — Leantime Co-Deploy Bundle NOTICE
+===========================================
+
+This bundle packages the official, UNMODIFIED Leantime release (see
+leantime-bundle.manifest.json for the pinned version, source URL, and
+per-component SHA-256 checksums) for offline/closed-network installation
+alongside AeroOne. AeroOne does not absorb, fork, or vendor Leantime source;
+Leantime runs as a separate co-deployed stack (PHP + MariaDB + IIS) and is
+integrated with AeroOne only via an external link and a health-check probe.
+
+Policy (see manifest "policy" block):
+- unmodified_release: true  — the shipped Leantime is the official release
+  artifact, byte-for-byte, with no plugin patches and no core patches.
+- no_plugin_patch:   true  — no Leantime plugin has been modified.
+- no_core_patch:     true  — no Leantime core file has been modified.
+
+License: Leantime is distributed under the GNU Affero General Public
+License v3.0 (AGPL-3.0). See:
+  https://github.com/Leantime/leantime/blob/main/LICENSE
+
+AGPL-3.0 obligations (operator-owned, must be satisfied before/while
+exposing Leantime to any user over the network):
+1. Corresponding Source Offer — Any user who interacts with Leantime over
+   a network (including this closed-network deployment) must be able to
+   obtain the complete corresponding source code of the exact running
+   version, free of charge, under the AGPL-3.0 terms. This applies
+   regardless of whether Leantime has been modified.
+2. Source availability — Publish (or make available on request) the exact
+   source tree matching the deployed version, e.g. on an internal file
+   share reachable by deployment users
+   (\\fileserver\oss\leantime\<version>-source).
+3. Modifications — If Leantime is ever modified (theme, plugin, or core
+   patch) in a given deployment, the modified source must be included in
+   the source offer alongside the corresponding diff/patch. AeroOne's
+   default packaging policy sets unmodified_release/no_plugin_patch/
+   no_core_patch to true specifically so this bundle requires no extra
+   source offer beyond the pristine upstream release; operators who patch
+   Leantime locally take on the additional AGPL source-offer obligation for
+   their patch.
+4. Notice preservation — Do not remove or alter Leantime's own copyright
+   and license notices embedded in its source or UI.
+
+Third-party components (php-fastcgi, mariadb, iis-prereq) are distributed
+under their own upstream licenses; see SBOM.md and the manifest
+"source_url"/"license" fields per component for attribution.
+
+AeroOne itself is a separate codebase. It does not statically or
+dynamically link against Leantime, does not share a database, and does not
+share session/auth state with Leantime. Consequently AeroOne's own license
+is not affected by Leantime's AGPL-3.0 terms; however, the party who
+operates this closed-network deployment is the responsible party for
+satisfying the AGPL-3.0 source-offer obligation described above.

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -12,7 +14,8 @@ from app.modules.auth.models import User
 _SECRET_KEYS = {'password', 'password_hash', 'token', 'jwt', 'csrf', 'secret', 'api_key', 'prompt', 'answer', 'content', 'snippet', 'citation'}
 
 
-def _redact(value: Any) -> Any:
+def redact_audit_metadata(value: Any) -> Any:
+    """Recursively remove sensitive values before audit or durable receipt storage."""
     if isinstance(value, dict):
         clean: dict[str, Any] = {}
         for key, item in value.items():
@@ -20,17 +23,39 @@ def _redact(value: Any) -> Any:
             if any(secret in lower for secret in _SECRET_KEYS):
                 clean[key] = '[REDACTED]'
             else:
-                clean[key] = _redact(item)
+                clean[key] = redact_audit_metadata(item)
         return clean
     if isinstance(value, list):
-        return [_redact(item) for item in value]
+        return [redact_audit_metadata(item) for item in value]
     return value
 
 
 def _dumps(value: Any | None) -> str | None:
     if value is None:
         return None
-    return json.dumps(_redact(value), ensure_ascii=False, sort_keys=True, default=str)
+    return json.dumps(redact_audit_metadata(value), ensure_ascii=False, sort_keys=True, default=str)
+
+
+def _provenance_value(
+    provenance: dict[str, Any] | None,
+    key: str,
+    fallback: Any,
+) -> Any:
+    if provenance is None:
+        return fallback
+    return provenance.get(key, fallback)
+
+
+def _audit_actor_id(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
+def _persisted_audit_actor_id(db: Session, value: Any) -> int | None:
+    """Avoid a stale receipt actor turning an otherwise replayable audit into an FK failure."""
+    actor_id = _audit_actor_id(value)
+    if actor_id is None:
+        return None
+    return db.scalar(select(User.id).where(User.id == actor_id))
 
 
 def record_admin_audit(
@@ -45,30 +70,83 @@ def record_admin_audit(
     after: Any | None = None,
     metadata: Any | None = None,
     status: str = 'success',
+    provenance: dict[str, Any] | None = None,
+    idempotency_key: str | None = None,
 ) -> AdminAuditEvent:
-    ip_address = request.client.host if request and request.client else None
-    user_agent = request.headers.get('user-agent') if request else None
-    request_id = request.headers.get('x-request-id') if request else None
+    """Append an audit event, returning the original event for idempotent replays."""
+    if idempotency_key is not None:
+        existing = db.execute(
+            select(AdminAuditEvent).where(AdminAuditEvent.idempotency_key == idempotency_key)
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
+
+    requested_actor_id = _audit_actor_id(
+        _provenance_value(provenance, 'actor_id', actor.id if actor else None)
+    )
+    actor_id = _persisted_audit_actor_id(db, requested_actor_id)
+    audit_metadata = (
+        {**metadata, 'original_actor_id': requested_actor_id}
+        if requested_actor_id is not None and actor_id is None and isinstance(metadata, dict)
+        else metadata
+    )
     event = AdminAuditEvent(
-        actor_user_id=actor.id if actor else None,
-        actor_username=actor.username if actor else None,
-        actor_role=actor.role if actor else None,
+        actor_user_id=actor_id,
+        actor_username=_provenance_value(
+            provenance,
+            'actor_username',
+            actor.username if actor else None,
+        ),
+        actor_role=_provenance_value(provenance, 'actor_role', actor.role if actor else None),
         action=action,
         target_type=target_type,
         target_id=str(target_id) if target_id is not None else None,
-        method=request.method if request else None,
-        path=str(request.url.path) if request else None,
+        method=_provenance_value(provenance, 'method', request.method if request else None),
+        path=_provenance_value(
+            provenance,
+            'path',
+            str(request.url.path) if request else None,
+        ),
         status=status,
-        ip_address=ip_address,
-        user_agent=user_agent,
-        request_id=request_id,
+        ip_address=_provenance_value(
+            provenance,
+            'ip_address',
+            request.client.host if request and request.client else None,
+        ),
+        user_agent=_provenance_value(
+            provenance,
+            'user_agent',
+            request.headers.get('user-agent') if request else None,
+        ),
+        request_id=_provenance_value(
+            provenance,
+            'request_id',
+            request.headers.get('x-request-id') if request else None,
+        ),
+        idempotency_key=idempotency_key,
         before_json=_dumps(before),
         after_json=_dumps(after),
-        metadata_json=_dumps(metadata),
+        metadata_json=_dumps(audit_metadata),
     )
-    db.add(event)
-    db.flush()
-    return event
+    # 병합: idempotency_key 기반 저장 로직(our) + AI provider 감사 메타데이터 생성기(1.14.0) 모두 보존
+    if idempotency_key is None:
+        db.add(event)
+        db.flush()
+        return event
+
+    try:
+        with db.begin_nested():
+            db.add(event)
+            db.flush()
+        return event
+    except IntegrityError:
+        existing = db.execute(
+            select(AdminAuditEvent).where(AdminAuditEvent.idempotency_key == idempotency_key)
+        ).scalar_one_or_none()
+        if existing is None:
+            raise
+        return existing
+
 
 def build_ai_provider_audit_metadata(
     *,

@@ -2,7 +2,7 @@
 
 > v1.13.0은 tag·asset·digest를 보존하는 역사 릴리스이며 `immutable=false` 상태를 유지한다. 정식 상태와 검증 수치는 [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)를 기준으로 한다. `1.13.1`은 제품 기능 변경 없는 immutable historical patch로 보존한다. `1.13.2`는 현재 운영 import인 정식 immutable Release이며 Git tag inspection을 fail closed 한다. publication은 물리적 air-gapped import 수행을 의미하지 않는다.
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건 + 1.13.2 fail-closed release fix 1건 + 1.14.0 Open WebUI 링크 실행/OpenAI 호환 AI provider 병행 관리 1건(검증 pending)의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.9.0 관리자 노출·모듈 관리·비밀번호 변경 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건 + 1.13.2 fail-closed release fix 1건 + 1.14.0 Open WebUI 링크 실행/OpenAI 호환 AI provider 병행 관리 1건(검증 pending) + Office Studio·LLM 연결·Leantime 동거 통합 1건(1.15.0-dev)의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -223,6 +223,12 @@
 - 코드: `backend/alembic/versions/20260714_0011_ai_provider_and_launchers.py`, `backend/app/modules/ai/`, `backend/app/modules/admin/`, `frontend/lib/changelog.ts`, `frontend/app/page.tsx`, launcher 카드 컴포넌트
 - 검증: 이 보고서 작성 시점 기준 backend/frontend 테스트·타입체크·빌드·브라우저 스모크·오프라인 패키지 검증은 **미실행(pending)**. 실제 수치는 구현 병합 후 리더가 갱신한다.
 
+### 단계 29 — Office 보안·수명주기 + Leantime 동거 통합 최종 검증 (1.15.0)
+
+- 파일: [`phase-26-office-leantime-integration.md`](phase-26-office-leantime-integration.md)
+- 무엇: Office Studio 보안·산출물 수명주기 강화(G001/G008)와 Leantime 동거 통합(readiness 5상태·서버 JSON-RPC 어댑터·네이티브 대시보드·오프라인 패키징/운영 준수·OIDC·LDAP 분리 세션)의 8 목표 완료 증거와 표 형식 성과 보고·human_blocked 분류·핸드오프.
+- 코드: `backend/app/modules/{office_tools,leantime}/`, `frontend/components/office-tools/`, `scripts/leantime/`, `packaging/leantime/`, `docs/runbook/leantime-{codeploy,oidc-ldap}.md`
+- 회귀 방지: backend 775 passed(integration 202·unit core 128·Office 337·Leantime 71·batch 37, 0 failed), frontend Vitest 430 passed(82 파일), `tsc --noEmit`, `next build`, alembic head `20260714_0016`, 스토리별 architect CLEAR/APPROVE 및 executor QA red-team 통과.
 
 ---
 

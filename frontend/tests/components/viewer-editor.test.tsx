@@ -3,13 +3,54 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { ViewerEditor, inferDocType } from '@/components/viewer/viewer-editor';
 
+// jsdom 의 FileReader 는 onload 를 매크로태스크로 예약한다. 전체 스위트를 병렬 실행하면
+// 워커의 이벤트 루프가 포화되어 onload 콜백이 waitFor 기본 타임아웃보다 늦게 도착하고,
+// 파일 로드에 의존하는 테스트가 간헐적으로 타임아웃 실패한다(격리 실행 시엔 통과).
+// 결정성을 확보하기 위해 테스트가 등록한 파일 내용은 동기적으로 읽어 onload 를 즉시 호출하고,
+// 등록되지 않은 Blob(예: 저장 결과를 다시 읽어 검증하는 경우)은 원래 구현으로 위임한다.
+const OriginalFileReader = globalThis.FileReader;
+const syncFileContents = new WeakMap<Blob, string>();
+
+class DeterministicFileReader {
+  result: string | ArrayBuffer | null = null;
+  error: unknown = null;
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  readAsText(file: Blob) {
+    const registered = syncFileContents.get(file);
+    if (registered !== undefined) {
+      this.result = registered;
+      this.onload?.();
+      return;
+    }
+    const real = new OriginalFileReader();
+    real.onload = () => {
+      this.result = real.result;
+      this.onload?.();
+    };
+    real.onerror = () => {
+      this.error = real.error;
+      this.onerror?.();
+    };
+    real.readAsText(file);
+  }
+}
+
+beforeEach(() => {
+  vi.stubGlobal('FileReader', DeterministicFileReader);
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function loadTextFile(name: string, content: string) {
   const input = screen.getByTestId('viewer-file-input') as HTMLInputElement;
   const file = new File([content], name, { type: 'text/plain' });
+  // 등록된 내용은 위 DeterministicFileReader 가 동기적으로 읽는다.
+  syncFileContents.set(file, content);
   fireEvent.change(input, { target: { files: [file] } });
 }
 

@@ -20,6 +20,8 @@ const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClient
     { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 13, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 14, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 안내·열기 페이지.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   ],
 }));
 
@@ -160,7 +162,44 @@ test('operator dashboard groups cards into ordered sections and keeps coming-soo
   expect(screen.queryByRole('link', { name: /Announcement/i })).not.toBeInTheDocument();
   expect(announcement.closest('[aria-disabled="true"]')).not.toBeNull();
   expect(schedule.closest('[aria-disabled="true"]')).toHaveTextContent('Coming soon');
-  expect(screen.getByText('9 active · 2 coming soon')).toBeInTheDocument();
+  expect(screen.getByText('11 active · 2 coming soon')).toBeInTheDocument();
+});
+
+test('operator dashboard shows the unified office-tools hub card in Development', async () => {
+  isAdminMock.mockReturnValue(true);
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const hubLink = within(main).getByRole('link', { name: /Office Studio/ });
+
+  expect(hubLink).toHaveAttribute('href', '/office-tools');
+});
+
+test('non-admin dashboard hides the admin-only office-tools hub card', async () => {
+  isAdminMock.mockReturnValue(false);
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.queryByRole('link', { name: /Office Studio/ })).not.toBeInTheDocument();
+});
+
+test('operator dashboard links the Leantime card to the internal co-deploy landing page', async () => {
+  isAdminMock.mockReturnValue(true);
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  const main = screen.getByRole('main');
+  const leantimeLink = within(main).getByRole('link', { name: /Leantime/i });
+
+  // 외부 데드링크(:8081) 대신 내부 안내 페이지로 이동한다(설치 안 돼도 빈 화면이 안 나오게).
+  expect(leantimeLink).toHaveAttribute('href', '/leantime');
+  expect(leantimeLink).not.toHaveAttribute('target', '_blank');
+  expect(within(leantimeLink).getByTestId('service-card-description')).toHaveTextContent(/프로젝트/);
+});
+
+test('non-admin dashboard hides the admin-only Leantime card', async () => {
+  isAdminMock.mockReturnValue(false);
+  render(await HomePage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.queryByRole('link', { name: /Leantime/i })).not.toBeInTheDocument();
 });
 
 test('adds an active NSA card linking to /nsa', async () => {
