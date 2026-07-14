@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-> v1.13.0은 tag·asset·digest를 보존하는 역사 릴리스이며 `immutable=false` 상태를 유지한다. 정식 상태와 검증 수치는 [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)를 기준으로 한다. `1.13.1`은 제품 기능 변경 없는 forward-only patch로 게시된 정식 immutable Release이며 API `immutable=true`, 재다운로드 digest 검증을 완료했다. `1.13.2`는 Git tag inspection을 fail closed 하는 2026-07-14 release candidate이며, exact-tag immutable publication·attestation·fresh full gates는 아직 보류 중이다.
+> v1.13.0은 tag·asset·digest를 보존하는 역사 릴리스이며 `immutable=false` 상태를 유지한다. 정식 상태와 검증 수치는 [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)를 기준으로 한다. `1.13.1`은 제품 기능 변경 없는 immutable historical patch로 보존한다. `1.13.2`는 현재 운영 import인 정식 immutable Release이며 Git tag inspection을 fail closed 한다. publication은 물리적 air-gapped import 수행을 의미하지 않는다.
 
 폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건 + 1.13.2 fail-closed release fix 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
@@ -206,13 +206,13 @@
 - 코드: `scripts/{rotate_aeroone_credentials,view_aeroone_credentials}.ps1`, `scripts/credential_rotation/`, `backend/app/commands/`, `backend/app/operations/credential_rotation_*.py`, `backend/app/operations/{sqlite_recovery,windows_dpapi}.py`, `backend/alembic/versions/20260710_0009_credential_rotation_ledger.py`
 - 회귀 방지: backend full 347 passed, credential focused 79 passed, frontend 313 passed(66 파일), ruff·basedpyright·compileall, PowerShell AST, `tsc --noEmit`, `next build`, old 401/new 200. 실제 WPF 창 시각 조작과 web 브라우저 smoke는 미실행.
 
-### 단계 27 — v1.13.0 정식 릴리스 (역사 보존), 1.13.1 정식 immutable Release 및 1.13.2 release candidate
+### 단계 27 — v1.13.0 정식 릴리스 (역사 보존), 1.13.1 immutable historical patch 및 1.13.2 정식 immutable Release
 - 파일: [`phase-27-v1-13-0-release-candidate.md`](phase-27-v1-13-0-release-candidate.md)
-- 분류: minor (`1.13.0`), forward-only patch (`1.13.1`) 및 forward-only release candidate (`1.13.2`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package 계보를 보존하고 Git tag inspection 실패를 fail closed 한다.
-- 검증: 1.13.0 전체 제품 게이트 backend 570, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier를 계승하고, 1.13.1의 backend 88, frontend 10, typecheck, exact-tag pre/post verifier 결과를 보존한다. 1.13.2의 fresh source-bound full gates와 exact-tag package verification은 아직 실행하지 않았다.
+- 분류: minor (`1.13.0`), immutable historical patch (`1.13.1`) 및 정식 immutable Release (`1.13.2`) — shared session/권한, 본인 Activity, 실제 Admin 운영 UX, reproducible browser QA와 allow-list offline package 계보를 보존하고 Git tag inspection 실패를 fail closed 한다.
+- 검증: 1.13.0 전체 제품 게이트 backend 570, frontend 397/73, typecheck/build, production Chrome smoke/matrix/Axe/Lighthouse/React, QA ZIP pre-stage/post-ZIP verifier를 보존한다. 1.13.2는 backend full 570, focused 88, frontend full 397/73, typecheck/build, GitHub CLI release/asset verification, 재다운로드 ZIP/sidecar digest, exact-tag pre/post verifier 10,317 entries를 통과했다. 이 패치는 package fail-closed behavior와 QA contract seam만 변경하며 제품 feature behavior는 변경하지 않는다.
 - 1.13.0 릴리스의 tag·asset·digest는 이동·교체·삭제하지 않으며 `immutable=false` 역사 기록으로 보존한다.
 - 1.13.1 릴리스: merge/tag commit `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, annotated tag `1.13.1`, [GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.1), published `2026-07-13T23:31:18Z`, API `immutable=true`.
-- 운영 asset: `AeroOne-offline-1.13.1.zip` size `158727170`, SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`; `.sha256` asset과 attestation 검증 완료 사실을 보존한다. 1.13.2 exact-tag immutable publication과 attestation 전까지 1.13.1이 최신 운영 반입물이다.
+- 운영 asset: `AeroOne-offline-1.13.2.zip` size `158728639`, SHA-256 `92d5178d6fb67573a1f0b36e0a744e00b4b559548081b463d45a4ba1d669d8a4`; sidecar SHA-256 `02bb4827b149bbe36ffad1bdb7d6dd43b95a5c3c71b168671e7da854a4f2c6d5`. PR #28 no-ff merge `a3dd77b93027dccffb36d663bb7ee1220c9fcdf5`, annotated tag object `62ba67eef7e2c2ac2357dc67d1cffb1c9eeedcc5` (merge commit으로 peel), published `2026-07-14T01:40:21Z`, [GitHub Release](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.13.2), API `immutable=true`. `1.13.1` historical facts remain unchanged; publication is not a physical air-gapped import.
 
 ---
 
