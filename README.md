@@ -18,7 +18,7 @@
 </div>
 
 > [!CAUTION]
-> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.14.0`이며, 1.13.2/1.13.1/1.13.0은 변경하지 않는 역사 릴리스로 보존합니다. 1.14.0은 대시보드에 로그인 후 노출되는 Open WebUI 실행 카드(같은 호스트 8080 포트 링크, 링크만)와 관리자 콘솔의 OpenAI 호환 AI provider 병행 관리(Ollama 와 나란히, 명시 선택·자동 폴백 없음, write-only DPAPI 키)를 추가한 forward-only feature 릴리스입니다. 이전 immutable 릴리스의 tag·asset·digest는 변경하지 않습니다. Release publication은 완료되어도 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
+> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.15.1`이며, 1.15.0/1.14.0/1.13.2/1.13.1/1.13.0은 변경하지 않는 역사 릴리스로 보존합니다. `1.15.0`은 폐쇄망 오프라인 설치를 막는 결함 2건(`requirements.txt` 한글 주석 cp949 디코딩 실패 · Alembic 다중 head)이 있어 immutable 로 교체 불가하므로 **반드시 `1.15.1`을 사용하세요.** 1.15.0/1.15.1은 1.14.0(대시보드 Open WebUI 실행 카드 + 관리자 OpenAI 호환 provider) 위에 Office Studio(보고서·차트·다이어그램 생성·이력)와 Leantime 동거 통합(서버측 JSON-RPC 읽기·상태 배지·오프라인 번들 패키징)을 얹은 forward-only feature 릴리스입니다. 이전 immutable 릴리스의 tag·asset·digest는 변경하지 않습니다. Release publication은 완료되어도 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
 
 <table>
   <tr>
@@ -78,7 +78,7 @@
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | 1.14.0은 backend unit **354 passed**, 비회전 integration **240 passed**, provider/AI integration **28 passed**, 신규 provider focused unit **84 passed**(실 Windows DPAPI roundtrip 포함), frontend **423 passed / 74 files**, `tsc --noEmit`, Next production build, 격리 스택 라이브 브라우저 e2e(대시보드 Open WebUI 카드→host:8080 + 관리자 AI provider 패널), 오프라인 패키지 QA 빌드+pre/post verifier를 통과했습니다. 발견된 결함 1건(호환 채팅 경로 메시지 조립)을 수정하고 회귀 테스트로 고정했습니다. 1.13.0/1.13.1/1.13.2의 역사적 검증 사실은 그대로 보존합니다. |
+| 검증 | `1.15.1`은 이 PC에서 폐쇄망식 오프라인 설치(`setup_offline.bat` → pip 오프라인 wheelhouse 설치 + `alembic upgrade head` → `20260714_0017` mergepoint + seed)와 구동(`start_offline.bat`)을 완주했고, 프런트 `/`·`/newsletters`·`/office-tools`·`/office-tools/chart`·`/leantime`·`/login` **200**, 백엔드 `/openapi.json` **200**을 확인했습니다. 병합 트리 기준 backend 전체 pytest **0 failed**, frontend **541 passed / 88 files**, `tsc --noEmit`, Next 15.5.18 production build, 오프라인 패키지 release 빌드 + Task 5 pre/post verifier를 통과했습니다. `1.15.0`은 오프라인 설치 차단 결함으로 `1.15.1`로 대체되었습니다. 1.14.0/1.13.x의 역사적 검증 사실은 그대로 보존합니다. |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
@@ -125,13 +125,13 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
                                                  scripts\run_all.bat
 ```
 
-### 릴리즈 1.14.0 반입 파일
+### 릴리즈 1.15.1 반입 파일
 
-`1.12.2` 반입물은 철회되어 사용할 수 없습니다. 현재 최신 운영 반입물은 2026-07-14 게시된 immutable 정식 `1.14.0` Release의 `AeroOne-offline-1.14.0.zip`과 함께 업로드된 `.sha256` sidecar 파일입니다. Release API는 `immutable=true`를 반환했고, published 시각은 `2026-07-14T08:49:31Z`입니다. PR #31은 no-ff merge commit `03297f2d246f6b3b823d5b6736c22cd9d34c30ca`로 병합되었고 annotated tag object는 `75281adc0b7604f7b0924e3c510da35d2443d34d`이며 위 merge commit으로 peel됩니다. ZIP size는 `158781562` bytes, SHA-256은 `f6fae644413b67449c6cefdf4a32e9d570416199a124b5c4de0eceadaa25a8f7`이고, sidecar `.sha256`은 이 ZIP digest를 담으며 게시 후 재다운로드 digest 검증을 통과했습니다. GitHub immutable releases 정책은 활성화되어 있으며, `1.13.2`(published `2026-07-14T01:40:21Z`, ZIP SHA-256 `92d5178d6fb67573a1f0b36e0a744e00b4b559548081b463d45a4ba1d669d8a4`), `1.13.1`(ZIP SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`), `1.13.0`은 tag·asset·digest를 변경하지 않는 역사 릴리스로 그대로 보존합니다. Release publication은 사람이 air-gapped network에 물리적으로 import했다는 뜻이 아니며, 로컬 중간 ZIP은 운영 배포본이 아닙니다.
+`1.12.2`·`1.15.0` 반입물은 사용하지 마세요(전자는 철회, 후자는 폐쇄망 오프라인 설치 차단 결함). 현재 최신 운영 반입물은 2026-07-14 게시된 immutable 정식 `1.15.1` Release의 `AeroOne-offline-1.15.1.zip`과 함께 업로드된 `.sha256` sidecar 파일입니다. Release API는 `immutable=true`를 반환했고, published 시각은 `2026-07-14T13:17:14Z`입니다. 이 hotfix는 no-ff merge commit `5f8ff74874dc62f3e91f3db418500683da386d11`(1.15.0 merge `e63206eff919f4d971a798e20b14920e24719928` 위의 자식)에서 annotated tag object `70416d03229e9b32c42a51e8f3f88b99d2feb711`로 게시되었습니다. ZIP size는 `235208811` bytes, SHA-256은 `1e2a3ebb10d9c4a57943604e810fef7432065ac7965df41f9f4a2cf1fd153f98`이고, sidecar `.sha256`은 이 ZIP digest를 담으며 게시 후 재다운로드 digest 검증을 통과했습니다. GitHub immutable releases 정책은 활성화되어 있으며, `1.15.0`(published `2026-07-14T12:45:34Z`, ZIP SHA-256 `8fb46dc00f0ae16bebaebee44dd8bae64656e9527eda7b9fadf1c8bc90dcafd5`, 설치 차단 결함으로 `1.15.1`로 대체), `1.14.0`(ZIP SHA-256 `f6fae644413b67449c6cefdf4a32e9d570416199a124b5c4de0eceadaa25a8f7`), `1.13.2`(ZIP SHA-256 `92d5178d6fb67573a1f0b36e0a744e00b4b559548081b463d45a4ba1d669d8a4`), `1.13.1`(ZIP SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`), `1.13.0`은 tag·asset·digest를 변경하지 않는 역사 릴리스로 그대로 보존합니다. Release publication은 사람이 air-gapped network에 물리적으로 import했다는 뜻이 아니며, 로컬 중간 ZIP은 운영 배포본이 아닙니다.
 
 | 파일 | 어디서 받는가 | 폐쇄망에서 놓을 위치 | 역할 |
 |---|---|---|---|
-| `AeroOne-offline-1.14.0.zip` + `.sha256` | [정식 immutable GitHub Release `1.14.0`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.14.0) asset (ZIP size `158781562` bytes, SHA-256 `f6fae644413b67449c6cefdf4a32e9d570416199a124b5c4de0eceadaa25a8f7`) | `D:\AeroOne\` 로 압축 해제 | allow-list로 검증된 AeroOne 소스, production wheelhouse/node_modules, prebuilt `.next`, 정확한 Python/Node 인스톨러 |
+| `AeroOne-offline-1.15.1.zip` + `.sha256` | [정식 immutable GitHub Release `1.15.1`](https://github.com/Py-CI-Park/AeroOne/releases/tag/1.15.1) asset (ZIP size `235208811` bytes, SHA-256 `1e2a3ebb10d9c4a57943604e810fef7432065ac7965df41f9f4a2cf1fd153f98`) | `D:\AeroOne\` 로 압축 해제 | allow-list로 검증된 AeroOne 소스, production wheelhouse/node_modules, prebuilt `.next`, 정확한 Python 3.12.7 / Node 20.18.0 인스톨러 |
 | `AeroOne-bundle.zip` | 같은 Release asset 또는 Open Notebook 저장소 `dist\` | `D:\AeroOne-bundle\` 로 압축 해제 | Open Notebook 별도 앱(Frontend 8502, API 5055, SurrealDB 8000), 자체 Python/Node/uv/ffmpeg/SurrealDB 포함 |
 | `%USERPROFILE%\.ollama\models\manifests`, `blobs` | 인터넷 PC 에서 `ollama pull gemma4:12b`, `ollama pull nomic-embed-text` 후 복사 | 폐쇄망 PC 같은 경로 | AeroAI/Open Notebook 공용 LLM·임베딩 모델 |
 | `OllamaSetup.exe` | Ollama 공식 설치 파일 | 폐쇄망 PC에서 1회 설치 | `127.0.0.1:11434` 로 두 앱이 공유하는 모델 서버 |
