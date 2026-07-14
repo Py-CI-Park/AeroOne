@@ -66,3 +66,8 @@ backend/.env
 backend/.env.bak
 
 frontend/.env.local.bak
+
+# AeroOne Tool 참조 패키지 — 원본 zip·추출본은 로컬 참조용이라 추적 제외(분석 문서 *.md 만 추적)
+/AeroOne Tool/_originals/
+/AeroOne Tool/tool-mvp-v0.1.0/
+/AeroOne Tool/saas-kit-v2.0.0/

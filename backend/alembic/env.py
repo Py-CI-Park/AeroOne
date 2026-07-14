@@ -7,12 +7,13 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.modules.auth import models as auth_models
-from app.modules.newsletter.models import category, newsletter, tag
-from app.modules.read_tracking.models import read_event
-from app.modules.ai import models as ai_models
-from app.modules.admin import models as admin_models
-from app.operations import credential_rotation_models
+from app.modules.auth import models as auth_models  # noqa: F401
+from app.modules.newsletter.models import category, newsletter, tag  # noqa: F401
+from app.modules.read_tracking.models import read_event  # noqa: F401
+from app.modules.ai import models as ai_models  # noqa: F401
+from app.modules.admin import models as admin_models  # noqa: F401
+from app.operations import credential_rotation_models  # noqa: F401
+from app.modules.leantime import models as leantime_models  # noqa: F401
 
 _REGISTERED_MODEL_MODULES = (
     auth_models,
@@ -23,6 +24,7 @@ _REGISTERED_MODEL_MODULES = (
     ai_models,
     admin_models,
     credential_rotation_models,
+    leantime_models,
 )
 
 config = context.config

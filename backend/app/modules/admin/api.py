@@ -14,7 +14,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.security import hash_password
+from app.core.security import (
+    PasswordCandidateError,
+    PasswordHashError,
+    hash_file_bytes,
+    hash_password,
+    password_hash_uses_retired_password,
+)
 from app.modules.admin.audit import build_ai_provider_audit_metadata, record_admin_audit
 from app.modules.admin.models import (
     AdminAuditEvent,
@@ -87,6 +93,7 @@ from app.modules.ai.provider_config_service import (
 from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf, require_permission
 from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
+from app.modules.auth.services import set_user_password
 from app.modules.collections.search_service import CollectionSearchRoot, CollectionSearchUnavailable, HtmlCollectionSearchService
 from app.modules.collections.policy import can_read_collection
 from app.modules.newsletter.models.newsletter import Newsletter
@@ -95,7 +102,6 @@ from app.modules.read_tracking.models.read_event import NewsletterReadEvent
 from app.modules.shared.storage.service import sha256_for_file
 
 router = APIRouter()
-
 
 
 def _connected_user_retention_days(settings: Settings) -> int:
@@ -294,19 +300,27 @@ def _has_other_active_admin(db: Session, user: User) -> bool:
 @router.post('/users', response_model=UserAdminResponse, dependencies=[Depends(require_permission('admin.users.manage')), Depends(require_csrf)])
 def create_user(payload: UserCreateRequest, request: Request, db: Session = Depends(get_db), actor: User = Depends(get_current_user)) -> UserAdminResponse:
     username = _required_text(payload.username, 'username')
-    if not payload.password.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='password is required')
-    if UserRepository(db).get_by_username(username):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already exists')
     user = User(
         username=username,
         email=_optional_text(payload.email),
         display_name=_optional_text(payload.display_name),
-        password_hash=hash_password(payload.password),
+        password_hash='',
         role=payload.role,
         is_active=payload.is_active,
         session_version=0,
     )
+    try:
+        set_user_password(
+            user,
+            payload.password,
+            password_change_required=False,
+            field_name='password',
+            invalidate_sessions=False,
+        )
+    except PasswordCandidateError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if UserRepository(db).get_by_username(username):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already exists')
     db.add(user)
     db.flush()
     record_admin_audit(
@@ -335,6 +349,19 @@ def update_user(user_id: int, payload: UserUpdateRequest, request: Request, db: 
     would_remove_admin = user.is_active and user.role == 'admin' and (not new_active or new_role != 'admin')
     if would_remove_admin and not _has_other_active_admin(db, user):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='At least one active admin must remain')
+    if not user.is_active and new_active:
+        try:
+            password_is_retired = password_hash_uses_retired_password(user.password_hash)
+        except PasswordHashError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Password reset is required before activating this user',
+            ) from exc
+        if password_is_retired:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Password reset is required before activating this user',
+            )
     if 'email' in fields_set:
         user.email = _optional_text(payload.email)
     if 'display_name' in fields_set:
@@ -359,8 +386,15 @@ def reset_user_password(user_id: int, payload: PasswordResetRequest, request: Re
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
-    user.password_hash = hash_password(payload.temporary_password)
-    user.session_version += 1
+    try:
+        set_user_password(
+            user,
+            payload.temporary_password,
+            password_change_required=True,
+            field_name='temporary_password',
+        )
+    except PasswordCandidateError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.flush()
     record_admin_audit(db, actor=actor, action='user.password_reset', target_type='user', target_id=user.id, request=request, metadata={'temporary_password': '[REDACTED]'})
     return _serialize_user(db, user)

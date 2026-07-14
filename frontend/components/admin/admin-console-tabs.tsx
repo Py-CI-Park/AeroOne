@@ -14,6 +14,12 @@ import {
   deleteAiProviderCredential,
   deleteResourceGrant,
   deleteServiceModule,
+  createLlmConnection,
+  updateLlmConnection,
+  deleteLlmConnection,
+  setDefaultLlmConnection,
+  verifyLlmConnection,
+  fetchLlmConnections,
   createCategory,
   createTag,
   dryRunRestoreBackup,
@@ -63,6 +69,7 @@ import type {
   AuditEvent,
   BackupRecord,
   Category,
+  LlmConnection,
   Permission,
   RbacMatrixUser,
   ResourceGrant,
@@ -106,6 +113,9 @@ type PanelState = {
   tags: Tag[];
   ai?: AiAdminStatus;
   aiProvider?: AiProviderConfigResponse;
+  llmConnections: LlmConnection[];
+  // 연결별 검증(verify) 으로 불러온 모델 목록 캐시. 드롭다운 채움에 사용.
+  llmModels: Record<number, string[]>;
   searchResults: UnifiedSearchResult[];
   error?: string;
   toasts: AdminToast[];
@@ -123,6 +133,8 @@ const initialState: PanelState = {
   backups: [],
   categories: [],
   tags: [],
+  llmConnections: [],
+  llmModels: {},
   searchResults: [],
   toasts: [],
   busy: 'initial-load',
@@ -201,6 +213,15 @@ type AdminConsoleContextValue = {
   setPasswordForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['passwordForm']>>;
   aiProviderForm: { kind: AiProviderKind; canonical_url: string; display_url: string; model: string; generation: string };
   setAiProviderForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['aiProviderForm']>>;
+  llmForm: { name: string; base_url: string; api_key: string; verify_tls: boolean; is_default: boolean };
+  setLlmForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['llmForm']>>;
+  addLlmConnection: () => Promise<void>;
+  toggleLlmConnection: (connection: LlmConnection) => Promise<void>;
+  promoteLlmConnection: (connection: LlmConnection) => Promise<void>;
+  removeLlmConnection: (connection: LlmConnection) => Promise<void>;
+  testLlmConnection: (connection: LlmConnection) => Promise<void>;
+  saveLlmConnectionModel: (connection: LlmConnection, model: string) => Promise<void>;
+  rotateLlmConnectionKey: (connection: LlmConnection, apiKey: string) => Promise<void>;
   saveModule: (module: ServiceModule) => Promise<void>;
   toggleModule: (module: ServiceModule) => Promise<void>;
   createModule: () => Promise<void>;
@@ -250,8 +271,8 @@ const tabs = [
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
-type RefreshKey = 'overview' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai' | 'aiProvider';
-const allRefreshKeys: RefreshKey[] = ['overview', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai', 'aiProvider'];
+type RefreshKey = 'overview' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai' | 'aiProvider' | 'llmConnections';
+const allRefreshKeys: RefreshKey[] = ['overview', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai', 'aiProvider', 'llmConnections'];
 
 export function AdminConsoleTabs() {
   return (
@@ -280,6 +301,7 @@ function AdminConsoleTabsContent() {
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const [aiProviderForm, setAiProviderForm] = useState<{ kind: AiProviderKind; canonical_url: string; display_url: string; model: string; generation: string }>({ kind: 'openai_compatible', canonical_url: '', display_url: '', model: '', generation: '' });
+  const [llmForm, setLlmForm] = useState({ name: '', base_url: '', api_key: '', verify_tls: true, is_default: false });
   const toastIdRef = useRef(0);
   const connectedUsersRequestRef = useRef(0);
 
@@ -330,6 +352,7 @@ function AdminConsoleTabsContent() {
           if (key === 'tags') next.tags = await fetchTags();
           if (key === 'ai') next.ai = await fetchAdminAiStatus();
           if (key === 'aiProvider') next.aiProvider = await fetchAiProviderConfig();
+          if (key === 'llmConnections') next.llmConnections = await fetchLlmConnections();
         } catch (error) {
           const text = error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.';
           if (key === 'connectedUsers') {
@@ -403,6 +426,34 @@ function AdminConsoleTabsContent() {
     if (!passwordForm.current || !passwordForm.next) return;
     if (passwordForm.next !== passwordForm.confirm) { pushToast('error', '새 비밀번호와 확인 값이 일치하지 않습니다.'); return; }
     await runBusy('password-change', ['audits'], async () => { await changeOwnPassword(passwordForm.current, passwordForm.next, getCsrfCookie()); setPasswordForm({ current: '', next: '', confirm: '' }); return '관리자 비밀번호를 변경했습니다.'; });
+  }
+  async function addLlmConnection() {
+    const name = llmForm.name.trim();
+    const baseUrl = llmForm.base_url.trim();
+    if (!name) { pushToast('error', '연결 이름을 입력하세요.'); return; }
+    if (!/^https?:\/\//.test(baseUrl)) { pushToast('error', 'base_url 은 http:// 또는 https:// 로 시작해야 합니다.'); return; }
+    await runBusy('llm-create', ['llmConnections', 'audits'], async () => { await createLlmConnection({ name, base_url: baseUrl, api_key: llmForm.api_key, verify_tls: llmForm.verify_tls, is_default: llmForm.is_default }, getCsrfCookie()); setLlmForm({ name: '', base_url: '', api_key: '', verify_tls: true, is_default: false }); return `${name} 연결을 추가했습니다.`; });
+  }
+  async function toggleLlmConnection(connection: LlmConnection) {
+    await runBusy(`llm-${connection.id}`, ['llmConnections', 'audits'], async () => { await updateLlmConnection(connection.id, { is_enabled: !connection.is_enabled }, getCsrfCookie()); return `${connection.name} 연결 상태를 변경했습니다.`; });
+  }
+  async function promoteLlmConnection(connection: LlmConnection) {
+    await runBusy(`llm-${connection.id}`, ['llmConnections', 'audits'], async () => { await setDefaultLlmConnection(connection.id, getCsrfCookie()); return `${connection.name} 을 기본 연결로 지정했습니다.`; });
+  }
+  async function removeLlmConnection(connection: LlmConnection) {
+    const result = await confirm({ title: 'LLM 연결 삭제', message: `${connection.name} 연결을 삭제할까요?\n삭제 후 이 연결로 저장된 키와 기본 지정이 사라집니다.`, confirmLabel: '삭제', tone: 'danger' });
+    if (!result.confirmed) return;
+    await runBusy(`llm-${connection.id}`, ['llmConnections', 'audits'], async () => { await deleteLlmConnection(connection.id, getCsrfCookie()); return `${connection.name} 연결을 삭제했습니다.`; });
+  }
+  async function testLlmConnection(connection: LlmConnection) {
+    await runBusy(`llm-verify-${connection.id}`, [], async () => { const result = await verifyLlmConnection(connection.id, getCsrfCookie()); setState((current) => ({ ...current, llmModels: { ...current.llmModels, [connection.id]: result.models } })); if (!result.ok) throw new Error(result.detail || '연결 검증에 실패했습니다.'); return `모델 ${result.models.length}개를 불러왔습니다.`; });
+  }
+  async function saveLlmConnectionModel(connection: LlmConnection, model: string) {
+    await runBusy(`llm-${connection.id}`, ['llmConnections', 'audits'], async () => { await updateLlmConnection(connection.id, { default_model: model || null }, getCsrfCookie()); return `${connection.name} 기본 모델을 저장했습니다.`; });
+  }
+  async function rotateLlmConnectionKey(connection: LlmConnection, apiKey: string) {
+    if (!apiKey.trim()) { pushToast('error', '새 API 키를 입력하세요.'); return; }
+    await runBusy(`llm-${connection.id}`, ['llmConnections', 'audits'], async () => { await updateLlmConnection(connection.id, { api_key: apiKey }, getCsrfCookie()); return `${connection.name} API 키를 교체했습니다.`; });
   }
   async function createUser() {
     if (!userForm.username.trim() || !userForm.password.trim()) return;
@@ -576,7 +627,7 @@ function AdminConsoleTabsContent() {
     }
   }
 
-  const context = useMemo<AdminConsoleContextValue>(() => ({ state, refresh, moduleDrafts, setModuleDrafts, userDrafts, setUserDrafts, categoryDrafts, setCategoryDrafts, tagDrafts, setTagDrafts, moduleForm, setModuleForm, userForm, setUserForm, groupForm, setGroupForm, grantForm, setGrantForm, membershipForm, setMembershipForm, categoryForm, setCategoryForm, tagForm, setTagForm, searchForm, setSearchForm, passwordForm, setPasswordForm, aiProviderForm, setAiProviderForm, saveModule, toggleModule, createModule, removeModule, changePassword, createUser, saveUser, resetPassword, saveGroup, saveResourceGrant, removeResourceGrant, changeMembership, createTaxonomy, saveCategory, saveTag, purgeSessionMetadata, runSearch, runBackup, runValidate, runRestoreDryRun, stageAiProviderConfig, testAiProviderCandidate, activateAiProviderConfig, selectAiProviderConfigKind, deleteAiProviderCredentials, reconcileAiProviderState }), [state, moduleDrafts, userDrafts, categoryDrafts, tagDrafts, moduleForm, userForm, groupForm, grantForm, membershipForm, categoryForm, tagForm, searchForm, passwordForm, aiProviderForm]);
+  const context = useMemo<AdminConsoleContextValue>(() => ({ state, refresh, moduleDrafts, setModuleDrafts, userDrafts, setUserDrafts, categoryDrafts, setCategoryDrafts, tagDrafts, setTagDrafts, moduleForm, setModuleForm, userForm, setUserForm, groupForm, setGroupForm, grantForm, setGrantForm, membershipForm, setMembershipForm, categoryForm, setCategoryForm, tagForm, setTagForm, searchForm, setSearchForm, passwordForm, setPasswordForm, aiProviderForm, setAiProviderForm, llmForm, setLlmForm, addLlmConnection, toggleLlmConnection, promoteLlmConnection, removeLlmConnection, testLlmConnection, saveLlmConnectionModel, rotateLlmConnectionKey, saveModule, toggleModule, createModule, removeModule, changePassword, createUser, saveUser, resetPassword, saveGroup, saveResourceGrant, removeResourceGrant, changeMembership, createTaxonomy, saveCategory, saveTag, purgeSessionMetadata, runSearch, runBackup, runValidate, runRestoreDryRun, stageAiProviderConfig, testAiProviderCandidate, activateAiProviderConfig, selectAiProviderConfigKind, deleteAiProviderCredentials, reconcileAiProviderState }), [state, moduleDrafts, userDrafts, categoryDrafts, tagDrafts, moduleForm, userForm, groupForm, grantForm, membershipForm, categoryForm, tagForm, searchForm, passwordForm, aiProviderForm, llmForm]);
 
   function activateTab(tab: TabKey) {
     setActiveTab(tab);

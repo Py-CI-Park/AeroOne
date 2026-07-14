@@ -211,6 +211,70 @@ export interface ServiceModule {
 }
 
 
+// office-tools(보고서/차트/다이어그램) 공통 뼈대 타입. 각 도구의 요청/응답 타입
+// (보고서 생성, 차트 spec/echarts option, 다이어그램 mermaid 등)은 다음 단계에서 추가한다.
+export interface OfficeToolCapabilities {
+  services: { report: boolean; chart: boolean; diagram: boolean };
+  llm: { active: boolean; default_model: string | null; fallback: string };
+  limits: Record<string, number>;
+}
+
+export interface OfficeJobArtifact {
+  filename: string;
+  media_type: string;
+  size_bytes: number;
+  sha256: string;
+  download_url: string;
+}
+
+export interface OfficeJob {
+  job_id: string;
+  service: string;
+  owner_id: number;
+  status: 'running' | 'completed' | 'failed' | string;
+  created_at: string;
+  updated_at: string;
+  warnings: string[];
+  artifacts: OfficeJobArtifact[];
+  error?: string | null;
+}
+export interface OfficeJobListItem {
+  job_id: string;
+  service: string;
+  status: 'running' | 'completed' | 'failed' | string;
+  created_at: string;
+  updated_at: string;
+  warnings: string[];
+  artifacts: OfficeJobArtifact[];
+  title: string | null;
+  llm_used: boolean | null;
+}
+
+export interface OfficeJobUsage {
+  job_count: number;
+  total_bytes: number;
+  max_jobs_per_owner: number;
+  max_bytes_per_owner: number;
+}
+
+export interface OfficeJobListResponse {
+  jobs: OfficeJobListItem[];
+  usage: OfficeJobUsage;
+}
+
+export interface OfficeJobDetail {
+  job_id: string;
+  service: string;
+  owner_id: number;
+  status: 'running' | 'completed' | 'failed' | string;
+  created_at: string;
+  updated_at: string;
+  request_summary: Record<string, unknown>;
+  warnings: string[];
+  artifacts: OfficeJobArtifact[];
+  error: string | null;
+}
+
 export interface ConnectedSession {
   user_id: number;
   username: string;
@@ -491,4 +555,204 @@ export interface AiConversationDetail extends AiConversationSummary {
 
 export interface AiConversationListResponse {
   conversations: AiConversationSummary[];
+}
+
+// LLM 연결 레지스트리 (산출물 A). 백엔드는 평문 키를 절대 반환하지 않고 마스킹 값만 준다.
+export interface LlmConnection {
+  id: number;
+  name: string;
+  base_url: string;
+  default_model?: string | null;
+  is_enabled: boolean;
+  is_default: boolean;
+  verify_tls: boolean;
+  api_key_masked: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LlmVerifyResponse {
+  ok: boolean;
+  models: string[];
+  detail?: string | null;
+}
+
+// 생성 요청 본문. api_key 는 옵션(무키 Ollama 등)이며 저장 후에는 마스킹 값만 노출된다.
+export interface LlmConnectionCreatePayload {
+  name: string;
+  base_url: string;
+  api_key?: string;
+  default_model?: string | null;
+  is_enabled?: boolean;
+  is_default?: boolean;
+  verify_tls?: boolean;
+}
+
+// 수정 요청 본문. 전 필드 선택적이며, api_key 를 생략하면 기존 키를 유지한다.
+export interface LlmConnectionUpdatePayload {
+  name?: string;
+  base_url?: string;
+  api_key?: string;
+  default_model?: string | null;
+  is_enabled?: boolean;
+  is_default?: boolean;
+  verify_tls?: boolean;
+}
+
+// office-tools 다이어그램 스튜디오(svc03). 서버는 Mermaid 소스만 만들고 브라우저가 렌더한다.
+export type DiagramType = 'flowchart' | 'sequence' | 'state' | 'gantt';
+
+// office-tools 샘플 예제 — 각 스튜디오 '예제 불러오기'가 받는 내용 + 폼 프리필 힌트.
+export interface OfficeSample {
+  key: string;
+  tool: 'report' | 'chart' | 'diagram';
+  filename: string;
+  media_type: string;
+  title: string;
+  description: string;
+  content: string;
+  hints: Record<string, unknown>;
+}
+
+// Leantime 동거 스택의 실시간 감지 결과. HTTP 헬스 체크 + 앱 식별 결과를 담는다.
+// status='ready' 이면서 app_identified=true 일 때만 '열기'가 실제로 동작한다.
+export interface LeantimeHealth {
+  status: 'ready' | 'unhealthy' | 'starting' | 'absent' | 'error';
+  probe_host: string;
+  port: number;
+  probe_target: string;
+  launch_url: string;
+  checked_at: string;
+  latency_ms: number | null;
+  detail: string;
+  app_identified: boolean;
+}
+
+
+// Leantime 읽기 전용 대시보드 DTO — 백엔드가 leantime.read 권한 하에 프로젝트/담당 작업/
+// 기간 일정을 그대로 넘겨준다. degraded=true 일 때 reason 으로 사유를 구분한다.
+export interface LeantimeProject {
+  id: string;
+  name: string;
+  state: string | null;
+  client_name: string | null;
+}
+
+export interface LeantimeTask {
+  id: string;
+  project_id: string | null;
+  headline: string;
+  status: string | null;
+  date_to_finish: string | null;
+}
+
+export interface LeantimeCalendarEntry {
+  id: string;
+  name: string;
+  date_start: string | null;
+  date_end: string | null;
+}
+
+export interface LeantimeReadResponse<T> {
+  items: T[];
+  degraded: boolean;
+  reason: string | null;
+  source: string;
+  fetched_at: string;
+}
+
+export interface DiagramGenerateRequest {
+  description: string;
+  diagram_type: DiagramType;
+  title?: string;
+  ai_assist: boolean;
+}
+
+export interface OfficeArtifact {
+  filename: string;
+  media_type: string;
+  size_bytes: number;
+  sha256: string;
+  download_url: string;
+}
+
+export interface DiagramGenerateResponse {
+  job_id: string;
+  status: string;
+  title: string;
+  diagram_type: DiagramType;
+  mermaid: string;
+  warnings: string[];
+  artifacts: OfficeArtifact[];
+  preview_url: string;
+  bundle_url: string;
+  llm_used: boolean;
+}
+
+// office-tools 보고서 스튜디오(svc01). 서버가 Markdown 을 sanitize HTML 로 변환한다.
+export type ReportAiMode = 'none' | 'polish' | 'executive';
+
+export interface ReportGenerateResponse {
+  job_id: string;
+  status: string;
+  title: string;
+  ai_mode: ReportAiMode;
+  llm_used: boolean;
+  html: string;
+  warnings: string[];
+  artifacts: OfficeArtifact[];
+  preview_url: string;
+  bundle_url: string;
+}
+
+// office-tools 차트 스튜디오(svc02). 서버가 pandas 로 집계해 ECharts option(JSON)만 만들고
+// 브라우저가 렌더한다. 서버 SVG/PNG 는 없다.
+export type ChartType = 'bar' | 'line' | 'area' | 'scatter' | 'pie' | 'histogram';
+export type ChartAggregation = 'none' | 'sum' | 'mean' | 'count' | 'min' | 'max';
+export type ChartSortMode = 'none' | 'x_asc' | 'x_desc' | 'value_asc' | 'value_desc';
+export type ChartOrientation = 'vertical' | 'horizontal';
+
+export interface ChartManualSpecInput {
+  type?: ChartType;
+  title?: string;
+  x: string | null;
+  y: string[];
+  group?: string | null;
+  stacked?: boolean;
+  aggregation?: ChartAggregation;
+  sort?: ChartSortMode;
+  limit?: number;
+  orientation?: ChartOrientation;
+  x_label?: string | null;
+  y_label?: string | null;
+}
+
+export interface ChartColumnProfile {
+  name: string;
+  dtype: string;
+  non_null: number;
+  null: number;
+  unique: number;
+  numeric: boolean;
+  datetime: boolean;
+}
+
+export interface ChartInspectResponse {
+  row_count: number;
+  column_count: number;
+  columns: ChartColumnProfile[];
+  sample: Record<string, unknown>[];
+}
+
+export interface ChartGenerateResponse {
+  job_id: string;
+  status: string;
+  title: string;
+  llm_used: boolean;
+  chart_spec: Record<string, unknown>;
+  echarts_option: Record<string, unknown>;
+  warnings: string[];
+  artifacts: OfficeArtifact[];
+  preview_url: string;
+  bundle_url: string;
 }

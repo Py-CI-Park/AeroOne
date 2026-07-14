@@ -30,6 +30,7 @@ vi.mock('@/lib/api', async () => {
     fetchTags: vi.fn(),
     fetchAdminAiStatus: vi.fn(),
     fetchAiProviderConfig: vi.fn(),
+    fetchLlmConnections: vi.fn().mockResolvedValue([]),
   };
 });
 

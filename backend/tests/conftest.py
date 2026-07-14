@@ -1,10 +1,13 @@
 from __future__ import annotations
+import asyncio
+import json
 
 from datetime import UTC, datetime
 import os
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 os.environ["APP_ENV"] = "test"
@@ -17,10 +20,97 @@ from app.db.session import reset_db_caches
 from app.main import create_app
 from app.modules.admin.models import ServiceModule
 from app.modules.auth.repositories import UserRepository
+from app.modules.office_tools.upload_limits import (
+    OfficeMultipartIngressLimitMiddleware,
+    OfficeMultipartLimits,
+)
 from app.modules.newsletter.models.category import Category
 from app.modules.newsletter.models.newsletter import AssetType, Newsletter, NewsletterAsset, SourceType
 from app.modules.newsletter.models.tag import Tag
 
+
+class OfficeIngressHarness:
+    @staticmethod
+    def multipart_body(
+        parts: list[tuple[bytes, bytes]],
+        *,
+        boundary: bytes,
+        content_type: bytes,
+    ) -> bytes:
+        body = bytearray()
+        for content_disposition, payload in parts:
+            body.extend(b'--' + boundary + b'\r\n')
+            body.extend(content_disposition + b'\r\nContent-Type: ' + content_type + b'\r\n\r\n')
+            body.extend(payload)
+            body.extend(b'\r\n')
+        body.extend(b'--' + boundary + b'--\r\n')
+        return bytes(body)
+
+    @staticmethod
+    def set_limits(app: FastAPI, limits_by_path: dict[str, OfficeMultipartLimits]) -> None:
+        assert app.middleware_stack is None
+        for middleware in app.user_middleware:
+            if middleware.cls is OfficeMultipartIngressLimitMiddleware:
+                middleware.kwargs['limits_by_path'] = limits_by_path
+                return
+        raise AssertionError('Office ingress middleware is not installed')
+
+    @staticmethod
+    def request(
+        app: FastAPI,
+        *,
+        path: str,
+        headers: list[tuple[bytes, bytes]],
+        receive_messages: list[dict[str, object]],
+    ) -> tuple[int, dict[str, object]]:
+        sent: list[dict[str, object]] = []
+
+        async def receive() -> dict[str, object]:
+            if not receive_messages:
+                raise AssertionError('application attempted to read beyond supplied ASGI messages')
+            return receive_messages.pop(0)
+
+        async def send(message: dict[str, object]) -> None:
+            sent.append(message)
+
+        asyncio.run(
+            app(
+                {
+                    'type': 'http',
+                    'asgi': {'version': '3.0'},
+                    'http_version': '1.1',
+                    'method': 'POST',
+                    'scheme': 'http',
+                    'path': path,
+                    'raw_path': path.encode('ascii'),
+                    'query_string': b'',
+                    'headers': headers,
+                    'client': ('testclient', 50000),
+                    'server': ('testserver', 80),
+                },
+                receive,
+                send,
+            )
+        )
+        response_start = next(
+            message for message in sent if message['type'] == 'http.response.start'
+        )
+        status_code = response_start.get('status')
+        assert isinstance(status_code, int)
+        response_body = b''.join(
+            body
+            for message in sent
+            if message['type'] == 'http.response.body'
+            if isinstance(body := message.get('body', b''), bytes)
+        )
+        decoded_body = json.loads(response_body)
+        assert isinstance(decoded_body, dict)
+        return status_code, decoded_body
+
+
+@pytest.fixture()
+def office_ingress_harness() -> OfficeIngressHarness:
+    return OfficeIngressHarness()
 
 def _write_pdf(path: Path) -> None:
     path.write_bytes(b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF")

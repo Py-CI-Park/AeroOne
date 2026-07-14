@@ -27,6 +27,7 @@ vi.mock('@/lib/api', async () => {
     fetchTags: vi.fn(),
     fetchAdminAiStatus: vi.fn(),
     fetchAiProviderConfig: vi.fn(),
+    fetchLlmConnections: vi.fn().mockResolvedValue([]),
     updateAdminUser: vi.fn(),
     resetAdminUserPassword: vi.fn(),
     createAdminUser: vi.fn(),

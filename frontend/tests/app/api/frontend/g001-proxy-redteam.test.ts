@@ -11,6 +11,7 @@ vi.mock('@/lib/api', () => ({
 
 import { GET as adminGET, POST as adminPOST, PUT as adminPUT } from '@/app/api/frontend/admin/[...segments]/route';
 import { GET as authGET } from '@/app/api/frontend/auth/[...segments]/route';
+import { DELETE as officeToolsDELETE, GET as officeToolsGET, POST as officeToolsPOST } from '@/app/api/frontend/office-tools/[...segments]/route';
 import { GET as searchGET } from '@/app/api/frontend/search/unified/route';
 
 function createRouteRequest(url: string, init?: { method?: string; headers?: Record<string, string>; body?: ReadableStream<Uint8Array> }) {
@@ -48,7 +49,7 @@ test.each([
   ['encoded search bypass', 'http://localhost/api/frontend/admin/%73earch?q=jet', adminGET, 404],
   ['unknown auth segment', 'http://localhost/api/frontend/auth/register', authGET, 404],
   ['disallowed admin method', 'http://localhost/api/frontend/admin/users', adminPUT, 405],
-])('%s returns %i without upstream fetch', async (_name, url, handler, expectedStatus) => {
+])('%s rejects without upstream fetch', async (_name, url, handler, expectedStatus) => {
   const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(new Response('should not reach'));
 
   const response = await handler(createRouteRequest(url, { method: expectedStatus === 405 ? 'PUT' : 'GET' }));
@@ -82,6 +83,133 @@ test.each([
   expect(relayedHeaders.get('x-csrf-token')).toBe('csrf-token');
   expect(response.headers.get('set-cookie')).toContain('aeroone_session=admin');
   expect(response.headers.get('set-cookie')).toContain('csrf_token=admin-csrf');
+});
+test.each([
+  ['encoded dotdot', 'http://localhost/api/frontend/office-tools/%2e%2e/admin/users'],
+  ['encoded slash segment', 'http://localhost/api/frontend/office-tools/%2f'],
+  ['encoded backslash segment', 'http://localhost/api/frontend/office-tools/jobs%5cadmin%5cpurge'],
+])('office-tools %s returns 404 without upstream fetch for every supported verb', async (_name, url) => {
+  for (const [method, handler] of [
+    ['GET', officeToolsGET],
+    ['POST', officeToolsPOST],
+    ['DELETE', officeToolsDELETE],
+  ] as const) {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(new Response('should not reach'));
+
+    const response = await handler(createRouteRequest(url, { method }));
+
+    expect(response.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+    fetchMock.mockRestore();
+  }
+});
+
+
+test('office-tools GET and streaming POST preserve the same-origin relay contract', async () => {
+  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(upstreamResponse());
+  const getResponse = await officeToolsGET(createRouteRequest(
+    'http://localhost/api/frontend/office-tools/jobs?limit=10',
+    { headers: { cookie: 'aeroone_session=owner-session' } },
+  ));
+
+  expect(getResponse.status).toBe(200);
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    'http://backend.test/api/v1/office-tools/jobs?limit=10',
+    expect.objectContaining({ method: 'GET', cache: 'no-store', headers: expect.any(Headers) }),
+  );
+
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode('multipart-body'));
+      controller.close();
+    },
+  });
+  await officeToolsPOST(createRouteRequest(
+    'http://localhost/api/frontend/office-tools/reports/generate',
+    {
+      method: 'POST',
+      body,
+      headers: {
+        cookie: 'aeroone_session=owner-session',
+        'x-csrf-token': 'owner-csrf-token',
+        'content-type': 'multipart/form-data; boundary=office-boundary',
+      },
+    },
+  ));
+
+  expect(fetchMock).toHaveBeenLastCalledWith(
+    'http://backend.test/api/v1/office-tools/reports/generate',
+    expect.objectContaining({
+      method: 'POST',
+      body,
+      duplex: 'half',
+      cache: 'no-store',
+      headers: expect.any(Headers),
+    }),
+  );
+});
+test.each([
+  [
+    'owner job',
+    'http://localhost/api/frontend/office-tools/jobs/job-123',
+    'http://backend.test/api/v1/office-tools/jobs/job-123',
+    200,
+    JSON.stringify({
+      outcome: {
+        operation: 'owner_delete',
+        job_id: 'job-123',
+        owner_id: 7,
+        logical_bytes: 128,
+        physical_bytes: 256,
+        partial_bytes_removed: 256,
+        removed: true,
+        durably_synced: false,
+        durability: 'platform_best_effort',
+        owner_identity_removed: true,
+        owner_identity_durably_synced: false,
+        owner_identity_durability: 'platform_best_effort',
+        retry_required: false,
+      },
+    }),
+  ],
+  [
+    'management evidence',
+    'http://localhost/api/frontend/office-tools/jobs/evidence/0123456789abcdef0123456789abcdef',
+    'http://backend.test/api/v1/office-tools/jobs/evidence/0123456789abcdef0123456789abcdef',
+    200,
+    '{"item":"corrupt-evidence","outcome":{"removed":true}}',
+  ],
+])('office-tools %s DELETE relays cookie and CSRF while passing through the backend response', async (
+  _name,
+  url,
+  backendUrl,
+  status,
+  body,
+) => {
+  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(new Response(body, {
+    status,
+    headers: body ? { 'content-type': 'application/json' } : undefined,
+  }));
+
+  const response = await officeToolsDELETE(createRouteRequest(url, {
+    method: 'DELETE',
+    headers: {
+      cookie: 'aeroone_session=owner-session',
+      'x-csrf-token': 'owner-csrf-token',
+      accept: 'application/json',
+    },
+  }));
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    backendUrl,
+    expect.objectContaining({ method: 'DELETE', cache: 'no-store', headers: expect.any(Headers) }),
+  );
+  const relayedHeaders = fetchMock.mock.calls[0]?.[1]?.headers as Headers;
+  expect(relayedHeaders.get('cookie')).toBe('aeroone_session=owner-session');
+  expect(relayedHeaders.get('x-csrf-token')).toBe('owner-csrf-token');
+  expect(response.status).toBe(status);
+  expect(response.headers.get('content-type')).toBe(body ? 'application/json' : null);
+  expect(await response.text()).toBe(body ?? '');
 });
 
 test('search unified relays only to backend admin search', async () => {

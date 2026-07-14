@@ -8,9 +8,11 @@ from app.db.base import Base
 from app.modules.admin import models as admin_models  # noqa: F401 (register tables)
 from app.modules.admin.models import Group, GroupPermission, ResourceGrant, UserGroup, UserPermission
 from app.modules.admin.permissions import (
+    ADMIN_PERMISSIONS,
     has_permission,
     has_resource_permission,
     list_user_resource_grants,
+    permissions_for_role,
 )
 from app.modules.collections.policy import can_read_collection
 from app.modules.auth.models import User
@@ -102,6 +104,23 @@ def test_admin_role_has_all_admin_permissions(session: Session) -> None:
     admin = _user(session, role='admin')
     for key in MUTATION_PERMISSIONS + ['admin.users.read', 'collections.nsa.read', 'admin.resource_grants.manage']:
         assert has_permission(session, admin, key) is True
+
+def test_leantime_permissions_admin_default_not_user_default(session: Session) -> None:
+    leantime_keys = {'admin.leantime.read', 'admin.leantime.manage', 'leantime.read'}
+    assert leantime_keys.issubset(ADMIN_PERMISSIONS)
+
+    admin = _user(session, role='admin')
+    for key in leantime_keys:
+        assert has_permission(session, admin, key) is True
+
+    assert leantime_keys.isdisjoint(permissions_for_role('user'))
+
+def test_office_permissions_are_admin_only(session: Session) -> None:
+    admin = _user(session, role='admin')
+    plain = _user(session)
+    for key in ('office.use', 'admin.office.manage'):
+        assert has_permission(session, admin, key) is True
+        assert has_permission(session, plain, key) is False
 
 
 def test_can_read_collection_matrix(session: Session) -> None:

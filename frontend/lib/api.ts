@@ -21,7 +21,26 @@ import type {
   ClientSession,
   CollectionSearchResponse,
   ConnectedUsersResponse,
+  ChartGenerateResponse,
+  ChartInspectResponse,
+  ChartType,
+  ChartManualSpecInput,
+  OfficeJobDetail,
+  OfficeJobListResponse,
+  DiagramGenerateRequest,
+  DiagramGenerateResponse,
+  OfficeSample,
+  LeantimeHealth,
+  LeantimeProject,
+  LeantimeTask,
+  LeantimeCalendarEntry,
+  LeantimeReadResponse,
   DocumentListItem,
+  ReportGenerateResponse,
+  LlmConnection,
+  LlmConnectionCreatePayload,
+  LlmConnectionUpdatePayload,
+  LlmVerifyResponse,
   NewsletterCalendarEntry,
   NewsletterDetail,
   NewsletterItem,
@@ -50,6 +69,23 @@ export function getBrowserApiBase() {
 
 export function getNewsletterProxyPath(path: string) {
   return buildNewsletterProxyPath(path);
+}
+const OFFICE_TOOLS_BACKEND_PREFIX = '/api/v1/office-tools/';
+const OFFICE_TOOLS_PROXY_PREFIX = '/api/frontend/office-tools/';
+const OFFICE_TOOLS_DOWNLOAD_PATH = /^\/api\/v1\/office-tools\/jobs\/[0-9a-f]{3,64}\/(?:bundle|artifacts\/[A-Za-z0-9-][A-Za-z0-9._-]*)$/;
+
+export function getOfficeArtifactProxyPath(path: string) {
+  if (!OFFICE_TOOLS_DOWNLOAD_PATH.test(path)) {
+    throw new Error('Only office-tools artifact paths can be proxied');
+  }
+  return `${OFFICE_TOOLS_PROXY_PREFIX}${path.slice(OFFICE_TOOLS_BACKEND_PREFIX.length)}`;
+}
+
+function encodeOfficeJobId(jobId: string) {
+  if (!/^[0-9a-f]{32}$/.test(jobId)) {
+    throw new Error('Invalid office job ID');
+  }
+  return encodeURIComponent(jobId);
 }
 
 export class ApiError extends Error {
@@ -742,6 +778,20 @@ export async function stageAiProviderCompatibleConfig(
   });
 }
 
+// === LLM 연결 레지스트리 (산출물 A) — /api/v1/admin/llm-connections 를 admin 프록시로 중계 ===
+
+export async function fetchLlmConnections() {
+  return browserFetch<LlmConnection[]>('/api/frontend/admin/llm-connections', { method: 'GET' });
+}
+
+export async function createLlmConnection(payload: LlmConnectionCreatePayload, csrfToken: string) {
+  return browserFetch<LlmConnection>('/api/frontend/admin/llm-connections', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
 // 저장 설정 테스트는 직전 스테이징 값과 정확히 일치하는
 // canonical_url/model/generation만 보내며, 서버가 DPAPI 저장소의 키를 사용한다.
 export async function testAiProviderStagedConfig(
@@ -750,6 +800,14 @@ export async function testAiProviderStagedConfig(
 ) {
   return browserFetch<AiProviderTestResultResponse>('/api/frontend/admin/ai-provider/test', {
     method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateLlmConnection(id: number, payload: LlmConnectionUpdatePayload, csrfToken: string) {
+  return browserFetch<LlmConnection>(`/api/frontend/admin/llm-connections/${id}`, {
+    method: 'PATCH',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
   });
@@ -779,9 +837,158 @@ export async function deleteAiProviderCredential(expectedConfigVersion: number, 
   });
 }
 
+export async function deleteLlmConnection(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/admin/llm-connections/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
 export async function reconcileAiProviderConfig(csrfToken: string) {
   return browserFetch<AiProviderReconcileResponse>('/api/frontend/admin/ai-provider/reconcile', {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
   });
+}
+
+export async function setDefaultLlmConnection(id: number, csrfToken: string) {
+  return browserFetch<LlmConnection>(`/api/frontend/admin/llm-connections/${id}/default`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function verifyLlmConnection(id: number, csrfToken: string) {
+  return browserFetch<LlmVerifyResponse>(`/api/frontend/admin/llm-connections/${id}/verify`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchLlmConnectionModels(id: number) {
+  return browserFetch<LlmVerifyResponse>(`/api/frontend/admin/llm-connections/${id}/models`, { method: 'GET' });
+}
+
+// office-tools 소유자별 작업 이력: 목록은 usage와 함께, 상세는 검증된 job ID로 조회한다.
+export async function fetchOfficeJobs(): Promise<OfficeJobListResponse> {
+  return browserFetch<OfficeJobListResponse>('/api/frontend/office-tools/jobs', { method: 'GET' });
+}
+
+export async function fetchOfficeJob(jobId: string): Promise<OfficeJobDetail> {
+  return browserFetch<OfficeJobDetail>(`/api/frontend/office-tools/jobs/${encodeOfficeJobId(jobId)}`, { method: 'GET' });
+}
+
+// office-tools 다이어그램 스튜디오: 설명 → Mermaid 소스. 렌더는 브라우저에서 한다.
+export async function generateDiagram(payload: DiagramGenerateRequest, csrfToken: string, signal?: AbortSignal) {
+  return browserFetch<DiagramGenerateResponse>('/api/frontend/office-tools/diagrams/generate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+    signal,
+  });
+}
+
+// office-tools 보고서 스튜디오: Markdown 파일(+이미지/ZIP) 업로드 → sanitize HTML 보고서.
+// multipart FormData 를 그대로 전달한다(browserFetch 가 FormData 면 Content-Type 을 생략).
+export interface ReportGenerateInput {
+  markdownFile: File;
+  assets?: File[];
+  title?: string;
+  subtitle?: string;
+  documentVersion?: string;
+  tags?: string;
+  aiMode?: 'none' | 'polish' | 'executive';
+}
+
+export async function generateReport(input: ReportGenerateInput, csrfToken: string, signal?: AbortSignal) {
+  const form = new FormData();
+  form.append('markdown_file', input.markdownFile);
+  for (const asset of input.assets ?? []) {
+    form.append('assets', asset);
+  }
+  form.append('title', input.title ?? '');
+  form.append('subtitle', input.subtitle ?? '');
+  form.append('document_version', input.documentVersion ?? '');
+  form.append('tags', input.tags ?? '');
+  form.append('ai_mode', input.aiMode ?? 'none');
+  return browserFetch<ReportGenerateResponse>('/api/frontend/office-tools/reports/generate', {
+    method: 'POST',
+    body: form,
+    headers: { 'X-CSRF-Token': csrfToken },
+    signal,
+  });
+}
+
+// office-tools 차트 스튜디오: 데이터 파일 → 프로필. job 을 만들지 않고 미리보기만 돌려준다.
+export async function inspectChartData(dataFile: File, csrfToken: string, signal?: AbortSignal) {
+  const form = new FormData();
+  form.append('data_file', dataFile);
+  return browserFetch<ChartInspectResponse>('/api/frontend/office-tools/charts/inspect', {
+    method: 'POST',
+    body: form,
+    headers: { 'X-CSRF-Token': csrfToken },
+    signal,
+  });
+}
+
+// office-tools 차트 스튜디오: 데이터 + 목적 → ECharts option. 렌더는 브라우저에서 한다.
+export interface ChartGenerateInput {
+  dataFile: File;
+  prompt?: string;
+  aiAssist?: boolean;
+  chartType?: ChartType | '';
+  manualSpec?: ChartManualSpecInput;
+  manualSpecJson?: string;
+}
+
+export async function generateChart(input: ChartGenerateInput, csrfToken: string, signal?: AbortSignal) {
+  if (input.manualSpec !== undefined && input.manualSpecJson !== undefined) {
+    throw new Error('Provide either manualSpec or manualSpecJson, not both');
+  }
+
+  const manualSpecJson = input.manualSpec !== undefined ? JSON.stringify(input.manualSpec) : input.manualSpecJson;
+  const form = new FormData();
+  form.append('data_file', input.dataFile);
+  form.append('prompt', input.prompt ?? '');
+  form.append('ai_assist', String(input.aiAssist ?? true));
+  if (input.chartType) form.append('chart_type', input.chartType);
+  if (manualSpecJson) form.append('manual_spec_json', manualSpecJson);
+  return browserFetch<ChartGenerateResponse>('/api/frontend/office-tools/charts/generate', {
+    method: 'POST',
+    body: form,
+    headers: { 'X-CSRF-Token': csrfToken },
+    signal,
+  });
+}
+
+// office-tools 샘플 예제: 도구별 여러 종의 내용 + 폼 프리필 힌트를 한 번에 받아온다.
+// 프런트는 이 목록을 도구별 '예제' 칩으로 보여 주고, 고르면 해당 내용으로 폼을 채운다.
+export async function fetchOfficeSamples(): Promise<OfficeSample[]> {
+  return browserFetch<OfficeSample[]>('/api/frontend/office-tools/samples', { method: 'GET' });
+}
+
+// Leantime 동거 스택의 기동 여부를 실시간으로 조회한다. 랜딩 페이지가 '구동 중/미설치'를
+// 구분해 '열기' 버튼을 조건부로 활성화하는 데 쓴다.
+export async function fetchLeantimeHealth(): Promise<LeantimeHealth> {
+  return browserFetch<LeantimeHealth>('/api/frontend/leantime/health', { method: 'GET' });
+}
+
+
+// Leantime 읽기 전용 대시보드 데이터 — same-origin 프록시(/api/frontend/leantime/*)를 거쳐
+// 백엔드 /api/v1/leantime/* 를 호출한다. leantime.read 권한이 없으면 403, 세션이 없으면
+// 401 로 실패하며, 그 외에는 degraded(reason) 로 부분/저하 상태를 알려준다.
+export async function fetchLeantimeProjects(): Promise<LeantimeReadResponse<LeantimeProject>> {
+  return browserFetch<LeantimeReadResponse<LeantimeProject>>('/api/frontend/leantime/projects', { method: 'GET' });
+}
+
+export async function fetchLeantimeTasks(): Promise<LeantimeReadResponse<LeantimeTask>> {
+  return browserFetch<LeantimeReadResponse<LeantimeTask>>('/api/frontend/leantime/tasks', { method: 'GET' });
+}
+
+export async function fetchLeantimeCalendar(start: string, end: string): Promise<LeantimeReadResponse<LeantimeCalendarEntry>> {
+  const query = new URLSearchParams({ start, end });
+  return browserFetch<LeantimeReadResponse<LeantimeCalendarEntry>>(
+    `/api/frontend/leantime/calendar?${query.toString()}`,
+    { method: 'GET' },
+  );
 }

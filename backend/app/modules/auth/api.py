@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.security import create_access_token, create_csrf_token, hash_password, verify_password
+from app.core.security import (
+    PasswordCandidateError,
+    PasswordHashError,
+    create_access_token,
+    create_csrf_token,
+    verify_password,
+)
 from app.modules.admin.audit import record_admin_audit
 from app.modules.admin.models import LoginEvent, UserSessionActivity
 from app.modules.admin.permissions import list_user_permission_keys, list_user_resource_grants
@@ -15,7 +20,7 @@ from app.modules.auth.activity_schemas import ActivityResponse
 from app.modules.auth.activity_service import build_activity_payload
 from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf
 from app.modules.auth.schemas import AuthResponse, LoginRequest, PasswordChangeRequest, UserResponse
-from app.modules.auth.services import AuthError, AuthService
+from app.modules.auth.services import AuthError, AuthService, set_user_password
 from app.modules.auth.session_hash import hash_session_token
 
 router = APIRouter()
@@ -28,31 +33,13 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         user, token, csrf_token = service.login(
             payload.username,
             payload.password,
-            seed_username=settings.admin_username,
-            seed_password=settings.admin_password,
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get('user-agent'),
         )
     except AuthError as exc:
+        db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
-    response.set_cookie(
-        key=settings.admin_session_cookie_name,
-        value=token,
-        httponly=True,
-        samesite='lax',
-        secure=settings.secure_cookies,
-        max_age=settings.access_token_ttl_minutes * 60,
-        path='/',
-    )
-    response.set_cookie(
-        key=settings.csrf_cookie_name,
-        value=csrf_token,
-        httponly=False,
-        samesite='lax',
-        secure=settings.secure_cookies,
-        max_age=settings.access_token_ttl_minutes * 60,
-        path='/',
-    )
+    _set_session_cookies(response, settings, token, csrf_token)
     return AuthResponse(user=UserResponse.model_validate(user), csrf_token=csrf_token)
 
 
@@ -150,16 +137,28 @@ def change_password(
     current_user=Depends(get_current_user),
     _csrf: None = Depends(require_csrf),
 ) -> AuthResponse:
-    if not verify_password(payload.current_password, current_user.password_hash):
+    try:
+        current_password_is_valid = verify_password(
+            payload.current_password,
+            current_user.password_hash,
+        )
+    except PasswordHashError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Current password is incorrect',
+        ) from exc
+    if not current_password_is_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Current password is incorrect')
-    new_password = payload.new_password.strip()
-    if len(new_password) < 8:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='New password must be at least 8 characters')
-    if new_password == payload.current_password:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='New password must differ from the current password')
-    current_user.password_hash = hash_password(new_password)
-    current_user.password_changed_at = datetime.now(UTC)
-    current_user.session_version += 1
+    try:
+        set_user_password(
+            current_user,
+            payload.new_password,
+            password_change_required=False,
+            field_name='New password',
+            previous_password=payload.current_password,
+        )
+    except PasswordCandidateError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     db.flush()
     csrf_token = create_csrf_token()
     token = create_access_token(
@@ -168,7 +167,7 @@ def change_password(
         current_user.role,
         csrf_token,
         settings.access_token_ttl_minutes,
-        current_user.session_version,
+        session_version=current_user.session_version,
     )
     _set_session_cookies(response, settings, token, csrf_token)
     record_admin_audit(db, actor=current_user, action='account.password_change', target_type='user', target_id=current_user.id, request=request, metadata={'self': True})

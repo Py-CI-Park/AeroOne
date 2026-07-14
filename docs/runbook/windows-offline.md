@@ -241,7 +241,7 @@ _database\
 
 **NSA 문서** — `_database\nsa\` 에 HTML 파일을 복사합니다. 1.10.0 부터 `/nsa` 는 **서버측 권한 기반 접근제어**로 보호됩니다: 관리자, 또는 `collections.nsa.read` 권한(직접/그룹) 또는 `collection:nsa` ResourceGrant 를 가진 로그인 계정만 목록·본문·검색·AI 근거로 NSA 를 볼 수 있습니다. 권한이 없으면 백엔드가 401/403 을 반환하고 대시보드에서도 NSA 카드가 보이지 않습니다.
 
-> **변경(1.10.0)**: 기존 클라이언트 `0000` 비밀번호 가림막은 제거되었습니다. NSA 접근은 이제 관리자 콘솔의 사용자/그룹 권한 또는 리소스 그랜트(`/admin` RBAC)로 부여합니다. 그래도 NSA 는 열람 접근제어이며 저장 암호화는 아니므로, 최고 기밀 자료는 별도 보호 체계를 사용하세요.
+> **변경(1.10.0)**: 기존 클라이언트 기본 접근 코드 가림막은 제거되었습니다. NSA 접근은 이제 관리자 콘솔의 사용자/그룹 권한 또는 리소스 그랜트(`/admin` RBAC)로 부여합니다. 그래도 NSA 는 열람 접근제어이며 저장 암호화는 아니므로, 최고 기밀 자료는 별도 보호 체계를 사용하세요.
 
 ### 7.4 관리자 비밀번호 교체
 
@@ -284,7 +284,7 @@ xcopy /Y /E /I _database D:\backup\AeroOne\_database
 
 ## 9. 보안 기본값
 
-- `JWT_SECRET_KEY`, `ADMIN_PASSWORD` 는 setup 시 랜덤 생성. `change-me` 같은 기본값은 `production` / `closed_network` 두 모드 모두에서 거부됩니다.
+- `JWT_SECRET_KEY`, `ADMIN_PASSWORD` 는 setup 시 랜덤 생성. 기본 sentinel 같은 기본값은 `production` / `closed_network` 두 모드 모두에서 거부됩니다.
 - 1.0.22+ 기본은 두 서비스 모두 `0.0.0.0` 바인딩(LAN) → 같은 PC + LAN 의 다른 기기에서 접속 가능. 이 PC 에서만 쓰려면 `--local` 로 `127.0.0.1` 바인딩.
 - LAN 모드 (`--allow-host=<host>`) 사용 시 `0.0.0.0` 바인딩으로 LAN 전체에 노출됩니다. **반드시 신뢰할 수 있는 폐쇄망 LAN** 안에서만 사용하세요. 다른 PC 접속용 인바운드 허용은 `scripts\allow_lan_firewall.cmd` (관리자 권한, 로컬 서브넷 한정) 로 추가하고 `--remove` 로 원복합니다. Windows 방화벽에서 `18437`, `29501` 두 포트를 LAN 외부로 차단하는 규칙도 함께 두세요. 인터넷 노출 production 으로 사용하지 마세요.
 - 정적 파일 노출 범위는 `storage\thumbnails\` 하위로 제한.
@@ -294,7 +294,7 @@ xcopy /Y /E /I _database D:\backup\AeroOne\_database
 > `setup_offline.bat` 는 폐쇄망 PC 의 `APP_ENV` 을 기본 `closed_network` 로 둡니다. 이 모드는 다음 두 가지를 동시에 만족시키기 위한 전용 모드입니다.
 >
 > - secure cookie 를 끔 — HTTP-only 폐쇄망 브라우저에서 `admin_session` / `csrf_token` 쿠키가 살아 있도록 합니다.
-> - secret 강도 검증을 켬 — `JWT_SECRET_KEY` 가 `change-me` 또는 32자 미만일 때, `ADMIN_PASSWORD` 가 `change-me` 또는 12자 미만일 때 부팅 즉시 거부합니다. (`setup_offline.bat` 가 매 실행 시 64자 hex JWT 와 48자 hex ADMIN 을 새로 생성하므로 자동 통과합니다.)
+> - secret 강도 검증을 켬 — `JWT_SECRET_KEY` 가 기본 sentinel이거나 32자 미만일 때, `ADMIN_PASSWORD` 가 기본 sentinel이거나 12자 미만일 때 부팅 즉시 거부합니다. (`setup_offline.bat` 가 매 실행 시 64자 hex JWT 와 48자 hex ADMIN 을 새로 생성하므로 자동 통과합니다.)
 >
 > HTTPS 리버스 프록시 / 인증서를 준비해 인터넷 노출 production 으로 운영하려면 `backend\.env` 의 `APP_ENV=production` 으로 바꾸세요. 이 경우 secure cookie 가 켜지므로 반드시 HTTPS 가 선행되어야 하며, 그렇지 않으면 로그인 쿠키가 전달되지 않습니다.
 
