@@ -339,6 +339,7 @@ npm run build
 | Open Notebook 동거 배포 런북 | [`docs/runbook/open-notebook-airgap.md`](docs/runbook/open-notebook-airgap.md) |
 | 폐쇄망 오픈소스 도입 프로세스 (재사용 플레이북) | [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 | 폐쇄망 실행 런북 | [`docs/runbook/windows-offline.md`](docs/runbook/windows-offline.md) (가장 깊은 세부) |
+| 폐쇄망 빠른 사용 가이드 (1.16.0, AeroOne+Leantime) | [`docs/runbook/closed-network-usage.md`](docs/runbook/closed-network-usage.md) |
 | 로컬 개발 런북 | [`docs/runbook/local-dev.md`](docs/runbook/local-dev.md) |
 | 관리자 인증 정책 | [`docs/runbook/admin-auth.md`](docs/runbook/admin-auth.md) |
 | 자격 증명 사고 대응 회전 | [`docs/runbook/credential-rotation.md`](docs/runbook/credential-rotation.md) |

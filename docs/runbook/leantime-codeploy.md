@@ -8,6 +8,8 @@
 > 서비스명·AppPool 명·경로·포트는 운영자가 실 배포 PC 에서 실측해 확정해야 한다(각 항목에
 > "운영자 검증 필요" 로 표시).
 
+
+> **1.16.0 업데이트 — 포터블 실기동 반입물(권장):** 이제 IIS 외부 설치 대신 **포터블 PHP+MariaDB+Leantime 별도 반입물**(`AeroOne-Leantime-Stack-v3.9.8-*.zip`)로 폐쇄망에서 무설치 실기동한다. 반입·설치·실행·연동 절차는 [`closed-network-usage.md`](closed-network-usage.md) 참고. 빌더 `scripts/leantime/build-leantime-stack.ps1`, 오케스트레이션 `scripts/leantime/stack/{setup,start,stop}-leantime-stack.bat`, AeroOne 런처 위임 `scripts/leantime/start-leantime.bat`(`AEROONE_LEANTIME_STACK` 감지). 아래 IIS 기반 절차는 대안·역사 참고로 보존한다.
 ---
 
 ## 1. 두 스택의 경계 (가장 중요)

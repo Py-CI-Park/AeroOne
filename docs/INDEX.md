@@ -43,6 +43,7 @@
 |---|---|---|
 | [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | **폐쇄망 운영 종합 가이드** (19장 + 부록, 9단계 진행 체크리스트, Open Notebook co-deploy §18, OpenAI-호환 AI 프로바이더 + 예약 런처 §19, 관리자 콘솔/RBAC) — 입구 추천 | 880줄+ |
 | [`runbook/closed-network-install-manual.md`](runbook/closed-network-install-manual.md) | **폐쇄망 상세 설치·사용 매뉴얼** — AeroOne + Open Notebook + Ollama, 운영자 단계별(반입물→설치→기동→확인→트러블슈팅). 패키지 동봉 | 중간 |
+| [`runbook/closed-network-usage.md`](runbook/closed-network-usage.md) | **폐쇄망 빠른 사용 가이드 (1.16.0)** — AeroOne 본체 + Leantime 포터블 스택 반입·설치·실행·연동을 한 장으로. 무결성 해시·계정·포트·연동·트러블슈팅 | 짧음 |
 | [`runbook/windows-offline.md`](runbook/windows-offline.md) | Windows 폐쇄망 배포·운영 매뉴얼 (가장 깊은 세부, 14장) | 435줄 |
 | [`runbook/local-dev.md`](runbook/local-dev.md) | 개발자 로컬 실행 가이드 (worktree 주의 포함) | 92줄 |
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
