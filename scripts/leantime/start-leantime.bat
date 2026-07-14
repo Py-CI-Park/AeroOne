@@ -33,6 +33,15 @@ pushd "%AEROONE_ROOT%" & set "AEROONE_ROOT=%CD%" & popd
 if not defined AEROONE_LEANTIME_SCRIPTS set "AEROONE_LEANTIME_SCRIPTS=%AEROONE_ROOT%\..\Leantime\scripts"
 if not defined LEANTIME_PORT set "LEANTIME_PORT=8081"
 
+REM 포터블 동거 스택(별도 반입물 AeroOne-Leantime-Stack) 우선 감지 — 있으면 이쪽으로 위임.
+if not defined AEROONE_LEANTIME_STACK set "AEROONE_LEANTIME_STACK=%AEROONE_ROOT%\..\AeroOne-Leantime-Stack"
+if exist "%AEROONE_LEANTIME_STACK%\start-leantime-stack.bat" (
+  echo [LEANTIME][INFO ] portable stack detected: %AEROONE_LEANTIME_STACK%
+  call "%AEROONE_LEANTIME_STACK%\start-leantime-stack.bat"
+  set "AEROONE_LEANTIME_HEALTH_URL=http://127.0.0.1:%LEANTIME_PORT%"
+  goto :readiness
+)
+
 set "START_PS1=%AEROONE_LEANTIME_SCRIPTS%\Start-All.ps1"
 
 echo [LEANTIME][INFO ] launcher wrapper
@@ -60,6 +69,7 @@ if not "%PS_EXIT%"=="0" (
   echo [LEANTIME][WARN ] AeroOne remains running regardless ^(co-deploy is optional^).
 )
 
+:readiness
 REM HTTP 준비 대기: run_all.bat 의 :wait_health 와 동일한 Invoke-WebRequest 폴링 패턴.
 REM 대상은 AEROONE_LEANTIME_HEALTH_URL 우선, 없으면 http://127.0.0.1:%LEANTIME_PORT%.
 if not defined AEROONE_LEANTIME_HEALTH_URL (

@@ -15,6 +15,32 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.16.0',
+    date: '2026-07-14',
+    items: [
+      '대시보드 카드를 목적별 섹션으로 재편했습니다 — AeroAI·Open WebUI 를 새 "AI" 섹션으로, Ladder 를 "기타" 섹션으로 옮기고 섹션 이름 표기를 정리했습니다.',
+      'Civil Aircraft Spec Catalog 를 v1.7 인터랙티브 백과·대시보드로 교체했습니다 — 포털/백과/비교 대시보드/출처 아카이브를 index 로 열어 탐색할 수 있으며, 외부 의존 없이 번들된 스크립트만 실행하는 격리 정적 경로로 제공합니다.',
+      'Leantime(프로젝트·업무 관리 동거 앱)을 오프라인 패키지에 포함해 폐쇄망에서 실제로 기동·연동할 수 있게 했습니다 — 포터블 PHP·MariaDB·Leantime 과 기동 스크립트를 함께 반입합니다.',
+      '헤더·관리자 콘솔의 버전 표기를 실제 릴리스와 일치시켰습니다(1.15.0/1.15.1 내역 포함).',
+      '관리자 "시스템" 탭의 OpenAI 호환 provider(URL·API 키) 설정 접근성을 개선했습니다.',
+    ],
+  },
+  {
+    version: '1.15.1',
+    date: '2026-07-14',
+    items: [
+      '폐쇄망 오프라인 설치를 막던 결함 2건을 긴급 수정했습니다 — requirements.txt 한글 주석으로 인한 pip cp949 디코딩 실패, 그리고 마이그레이션 다중 head 로 인한 alembic upgrade head 실패를 각각 ASCII 주석과 merge 마이그레이션으로 해결했습니다.',
+    ],
+  },
+  {
+    version: '1.15.0',
+    date: '2026-07-14',
+    items: [
+      'Office Studio(보고서·차트·다이어그램)를 URL 동기 탭·작업 이력·고급 차트 입력·안전한 산출물 다운로드로 강화했습니다.',
+      'Leantime 을 독립 배포 동거 앱으로 두고 공식 경계(서버측 JSON-RPC 읽기, 상태 배지, 오프라인 번들 패키징)로만 연동하는 통합을 추가했습니다. AeroOne 은 Leantime 장애와 무관하게 독립 동작합니다.',
+    ],
+  },
+  {
     version: '1.14.0',
     date: '2026-07-14',
     items: [

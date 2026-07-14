@@ -11,7 +11,7 @@ block).
 
 | Component     | Version | License              | SHA-256              | Source URL |
 |---------------|---------|-----------------------|-----------------------|------------|
-| leantime      | 3.5.13  | AGPL-3.0              | `<fill-on-staging>`   | https://github.com/Leantime/leantime/releases/tag/v3.5.13 |
+| leantime      | 3.9.8   | AGPL-3.0              | `28066ea769c3ccc25e7abed3d5191ac0b1fe89e0be2ca8314a53d397ac2439df` | https://github.com/Leantime/leantime/releases/tag/v3.9.8 |
 | php-fastcgi   | 8.2     | PHP-3.01              | `<fill-on-staging>`   | https://windows.php.net/download |
 | mariadb       | 11.4    | GPL-2.0               | `<fill-on-staging>`   | https://mariadb.org/download/ |
 | iis-prereq    | n/a     | Microsoft-Windows-Feature | `<fill-on-staging>` | https://learn.microsoft.com/iis/ |

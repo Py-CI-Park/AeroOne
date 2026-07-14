@@ -18,20 +18,20 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, launcher_kind: 'none', visibility: 'public' },
   { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, launcher_kind: 'none', visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
   { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-  { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-  { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
+  { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
   // OpenWebUI 는 dashboard.openwebui.launch 권한을 가진 활성 로그인 사용자(admin/user 기본 권한)에게만
   // 노출된다. degraded fallback 은 검증된 권한 정보가 없으므로 admin 이 아닌 한 required_permission
   // 이 있는 카드를 숨기는 기존 보수적 규칙을 그대로 적용한다(아래 필터 로직 참고).
-  { id: 11, key: 'openwebui', title: 'OpenWebUI', description: 'Ollama 호환 챗 UI (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
-  { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-  { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-  { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 11, key: 'openwebui', title: 'OpenWebUI', description: 'Ollama 호환 챗 UI (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
+  { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'ETC', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 12, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 13, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 안내·열기 페이지.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
 ];
 
-const SECTION_ORDER = ['Newsletter', 'Document', 'Development'];
+const SECTION_ORDER = ['Newsletter', 'Document', 'AI', 'Development', 'ETC'];
 
 function orderSections(modules: ServiceModule[]) {
   const extras = modules.map((module) => module.section).filter((section) => !SECTION_ORDER.includes(section));
