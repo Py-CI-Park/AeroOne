@@ -2,10 +2,11 @@
 
 이 문서는 AeroOne 저장소의 **모든 마크다운 문서를 한 자리에서 찾아갈 수 있는 wiki 인덱스** 입니다. 사람 운영자와 AI 에이전트가 동일한 입구에서 자기 깊이까지 들어갈 수 있도록 설계했습니다.
 
-- 기준 브랜치: `main` (정식 immutable 1.13.1 및 역사적 1.13.0 계보)
-- 배포 상태: `1.12.2` Release/ZIP 철회, `1.13.0`은 `immutable=false`로 tag·asset·digest를 보존하는 역사 릴리스, `1.13.1`은 게시 완료된 정식 immutable Release
-- `1.13.1`: annotated tag·merge `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, published `2026-07-13T23:31:18Z`, Release API `immutable=true`, ZIP SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`
-- 갱신일: 2026-07-13
+- 기준 브랜치: `main` (1.13.2 release candidate, 정식 immutable 1.13.1 및 역사적 1.13.0 계보)
+- 배포 상태: `1.12.2` Release/ZIP 철회, `1.13.0`은 `immutable=false`로 tag·asset·digest를 보존하는 역사 릴리스, `1.13.1`은 게시 완료된 정식 immutable Release, `1.13.2`는 Git tag inspection fail-closed 교정 후보
+- `1.13.1` 역사 사실: annotated tag·merge `3716cbe1bf14c5bb45bb7979176d69b9d2e6532f`, published `2026-07-13T23:31:18Z`, Release API `immutable=true`, ZIP SHA-256 `b05445b53ecca02175afcd016ac0e896163010e1a06a0b996b8ebe79a798e290`
+- `1.13.2`는 exact-tag immutable publication과 attestation 전까지 최신 운영 반입물이 아니며, fresh source-bound full gates와 exact-tag package verification 결과는 아직 없음
+- 갱신일: 2026-07-14
 
 ---
 
@@ -16,7 +17,7 @@
 | **시스템을 처음 보는 사람** | [`README.md`](../README.md) (시스템 정체성, 빠른 시작) | §2 운영 매뉴얼 |
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
-| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | 1.13.0 역사 보존·1.13.1 immutable 게시 사실 + §6 코드 진실 원천 |
+| **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | 1.13.0 역사 보존·1.13.1 immutable 게시 사실·1.13.2 후보의 fail-closed 및 미실행 검증 상태 + §6 코드 진실 원천 |
 
 ---
 
@@ -82,6 +83,7 @@
 | 단계 26 | [`reports/phase-26-credential-rotation-hardening.md`](reports/phase-26-credential-rotation-hardening.md) | service/listener preflight, 연속 writer lock, DPAPI recovery·strict journal/manifest, crash 재개, backup restore→archive→rotation, current-SID viewer — minor 1.13.0 | `1.13.0` |
 | 단계 27 | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | shared session/권한, Activity, 실제 Admin 운영 UX, production Chrome QA, allow-list 오프라인 패키지와 정식 릴리스 검증 | `1.13.0` |
 | 1.13.1 정식 Release | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | 1.13.0을 움직이지 않는 forward-only 교정, immutable Release 게시·재다운로드 digest 검증 완료 | `1.13.1` immutable |
+| 1.13.2 release candidate | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | 예기치 않은 Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed; exact-tag immutable publication·attestation·fresh full gates는 보류 | `1.13.2` candidate |
 | v1.13.0 과거 WIP | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | Task 3 중단 당시 역사 기록. 현재 상태는 단계 27 보고서와 최신 SHA artifacts를 기준으로 한다. | `superseded` |
 
 ---

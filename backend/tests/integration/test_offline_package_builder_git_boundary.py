@@ -43,6 +43,25 @@ if ($env:FAIL_STATUS) {
     }
     exit
 }
+if ($env:FAIL_TAG_INSPECTION) {
+    $gitApplication = (Get-Command git -CommandType Application | Select-Object -First 1).Source
+    $gitShim = {
+        param([Parameter(ValueFromRemainingArguments = $true)] [object[]]$GitArgs)
+        if ($GitArgs.Count -gt 0 -and $GitArgs[0] -eq 'show-ref') {
+            $global:LASTEXITCODE = 2
+            return
+        }
+        & $gitApplication @GitArgs
+    }.GetNewClosure()
+    Set-Item -Path Function:git -Value $gitShim
+    try {
+        Get-GitState -RequestedVersion $env:VERSION | Out-Null
+        @{ tagError = $null } | ConvertTo-Json -Compress
+    } catch {
+        @{ tagError = $_.Exception.Message } | ConvertTo-Json -Compress
+    }
+    exit
+}
 $source = Get-CapturedGitSource -RequestedVersion $env:VERSION
 $state = $source.State
 $result = [ordered]@{
@@ -124,6 +143,7 @@ def _run(
     advance: bool = False,
     stage: Path | None = None,
     fail_status: bool = False,
+    fail_tag_inspection: bool = False,
     output_root: Path | None = None,
     output: Path | None = None,
     requirements: Path | None = None,
@@ -141,6 +161,8 @@ def _run(
         env["STAGE"] = str(stage)
     if fail_status:
         env["FAIL_STATUS"] = "1"
+    if fail_tag_inspection:
+        env["FAIL_TAG_INSPECTION"] = "1"
     if output_root is not None and output is not None:
         env["CHECK_OUTPUT"] = "1"
         env["ROOT"] = str(output_root)
@@ -218,6 +240,8 @@ def test_git_state_tag_classification_and_commit_bound_archive(
     repo, _, _ = _repo(tmp_path / "status-failure")
     failed_status = _run(ps, runner_path, repo, fail_status=True)
     assert failed_status["statusError"] == "git-status-failed"
+    tag_inspection_failure = _run(ps, runner_path, repo, fail_tag_inspection=True)
+    assert tag_inspection_failure["tagError"] == "git-tag-inspection-failed"
 
     invalid_requirements = repo / "other" / "requirements.txt"
     requirements_result = _run(

@@ -5,69 +5,17 @@ import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { redact as redactValue, invalidateReceiptFiles } from './redact_v113.mjs';
-
+import { redact, assertCleanSha, prepareReceiptRun, verifyInstallation, browserRequestGuard, packageRoot, REQUIRED, ASSETS, ENTRYPOINTS, QA_PASSWORD } from './run_v113_react_contract.mjs';
 const VERSION = 'v1.13.0';
 const REPO_ROOT = path.resolve(import.meta.dirname, '../..');
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(REPO_ROOT, 'frontend', 'node_modules', 'playwright-core'));
-const REQUIRED = { 'react-doctor': '0.7.3', 'react-scan': '0.5.7', 'react-grab': '0.1.48' };
-const ASSETS = { 'react-doctor': ['bin/react-doctor.js'], 'react-scan': ['bin/cli.js', 'dist/auto.global.js'], 'react-grab': ['bin/cli.js'] };
-const ENTRYPOINTS = { 'react-doctor': 'bin/react-doctor.js', 'react-scan': 'bin/cli.js', 'react-grab': 'bin/cli.js' };
-const REQUIRED_SCHEMA_KEYS = ['schemaVersion', 'sha', 'backendUrl', 'frontendUrl', 'backendPid', 'frontendPid', 'tempRoot', 'artifactRoot'];
 const QA_USERNAME = 'qa-admin';
-const QA_PASSWORD = 'QA-admin-v1130-strong!';
-function redact(value) {
-  return redactValue(value, { replacements: [[REPO_ROOT, '[REPO_ROOT]'], [QA_PASSWORD, '[REDACTED]']] });
-}
+const REQUIRED_SCHEMA_KEYS = ['schemaVersion', 'sha', 'backendUrl', 'frontendUrl', 'backendPid', 'frontendPid', 'tempRoot', 'artifactRoot'];
 function fail(message) { throw new Error(message); }
-function git(args) { return spawnSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8', shell: false, windowsHide: true }); }
-function assertCleanSha(sha, gitRunner = git) {
-  const head = gitRunner(['rev-parse', 'HEAD']);
-  if (head.error || head.status !== 0 || head.stdout.trim() !== sha) fail('git HEAD does not match requested SHA');
-  const status = gitRunner(['status', '--porcelain']);
-  if (status.error || status.status !== 0 || status.stdout.trim()) fail('git worktree is dirty');
-}
-function prepareReceiptRun(artifactRoot, sha, gitRunner = git, invalidate = invalidateReceiptFiles) {
-  fs.mkdirSync(artifactRoot, { recursive: true });
-  invalidate(artifactRoot);
-  assertCleanSha(sha, gitRunner);
-}
 function parseArgs(argv) { const out = { sha: null, runtime: null }; for (let i = 2; i < argv.length; i += 1) { if (argv[i] === '--sha') out.sha = argv[++i]; else if (argv[i] === '--runtime') out.runtime = argv[++i]; else fail(`unknown argument: ${argv[i]}`); } if (!out.sha || !/^[a-f0-9]{40}$/.test(out.sha)) fail('missing or invalid --sha'); const derived = path.resolve(REPO_ROOT, 'artifacts', 'qa', VERSION, out.sha, 'runtime', 'runtime.json'); if (out.runtime && path.resolve(out.runtime) !== derived) fail('--runtime does not match --sha runtime path'); return { ...out, runtime: out.runtime ?? derived }; }
 function loopback(value) { try { const u = new URL(value); return u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(u.hostname) && !u.username && !u.password; } catch { return false; } }
-function loopbackEgress(value) { try { const u = new URL(value); return ['http:', 'https:', 'ws:', 'wss:'].includes(u.protocol) && ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(u.hostname) && !u.username && !u.password; } catch { return false; } }
 function validateRuntime(runtimeFile, expectedSha) { const runtimePath = path.resolve(runtimeFile); const shaRoot = path.dirname(path.dirname(runtimePath)); const value = JSON.parse(fs.readFileSync(runtimePath, 'utf8')); if (!value || typeof value !== 'object' || Object.keys(value).sort().join(',') !== REQUIRED_SCHEMA_KEYS.slice().sort().join(',')) fail('runtime schema keys mismatch'); if (value.schemaVersion !== 1 || value.sha !== expectedSha || value.sha !== path.basename(shaRoot)) fail('runtime SHA mismatch'); if (!loopback(value.backendUrl) || !loopback(value.frontendUrl)) fail('runtime URL is not loopback-only'); for (const key of ['backendPid', 'frontendPid']) if (!Number.isInteger(value[key]) || value[key] <= 0) fail(`invalid ${key}`); if (!path.isAbsolute(value.tempRoot) || path.resolve(value.artifactRoot) !== path.resolve(shaRoot, 'browser')) fail('unsafe runtime roots'); fs.mkdirSync(value.artifactRoot, { recursive: true }); return { ...value, runtimePath, artifactRoot: path.resolve(value.artifactRoot) }; }
-function packageRoot(name, frontendRoot) { return path.join(frontendRoot, 'node_modules', name); }
-function verifyInstallation(name, frontendRoot) {
-  const lock = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'package-lock.json'), 'utf8'));
-  const lockEntry = lock.packages?.[`node_modules/${name}`];
-  const root = packageRoot(name, frontendRoot);
-  const manifestPath = path.join(root, 'package.json');
-  if (!lockEntry?.version || lockEntry.version !== REQUIRED[name]) fail(`${name} lock version mismatch`);
-  if (!fs.existsSync(manifestPath)) fail(`${name} installed manifest missing`);
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  if (manifest.version !== lockEntry.version || manifest.version !== REQUIRED[name]) fail(`${name} installed version mismatch`);
-  for (const asset of ASSETS[name]) if (!fs.existsSync(path.join(root, asset))) fail(`${name} locked local browser asset missing: ${asset}`);
-  return { name, version: manifest.version, kind: 'not-applicable', invoked: false, applicable: false, versionScope: `${name}@${manifest.version}`, executableEvidence: ENTRYPOINTS[name], reason: 'No documented non-mutating deterministic analysis mode is provided by the locked local entrypoint.' };
-}
-async function browserRequestGuard(context, violations = []) {
-  await context.route('**/*', route => {
-    const u = new URL(route.request().url());
-    if (/^https?:$/.test(u.protocol) && !loopbackEgress(u.href)) {
-      violations.push(u.href);
-      return route.abort('blockedbyclient');
-    }
-    return route.continue();
-  });
-  if (typeof context.routeWebSocket === 'function') await context.routeWebSocket('**/*', socket => {
-    const url = socket.url();
-    if (!loopbackEgress(url)) {
-      violations.push(url);
-      return socket.close();
-    }
-    return socket.connectToServer();
-  });
-}
 function runDoctor(frontendRoot, verified) {
   const entryPoint = path.join(packageRoot('react-doctor', frontendRoot), ENTRYPOINTS['react-doctor']);
   const allowedEnv = ['PATH', 'Path', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'COMSPEC', 'PATHEXT', 'NUMBER_OF_PROCESSORS'];

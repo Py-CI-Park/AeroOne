@@ -3,13 +3,14 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 // The executable QA runner is JavaScript by design; its exported seams are runtime-tested here.
 // @ts-expect-error TS7016: no implicit-any MJS import; the seam is validated by behavioral tests below.
-import { assertCleanSha, browserRequestGuard, prepareReceiptRun, redact, verifyInstallation } from '../../../scripts/qa/run_v113_react_diagnostics.mjs';
+import { assertCleanSha, browserRequestGuard, prepareReceiptRun, redact, verifyInstallation } from '../../../scripts/qa/run_v113_react_contract.mjs';
 // @ts-expect-error TS7016: shared JavaScript QA seams are runtime-tested below.
 import { redact as redactShared, redactString } from '../../../scripts/qa/redact_v113.mjs';
 
 const root = path.resolve(__dirname, '../../..');
 const lighthouse = fs.readFileSync(path.join(root, 'scripts/qa/run_v113_lighthouse.mjs'), 'utf8');
 const diagnostics = fs.readFileSync(path.join(root, 'scripts/qa/run_v113_react_diagnostics.mjs'), 'utf8');
+const diagnosticsContract = fs.readFileSync(path.join(root, 'scripts/qa/run_v113_react_contract.mjs'), 'utf8');
 
 describe('v1.13 browser QA runner contract', () => {
   it('fixes the required route, matrix, run, and score constants', () => {
@@ -38,7 +39,7 @@ describe('v1.13 browser QA runner contract', () => {
     expect(lighthouse).toContain('--disable-default-apps');
     expect(lighthouse).toContain('sessionCookie = undefined');
     expect(diagnostics).toContain("if (argv[i] === '--sha')");
-    expect(diagnostics).toContain('bin/react-doctor.js');
+    expect(diagnosticsContract).toContain('bin/react-doctor.js');
   });
 
   it('requires the exact runtime schema and loopback/SHA/root validation', () => {
@@ -53,19 +54,20 @@ describe('v1.13 browser QA runner contract', () => {
   });
 
   it('uses local locked tools and forbids latest/download/CDN fallbacks', () => {
-    expect(diagnostics).toContain("'react-doctor': '0.7.3'");
-    expect(diagnostics).toContain("'react-scan': '0.5.7'");
-    expect(diagnostics).toContain('bin/react-doctor.js');
+    expect(diagnosticsContract).toContain("'react-doctor': '0.7.3'");
+    expect(diagnosticsContract).toContain("'react-scan': '0.5.7'");
+    expect(diagnosticsContract).toContain('bin/react-doctor.js');
     for (const source of [lighthouse, diagnostics]) {
       expect(source).not.toMatch(/npx\s+[^\n]*@latest|chromium\.download|https?:\/\/(?!127\.0\.0\.1|localhost)/i);
       expect(source).toContain('process.exitCode = 1');
-      expect(source).toContain('[REDACTED]');
       expect(source).toContain('artifactRoot');
     }
+    expect(lighthouse).toContain('[REDACTED]');
+    expect(diagnosticsContract).toContain('[REDACTED]');
   });
 
   it('runs locked browser react-scan analysis and requires executable evidence', () => {
-    expect(diagnostics).toContain("'react-grab': '0.1.48'");
+    expect(diagnosticsContract).toContain("'react-grab': '0.1.48'");
     expect(diagnostics).toContain("kind: 'analysis'");
     expect(diagnostics).toContain('runReactScan');
     expect(diagnostics).toContain("dist', 'auto.global.js");
@@ -76,7 +78,7 @@ describe('v1.13 browser QA runner contract', () => {
     expect(diagnostics).toContain('onRender(_fiber, renders)');
     expect(diagnostics).toContain('callbackEvidence');
     expect(diagnostics).toContain('unnecessary renders');
-    expect(diagnostics).toContain('locked local browser asset missing');
+    expect(diagnosticsContract).toContain('locked local browser asset missing');
     expect(diagnostics).toContain("Object.defineProperty(Navigator.prototype, 'onLine'");
     expect(diagnostics).toContain("'--json', '--no-supply-chain', '--no-score', '--no-telemetry', '--no-color', '--yes', '--blocking', 'error'");
     expect(diagnostics).toContain('JSON.parse(result.stdout)');
@@ -222,10 +224,14 @@ describe('v1.13 browser QA runner contract', () => {
     expect(diagnostics).toContain('prepareReceiptRun(expectedArtifactRoot, args.sha)');
     expect(diagnostics).toContain('fs.renameSync(tempPath, finalPath)');
     expect(diagnostics).toContain('react-scan produced no render/commit evidence');
-    expect(diagnostics).toContain('blockedbyclient');
+    expect(diagnosticsContract).toContain('blockedbyclient');
     expect(diagnostics).toContain("serviceWorkers: 'block'");
     expect(diagnostics).toContain('계정 접속');
     expect(diagnostics).toContain('내 활동');
     expect(diagnostics).toContain('관리자 콘솔');
+    expect(diagnostics).toContain("QA_PASSWORD } from './run_v113_react_contract.mjs';");
+    expect(diagnostics).toContain('password: QA_PASSWORD');
+    expect(diagnostics).toContain("from './run_v113_react_contract.mjs'");
+    expect(diagnosticsContract).toContain('QA_PASSWORD };');
   });
 });

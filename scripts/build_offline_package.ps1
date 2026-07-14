@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
   .SYNOPSIS
-  Public offline-package builder (Task 6, AeroOne v1.13.1): git-archive
+  Public offline-package builder (Task 6, AeroOne v1.13.2): git-archive
   allow-list -> clean temp stage -> npm ci/build/production-prune ->
   backend wheelhouse -> Task 5 installers -> manifest/ZIP/SHA-256.
 
@@ -21,7 +21,7 @@
   pre-stage/post-ZIP policy verifier before the ZIP is trusted.
 
   .PARAMETER Version
-  The AeroOne version this build targets (e.g. "1.13.1"). Release mode
+  The AeroOne version this build targets (e.g. "1.13.2"). Release mode
   requires an exact annotated tag "<Version>" pointing at HEAD; anything
   else (no tag, mismatched tag) automatically falls back to QA mode.
 
@@ -38,7 +38,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '1.13.1',
+    [string]$Version = '1.13.2',
     [switch]$DryRun,
     [switch]$Help,
     [switch]$ReuseNodeModules,
@@ -100,19 +100,33 @@ function Get-GitState {
         $headCommit = (git rev-parse HEAD).Trim()
         if ($LASTEXITCODE -ne 0 -or $headCommit -notmatch '^[0-9a-f]{40}$') { throw 'git-head-failed' }
         $exactTag = $null
-        $previousEap = $ErrorActionPreference
-        $ErrorActionPreference = 'SilentlyContinue'
-        try {
-            $tagName = $RequestedVersion
-            $tagObject = git rev-parse --verify --quiet "refs/tags/$tagName^{tag}"
-            if ($LASTEXITCODE -eq 0 -and $tagObject) {
-                $peeledCommit = git rev-parse --verify --quiet "refs/tags/$tagName^{commit}"
-                if ($LASTEXITCODE -eq 0 -and ([string]$peeledCommit).Trim() -eq $headCommit) {
-                    $exactTag = $tagName
-                }
-            }
-        } finally {
-            $ErrorActionPreference = $previousEap
+        $tagName = $RequestedVersion
+        $tagRef = "refs/tags/$tagName"
+        git show-ref --verify --quiet $tagRef
+        $tagRefExitCode = $LASTEXITCODE
+        if ($tagRefExitCode -eq 1) {
+            return [PSCustomObject]@{ IsClean = [bool]$isClean; HeadCommit = $headCommit; HeadTag = $null }
+        }
+        if ($tagRefExitCode -ne 0) {
+            throw 'git-tag-inspection-failed'
+        }
+
+        $tagType = (git cat-file -t $tagRef | Out-String).Trim()
+        $tagTypeExitCode = $LASTEXITCODE
+        if ($tagTypeExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($tagType)) {
+            throw 'git-tag-inspection-failed'
+        }
+        if ($tagType -ne 'tag') {
+            return [PSCustomObject]@{ IsClean = [bool]$isClean; HeadCommit = $headCommit; HeadTag = $null }
+        }
+
+        $peeledCommit = (git rev-parse --verify "$tagRef^{commit}" | Out-String).Trim()
+        $peelExitCode = $LASTEXITCODE
+        if ($peelExitCode -ne 0 -or $peeledCommit -notmatch '^[0-9a-f]{40}$') {
+            throw 'git-tag-inspection-failed'
+        }
+        if ($peeledCommit -eq $headCommit) {
+            $exactTag = $tagName
         }
         return [PSCustomObject]@{ IsClean = [bool]$isClean; HeadCommit = $headCommit; HeadTag = $exactTag }
     }
