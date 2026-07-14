@@ -371,10 +371,66 @@ curl -i -X POST -H "Content-Type: application/json" ^
 
 ---
 
-## 13. 관련 문서
+## 13. AI 프로바이더 + 예약 런처 운영 (1.14+)
+
+### 13.1 예약 런처 카드 — Open Notebook / OpenWebUI
+
+`service_modules` 의 `open-notebook`, `open-webui` 두 행은 `launcher_kind` 로 코드가 소유하며 href 를 입력받지 않습니다. 화면은 현재 브라우저가 접속한 host 에 각각 `:8502`, `:8080` 를 붙여 새 탭으로 엽니다.
+
+| 카드 | 포트 | 별도 기동 필요 | 노출 대상 |
+|---|---|---|---|
+| Open Notebook | 8502 | 예 (§5.4 `scripts\run_all.bat` 또는 자체 `3-run.bat`) | 로그인 여부 무관 |
+| OpenWebUI | 8080 | 예 (자체 설치·기동, AeroOne 이 관리하지 않음) | 활성 admin/user 세션만 (`dashboard.openwebui.launch`) |
+
+OpenWebUI 카드가 보이는데 클릭 시 연결되지 않으면 우선 그 PC(또는 지정 host) 의 `:8080` 에서 OpenWebUI 프로세스가 실제로 기동 중인지 확인하세요. AeroOne 은 이 서비스의 기동·헬스체크·인증을 대신하지 않습니다.
+
+### 13.2 관리자 AI 프로바이더 설정 (Ollama 병행)
+
+`/admin` 콘솔 시스템 탭의 **AI 프로바이더** 섹션에서 OpenAI-호환 프로바이더를 Ollama 와 별도로 구성합니다. 절차는 항상 다음 순서를 강제합니다.
+
+```
+Base URL / 모델 / API 키 입력
+  → 후보(candidate) 테스트  (DB/자격 무변화, 결과-only 감사 1건)
+  → 저장(Save)              (새 세대 pending, DPAPI 암호화)
+  → 영속(persisted) 테스트  (결과가 DB 에 안전 증거로 남음)
+  → Activate                (영속 테스트 결과가 정확히 ok 인 세대만 가능)
+  → 선택(Selection)         (Ollama ↔ OpenAI-호환, 명시 전환만, 자동 폴백 없음)
+```
+
+API 키는 **write-only** 입니다 — 저장 후에는 마스킹된 자격 유무만 표시되고 평문은 다시 조회할 수 없습니다. 실제 암호문은 이 PC 의 지정된 backend 서비스 계정(SID) 에 묶인 Windows DPAPI 아래에만 존재합니다.
+
+```
+%ProgramData%\AeroOne\provider-credentials\<backend-service-SID>\
+```
+
+등록(Base URL/모델/API 키 저장)은 **신뢰할 수 있는 HTTPS 경로 또는 이 PC 의 loopback** 에서만 허용됩니다. 폐쇄망 LAN 을 통한 평문 HTTP 원격 등록은 거부됩니다.
+
+### 13.3 테스트 결과와 트러블슈팅
+
+| 결과 | 조치 |
+|---|---|
+| `ok` | 정상 — Activate 진행 |
+| `model_missing` | 모델명 재확인 |
+| `auth_failed` | API 키 재확인 |
+| `policy_blocked` | Base URL 이 사내 승인 엔드포인트 정책(허용 목록)에 있는지 확인, 리다이렉트 응답은 항상 이 결과 |
+| `unreachable` | 네트워크 경로·방화벽·DNS 확인 |
+| `tls_failed` | 인증서/HTTPS 설정 확인 |
+| `invalid_response` | 엔드포인트가 OpenAI 호환 스펙을 따르는지 확인 |
+| `credential_unavailable` | 다른 PC/신원으로 복원했거나 DPAPI 저장소가 손상됨 — §13.4 재진입 |
+
+원문 에러/URL/응답 본문은 어떤 화면·로그에도 노출되지 않고 위 안전한 카테고리만 반환됩니다.
+
+### 13.4 DPAPI 재진입(re-entry)과 백업 제외
+
+`%ProgramData%\AeroOne\provider-credentials\` 는 **백업 대상(§8)과 오프라인 패키지(`offline_package.bat` ZIP) 어느 쪽에도 포함되지 않습니다.** 같은 PC · 같은 서비스 SID 로 복원했다면 자격이 그대로 유지되고, 다른 PC 로 옮기거나 서비스 계정이 바뀌면 화면에 `credential_unavailable` 로 표시되며 §13.2 절차(입력 → 후보 테스트 → 저장 → 영속 테스트 → Activate)를 새로 밟아야 합니다. 재진입 중에도 선택이 Ollama 였다면 Ollama 채팅은 그대로 계속 동작합니다.
+
+---
+
+## 14. 관련 문서
 
 - [README.md](../../README.md) — 시스템 정체성과 빠른 시작
 - [docs/runbook/local-dev.md](local-dev.md) — 개발자 로컬 실행 가이드
 - [docs/runbook/admin-auth.md](admin-auth.md) — 관리자 인증 정책
+- [docs/CLOSED_NETWORK_GUIDE.md](../CLOSED_NETWORK_GUIDE.md) §19 — AI 프로바이더 + 예약 런처 정책·보안 배경
 - [docs/runbook/credential-rotation.md](credential-rotation.md) — 자격 증명 노출 사고 전체 회전·재개·복원 절차
 - [docs/dev_plan/20260327_newsletter_platform_mvp.md](../dev_plan/20260327_newsletter_platform_mvp.md) — MVP 개발 계획 원본

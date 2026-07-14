@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 
 import { AppShell } from '@/components/layout/app-shell';
 import { ServiceCard } from '@/components/dashboard/service-card';
-import { NotebookLinkCard } from '@/components/dashboard/notebook-link-card';
+import { ExternalLauncherCard } from '@/components/dashboard/notebook-link-card';
 import { fetchPublicServiceModules } from '@/lib/api';
 import { resolveIsAdmin } from '@/lib/server-auth';
 import { getAppTheme } from '@/lib/server-theme';
@@ -13,16 +13,20 @@ type SearchParams = {
 };
 
 const FALLBACK_MODULES: ServiceModule[] = [
-  { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, visibility: 'public' },
-  { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, visibility: 'public' },
-  { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, visibility: 'public' },
-  { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
-  { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, visibility: 'admin' },
-  { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, visibility: 'admin' },
-  { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, visibility: 'admin' },
-  { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, visibility: 'admin' },
-  { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, visibility: 'admin' },
-  { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, visibility: 'admin' },
+  { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, launcher_kind: 'none', visibility: 'public' },
+  { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, launcher_kind: 'none', visibility: 'public' },
+  { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, launcher_kind: 'none', visibility: 'public' },
+  { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, launcher_kind: 'none', visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
+  { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
+  // OpenWebUI 는 dashboard.openwebui.launch 권한을 가진 활성 로그인 사용자(admin/user 기본 권한)에게만
+  // 노출된다. degraded fallback 은 검증된 권한 정보가 없으므로 admin 이 아닌 한 required_permission
+  // 이 있는 카드를 숨기는 기존 보수적 규칙을 그대로 적용한다(아래 필터 로직 참고).
+  { id: 11, key: 'openwebui', title: 'OpenWebUI', description: 'Ollama 호환 챗 UI (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
+  { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'Development', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
 ];
 
 const SECTION_ORDER = ['Newsletter', 'Document', 'Development'];
@@ -89,12 +93,12 @@ export default async function HomePage({
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {sectionModules.map((module) =>
                   module.is_external ? (
-                    <NotebookLinkCard
+                    <ExternalLauncherCard
                       key={module.key}
                       title={module.title}
                       description={module.description ?? undefined}
                       badge={module.badge}
-                      href={module.href}
+                      launcherKind={module.launcher_kind}
                       active={module.is_enabled}
                     />
                   ) : (

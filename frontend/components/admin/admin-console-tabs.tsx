@@ -4,12 +4,14 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import Link from 'next/link';
 
 import {
+  activateAiProviderCompatible,
   addUserGroup,
   createAdminUser,
   createBackup,
   changeOwnPassword,
   createResourceGrant,
   createServiceModule,
+  deleteAiProviderCredential,
   deleteResourceGrant,
   deleteServiceModule,
   createCategory,
@@ -20,6 +22,7 @@ import {
   fetchAdminPermissions,
   fetchAdminOverview,
   fetchAdminUsers,
+  fetchAiProviderConfig,
   fetchRbacMatrix,
   fetchAssetHealth,
   fetchConfigHealth,
@@ -30,8 +33,13 @@ import {
   fetchServiceModulesAdmin,
   fetchTags,
   fetchUnifiedSearch,
+  getSafeAiProviderReasonMessage,
+  reconcileAiProviderConfig,
   removeUserGroup,
   resetAdminUserPassword,
+  selectAiProviderKind,
+  stageAiProviderCompatibleConfig,
+  testAiProviderStagedConfig,
   updateAdminUser,
   updateCategory,
   updateServiceModule,
@@ -40,6 +48,8 @@ import {
   validateBackup,
   listResourceGrants,
   purgeSessions,
+  type AiProviderConfigResponse,
+  type AiProviderKind,
 } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 import type {
@@ -95,6 +105,7 @@ type PanelState = {
   categories: Category[];
   tags: Tag[];
   ai?: AiAdminStatus;
+  aiProvider?: AiProviderConfigResponse;
   searchResults: UnifiedSearchResult[];
   error?: string;
   toasts: AdminToast[];
@@ -188,6 +199,8 @@ type AdminConsoleContextValue = {
   setSearchForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['searchForm']>>;
   passwordForm: { current: string; next: string; confirm: string };
   setPasswordForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['passwordForm']>>;
+  aiProviderForm: { kind: AiProviderKind; canonical_url: string; display_url: string; model: string; generation: string };
+  setAiProviderForm: React.Dispatch<React.SetStateAction<AdminConsoleContextValue['aiProviderForm']>>;
   saveModule: (module: ServiceModule) => Promise<void>;
   toggleModule: (module: ServiceModule) => Promise<void>;
   createModule: () => Promise<void>;
@@ -208,6 +221,12 @@ type AdminConsoleContextValue = {
   runBackup: () => Promise<void>;
   runValidate: (id: number) => Promise<void>;
   runRestoreDryRun: (id: number) => Promise<void>;
+  stageAiProviderConfig: (apiKey: string) => Promise<void>;
+  testAiProviderCandidate: () => Promise<void>;
+  activateAiProviderConfig: () => Promise<void>;
+  selectAiProviderConfigKind: (kind: AiProviderKind) => Promise<void>;
+  deleteAiProviderCredentials: () => Promise<void>;
+  reconcileAiProviderState: () => Promise<void>;
 };
 
 const AdminConsoleContext = createContext<AdminConsoleContextValue | null>(null);
@@ -231,8 +250,8 @@ const tabs = [
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
-type RefreshKey = 'overview' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai';
-const allRefreshKeys: RefreshKey[] = ['overview', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai'];
+type RefreshKey = 'overview' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai' | 'aiProvider';
+const allRefreshKeys: RefreshKey[] = ['overview', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai', 'aiProvider'];
 
 export function AdminConsoleTabs() {
   return (
@@ -260,6 +279,7 @@ function AdminConsoleTabsContent() {
   const [tagForm, setTagForm] = useState({ name: '', sort_order: 0, is_active: true });
   const [searchForm, setSearchForm] = useState({ q: '', includeNsa: false });
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
+  const [aiProviderForm, setAiProviderForm] = useState<{ kind: AiProviderKind; canonical_url: string; display_url: string; model: string; generation: string }>({ kind: 'openai_compatible', canonical_url: '', display_url: '', model: '', generation: '' });
   const toastIdRef = useRef(0);
   const connectedUsersRequestRef = useRef(0);
 
@@ -309,6 +329,7 @@ function AdminConsoleTabsContent() {
           if (key === 'categories') next.categories = await fetchCategories();
           if (key === 'tags') next.tags = await fetchTags();
           if (key === 'ai') next.ai = await fetchAdminAiStatus();
+          if (key === 'aiProvider') next.aiProvider = await fetchAiProviderConfig();
         } catch (error) {
           const text = error instanceof Error ? error.message : '관리자 정보를 불러오지 못했습니다.';
           if (key === 'connectedUsers') {
@@ -450,8 +471,112 @@ function AdminConsoleTabsContent() {
   async function runRestoreDryRun(id: number) {
     await runBusy(`restore-${id}`, ['backups', 'overview', 'audits'], async () => { const result = await dryRunRestoreBackup(id, getCsrfCookie()); return result.compatible ? `복원 점검 성공: ${result.would_restore.join(', ')}` : `복원 점검 실패: ${result.issues.join(', ')}`; });
   }
+  async function stageAiProviderConfig(apiKey: string) {
+    const configVersion = state.aiProvider?.config_version;
+    if (configVersion === undefined) return;
+    if (!aiProviderForm.canonical_url.trim() || !aiProviderForm.display_url.trim() || !aiProviderForm.model.trim() || !aiProviderForm.generation.trim() || !apiKey.trim()) {
+      pushToast('error', 'Canonical URL, Display URL, 모델, 세대, API 키를 모두 입력하세요.');
+      return;
+    }
+    setState((current) => ({ ...current, busy: 'ai-provider-stage', error: undefined }));
+    try {
+      await stageAiProviderCompatibleConfig({
+        canonical_url: aiProviderForm.canonical_url.trim(),
+        display_url: aiProviderForm.display_url.trim(),
+        model: aiProviderForm.model.trim(),
+        generation: aiProviderForm.generation.trim(),
+        api_key: apiKey,
+        expected_config_version: configVersion,
+      }, getCsrfCookie());
+      await refresh(['aiProvider']);
+      pushToast('success', '설정을 저장했습니다. 이어서 저장 설정 테스트를 실행하세요.');
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : '설정 저장 요청을 완료하지 못했습니다.');
+    } finally {
+      setState((current) => ({ ...current, busy: undefined }));
+    }
+  }
+  async function testAiProviderCandidate() {
+    if (!aiProviderForm.canonical_url.trim() || !aiProviderForm.model.trim() || !aiProviderForm.generation.trim()) {
+      pushToast('error', '테스트하려면 먼저 저장된 설정과 동일한 URL/모델/세대 값을 입력하세요.');
+      return;
+    }
+    setState((current) => ({ ...current, busy: 'ai-provider-test', error: undefined }));
+    try {
+      const result = await testAiProviderStagedConfig({
+        canonical_url: aiProviderForm.canonical_url.trim(),
+        model: aiProviderForm.model.trim(),
+        generation: aiProviderForm.generation.trim(),
+      }, getCsrfCookie());
+      await refresh(['aiProvider']);
+      pushToast(result.success ? 'success' : 'error', getSafeAiProviderReasonMessage(result.reason_code));
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : '연동 테스트 요청을 완료하지 못했습니다.');
+    } finally {
+      setState((current) => ({ ...current, busy: undefined }));
+    }
+  }
+  async function activateAiProviderConfig() {
+    const configVersion = state.aiProvider?.config_version;
+    if (configVersion === undefined) return;
+    setState((current) => ({ ...current, busy: 'ai-provider-activate', error: undefined }));
+    try {
+      await activateAiProviderCompatible(configVersion, getCsrfCookie());
+      await refresh(['aiProvider']);
+      pushToast('success', '활성화 확인을 완료했습니다.');
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : '활성화 요청을 완료하지 못했습니다.');
+    } finally {
+      setState((current) => ({ ...current, busy: undefined }));
+    }
+  }
+  async function selectAiProviderConfigKind(kind: AiProviderKind) {
+    const configVersion = state.aiProvider?.config_version;
+    if (configVersion === undefined) return;
+    setState((current) => ({ ...current, busy: 'ai-provider-selection', error: undefined }));
+    try {
+      await selectAiProviderKind(kind, configVersion, getCsrfCookie());
+      await refresh(['aiProvider']);
+      pushToast('success', `제공자를 ${kind === 'ollama' ? 'Ollama' : 'OpenAI 호환'}(으)로 전환했습니다.`);
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : '제공자 전환 요청을 완료하지 못했습니다.');
+    } finally {
+      setState((current) => ({ ...current, busy: undefined }));
+    }
+  }
+  async function deleteAiProviderCredentials() {
+    const configVersion = state.aiProvider?.config_version;
+    if (configVersion === undefined) return;
+    const result = await confirm({ title: 'AI 제공자 자격 증명 삭제', message: 'OpenAI 호환 자격 증명을 삭제할까요?\n삭제 후에는 다시 등록하고 테스트해야 합니다.', confirmLabel: '삭제', tone: 'danger' });
+    if (!result.confirmed) return;
+    setState((current) => ({ ...current, busy: 'ai-provider-delete', error: undefined }));
+    try {
+      await deleteAiProviderCredential(configVersion, getCsrfCookie());
+      await refresh(['aiProvider']);
+      pushToast('success', '자격 증명 삭제 완료');
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : '자격 증명 삭제 요청을 완료하지 못했습니다.');
+    } finally {
+      setState((current) => ({ ...current, busy: undefined }));
+    }
+  }
+  async function reconcileAiProviderState() {
+    setState((current) => ({ ...current, busy: 'ai-provider-reconcile', error: undefined }));
+    try {
+      const result = await reconcileAiProviderConfig(getCsrfCookie());
+      await refresh(['aiProvider']);
+      pushToast(
+        result.reconciled ? 'success' : 'error',
+        result.reconciled ? '정합성 점검 완료: 일치' : '정합성 점검: 불일치가 감지되어 재보정했습니다',
+      );
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : '정합성 점검 요청을 완료하지 못했습니다.');
+    } finally {
+      setState((current) => ({ ...current, busy: undefined }));
+    }
+  }
 
-  const context = useMemo<AdminConsoleContextValue>(() => ({ state, refresh, moduleDrafts, setModuleDrafts, userDrafts, setUserDrafts, categoryDrafts, setCategoryDrafts, tagDrafts, setTagDrafts, moduleForm, setModuleForm, userForm, setUserForm, groupForm, setGroupForm, grantForm, setGrantForm, membershipForm, setMembershipForm, categoryForm, setCategoryForm, tagForm, setTagForm, searchForm, setSearchForm, passwordForm, setPasswordForm, saveModule, toggleModule, createModule, removeModule, changePassword, createUser, saveUser, resetPassword, saveGroup, saveResourceGrant, removeResourceGrant, changeMembership, createTaxonomy, saveCategory, saveTag, purgeSessionMetadata, runSearch, runBackup, runValidate, runRestoreDryRun }), [state, moduleDrafts, userDrafts, categoryDrafts, tagDrafts, moduleForm, userForm, groupForm, grantForm, membershipForm, categoryForm, tagForm, searchForm, passwordForm]);
+  const context = useMemo<AdminConsoleContextValue>(() => ({ state, refresh, moduleDrafts, setModuleDrafts, userDrafts, setUserDrafts, categoryDrafts, setCategoryDrafts, tagDrafts, setTagDrafts, moduleForm, setModuleForm, userForm, setUserForm, groupForm, setGroupForm, grantForm, setGrantForm, membershipForm, setMembershipForm, categoryForm, setCategoryForm, tagForm, setTagForm, searchForm, setSearchForm, passwordForm, setPasswordForm, aiProviderForm, setAiProviderForm, saveModule, toggleModule, createModule, removeModule, changePassword, createUser, saveUser, resetPassword, saveGroup, saveResourceGrant, removeResourceGrant, changeMembership, createTaxonomy, saveCategory, saveTag, purgeSessionMetadata, runSearch, runBackup, runValidate, runRestoreDryRun, stageAiProviderConfig, testAiProviderCandidate, activateAiProviderConfig, selectAiProviderConfigKind, deleteAiProviderCredentials, reconcileAiProviderState }), [state, moduleDrafts, userDrafts, categoryDrafts, tagDrafts, moduleForm, userForm, groupForm, grantForm, membershipForm, categoryForm, tagForm, searchForm, passwordForm, aiProviderForm]);
 
   function activateTab(tab: TabKey) {
     setActiveTab(tab);

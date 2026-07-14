@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.13.2-1f6feb)
+![version](https://img.shields.io/badge/version-1.14.0-1f6feb)
 ![status](https://img.shields.io/badge/status-immutable-release-success)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
@@ -70,6 +70,8 @@
 | 사용자 화면 | 대시보드 모듈 카드(뉴스레터·민간항공기 보고서·문서 보관소 등), 뉴스레터 리딩 뷰(최신·선택 이슈 HTML 직접 렌더), 기본 펼친 달력으로 이슈 전환, 민간항공기 규격 카탈로그(/reports/civil-aircraft, 달력 없음), 문서 보관소(/documents, `_database/document` HTML 을 폴더 트리로 열람), `[data-theme]` 라이트·다크 테마 토글 |
 | AeroAI 어시스턴트 (1.7+) | 대시보드 개발중 섹션의 `/ai` — 사내 폐쇄망 문서(Document/Civil/NSA)를 **근거로 답하는** RAG 챗. 대화 영속화·인용(citation) 근거연결·3분할 워크스페이스·프롬프트 프리셋. 답변은 안전한 Markdown 으로 렌더링하고 복사는 원문 텍스트를 유지합니다. HTML 본문 검색 결과는 새 탭으로 열립니다. backend-only Ollama(`gemma4:12b`), same-origin 프록시, reasoning-only 빈 응답 1회 재시도. 1.8.0 부터 운영 로그는 metadata-only 로 저장하며 prompt/answer/snippet 원문은 기록하지 않습니다. |
 | Open Notebook 동거 배포 (1.5+) | NotebookLM 대안(MIT)을 **코드 병합 없이 나란히(co-deploy)** — 대시보드 개발중 섹션의 Notebook 카드 → `:8502`. 분리 번들(airgap) + 공유 Ollama + 무인 자동 프로비저닝(모델 자동등록). `run_all.bat` 는 ON API/Frontend/runtime config readiness 확인 후 READY 표시. 상세: [`docs/runbook/closed-network-install-manual.md`](docs/runbook/closed-network-install-manual.md) |
+| OpenWebUI 예약 런처 (1.14+) | 대시보드의 OpenWebUI 카드는 **활성 로그인 admin/user 세션 전원**에게 노출되고(anonymous/pending 제외) 현재 브라우저 host 의 `:8080` 새 탭으로만 연결합니다. Open Notebook 과 마찬가지로 별도 프로세스로 기동·인증되며, AeroOne 은 SSO·기동·헬스체크를 제공하지 않습니다. 상세: [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) §19 |
+| AI 프로바이더 — Ollama 병행 (1.14+, 관리자) | `/admin` 콘솔에서 Ollama 와 별도로 OpenAI-호환 프로바이더(Base URL/모델/API 키)를 구성할 수 있습니다. 후보 테스트(무저장) → 저장 → 영속 테스트 `ok` → Activate 순서를 강제하며, 선택은 명시 전환만 가능하고 자동 폴백이 없습니다. API 키는 write-only 이며 Windows DPAPI 로만 암호화 보관되어 DB·백업·로그·문서 어디에도 평문으로 남지 않습니다. 상세: [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) §19 |
 | 콘텐츠 분기 | HTML(sandbox iframe + sanitize + CSP), PDF(direct delivery), Markdown(서버 렌더) |
 | 관리자 화면 (1.8+) | 로그인 후 `/admin` 홈 콘솔에서 버전/모드, DB, 최신 뉴스레터, 자산 상태, 읽음 요약, AI 상태, 최근 감사, 사용자/RBAC, 대시보드 모듈, 백업 상태를 확인합니다. 뉴스레터 목록은 검색/상태 필터/일괄 게시·보관/자산 점검을 지원합니다. |
 | 인증/권한 | signed HttpOnly session cookie + SameSite=Lax + CSRF 토큰. 서버 권한은 `admin/user/pending` 역할과 additive permissions/groups/resource grants 로 판단하며, 관리자 mutation 은 permission + CSRF + same-transaction audit 를 통과해야 합니다. |
@@ -325,7 +327,7 @@ npm run build
 
 | 분류 | 위치 |
 |---|---|
-| 폐쇄망 운영 종합 가이드 | [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) (18장 + 부록, Open Notebook co-deploy §18) |
+| 폐쇄망 운영 종합 가이드 | [`docs/CLOSED_NETWORK_GUIDE.md`](docs/CLOSED_NETWORK_GUIDE.md) (19장 + 부록, Open Notebook co-deploy §18, OpenAI-호환 AI 프로바이더 + 예약 런처 §19) |
 | **폐쇄망 상세 설치·사용 매뉴얼 (AeroOne + Open Notebook)** | [`docs/runbook/closed-network-install-manual.md`](docs/runbook/closed-network-install-manual.md) |
 | Open Notebook 동거 배포 런북 | [`docs/runbook/open-notebook-airgap.md`](docs/runbook/open-notebook-airgap.md) |
 | 폐쇄망 오픈소스 도입 프로세스 (재사용 플레이북) | [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |

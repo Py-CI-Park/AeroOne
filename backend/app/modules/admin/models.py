@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, func, true
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, func, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -111,6 +111,9 @@ class UserSessionActivity(Base):
 
 class ServiceModule(Base):
     __tablename__ = 'service_modules'
+    __table_args__ = (
+        CheckConstraint("launcher_kind IN ('none', 'open_notebook', 'open_webui')", name='ck_service_modules_launcher_kind'),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     key: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
@@ -124,6 +127,7 @@ class ServiceModule(Base):
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
     is_external: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     visibility: Mapped[str] = mapped_column(String(20), nullable=False, server_default='public')
+    launcher_kind: Mapped[str] = mapped_column(String(20), nullable=False, server_default='none')
     required_permission: Mapped[str | None] = mapped_column(String(120), nullable=True)
     resource_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     resource_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -172,4 +176,96 @@ class AiMessageFeedback(Base):
     rating: Mapped[str] = mapped_column(String(20), nullable=False)
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class AiProviderConfig(Base):
+    """Singleton AI provider selection + independent OpenAI-compatible provider state.
+
+    Never stores API keys/ciphertext/raw upstream request-response detail. Compatible
+    credential material is protected by DPAPI elsewhere and referenced here only via an
+    opaque `compatible_credential_ref`; `compatible_credential_binding_version` records
+    which immutable DPAPI purpose/binding scheme protected that ref and MUST NOT change
+    for a given ref once written. `config_version` is an optimistic-concurrency counter
+    bumped on every write. Activation of `selected_kind = 'openai_compatible'` is gated
+    by a durable, exact-bound test proof: the persisted proof's canonical_url/model/
+    generation must equal the currently configured compatible_* values.
+    """
+
+    __tablename__ = 'ai_provider_config'
+    __table_args__ = (
+        CheckConstraint('singleton_id = 1', name='ck_ai_provider_config_singleton'),
+        CheckConstraint("selected_kind IN ('ollama', 'openai_compatible')", name='ck_ai_provider_config_selected_kind'),
+        CheckConstraint("compatible_state IN ('absent', 'unverified', 'verified')", name='ck_ai_provider_config_compatible_state'),
+        CheckConstraint(
+            "(compatible_state = 'absent' "
+            "AND compatible_canonical_url IS NULL AND compatible_display_url IS NULL "
+            "AND compatible_model IS NULL AND compatible_generation IS NULL "
+            "AND compatible_credential_ref IS NULL AND compatible_credential_binding_version IS NULL) "
+            "OR "
+            "(compatible_state != 'absent' "
+            "AND compatible_canonical_url IS NOT NULL AND compatible_display_url IS NOT NULL "
+            "AND compatible_model IS NOT NULL AND compatible_generation IS NOT NULL "
+            "AND compatible_credential_ref IS NOT NULL AND compatible_credential_binding_version IS NOT NULL)",
+            name='ck_ai_provider_config_compatible_coherence',
+        ),
+        CheckConstraint(
+            "(compatible_state = 'verified' "
+            "AND compatible_test_proof_ref IS NOT NULL AND compatible_test_proof_at IS NOT NULL "
+            "AND compatible_test_proof_canonical_url IS NOT NULL AND compatible_test_proof_model IS NOT NULL "
+            "AND compatible_test_proof_generation IS NOT NULL) "
+            "OR "
+            "(compatible_state != 'verified' "
+            "AND compatible_test_proof_ref IS NULL AND compatible_test_proof_at IS NULL "
+            "AND compatible_test_proof_canonical_url IS NULL AND compatible_test_proof_model IS NULL "
+            "AND compatible_test_proof_generation IS NULL)",
+            name='ck_ai_provider_config_test_proof_coherence',
+        ),
+    )
+
+    singleton_id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    selected_kind: Mapped[str] = mapped_column(String(20), nullable=False, server_default='ollama')
+    compatible_state: Mapped[str] = mapped_column(String(20), nullable=False, server_default='absent')
+    compatible_canonical_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    compatible_display_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    compatible_model: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    compatible_generation: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    compatible_credential_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    compatible_credential_binding_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    compatible_test_proof_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    compatible_test_proof_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    compatible_test_proof_canonical_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    compatible_test_proof_model: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    compatible_test_proof_generation: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    config_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default='1')
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class AiProviderOperationJournal(Base):
+    """Metadata-only audit trail for AI provider operations.
+
+    Records that a select/test/rotate/delete/reconcile operation happened and its safe
+    result, never candidate material (no keys, no raw URLs beyond what is already
+    canonical/public, no request/response bodies).
+    """
+
+    __tablename__ = 'ai_provider_operation_journal'
+    __table_args__ = (
+        CheckConstraint(
+            "operation IN ('select', 'test', 'rotate', 'delete', 'reconcile')",
+            name='ck_ai_provider_operation_journal_operation',
+        ),
+        CheckConstraint("kind IN ('ollama', 'openai_compatible')", name='ck_ai_provider_operation_journal_kind'),
+        CheckConstraint("result IN ('success', 'failure')", name='ck_ai_provider_operation_journal_result'),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    operation: Mapped[str] = mapped_column(String(20), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    result: Mapped[str] = mapped_column(String(20), nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    config_version_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    config_version_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

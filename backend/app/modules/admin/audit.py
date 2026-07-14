@@ -69,3 +69,34 @@ def record_admin_audit(
     db.add(event)
     db.flush()
     return event
+
+def build_ai_provider_audit_metadata(
+    *,
+    operation: str,
+    result: str,
+    reason_code: str,
+    kind: str | None = None,
+    selected_kind: str | None = None,
+    compatible_state: str | None = None,
+    config_version: int | None = None,
+) -> dict[str, object]:
+    """AI-provider 감사 메타데이터 생성기.
+
+    명시적 allowlist 필드만 담는다. DTO/예외 객체/원문 URL/키/업스트림 응답 바디/DPAPI
+    credential_binding_version 은 어떤 경로로도 이 함수에 전달되거나 감사 로그에
+    남아서는 안 된다. 호출부는 반드시 안전한 원시값(str/int)만 키워드 인자로 넘겨야 한다.
+    """
+    snapshot: dict[str, object] = {
+        'operation': operation,
+        'result': result,
+        'reason_code': reason_code,
+    }
+    if kind is not None:
+        snapshot['kind'] = kind
+    if selected_kind is not None:
+        snapshot['selected_kind'] = selected_kind
+    if compatible_state is not None:
+        snapshot['compatible_state'] = compatible_state
+    if config_version is not None:
+        snapshot['config_version'] = config_version
+    return snapshot

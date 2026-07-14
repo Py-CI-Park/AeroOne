@@ -5,6 +5,10 @@
 > [!CAUTION]
 > `1.12.2` Release/ZIP은 철회되었습니다. 신규 설치나 재배포에 사용하지 말고, 이미 반입한 환경은 서비스를 중지한 뒤 정식 `1.13.0`으로 교체하고 이 런북의 전체 회전을 수행합니다. `1.13.0-dev` 중간 산출물로 운영 회전을 실행하지 않습니다.
 
+> [!NOTE]
+> `1.14.0`부터 존재하는 OpenAI 호환 AI provider 키는 이 런북의 회전 범위가 **아닙니다**. provider 키는 SID-scoped DPAPI blob(`provider-credentials/<SID>/credential.dpapi`)으로 별도 저장되며, 회전·폐기는 `/admin` 콘솔의 독립 작업입니다. 이 런북은 JWT/`ADMIN_PASSWORD`/전체 사용자 비밀번호/세션만 다루며, provider 키 취급 계약은 [`admin-auth.md`](admin-auth.md) §1.14.0 을 따릅니다.
+
+
 ## 1. 실행 전 조건
 
 1. AeroOne backend/frontend를 중지합니다. 실행 중인 서비스를 그대로 둔 채 회전하지 않습니다. 도구도 알려진 `AeroOne`, `AeroOneBackend`, `AeroOneFrontend` Windows 서비스와 root/backend 환경의 `BACKEND_PORT`, `FRONTEND_PORT` listener를 확인하고 남아 있으면 파일·DB 변경 전에 거부합니다. 이 검사는 프로세스를 자동 종료하지 않습니다.

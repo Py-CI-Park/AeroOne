@@ -15,6 +15,18 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.0',
+    date: '2026-07-14',
+    items: [
+      '대시보드에 Open WebUI 실행 카드를 추가했습니다. 같은 호스트 8080 포트로 새 탭 링크만 열며 iframe 임베드나 헬스체크 프록시는 사용하지 않고, 활성 상태의 관리자·일반 사용자 로그인에 기본 노출됩니다(대기 계정 제외).',
+      '관리자 콘솔에서 OpenAI 호환 AI provider 를 Ollama 와 나란히 등록·활성화할 수 있습니다. provider 키는 항상 write-only 이며 마스킹된 상태로만 조회되고, 등록은 신뢰된 HTTPS(검증된 TLS 체인) 또는 loopback 대상만 허용해 그 외 요청은 전송 전에 fail-closed 로 차단합니다.',
+      'provider 선택은 명시적 단일 선택이며 자동 fallback 이 없습니다 — 선택한 provider 호출이 실패해도 다른 provider 로 조용히 넘어가지 않고 오류를 그대로 보고합니다.',
+      'provider 키 회전/폐기는 관리자 전용 별도 작업이며 JWT·전체 사용자 비밀번호를 회전하는 사고 대응 절차(`rotate_aeroone_credentials.ps1`)와는 저장 위치·코드 경로가 완전히 분리됩니다. 키는 현재 Windows 로그인 사용자 SID 로 DPAPI 보호되며, 프로필/기기가 바뀌면 자동 복구 없이 재등록이 필요합니다.',
+      'provider 설정·활성화·회전·폐기 mutation 은 `admin.ai.manage`, 조회는 `admin.ai.read` 권한을 요구하며 CSRF 검증과 `Cache-Control: no-store` 응답을 적용합니다. AI 대화 사용 권한(`ai.use`)과 감사 로그 카테고리는 기존 정책을 그대로 따릅니다.',
+    ],
+  },
+
+  {
     version: '1.13.2',
     date: '2026-07-14',
     items: [

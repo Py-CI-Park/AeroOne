@@ -27,6 +27,18 @@ ADMIN_PASSWORD=change-me
 
 `/admin/*` 경로의 모든 mutation 과 sync 기능을 다른 신뢰 경계 뒤로 이동시키지 않은 채 인증을 제거하지 마세요. 이 정책을 우회하거나 완화하는 변경은 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) §6 보안 관련 변경 시 추가 절차를 따릅니다.
 
+## 1.14.0 Open WebUI 링크 실행 + 호환 AI Provider 계약
+
+- **Open WebUI 링크 실행**: 대시보드 `Open WebUI` 카드는 same-origin 프록시나 iframe 임베드 없이 현재 접속 호스트의 8080 포트로 새 탭 링크만 엽니다. `dashboard.openwebui.launch` 권한이 있는 활성 관리자·일반 사용자 로그인에 기본 노출되며, 대기(pending) 계정과 익명 접속에는 노출되지 않습니다. Open Notebook 8502 카드와 동일한 launcher 패턴을 재사용합니다.
+- **provider 병행**: 관리자 콘솔에서 OpenAI 호환 AI provider 를 Ollama 와 나란히 등록·활성화합니다. provider 선택은 명시적 단일 선택이며 자동 fallback 이 없습니다 — 선택한 provider 호출이 실패해도 다른 provider 로 조용히 넘어가지 않습니다.
+- **권한 경계**: provider 설정 조회는 `admin.ai.read`, 등록·활성화·회전·폐기 mutation 은 `admin.ai.manage` 를 요구합니다. `ai.use` 는 기존 AI 대화 사용 권한 그대로이며 이번 변경으로 범위가 넓어지지 않습니다. mutation 엔드포인트는 `require_csrf` 를 조합하고 조회/mutation 응답 모두 `Cache-Control: no-store` 를 강제해 provider 상태가 캐시에 남지 않게 합니다.
+- **write-only 키**: provider API 키는 저장 후 평문으로 다시 조회할 수 없습니다. 관리자 화면은 항상 마스킹된 상태(등록 여부·마지막 검증 결과)만 보여주고, 값 자체는 절대 API 응답에 포함하지 않습니다.
+- **신뢰된 등록 대상만 허용**: provider enrollment 요청은 검증된 TLS 체인을 가진 `https://` 대상 또는 loopback(`127.0.0.1`/`localhost`) 만 허용하는 명시적 allow-list 로 사전 검증합니다. 그 외 대상(평문 HTTP, 목록에 없는 호스트)은 요청을 보내기 전에 fail-closed 로 거부합니다.
+- **회전/폐기는 별도 계약**: provider 키 회전·폐기는 `/admin` 콘솔의 별도 작업이며, JWT·전체 사용자 비밀번호를 다루는 [`credential-rotation.md`](credential-rotation.md) 사고 대응 절차와 저장 위치·코드 경로를 공유하지 않습니다. 두 절차를 같은 사고 단위로 취급하지 마세요.
+- **DPAPI 신원 경계**: provider 키는 회전을 실행한 현재 Windows 로그인 사용자 SID 로 DPAPI 보호됩니다. Windows 프로필이나 기기가 바뀌면 기존 암호문은 자동 복구되지 않고 그대로 읽을 수 없는 상태가 되며, 운영자는 신뢰된 HTTPS/loopback 등록 절차로 provider 키를 다시 등록해야 합니다. 재등록 전까지는 provider 선택이 Ollama 로 유지되며 자동 fallback 은 발생하지 않습니다.
+- **감사 로그**: provider 등록/활성화/회전/폐기/검증 실패는 기존 `admin_audit_events` 감사 계약을 따르는 별도 카테고리로 기록되며, 키 값·요청 원문 등 비밀 소재는 남기지 않고 결과(성공/실패, provider 종류, 조작자)만 metadata-only 로 남깁니다.
+
+
 ## 1.13.0 자격 증명 사고 대응 계약
 
 - `/admin`의 비밀번호 변경·재설정은 선택한 계정의 일상 운영 경로입니다. 자격 증명 노출 사고의 전체 회전과 동일하지 않습니다.

@@ -35,6 +35,7 @@
 16. [1.4.0 신규 기능 운영 안내](#16-140-신규-기능-운영-안내)
 17. [1.5.0 Ollama AI·본문 검색 운영 안내](#17-150-ollama-ai본문-검색-운영-안내)
 18. [Open Notebook co-deploy (1.5+)](#18-open-notebook-co-deploy-15)
+19. [OpenAI-호환 AI 프로바이더 + 예약 대시보드 런처 (1.14+)](#19-openai-호환-ai-프로바이더--예약-대시보드-런처-114)
 
 ---
 
@@ -368,6 +369,7 @@ python -m pytest tests -q
 | 자산 진단 | `/admin` 자산 진단/config-health 에서 `_database`, storage, 썸네일, DB/마이그레이션 상태를 확인하고 누락 경로를 배포 산출물 또는 운영 백업에서 복구 |
 | 단일 관리자 비밀번호 변경 | `/admin` 콘솔의 **관리자 계정 / 비밀번호** 에서 현재 비밀번호 확인 후 직접 변경합니다. 해당 계정의 기존 세션은 무효화됩니다. |
 | 자격 증명 노출 사고 | 서비스를 중지하고 `scripts\rotate_aeroone_credentials.ps1`을 실행해 JWT, 전체 사용자 비밀번호, session version, live session을 하나의 사고 단위로 회전합니다. `setup_offline.bat` 재실행은 기존 DB 전체를 회전하지 않으므로 대체 수단이 아닙니다. 상세: [`runbook/credential-rotation.md`](runbook/credential-rotation.md). |
+| AI 프로바이더 설정/전환 (1.14+) | `/admin` 콘솔 시스템 탭의 **AI 프로바이더** 섹션에서 Base URL/모델/API 키 저장 → 영속 테스트 `ok` → Activate → 선택(Ollama/OpenAI-호환) 전환. 상세: 본 문서 §19 |
 
 ### 9.1 관리자 same-origin 접속 원칙
 
@@ -402,7 +404,7 @@ xcopy /Y /E /I _database D:\backup\AeroOne\_database
 
 ### 10.2 복원
 
-같은 PC 또는 다른 폐쇄망 PC 에 새로 압축 해제한 뒤, 위 세 경로를 그대로 덮어쓰고 `setup_offline.bat` 실행. `ensure_db_state.py` 가 기존 DB 의 alembic 메타 부재를 감지해 `alembic stamp head` 분기로 데이터 보존하며 진행합니다 (§11.3 참고).
+같은 PC 또는 다른 폐쇄망 PC 에 새로 압축 해제한 뒤, 위 세 경로를 그대로 덮어쓰고 `setup_offline.bat` 실행. `ensure_db_state.py` 가 기존 DB 의 alembic 메타 부재를 감지해 `alembic stamp head` 분기로 데이터 보존하며 진행합니다 (§11.3 참고). 1.14+ 의 OpenAI-호환 프로바이더 자격(`%ProgramData%\AeroOne\provider-credentials\`)은 위 백업 대상에 포함되지 않으며, 다른 PC 또는 다른 서비스 신원으로 복원했다면 §19.7 의 재진입 절차를 새로 밟아야 합니다.
 
 ---
 
@@ -557,6 +559,8 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 - `setup_offline.bat` 가 `APP_ENV=development` 로 회귀
 - `ensure_db_state.py` 의 종료 코드 매핑 (0/1/2/3) 이 바뀌는 변경
 - LAN 기본 바인딩이 loopback 전용으로 회귀하거나, `--local` opt-out / LAN IP 미감지 시 loopback 폴백 / `scripts\allow_lan_firewall.cmd` 의 `remoteip=LocalSubnet` 범위가 깨지는 변경
+- OpenAI-호환 프로바이더가 pending/staging 중이거나 credential_unavailable 일 때 자동으로 Ollama 로 폴백하거나, 반대로 candidate 테스트가 DB/자격/journal 에 흔적을 남기는 변경(§19.3~§19.4)
+- API 키가 write-only 원칙을 벗어나 DB/로그/감사/URL/프런트엔드 상태 어디든 평문으로 노출되는 변경(§19.5)
 
 ---
 
@@ -573,6 +577,8 @@ AI 에이전트가 본 저장소를 다룰 때 우선 참조해야 할 위치:
 - `setup_offline.bat`, `start_offline.bat`, `scripts/start_frontend_offline.cmd` — `:help` 라벨 + `:parse_args` 루프 + `:capture_host` 서브루틴
 - `backend/app/modules/admin/*` — RBAC permission, same-transaction audit, `/api/v1/admin/*`, `service_modules`, backup/asset/admin search API
 - `frontend/app/admin/page.tsx`, `frontend/components/admin/admin-home-console.tsx` — 관리자 홈 콘솔과 DB 기반 대시보드 모듈 운영 화면
+- `backend/app/modules/ai/`, `backend/app/operations/windows_dpapi.py`, `backend/alembic/versions/20260714_0011_*.py` — OpenAI-호환 프로바이더 config/proof state, DPAPI purpose, 예약 launcher 마이그레이션(§19)
+- `frontend/components/dashboard/notebook-link-card.tsx`, `frontend/components/admin/sections/admin-system-section.tsx` — 예약 런처 카드(Open Notebook/OpenWebUI), 관리자 AI 프로바이더 설정 화면(§19)
 
 ### 15.2 운영 매뉴얼
 
@@ -762,6 +768,92 @@ submodule 핀 + fork 브랜치 push(OP-1), 폐쇄망 4프로세스 e2e 스모크
 | 선택 기준 | "사내 문서에 근거한 빠른 질의응답" | "여러 소스를 모아 정리·벡터 탐색·산출물 생성" |
 
 요약 — **AeroAI = 근거 기반 질의응답, Open Notebook = 소스 정리·지식 워크스페이스.** 둘은 같은 Ollama 를 공유하지만 DB·신원·포트는 분리됩니다.
+
+## 19. OpenAI-호환 AI 프로바이더 + 예약 대시보드 런처 (1.14+)
+
+v1.14.0 은 두 가지를 추가합니다 — (1) `service_modules` 에 코드가 소유하는 **예약 런처** 2종(Open Notebook `:8502`, 신규 OpenWebUI `:8080`), (2) 관리자가 설정하는 **OpenAI-호환 AI 프로바이더**가 기존 Ollama 와 나란히(병행) 존재합니다. 둘 다 기존 폐쇄망 경계(같은 LAN, HTTP/HTTPS 정책, DPAPI 자격 보관)를 그대로 따릅니다.
+
+### 19.1 예약 대시보드 런처 — Open Notebook / OpenWebUI
+
+`service_modules.launcher_kind` 가 `none|open_notebook|open_webui` 인 예약 행은 관리자 콘솔에서도 href 를 직접 입력할 수 없습니다. 프런트엔드가 **현재 브라우저가 접속한 host** 를 그대로 재사용해 포트만 붙여 새 탭으로 엽니다.
+
+| 카드 | 포트 | 노출 대상 | 비고 |
+|---|---|---|---|
+| Open Notebook | `:8502` | 로그인 여부와 무관하게 공개 (기존 동작, 변경 없음) | §18 참고 |
+| OpenWebUI (신규) | `:8080` | **활성 로그인 admin + user 역할 모두** (`dashboard.openwebui.launch` 권한). anonymous·pending·세션 없음은 카드 자체가 보이지 않음 | 아래 §19.1.1 |
+
+두 카드 모두 **링크만** 제공합니다. AeroOne 은 OpenWebUI 의 기동·헬스체크·SSO·프록시를 전혀 수행하지 않습니다 — 서비스는 완전히 별도로 기동·인증됩니다(로그인 화면이 다르고, AeroOne 세션과 무관). 링크를 눌러도 이동 외의 어떤 부수효과도 없습니다.
+
+#### 19.1.1 OpenWebUI 를 별도 기동해야 하는 이유
+
+OpenWebUI 는 AeroOne/Open Notebook 과 마찬가지로 **자체 프로세스**로 폐쇄망 PC(또는 같은 LAN 의 다른 PC)에서 기동됩니다. 운영자는 OpenWebUI 를 자체 설치 절차(공식 배포본 또는 사내 승인된 방식)로 준비하고, 대시보드 카드가 가리키는 것과 동일한 host 의 `:8080` 에 서비스가 응답하는지 별도로 확인해야 합니다. AeroOne 쪽에서는 포트가 비어 있어도 카드가 그대로 노출되며(권한만 확인), 클릭 시 대상이 응답하지 않으면 일반적인 "연결할 수 없음" 브라우저 오류가 뜰 뿐입니다 — 이는 AeroOne 장애가 아니라 OpenWebUI 미기동입니다.
+
+### 19.2 관리자 AI 프로바이더 설정 — Ollama 병행
+
+`/admin` 콘솔의 시스템 탭에 **AI 프로바이더** 섹션이 추가됩니다. 두 프로바이더 종류(`ollama`, `openai_compatible`) 는 **동시에 존재**할 수 있지만 실제 채팅에 쓰이는 것은 그 순간 **선택된(selected) 한 종류**뿐입니다. Ollama 는 v1.13 이전과 동일하게 계속 동작하며, 이 화면이 추가되었다고 기존 AeroAI(`/ai`) 동작이 바뀌지 않습니다.
+
+설정 화면에서 입력하는 값:
+
+| 항목 | 의미 |
+|---|---|
+| Base URL | OpenAI 호환 엔드포인트의 절대 URL(예: `https://<사내-게이트웨이-호스트>:<포트>`). 실제 운영 URL 은 사내 보안팀이 승인한 값만 사용하고, 본 문서/커밋/이슈에 실제 값을 남기지 않습니다 |
+| Model | 사용할 모델 식별자 |
+| API Key | 프로바이더가 요구하는 API 키. **입력만 가능(write-only)** — 저장 후에는 화면 어디에서도 평문이 다시 보이지 않고 마스킹된 자격 유무만 표시됩니다 |
+
+### 19.3 후보(candidate) 테스트 vs 영속(persisted) 테스트 vs Activate
+
+저장 절차는 3단계로 나뉘며, **어느 단계도 건너뛸 수 없습니다.**
+
+1. **후보 테스트** — 화면에 입력한 값(아직 저장 전)으로 즉시 연결을 시험합니다. 이 테스트는 DB 에 아무 것도 남기지 않으며(설정/자격/상태 모두 무변화), 감사 로그에는 결과 카테고리와 시각만 결과-only 로 1건 남습니다. 후보 테스트가 실패해도 이전에 저장된 프로바이더 설정에는 영향이 없습니다.
+2. **저장(Save)** — 후보 값을 실제로 저장하면 새 세대(generation)가 "대기(pending)" 상태로 기록되고 DPAPI 에 키가 암호화됩니다. 이 시점에는 아직 채팅에 쓰이지 않습니다.
+3. **영속 테스트** — 방금 저장한 대기 중 설정을 대상으로 다시 테스트합니다. 이번에는 결과가 DB 에 **영속 증거(safe proof)** 로 남고, 성공(`ok`) 이어야만 다음 단계인 **Activate** 버튼이 활성화됩니다.
+4. **Activate** — 영속 테스트 결과가 `ok` 인 정확히 그 세대만 활성(active) 상태로 전환할 수 있습니다. 세부 값을 바꾸거나 재시도 없이 오래된 증거로 activate 를 누르는 것은 거부됩니다.
+
+### 19.4 선택(Selection)과 유지보수 중 동작 — 자동 폴백 없음
+
+Ollama ↔ OpenAI-호환 전환은 화면에서 **명시적으로 선택**해야만 바뀝니다. 다음 상황에서 AeroOne 은 **절대 자동으로 다른 프로바이더로 넘어가지 않습니다.**
+
+- 선택된 프로바이더가 OpenAI-호환인데 관리자가 자격을 교체(rotate)하거나 새 후보를 저장 중이면, 그 사이 채팅 요청은 "현재 유지보수 중이라 사용할 수 없음" 으로 명확히 실패합니다. Ollama 로 조용히 넘어가지 않습니다.
+- 선택을 Ollama 로 되돌리는 것은 언제나 가능한 **명시적 롤백 경로**입니다.
+- 선택을 OpenAI-호환으로 바꾸려면 해당 세대가 활성(active) 상태여야 하며, 채팅 소비 권한(`ai.use`)이 있는 로그인 사용자만 실제로 사용할 수 있습니다.
+
+### 19.5 API 키 저장 — write-only, Windows DPAPI
+
+API 키는 데이터베이스, 백업, 감사 로그, 오프라인 패키지, 프런트엔드 상태/번들, 이 문서를 포함한 어떤 문서에도 평문으로 남지 않습니다. 저장 즉시 Windows DPAPI(CurrentUser, 지정된 비로밍 backend 서비스 계정)로 암호화되어 `%ProgramData%\AeroOne\provider-credentials\<backend-service-SID>\` 아래에 세대별 파일로만 존재합니다. DB 에는 자격이 있다는 사실과 세대/바인딩 식별자만 남고 키 자체나 암호문은 저장되지 않습니다.
+
+### 19.6 등록(enrollment) 경로와 egress 정책
+
+Base URL/모델/API 키를 저장(등록)하는 요청은 **신뢰할 수 있는 HTTPS 경로 또는 이 PC 의 loopback** 에서 온 것만 허용합니다. 폐쇄망 LAN 을 통한 평문 HTTP 원격 등록은 거부됩니다 — 키가 LAN 평문으로 노출될 수 있기 때문입니다. 실제 채팅/테스트 트래픽 또한 전용 egress 경로만 사용하며, 이 경로는 리다이렉트를 따라가지 않고, 프록시를 쓰지 않으며, 사내 승인된 엔드포인트 정책을 통과한 뒤에만 Authorization 헤더를 최초 요청 대상에 붙입니다. 정책을 벗어난 목적지, 알 수 없는 DNS 응답, TLS 실패는 모두 안전하게 차단됩니다.
+
+### 19.7 DPAPI 신원 / 재진입(re-entry)
+
+자격은 **이 PC 의 지정된 Windows 서비스 계정(SID)** 에 묶여 있습니다. 다음 경우에는 자동 복구가 아니라 **명시적 재등록(re-entry)** 이 필요합니다 — 화면에는 `credential_unavailable` 상태로 표시됩니다.
+
+- 다른 PC 로 복원했거나, 같은 PC 라도 서비스 계정 SID 가 바뀐 경우
+- DPAPI 저장소 파일이 손상되었거나 예상 바인딩과 일치하지 않는 경우
+
+재진입은 관리자 화면에서 Base URL/모델/API 키를 다시 입력하고 위 §19.3 저장→영속 테스트→Activate 절차를 새로 밟는 것으로 완료됩니다. 재진입 중에도 선택이 Ollama 였다면 Ollama 는 계속 그대로 동작합니다.
+
+### 19.8 백업 / 오프라인 패키지 제외
+
+`storage\admin_backups\` 백업과 `offline_package.bat` ZIP 은 어느 쪽도 DPAPI 암호문·journal·`%ProgramData%\AeroOne\provider-credentials\` 루트를 포함하지 않습니다. 같은 PC 복원은 §19.7 조건(동일 서비스 SID)이 맞으면 자격이 그대로 유지되고, 다른 PC/신원 복원은 재진입이 필요합니다. 이는 §10(백업·복원)·§11.5.1(자격 증명 사고 대응 회전) 의 기존 원칙과 동일한 결을 따릅니다.
+
+### 19.9 안전한 트러블슈팅 — 테스트 결과 카테고리
+
+후보/영속 테스트는 항상 다음 안전한 카테고리 중 하나만 반환합니다. 원문 에러·URL·응답 본문은 노출되지 않습니다.
+
+| 결과 | 의미 | 조치 |
+|---|---|---|
+| `ok` | 정상 — 모델까지 확인됨 | activate 진행 가능 |
+| `model_missing` | 엔드포인트는 응답하지만 지정한 모델이 없음 | 모델명 재확인 |
+| `auth_failed` | 인증 실패(401/403) | API 키 재확인 |
+| `policy_blocked` | 사내 엔드포인트 정책(허용 목록) 위반 또는 리다이렉트 응답 | Base URL/목적지가 승인 목록에 있는지 보안팀에 확인 |
+| `unreachable` | DNS/연결/타임아웃 실패 | 네트워크 경로·방화벽 확인 |
+| `tls_failed` | TLS 핸드셰이크/인증서 실패 | 인증서/HTTPS 설정 확인 |
+| `invalid_response` | 형식이 예상과 다른 응답(비JSON, 과대 응답 등) | 엔드포인트가 실제 OpenAI 호환 사양을 따르는지 확인 |
+| `credential_unavailable` | DPAPI 자격을 이 PC/신원에서 열 수 없음 | §19.7 재진입 절차 수행 |
+
+각 카테고리는 감사 로그와 관리자 화면에도 동일하게 나타나며, 원인 파악을 위해 로그 파일이나 DB 를 직접 열어 볼 필요가 없도록 설계되어 있습니다.
 
 ---
 

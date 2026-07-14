@@ -9,7 +9,8 @@ from app.modules.admin.permissions import ADMIN_PERMISSIONS, RESOURCE_SAFE_PERMI
 # Allowed states:
 #   1. visibility == 'admin'          -> required_permission, resource_type, resource_id all None.
 #   2. visibility == 'public', ungated -> required_permission, resource_type, resource_id all None.
-#   3. visibility == 'public', global gate -> required_permission is a known permission key,
+#   3. visibility == 'public', global gate -> required_permission is a known permission key
+#      (e.g. 'admin.ai.manage' or the OpenWebUI launcher gate 'dashboard.openwebui.launch'),
 #      resource_type and resource_id both None.
 #   4. visibility == 'public', resource gate -> exactly
 #      required_permission == 'collections.nsa.read', resource_type == 'collection', resource_id == 'nsa'.

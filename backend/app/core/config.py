@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     app_name: str = 'AeroOne Newsletter Platform'
-    app_version: str = '1.13.2'
+    app_version: str = '1.14.0'
     app_env: Literal['development', 'test', 'production', 'closed_network'] = 'development'
     backend_port: int = 18437
     frontend_port: int = 29501
@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     ollama_read_timeout_seconds: float = 120.0
     ai_max_context_chars: int = 12000
     ai_persistence_enabled: bool = False
+    ai_compatible_connect_timeout_seconds: float = 5.0
+    ai_compatible_read_timeout_seconds: float = 60.0
+    ai_compatible_max_request_bytes: int = 200_000
+    ai_compatible_max_response_bytes: int = 2_000_000
+    ai_compatible_max_tokens: int = 1200
+    ai_compatible_allowed_hostnames: str = ''
+    ai_compatible_allowed_cidrs: str = '127.0.0.1/32,::1/128'
+    ai_compatible_allowed_ports: str = '443,80,8080,8000,11434,1234'
 
     @property
     def project_root(self) -> Path:
@@ -93,6 +101,30 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(',') if origin.strip()]
+
+    @property
+    def ai_compatible_egress_policy(self) -> 'EgressPolicy':
+        from app.modules.ai.egress_transport import EgressPolicy
+
+        return EgressPolicy(
+            connect_timeout_seconds=self.ai_compatible_connect_timeout_seconds,
+            read_timeout_seconds=self.ai_compatible_read_timeout_seconds,
+            max_request_bytes=self.ai_compatible_max_request_bytes,
+            max_response_bytes=self.ai_compatible_max_response_bytes,
+            allow_insecure_http=self.app_env in ('development', 'test'),
+        )
+
+    @property
+    def ai_compatible_peer_policy(self) -> 'PeerPolicy':
+        from app.modules.ai.egress_transport import PeerPolicy
+
+        hostnames = frozenset(item.strip().lower() for item in self.ai_compatible_allowed_hostnames.split(',') if item.strip())
+        cidrs = tuple(item.strip() for item in self.ai_compatible_allowed_cidrs.split(',') if item.strip())
+        try:
+            ports = frozenset(int(item.strip()) for item in self.ai_compatible_allowed_ports.split(',') if item.strip())
+        except ValueError:
+            ports = frozenset()
+        return PeerPolicy(allowed_hostnames=hostnames or None, allowed_cidrs=cidrs, allowed_ports=ports)
 
     @property
     def sqlite_path(self) -> Path | None:

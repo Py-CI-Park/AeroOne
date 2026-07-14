@@ -7,6 +7,8 @@ from typing import Any
 from urllib import error, request
 
 from app.core.config import Settings
+from app.modules.ai.egress_transport import chat_completion
+from app.modules.ai.provider_config_service import ProviderConfigService, ProviderCredentialUnavailable, ProviderSelectionInvalid
 from app.modules.ai.schemas import AiChatMessage
 from app.modules.collections.search_service import CollectionSearchResult, CollectionSearchRoot, CollectionSearchUnavailable, HtmlCollectionSearchService
 
@@ -196,13 +198,72 @@ class OllamaClient:
 
 
 class AiChatService:
-    def __init__(self, settings: Settings, search_service: HtmlCollectionSearchService | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        db: Any | None = None,
+        provider_config_service: ProviderConfigService | None = None,
+        search_service: HtmlCollectionSearchService | None = None,
+    ) -> None:
         self.settings = settings
+        self.db = db
+        self.provider_config_service = provider_config_service
         self.ollama = OllamaClient(settings)
         self.search_service = search_service or HtmlCollectionSearchService()
 
     def status(self) -> dict[str, object]:
+        if self.provider_config_service is not None:
+            state = self.provider_config_service.get_state()
+            if state.selected_kind == 'openai_compatible':
+                verified = state.compatible_state == 'verified'
+                return {
+                    'enabled': self.settings.ai_features_enabled,
+                    'base_url': state.compatible_display_url or '',
+                    'model': state.compatible_model or '',
+                    'reachable': verified,
+                    'model_available': verified,
+                    'status': 'ok' if verified else 'unavailable',
+                    'detail': None if verified else 'Compatible provider selected but not currently verified',
+                }
         return self.ollama.status()
+
+    def _compatible_chat(self, messages: list[AiChatMessage], citations: list[CollectionSearchResult]) -> str:
+        if self.provider_config_service is None:
+            raise OllamaUnavailable('Compatible provider service unavailable (reason=service_missing)')
+        try:
+            binding = self.provider_config_service.load_active_compatible_binding()
+        except (ProviderSelectionInvalid, ProviderCredentialUnavailable) as exc:
+            raise OllamaUnavailable(f'Compatible provider unavailable (reason=binding_unavailable): {exc}') from exc
+
+        payload_messages = [message.model_dump() for message in self._messages_with_context(messages, citations)]
+        try:
+            outcome = chat_completion(
+                binding.canonical_url,
+                model=binding.model,
+                messages=payload_messages,
+                app_env=self.settings.app_env,
+                api_key=binding.api_key.decode('utf-8'),
+                policy=self.settings.ai_compatible_egress_policy,
+                peer_policy=self.settings.ai_compatible_peer_policy,
+                max_tokens=self.settings.ai_compatible_max_tokens,
+            )
+        finally:
+            wiped = bytearray(binding.api_key)
+            wiped[:] = b'\0' * len(wiped)
+
+        if not outcome.ok or outcome.payload is None:
+            raise OllamaUnavailable(
+                f'Compatible provider request failed '
+                f'(reason={outcome.error_code.value if outcome.error_code else "unknown"}, model={binding.model})',
+            )
+        content = outcome.payload['choices'][0]['message']['content']
+        answer = _strip_think_blocks(content).strip() if isinstance(content, str) else ''
+        if not answer:
+            raise OllamaEmptyResponse(
+                f'Compatible provider returned an empty answer '
+                f'(reason=empty_after_reasoning, model={binding.model}).',
+            )
+        return answer
 
     def chat(
         self,
@@ -228,6 +289,12 @@ class AiChatService:
                 citations = self.search_service.search(roots, query, self.settings.managed_storage_root, limit=limit)
             except CollectionSearchUnavailable:
                 citations = []
+        # 명시적 provider 선택만 신뢰한다(요청 시점 폴백 금지) — selected_kind 는 별도
+        # 관리 API(set_selection)로만 바뀌며, 여기서는 현재 선택을 그대로 따를 뿐이다.
+        if self.provider_config_service is not None:
+            state = self.provider_config_service.get_state()
+            if state.selected_kind == 'openai_compatible':
+                return self._compatible_chat(messages, citations), citations
         return self.ollama.chat(messages, citations), citations
 
     @staticmethod

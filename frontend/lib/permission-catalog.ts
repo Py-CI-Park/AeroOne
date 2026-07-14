@@ -36,6 +36,7 @@ export const PERMISSION_CATALOG: Record<string, { label: string; description: st
   'search.use': { label: '검색 사용', description: '문서 검색 기능을 사용합니다.', category: '검색' },
   'ai.use': { label: 'AI 사용', description: 'AI 질의와 요약 기능을 사용합니다.', category: 'AI 사용' },
   'ai.history.manage_own': { label: '내 AI 기록 관리', description: '본인의 AI 대화 기록을 관리합니다.', category: 'AI 사용' },
+  'dashboard.openwebui.launch': { label: 'Open WebUI 실행', description: '대시보드에서 같은 호스트 8080 포트의 Open WebUI 링크 카드를 노출합니다.', category: '대시보드' },
 };
 
 export function describePermission(key: string): PermissionCatalogEntry {

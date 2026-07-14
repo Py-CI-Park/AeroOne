@@ -65,6 +65,31 @@
         ".worktrees/**"
       ],
       "allow_patterns": []
+    },
+    {
+      "category": "provider-credential-root",
+      "patterns": [
+        "**/provider-credentials/**",
+        "provider-credentials/**"
+      ],
+      "allow_patterns": []
+    },
+    {
+      "category": "credential-dpapi-blob",
+      "patterns": [
+        "**/*.dpapi",
+        "**/*.dpapi.tmp",
+        "**/.aeroone-rotation-*.tmp"
+      ],
+      "allow_patterns": []
+    },
+    {
+      "category": "credential-secure-state",
+      "patterns": [
+        "**/.rotation-secure/**",
+        ".rotation-secure/**"
+      ],
+      "allow_patterns": []
     }
   ],
   "required_installers": [

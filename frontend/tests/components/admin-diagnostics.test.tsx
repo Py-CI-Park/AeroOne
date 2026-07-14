@@ -29,6 +29,7 @@ vi.mock('@/lib/api', async () => {
     fetchCategories: vi.fn(),
     fetchTags: vi.fn(),
     fetchAdminAiStatus: vi.fn(),
+    fetchAiProviderConfig: vi.fn(),
   };
 });
 
@@ -97,6 +98,7 @@ test('admin home console lists config-health roots', async () => {
   vi.mocked(api.fetchCategories).mockResolvedValue([] as never);
   vi.mocked(api.fetchTags).mockResolvedValue([] as never);
   vi.mocked(api.fetchAdminAiStatus).mockResolvedValue({ status: {}, request_logs_total: 0, request_failures: 0 } as never);
+  vi.mocked(api.fetchAiProviderConfig).mockResolvedValue({ selected_kind: 'ollama', compatible_state: 'absent', compatible_display_url: null, compatible_model: null, compatible_generation: null, compatible_test_proof_at: null, compatible_test_proof_model: null, config_version: 1, updated_at: '2026-07-04T00:00:00Z' } as never);
 
   render(<AdminHomeConsole />);
 

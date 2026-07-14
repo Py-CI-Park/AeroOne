@@ -111,6 +111,10 @@ exit /b !errorlevel!
 
 :maintenance_preflight_complete
 
+echo [PRE  ] Provider credential store root validation ^(SID-scoped, ProgramData^)
+call :validate_provider_credential_root
+if errorlevel 1 exit /b 1
+echo [OK   ] Provider credential store root verified for this runtime identity
 if defined ALLOW_HOST (
   set "AEROONE_ALLOW_HOST=%ALLOW_HOST%"
 )
@@ -178,6 +182,91 @@ if "%MIGRATION_MODE%"=="3" (
 )
 popd
 endlocal
+exit /b 0
+
+
+:validate_provider_credential_root
+REM Validate-only preflight: start_offline.bat never creates, imports, or generates
+REM a provider credential root or key. It confirms the SID-scoped ProgramData root
+REM that setup_offline.bat provisioned still matches this runtime's current process
+REM SID: exact owner, protected (non-inherited) DACL restricted to that SID plus
+REM SYSTEM, no reparse-point components, and no unexpected hardlink on the root.
+REM Fails closed with a generic exit code; never prints secret or path material.
+set "PCV_SCRIPT=%TEMP%\aeroone_pcv_%RANDOM%%RANDOM%.ps1"
+if exist "%PCV_SCRIPT%" del /f /q "%PCV_SCRIPT%" >nul 2>&1
+>"%PCV_SCRIPT%" echo Set-StrictMode -Version Latest
+>>"%PCV_SCRIPT%" echo $ErrorActionPreference = 'Stop'
+>>"%PCV_SCRIPT%" echo try {
+>>"%PCV_SCRIPT%" echo     $moduleRoot = Join-Path $env:AEROONE_ROOT 'scripts\credential_rotation'
+>>"%PCV_SCRIPT%" echo     Import-Module (Join-Path $moduleRoot 'Rotation.PathSecurity.psm1') -Force -DisableNameChecking
+>>"%PCV_SCRIPT%" echo     $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+>>"%PCV_SCRIPT%" echo     $systemSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
+>>"%PCV_SCRIPT%" echo     $programData = [Environment]::GetFolderPath('CommonApplicationData')
+>>"%PCV_SCRIPT%" echo     $vendorRoot = Join-Path $programData 'AeroOne'
+>>"%PCV_SCRIPT%" echo     $familyRoot = Join-Path $vendorRoot 'provider-credentials'
+>>"%PCV_SCRIPT%" echo     $sidRoot = Join-Path $familyRoot $currentSid.Value
+>>"%PCV_SCRIPT%" echo     if (-not (Test-Path -LiteralPath $sidRoot -PathType Container)) {
+>>"%PCV_SCRIPT%" echo         throw 'provider-credential-root-missing'
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     Assert-NoReparseComponents -Path $sidRoot
+>>"%PCV_SCRIPT%" echo     $identity = Get-PhysicalPathIdentity -Path $sidRoot
+>>"%PCV_SCRIPT%" echo     if (-not $identity.IsDirectory) {
+>>"%PCV_SCRIPT%" echo         throw 'provider-credential-root-not-directory'
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     if ($identity.LinkCount -ne 1) {
+>>"%PCV_SCRIPT%" echo         throw 'provider-credential-root-unexpected-hardlink'
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     $acl = Get-Acl -LiteralPath $sidRoot
+>>"%PCV_SCRIPT%" echo     if (-not $acl.AreAccessRulesProtected) {
+>>"%PCV_SCRIPT%" echo         throw 'provider-credential-root-unprotected-acl'
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     $ownerValue = $acl.Owner
+>>"%PCV_SCRIPT%" echo     if ($ownerValue -notmatch '^^S-') {
+>>"%PCV_SCRIPT%" echo         $ownerValue = (New-Object Security.Principal.NTAccount($ownerValue)).Translate([Security.Principal.SecurityIdentifier]).Value
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     if ($ownerValue -ne $currentSid.Value) {
+>>"%PCV_SCRIPT%" echo         throw 'provider-credential-root-owner-mismatch'
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     $rules = @($acl.GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier]))
+>>"%PCV_SCRIPT%" echo     $expectedSids = @($currentSid.Value, $systemSid.Value) ^| Sort-Object
+>>"%PCV_SCRIPT%" echo     $actualSids = @($rules ^| ForEach-Object { $_.IdentityReference.Value }) ^| Sort-Object
+>>"%PCV_SCRIPT%" echo     if ($rules.Count -ne 2 -or @(Compare-Object $actualSids $expectedSids).Count -ne 0) {
+>>"%PCV_SCRIPT%" echo         throw 'provider-credential-root-unexpected-dacl'
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     $propagation = [Security.AccessControl.PropagationFlags]::None
+>>"%PCV_SCRIPT%" echo     $allow = [Security.AccessControl.AccessControlType]::Allow
+>>"%PCV_SCRIPT%" echo     foreach ($rule in $rules) {
+>>"%PCV_SCRIPT%" echo         if ($rule.AccessControlType -ne $allow) {
+>>"%PCV_SCRIPT%" echo             throw 'provider-credential-root-unexpected-dacl'
+>>"%PCV_SCRIPT%" echo         }
+>>"%PCV_SCRIPT%" echo         if ($rule.PropagationFlags -ne $propagation) {
+>>"%PCV_SCRIPT%" echo             throw 'provider-credential-root-unexpected-dacl'
+>>"%PCV_SCRIPT%" echo         }
+>>"%PCV_SCRIPT%" echo         $hasFullControl = ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -eq [Security.AccessControl.FileSystemRights]::FullControl
+>>"%PCV_SCRIPT%" echo         if (-not $hasFullControl) {
+>>"%PCV_SCRIPT%" echo             throw 'provider-credential-root-unexpected-dacl'
+>>"%PCV_SCRIPT%" echo         }
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     Write-Output 'provider-credential-root-ok'
+>>"%PCV_SCRIPT%" echo     exit 0
+>>"%PCV_SCRIPT%" echo } catch {
+>>"%PCV_SCRIPT%" echo     $code = $_.Exception.Message
+>>"%PCV_SCRIPT%" echo     if ($code -notmatch '^^[a-z0-9-]+$') {
+>>"%PCV_SCRIPT%" echo         $code = 'provider-credential-root-check-failed'
+>>"%PCV_SCRIPT%" echo     }
+>>"%PCV_SCRIPT%" echo     [Console]::Error.WriteLine("status=error code=$code")
+>>"%PCV_SCRIPT%" echo     exit 1
+>>"%PCV_SCRIPT%" echo }
+set "AEROONE_ROOT=%ROOT%"
+powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PCV_SCRIPT%"
+set "PCV_EXIT=%ERRORLEVEL%"
+set "AEROONE_ROOT="
+del /f /q "%PCV_SCRIPT%" >nul 2>&1
+if not "%PCV_EXIT%"=="0" (
+  echo [ERROR] Provider credential store root failed identity/DACL/reparse/hardlink validation ^(fail-closed^).
+  echo [INFO ] No provider key was created, read, written, or printed by this check.
+  exit /b 1
+)
 exit /b 0
 
 

@@ -34,7 +34,7 @@ def test_admin_dashboard_modules_assets_and_backup(csrf_client) -> None:
     summary_response = csrf_client.get('/api/v1/admin/overview')
     assert summary_response.status_code == 200
     summary = summary_response.json()
-    assert summary['system']['app_version'] == '1.13.2'
+    assert summary['system']['app_version'] == '1.14.0'
     assert 'asset_health' in summary['system']
 
     module_id = next(module['id'] for module in csrf_client.get('/api/v1/admin/service-modules').json() if module['key'] == 'announcement')
