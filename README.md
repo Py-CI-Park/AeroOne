@@ -137,7 +137,7 @@ setup.bat --no-pause    :: 완료 후 창을 멈추지 않음
    ```cmd
    setup.bat
    start.bat            :: 동작 확인 후 닫기
-   offline_package.bat  :: exact 1.13.1 tag에서 dist\AeroOne-offline-1.13.1.zip 생성
+   offline_package.bat  :: exact 1.13.2 tag에서 dist\AeroOne-offline-1.13.2.zip 생성
    ```
 
    ZIP 안에 들어가는 것:
