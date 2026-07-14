@@ -307,15 +307,16 @@ AeroOne/
 - `_debug.html` 파일은 import discovery 단계에서 기본 제외한다
 
 ## 환경 변수 설계 (.env.example 반영 대상)
+- 아래 `<...>` 표기는 역사적 예제의 비밀값을 가린 것이다. 배포마다 고유 난수값을 주입하고 placeholder 자체를 `.env`에 복사하지 않는다.
 - `APP_ENV=development`
 - `BACKEND_PORT=8000`
 - `FRONTEND_PORT=3000`
 - `DATABASE_URL=sqlite:////app/data/aeroone.db`
-- `JWT_SECRET_KEY=change-me`
+- `JWT_SECRET_KEY=<deployment-specific-unique-random-secret>`
 - `ADMIN_SESSION_COOKIE_NAME=admin_session`
 - `ACCESS_TOKEN_TTL_MINUTES=30`
-- `ADMIN_USERNAME=admin`
-- `ADMIN_PASSWORD=change-me`
+- `ADMIN_USERNAME=<operator-defined-admin-username>`
+- `ADMIN_PASSWORD=<deployment-specific-unique-random-password>`
 - `NEWSLETTER_IMPORT_ROOT_HOST=./Newsletter/output`
 - `NEWSLETTER_IMPORT_ROOT_CONTAINER=/mnt/import/newsletters`
 - `STORAGE_ROOT=/app/storage`

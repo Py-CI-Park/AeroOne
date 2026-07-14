@@ -3,7 +3,7 @@
 ``main.py`` 에서 ``/api/v1/admin`` prefix 로 include 한다(기존 admin 프록시 재사용).
 읽기는 ``admin.ai.read``, 변경은 ``admin.ai.manage`` + ``require_csrf`` 로 게이트하고,
 모든 변경은 감사기록을 남긴다. 감사 스냅샷·응답 DTO 어디에도 평문 키는 넣지 않는다
-(마스킹 값만, 게다가 audit._redact 가 ``api_key`` 포함 키를 한 번 더 REDACT 한다).
+(마스킹 값만, 게다가 공개 ``redact_audit_metadata`` 계약이 ``api_key`` 포함 키를 한 번 더 REDACT 한다).
 """
 
 from __future__ import annotations

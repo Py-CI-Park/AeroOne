@@ -16,14 +16,16 @@
 
 1.8.0 부터 서버 권한 경계는 단일 관리자 여부가 아니라 `admin/user/pending` 역할과 권한 키 조합으로 판단합니다. 새 관리자 API 는 `require_permission(...)` 과 `require_csrf` 를 분리해 조합하며, 감사 대상 mutation 은 같은 DB transaction 안에 `admin_audit_events` 를 남깁니다. 감사 로그에는 비밀번호, 토큰, CSRF, AI prompt/answer/snippet 을 저장하지 않습니다.
 
-개발 환경의 자격 증명은 `backend/.env` 에서 읽어옵니다.
+개발 환경의 자격 증명은 `backend/.env` 에서 읽어옵니다. 시드 또는 서버 시작 전에 setup마다 고유한 관리자 비밀번호를 생성합니다.
 
 ```text
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-me
+ADMIN_PASSWORD=<setup별로 생성한 고유 랜덤 값>
 ```
 
-> `change-me` 같은 기본값은 `production` 또는 `closed_network` 모드에서 부팅 시 즉시 거부됩니다. 자세한 분기는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) §11.2 참고.
+> `setup.bat` 과 `setup_offline.bat` 은 실행할 때마다 새 48자 hexadecimal 관리자 비밀번호를 생성하고 기존 `.env` 는 `.bak` 으로 보관합니다. 수동 개발 setup은 [`local-dev.md`](local-dev.md)의 생성 절차를 사용하며, 기존 `ADMIN_PASSWORD`를 덮어쓰지 않도록 거부합니다.
+>
+> 빈 값과 퇴역한 공용 기본값은 유효한 bootstrap 비밀번호가 아닙니다. `production` 또는 `closed_network` 모드는 부팅 시 이를 거부합니다. 기존 DB에서 설정된 관리자 계정의 hash가 그 퇴역값과 일치하면, 유효한 setup별 bootstrap 비밀번호가 있을 때 로그인 검증 전에 새 값으로 교체하고 `session_version`을 올려 기존 세션을 무효화합니다. 유효한 bootstrap 비밀번호가 없으면 해당 legacy 로그인을 거부합니다. 자세한 모드 분기는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) §11.2 참고.
 
 `/admin/*` 경로의 모든 mutation 과 sync 기능을 다른 신뢰 경계 뒤로 이동시키지 않은 채 인증을 제거하지 마세요. 이 정책을 우회하거나 완화하는 변경은 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) §6 보안 관련 변경 시 추가 절차를 따릅니다.
 

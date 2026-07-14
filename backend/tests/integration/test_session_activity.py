@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
+import pytest
+from app.core.security import create_access_token
+from app.modules.auth import dependencies as auth_dependencies
 from app.modules.admin.models import AdminAuditEvent, LoginEvent, UserSessionActivity
 from app.modules.auth.models import User
 from app.modules.read_tracking.models.read_event import NewsletterReadEvent
@@ -119,3 +124,101 @@ def test_purge_is_permission_csrf_audited_and_retention_scoped(app, client):
         assert 'b' * 64 in hashes
         audit = session.scalar(select(AdminAuditEvent).where(AdminAuditEvent.action == 'admin.sessions.purge'))
         assert audit is not None
+
+
+def test_session_activity_recovers_from_expected_unique_insert_race(app, monkeypatch):
+    with app.state.db.session() as session:
+        user = session.scalar(select(User).where(User.username == 'admin'))
+        assert user is not None
+        token = create_access_token(
+            'test-secret',
+            str(user.id),
+            user.role,
+            'race-csrf-token',
+            30,
+            session_version=user.session_version,
+        )
+        session_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+        session.add(
+            UserSessionActivity(
+                user_id=user.id,
+                session_hash=session_hash,
+                last_seen_at=datetime.now(UTC),
+            )
+        )
+
+    with app.state.db.session() as session:
+        user = session.scalar(select(User).where(User.username == 'admin'))
+        assert user is not None
+        original_execute = session.execute
+        initial_lookup_hidden = True
+
+        class NoActivityResult:
+            def scalar_one_or_none(self):
+                return None
+
+        def hide_initial_lookup(*args, **kwargs):
+            nonlocal initial_lookup_hidden
+            if initial_lookup_hidden:
+                initial_lookup_hidden = False
+                return NoActivityResult()
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(session, 'execute', hide_initial_lookup)
+        auth_dependencies._record_session_activity(
+            None,
+            session,
+            app.state.settings,
+            user,
+            token,
+            {'exp': 2_000_000_000},
+        )
+
+        activities = session.execute(
+            select(UserSessionActivity).where(UserSessionActivity.session_hash == session_hash)
+        ).scalars().all()
+        assert len(activities) == 1
+        assert activities[0].user_id == user.id
+
+
+def test_session_activity_propagates_integrity_error_without_competing_activity(app, monkeypatch):
+    with app.state.db.session() as session:
+        user = session.scalar(select(User).where(User.username == 'admin'))
+        assert user is not None
+        token = create_access_token(
+            'test-secret',
+            str(user.id),
+            user.role,
+            'unexpected-error-csrf-token',
+            30,
+            session_version=user.session_version,
+        )
+        original_flush = session.flush
+        failure_injected = False
+        expected_error = IntegrityError(
+            'INSERT INTO user_session_activity ...',
+            {},
+            RuntimeError('unexpected persistence failure'),
+        )
+
+        def fail_only_the_new_activity_insert(*args, **kwargs):
+            nonlocal failure_injected
+            if not failure_injected and any(
+                isinstance(instance, UserSessionActivity) for instance in session.new
+            ):
+                failure_injected = True
+                raise expected_error
+            return original_flush(*args, **kwargs)
+
+        monkeypatch.setattr(session, 'flush', fail_only_the_new_activity_insert)
+        with pytest.raises(IntegrityError) as exc_info:
+            auth_dependencies._record_session_activity(
+                None,
+                session,
+                app.state.settings,
+                user,
+                token,
+                {'exp': 2_000_000_000},
+            )
+
+        assert exc_info.value is expected_error

@@ -8,7 +8,7 @@
 - `개발중` 섹션 라벨을 영어로 통일.
 - 일반 사용자 대시보드에서 **개발중(Development)·Coming soon 카드와 Admin 메뉴를 숨기고**, 서버 실행자(관리자)에게만 노출.
 - 관리자 콘솔에서 위 노출과 대시보드 모듈을 직접 관리(추가·삭제 포함).
-- 관리자 비밀번호를 `27882788` 초기값으로 두고, 콘솔에서 직접 변경.
+- 당시 배포본의 초기 관리자 자격증명으로 로그인한 뒤 콘솔에서 직접 변경.
 - 실행 중이던 대시보드/뉴스레터의 500 오류 해결.
 
 또한 운영 중 다음 두 500 오류가 보고되었다.
@@ -43,7 +43,7 @@
 
 ### 관리자 비밀번호 변경
 
-`POST /api/v1/auth/change-password`(현재 비밀번호 확인 + 8자 이상 새 비밀번호)를 추가했다. 변경 시 `session_version` 을 증가시켜 다른 세션을 무효화하고, 현재 세션은 새 쿠키를 재발급해 유지한다. 콘솔에 **관리자 계정 / 비밀번호** 섹션을 추가했다. 이 배포본의 초기 비밀번호는 `27882788` 이다.
+`POST /api/v1/auth/change-password`(현재 비밀번호 확인 + 8자 이상 새 비밀번호)를 추가했다. 변경 시 `session_version` 을 증가시켜 다른 세션을 무효화하고, 현재 세션은 새 쿠키를 재발급해 유지한다. 콘솔에 **관리자 계정 / 비밀번호** 섹션을 추가했다. 당시 배포본에는 고정 초기 비밀번호가 있었으나 현재 정책에서는 공유 고정값을 금지하고 setup 이 설치별 난수 값을 발급한다.
 
 ### start_offline 마이그레이션 preflight
 
@@ -54,7 +54,7 @@
 - AeroOne 폐쇄망 Windows/SQLite modular monolith, same-origin proxy 원칙 유지.
 - `APP_ENV`/`ensure_db_state` 종료 코드/LAN 기본 바인딩/packaging 제외 목록 위험 신호를 건드리지 않음.
 - 관리자 mutation 은 permission + CSRF + same-transaction audit 유지.
-- 초기 비밀번호 `27882788` 은 8자라 `closed_network` 의 `ADMIN_PASSWORD` 강도 검증(≥12)과 별개다. 콘솔 변경은 자체 최소 길이(8)만 강제한다.
+- 당시 고정 초기 비밀번호는 `closed_network` 의 현재 강도 검증(≥12)을 충족하지 못하므로 폐기했다. 콘솔 변경은 자체 최소 길이(8)를 유지하지만, 운영 비밀번호는 12자 이상을 사용한다.
 
 ## 제외한 대안
 
@@ -66,7 +66,7 @@
 - `alembic upgrade head`(sqlite in-memory, `20260703_0005` 포함) 통과.
 - backend `pytest tests -q` → **181 passed** (경고 3). 신규: 익명 공개 노출, 관리자 전체 노출, 모듈 생성/삭제, 자가 비밀번호 변경.
 - frontend `tsc --noEmit` 통과, Vitest **206 passed / 47 files**, `next build` 통과.
-- 라이브 스모크(재기동 후): 익명 `/service-modules/public` → 4개(`newsletter,civil-aircraft,document,nsa`), `27882788` 로그인 → 200, 관리자 `/service-modules/public` → 10개. 브라우저 익명 대시보드에 `Admin`·개발중·Coming soon 미노출 확인.
+- 라이브 스모크(재기동 후): 익명 `/service-modules/public` → 4개(`newsletter,civil-aircraft,document,nsa`), 당시 초기 관리자 로그인 → 200, 관리자 `/service-modules/public` → 10개. 브라우저 익명 대시보드에 `Admin`·개발중·Coming soon 미노출 확인.
 
 ## 영향 범위
 

@@ -4,6 +4,7 @@
 
 - 기준 버전: `1.12.2` (`대시보드 시간·버전 날짜 표시·로그인 카드 UI 정리`)
 - 갱신일: 2026-07-09
+> **릴리즈 경계:** `1.12.2`는 패키지 검증된 기준선입니다. 아래 Office Studio·LLM 연결·Leantime 관련 행은 `feature/dashboard-enhancements`의 **미릴리즈** 안내로, main 병합과 새 오프라인 패키지 검증 전에는 `1.12.2` 기능 또는 운영 배포 지침으로 취급하지 않습니다.
 
 ---
 
@@ -15,7 +16,7 @@
 | **폐쇄망에 배포·운영하려는 사람** | [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) | §2 운영 매뉴얼 + §3 단계 보고서 |
 | **개발자 (코드 변경)** | [`docs/runbook/local-dev.md`](runbook/local-dev.md) | §4 설계 산출물 + §5 저장소 규칙 |
 | **AI 에이전트 (자동화·유지보수)** | [`AGENTS.md`](../AGENTS.md), [`docs/runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md), [`docs/CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §14 | §6 코드 진실 원천 |
-| **이 워크트리(`feature/dashboard-enhancements`)를 이어받는 에이전트** | 최신 [`docs/runbook/ai-agent-handoff-2026-07-12-office-studio.md`](runbook/ai-agent-handoff-2026-07-12-office-studio.md)(Office Studio 구현 세션), 선행 [`ai-agent-handoff-2026-07-11-dashboard-enhancements.md`](runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md)(브랜치 독립 사유) | §2 운영 매뉴얼 + §6 코드 진실 원천 |
+| **이 워크트리(`feature/dashboard-enhancements`)를 이어받는 에이전트** | 최신 [`docs/runbook/ai-agent-handoff-2026-07-12-office-studio.md`](runbook/ai-agent-handoff-2026-07-12-office-studio.md)(미릴리즈 Office Studio 구현 세션), 선행 [`ai-agent-handoff-2026-07-11-dashboard-enhancements.md`](runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md)(브랜치 독립 사유) | §2 운영 매뉴얼 + §6 코드 진실 원천 |
 
 ---
 
@@ -33,6 +34,7 @@
 ---
 
 ## 2. 운영 매뉴얼 (`docs/`)
+> **Office Studio 계열 문서의 상태:** 아래 Office Studio·LLM 연결·Leantime 문서는 `feature/dashboard-enhancements` 브랜치 안내입니다. main 병합과 새 오프라인 패키지 검증 전에는 운영 릴리즈 문서가 아니며, 기준선 `1.12.2`에는 포함되지 않습니다.
 
 | 문서 | 역할 | 길이 |
 |---|---|---|
@@ -43,12 +45,14 @@
 | [`runbook/admin-auth.md`](runbook/admin-auth.md) | 관리자 인증 정책 (`/admin/*` 신뢰 경계) | 짧음 |
 | [`runbook/read-tracking.md`](runbook/read-tracking.md) | 읽음추적(IP 기반 열람 횟수) 설계·한계·개인정보·purge 절차 | 짧음 |
 | [`runbook/open-notebook-airgap.md`](runbook/open-notebook-airgap.md) | Open Notebook 폐쇄망 co-deploy 단일 진실 원천 (vendoring·adapter 동결·Ollama provisioning·동시성 예산·운영자 게이트) | 중간 |
-| [`runbook/office-tools.md`](runbook/office-tools.md) | **오피스 도구(보고서·차트·다이어그램) 런북** — Tool MVP 흡수 구조(5자리 통합면·`/api/v1/office-tools/*` 로그인 강제·same-origin 프록시)·서비스별 입출력/서버 상한·브라우저 렌더(ECharts/Mermaid) 결정·pandas/openpyxl 오프라인 의존성·AI 선택적 폴백·회귀 테스트·운영자 검증 | 중간 |
-| [`runbook/llm-connections.md`](runbook/llm-connections.md) | **LLM 연결(AI 연결) 설정 런북** — OpenAI 호환 단일화·관리자 콘솔 'AI 연결' 카드·`/api/v1/admin/llm-connections*`(`admin.ai.read`/`admin.ai.manage`+CSRF)·`llm_crypto` 키 암호화/마스킹/감사·`/v1/models` 검증·시크릿 회전 재등록·운영자 검증 | 중간 |
-| [`runbook/leantime-codeploy.md`](runbook/leantime-codeploy.md) | **Leantime 동거(co-deploy) 런북** — 두 스택 경계(코드 병합 금지, 링크+포트만)·오프라인 설치(IIS/PHP/MariaDB, 8081/3307)·`run_all.bat` 기동 훅(`AEROONE_LEANTIME_LAUNCHER`)·AGPL v3 소스오퍼 의무·백업/방화벽/자동시작·운영자 검증 체크리스트 | 중간 |
+| [`runbook/office-tools.md`](runbook/office-tools.md) | **[미릴리즈 feature branch] 오피스 도구(보고서·차트·다이어그램) 런북** — `office.use`+CSRF+작업 수명주기, Tool MVP 흡수 구조·same-origin 프록시·서비스별 입출력/서버 상한·브라우저 렌더(ECharts/Mermaid)·pandas/openpyxl 오프라인 의존성·AI 선택적 폴백·회귀 테스트·운영자 검증 | 중간 |
+| [`runbook/llm-connections.md`](runbook/llm-connections.md) | **[미릴리즈 feature branch] LLM 연결(AI 연결) 설정 런북** — OpenAI 호환 단일화·관리자 콘솔 'AI 연결' 카드·`/api/v1/admin/llm-connections*`(`admin.ai.read`/`admin.ai.manage`+CSRF)·`llm_crypto` 키 암호화/마스킹/감사·`/v1/models` 검증·시크릿 회전 재등록·운영자 검증 | 중간 |
+| [`runbook/leantime-codeploy.md`](runbook/leantime-codeploy.md) | **[미릴리즈 feature branch] Leantime 동거(co-deploy) 런북** — 두 스택 경계(코드 병합 금지, 링크+포트만)·오프라인 설치(IIS/PHP/MariaDB, 8081/3307)·`run_all.bat` 기동 훅(`AEROONE_LEANTIME_LAUNCHER`)·패키징 SHA-256 매니페스트(`packaging/leantime/leantime-bundle.manifest.json`)+`verify-bundle.bat` 검증(0/1/2)·AGPL v3 소스오퍼 의무+NOTICE/SBOM·백업/복구/롤백/방화벽/자동시작·운영자 검증 체크리스트 | 중간 |
+| [`runbook/office-leantime-architecture-review-2026-07-13.md`](runbook/office-leantime-architecture-review-2026-07-13.md) | **[미릴리즈 feature branch] Office Studio·Leantime 통합 아키텍처 검토** — 현재 대시보드 기술 스택, Office/Leantime 완성도 점수, Leantime AGPL·PHP/MariaDB 경계, 내장·재구현 대안 결정표, 권장 구조(현재 upstream co-deploy, 향후 읽기 전용 FastAPI Adapter·요약 UI, 공통 IdP가 있을 때만 SSO 검토), 우선순위·단계별 실행 게이트 | 중간 |
+| [`runbook/leantime-oidc-ldap.md`](runbook/leantime-oidc-ldap.md) | **[미릴리즈 feature branch] Leantime OIDC/LDAP 별도 세션 통합 절차** — 공통 IdP 있을 때만 선택 적용, OIDC/LDAP 역할 매핑, AeroOne 세션 쿠키 공유 금지, 로그인/역할매핑/로그아웃 격리 검증 절차, 운영자 검증 필요 | 짧음 |
 | [`runbook/ai-agent-handoff-2026-07-09.md`](runbook/ai-agent-handoff-2026-07-09.md) | **AI 에이전트 핸드오프** — 1.12.2 안정판, 1.13.0-dev 계획/blocked 상태, 다음 작업 순서, guardrail, 검증/커밋 규칙을 Codex/Claude/GJC 공통 문맥으로 정리 | 중간 |
 | [`runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md`](runbook/ai-agent-handoff-2026-07-11-dashboard-enhancements.md) | **`feature/dashboard-enhancements` 워크트리 핸드오프** — 이 브랜치가 v1.13.0-dev 활성 계획(Wave 0 Task 3 리뷰 실패 중)과 왜/어떻게 독립인지, 병합 보류 조건, 대시보드 코드 진실 원천 지도 | 짧음 |
-| [`runbook/ai-agent-handoff-2026-07-12-office-studio.md`](runbook/ai-agent-handoff-2026-07-12-office-studio.md) | **Office Studio 구현 세션 핸드오프** — 이 워크트리에서 만든 Office Studio(보고서·차트·다이어그램 허브)+관리자 LLM 연결+Leantime 동거의 전체 그림, 11개 커밋·마이그레이션 0009~0014, 로컬 실행/검증 방법, 운영자 후속·알려진 함정, 코드 진실 원천 지도 | 중간 |
+| [`runbook/ai-agent-handoff-2026-07-12-office-studio.md`](runbook/ai-agent-handoff-2026-07-12-office-studio.md) | **[미릴리즈 feature branch] Office Studio 구현 세션 핸드오프** — Office Studio(보고서·차트·다이어그램 허브)+관리자 LLM 연결+Leantime 동거의 전체 그림, 19개 커밋·마이그레이션 0009~0014, 로컬 실행/검증 방법, 운영자 후속·알려진 함정, 코드 진실 원천 지도 | 중간 |
 
 ---
 
@@ -126,7 +130,7 @@
 | 출력 폴더 자동 동기화 | `backend/app/modules/newsletter/services/newsletter_autosync_service.py` + `backend/app/modules/newsletter/api/public.py` (`auto_sync_newsletters` 의존성) | 공개 읽기 요청 시 `_database/newsletter` 시그니처(파일명+크기+mtime) 변화를 감지해 변경 시에만 `sync()`. 수동 Sync 엔드포인트(`api/imports.py`)도 베이스라인 시그니처를 갱신해 직후 읽기가 관리자 메타데이터 편집을 덮어쓰지 않게 함 |
 | 관리자 RBAC/Audit/운영 콘솔 | `backend/app/modules/admin/`, `backend/app/modules/auth/dependencies.py`, `backend/app/modules/auth/api.py`, `backend/app/modules/auth/models.py`, `backend/alembic/versions/20260707_0008_user_display_name.py`, `frontend/app/admin/page.tsx`, `frontend/components/admin/`, `frontend/components/layout/admin-nav-link.tsx`, `frontend/app/api/frontend/{auth,admin,search,session}/` | `admin/user/pending` 역할 + additive permissions/groups/resource grants. 새 관리자 API 는 `require_permission(...)` 과 `require_csrf` 를 분리해 조합. 감사 대상 mutation 은 같은 transaction 에 `admin_audit_events` 기록(fail-closed), 비밀번호·토큰·AI prompt/answer/snippet 미저장. 1.11.0 부터 브라우저 로그인과 관리자 CRUD 는 same-origin `/api/frontend/auth/*`, `/api/frontend/admin/*` 로 relay 하고, 통합 검색은 `/api/frontend/search/unified` 를 사용한다. 사용자는 로그인과 탭형 `/admin` 콘솔을 모두 같은 frontend origin(`http://<host>:29501`) 으로 열며, 헤더는 현재 로그인 사용자 아이디와 로그아웃 버튼을 표시한다. 로그아웃은 `login_events.status='logout'` 을 기록하고 현재 토큰의 세션 활동을 제거한다. 1.12.1 은 선택 프로필 `users.display_name` 과 사용자 행별 **권한 수정** 패널을 추가한다 |
 | 대시보드 DB 원천 | `backend/app/modules/admin/api.py` (`service_modules`), `frontend/app/page.tsx` | 대시보드 카드를 `service_modules` DB 에서 읽고 관리자 콘솔에서 active/development/coming_soon, 설명, 링크, 정렬, 외부 링크를 조정. DB/table 미준비 시 visible degraded banner + 내장 fallback 목록. 카드 시드 진실은 마이그레이션(office-tools 단일 허브 카드 `20260712_0012`·영문명 `20260712_0013`, Leantime 내부 안내 페이지 `20260712_0014`; 초기 시드는 `20260711_0010/0011`) + `DEFAULT_SERVICE_MODULES` + `FALLBACK_MODULES` 3자리가 일치. Leantime 은 내부 `/leantime` 안내 페이지 카드로 동거(외부 데드링크 회피) — [`runbook/leantime-codeploy.md`](runbook/leantime-codeploy.md) |
-| Office Studio(오피스 도구: 보고서/차트/다이어그램) | `backend/app/modules/office_tools/`(+`samples/` 13종·`samples_service.py`) + `backend/app/main.py`(`/api/v1/office-tools`) + `frontend/app/office-tools/page.tsx`(허브)·`/{report,chart,diagram}/page.tsx` + `frontend/components/office-tools/`(hub·forms·`step-section`·`data-input`·`sample-picker`·`process-steps`·`echarts-beautify`) + `frontend/app/api/frontend/office-tools/[...segments]/route.ts` | Tool MVP(`AeroOne Tool/tool-mvp-v0.1.0/`) 흡수. 대시보드 카드 1장 `Office Studio`(`/office-tools`)→탭 허브(딥링크 `?tab=`). 상위 라우터가 세션 로그인 강제(미로그인 401), 브라우저는 same-origin 프록시만 호출. 입력은 파일 업로드↔직접 입력 토글 + 도구별 예제 칩(13종). 차트=브라우저 ECharts(서버 pandas 집계, 검증 팔레트), 다이어그램=브라우저 Mermaid(브랜드 테마), 서버 PNG(CairoSVG/Matplotlib) 비활성. AI 보조는 활성 LLM 연결 우선·없으면 규칙 폴백. 산출물은 `OfficeJobStore` 에 `owner_id` 스코프(타인 403). 상세 [`runbook/office-tools.md`](runbook/office-tools.md) |
+| **Office Studio(오피스 도구: 보고서/차트/다이어그램, 미릴리즈 feature branch)** | `backend/app/modules/office_tools/`(+`samples/` 22종·`samples_service.py`) + `backend/app/main.py`(`/api/v1/office-tools`) + `frontend/app/office-tools/page.tsx`(URL 동기 ARIA 탭 허브, `?tab=diagram|chart|report`)·`/{report,chart,diagram}/page.tsx` + `frontend/components/office-tools/`(`office-tools-hub.tsx`·`office-job-history.tsx`·`workspace-context.tsx`·forms·`step-section`·`data-input`·`sample-picker`·`process-steps`) + `frontend/lib/echarts-beautify.ts` + `frontend/app/api/frontend/office-tools/[...segments]/route.ts` | main 병합과 새 오프라인 패키지 검증 전에는 `1.12.2`에 포함되지 않는다. 모든 API는 `office.use`, mutation은 CSRF를 요구한다. `OfficeJobStore`는 `owner_id` 격리, 30일 보존, 사용자별 job/byte quota, 최소 디스크 여유, typed 본인 삭제와 `admin.office.manage`+CSRF의 `/jobs/admin/purge`, 비활성·삭제 actor의 미해결 receipt 안전 inventory/replay·별도 operator 감사를 제공한다. 허브 탭 상태는 URL 쿼리로 동기화되고 탭 전환 중에도 유지되며, 각 도구 결과와 허브 하단 작업 이력(`GET /jobs`, `GET /jobs/{job_id}`)은 `llm_used` provenance와 소유자 스코프 안전 표시 필드(title·llm_used 등)·manifest artifact/bundle 링크(same-origin 프록시)를 노출한다. 차트 스튜디오의 고급 컨트롤(축·그룹·집계·정렬·제한·방향)은 새 API가 아니라 기존 `manual_spec_json` 경로로 동일한 서버 검증 `ChartSpec`을 만든다. 작업 이력의 '다시 열기'는 완료된 결과를 복원하고, '설정 복제'는 서버 재실행 없이 안전한 구성만 복제하며 원본 파일/텍스트 재첨부를 요구한다. 상세 [`runbook/office-tools.md`](runbook/office-tools.md) |
 | LLM 연결 레지스트리 | `backend/app/modules/ai/{models.py(LlmConnection),schemas.py,llm_connection_service.py,llm_crypto.py,openai_client.py,api/admin.py}` + `backend/alembic/versions/20260711_0009_llm_connections.py` + `frontend/components/admin/sections/admin-llm-connections-card.tsx` | 관리자가 OpenAI 호환 엔드포인트(base_url+api_key)를 등록 → `/v1/models` 검증 → `/v1/chat/completions` 호출. API `/api/v1/admin/llm-connections*`, 읽기 `admin.ai.read`·변경 `admin.ai.manage`+CSRF, 모든 변경 감사기록. 키는 `llm_crypto`(stdlib HMAC Encrypt-then-MAC, 원천 `jwt_secret_key`)로 암호화·응답/감사는 마스킹만. 활성 기본 1개 유일, office-tools AI 보조가 소비. 상세 [`runbook/llm-connections.md`](runbook/llm-connections.md) |
 | LAN 인바운드 허용 | `scripts/allow_lan_firewall.cmd` | 다른 PC 접속용 Windows 방화벽 인바운드(18437/29501, profile=any, remoteip=LocalSubnet) 추가/`--remove`. profile=any 라 Public/Unidentified 로 분류된 폐쇄망 NIC 에도 적용, LocalSubnet 으로 LAN 외부는 차단. `start_offline.bat --allow-host` 와 짝 |
 | 뉴스레터 화면 구조 | `frontend/app/newsletters/page.tsx` + `frontend/app/newsletters/[slug]/page.tsx` → `newsletters-reading.tsx` (좌: 펼친 달력 / 우: 이슈 HTML 직접) | `/newsletters` 진입 시 최신 이슈 HTML 을 본문에 직접 렌더(HTML 전용 출력 대응). 달력 `defaultOpen`, 달력 날짜 클릭은 `?slug=` 로 이슈 전환. 제목은 sans 폰트로 통일. 대시보드에 민간항공기 규격 카탈로그 카드(활성)도 포함 |
@@ -199,16 +203,19 @@ setup.bat
 offline_package.bat
 
 :: 폐쇄망 단일 PC
+setup_offline.bat --local
+start_offline.bat --local
+
+:: 폐쇄망 LAN — 옵션 없는 명령은 LAN 기본
 setup_offline.bat
 start_offline.bat
-
-:: 폐쇄망 LAN
+:: 호스트 고정이 필요하면
 setup_offline.bat --allow-host=192.168.1.10
 start_offline.bat --allow-host=192.168.1.10
 
-:: 검증
-setup_offline.bat --dry-run --no-pause
-start_offline.bat --dry-run
+:: 단일 PC 검증
+setup_offline.bat --dry-run --no-pause --local
+start_offline.bat --dry-run --local
 curl http://localhost:18437/api/v1/health
 
 :: 회귀 테스트

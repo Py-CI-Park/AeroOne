@@ -133,6 +133,42 @@ export interface OfficeJob {
   artifacts: OfficeJobArtifact[];
   error?: string | null;
 }
+export interface OfficeJobListItem {
+  job_id: string;
+  service: string;
+  status: 'running' | 'completed' | 'failed' | string;
+  created_at: string;
+  updated_at: string;
+  warnings: string[];
+  artifacts: OfficeJobArtifact[];
+  title: string | null;
+  llm_used: boolean | null;
+}
+
+export interface OfficeJobUsage {
+  job_count: number;
+  total_bytes: number;
+  max_jobs_per_owner: number;
+  max_bytes_per_owner: number;
+}
+
+export interface OfficeJobListResponse {
+  jobs: OfficeJobListItem[];
+  usage: OfficeJobUsage;
+}
+
+export interface OfficeJobDetail {
+  job_id: string;
+  service: string;
+  owner_id: number;
+  status: 'running' | 'completed' | 'failed' | string;
+  created_at: string;
+  updated_at: string;
+  request_summary: Record<string, unknown>;
+  warnings: string[];
+  artifacts: OfficeJobArtifact[];
+  error: string | null;
+}
 
 export interface ConnectedSession {
   user_id: number;
@@ -487,12 +523,51 @@ export interface OfficeSample {
   hints: Record<string, unknown>;
 }
 
-// Leantime 동거 스택의 실시간 감지 결과. status='up' 이면 '열기'가 실제로 동작한다.
+// Leantime 동거 스택의 실시간 감지 결과. HTTP 헬스 체크 + 앱 식별 결과를 담는다.
+// status='ready' 이면서 app_identified=true 일 때만 '열기'가 실제로 동작한다.
 export interface LeantimeHealth {
-  status: 'up' | 'down';
+  status: 'ready' | 'unhealthy' | 'starting' | 'absent' | 'error';
   probe_host: string;
   port: number;
   probe_target: string;
+  launch_url: string;
+  checked_at: string;
+  latency_ms: number | null;
+  detail: string;
+  app_identified: boolean;
+}
+
+
+// Leantime 읽기 전용 대시보드 DTO — 백엔드가 leantime.read 권한 하에 프로젝트/담당 작업/
+// 기간 일정을 그대로 넘겨준다. degraded=true 일 때 reason 으로 사유를 구분한다.
+export interface LeantimeProject {
+  id: string;
+  name: string;
+  state: string | null;
+  client_name: string | null;
+}
+
+export interface LeantimeTask {
+  id: string;
+  project_id: string | null;
+  headline: string;
+  status: string | null;
+  date_to_finish: string | null;
+}
+
+export interface LeantimeCalendarEntry {
+  id: string;
+  name: string;
+  date_start: string | null;
+  date_end: string | null;
+}
+
+export interface LeantimeReadResponse<T> {
+  items: T[];
+  degraded: boolean;
+  reason: string | null;
+  source: string;
+  fetched_at: string;
 }
 
 export interface DiagramGenerateRequest {
@@ -520,6 +595,7 @@ export interface DiagramGenerateResponse {
   artifacts: OfficeArtifact[];
   preview_url: string;
   bundle_url: string;
+  llm_used: boolean;
 }
 
 // office-tools 보고서 스튜디오(svc01). 서버가 Markdown 을 sanitize HTML 로 변환한다.
@@ -541,6 +617,24 @@ export interface ReportGenerateResponse {
 // office-tools 차트 스튜디오(svc02). 서버가 pandas 로 집계해 ECharts option(JSON)만 만들고
 // 브라우저가 렌더한다. 서버 SVG/PNG 는 없다.
 export type ChartType = 'bar' | 'line' | 'area' | 'scatter' | 'pie' | 'histogram';
+export type ChartAggregation = 'none' | 'sum' | 'mean' | 'count' | 'min' | 'max';
+export type ChartSortMode = 'none' | 'x_asc' | 'x_desc' | 'value_asc' | 'value_desc';
+export type ChartOrientation = 'vertical' | 'horizontal';
+
+export interface ChartManualSpecInput {
+  type?: ChartType;
+  title?: string;
+  x: string | null;
+  y: string[];
+  group?: string | null;
+  stacked?: boolean;
+  aggregation?: ChartAggregation;
+  sort?: ChartSortMode;
+  limit?: number;
+  orientation?: ChartOrientation;
+  x_label?: string | null;
+  y_label?: string | null;
+}
 
 export interface ChartColumnProfile {
   name: string;

@@ -6,14 +6,14 @@ import { fetchLeantimeHealth } from '@/lib/api';
 import type { LeantimeHealth } from '@/lib/types';
 import { LeantimeLaunch } from '@/components/office-tools/leantime-launch';
 
-type Phase = 'checking' | 'up' | 'down' | 'error';
+type Phase = 'checking' | 'ready' | 'unhealthy' | 'starting' | 'absent' | 'error';
 
 /**
  * Leantime 동거 스택의 실시간 상태 + 열기 버튼.
  *
- * 마운트 시 백엔드 헬스(127.0.0.1:8081 TCP 프로브)를 조회해 '구동 중 / 미설치·미구동'을
- * 배지로 구분해 보여 준다. 구동 중일 때만 '열기'를 활성화해, 미설치 상태에서 눌러 빈 화면이
- * 뜨는 혼란을 없앤다(사용자 보고 대응). '다시 확인' 으로 설치 직후 재조회할 수 있다.
+ * 마운트 시 백엔드 헬스(HTTP 기반 준비성 + 앱 식별)를 조회해 5가지 상태(구동 중 / 기동 중 /
+ * 응답 이상 / 미설치·미구동 / 확인 실패)를 배지로 구분해 보여 준다. 'ready' 일 때만 '열기'를
+ * 활성화해, 아직 뜨지 않은 화면으로 이동하는 혼란을 없앤다. '다시 확인' 으로 재조회할 수 있다.
  */
 export function LeantimeStatus() {
   const [phase, setPhase] = React.useState<Phase>('checking');
@@ -24,7 +24,7 @@ export function LeantimeStatus() {
     fetchLeantimeHealth()
       .then((result) => {
         setHealth(result);
-        setPhase(result.status === 'up' ? 'up' : 'down');
+        setPhase(result.status);
       })
       .catch(() => {
         setHealth(null);
@@ -38,6 +38,26 @@ export function LeantimeStatus() {
 
   const port = health?.port ?? 8081;
   const target = health?.probe_target ?? '127.0.0.1:8081';
+  const detail = health?.detail;
+  const latency = health?.latency_ms;
+
+  const guidance = (() => {
+    switch (phase) {
+      case 'ready':
+        return 'Leantime 이 구동 중입니다. 아래 버튼으로 새 탭에서 엽니다.';
+      case 'checking':
+        return '구동 여부를 확인하는 중입니다…';
+      case 'starting':
+        return 'Leantime 이 기동 중인 것으로 보입니다. 잠시 후 “다시 확인”을 눌러 주세요.';
+      case 'unhealthy':
+        return 'Leantime 응답이 정상이 아닙니다. 아래 상세 사유를 확인한 뒤 “다시 확인”을 눌러 주세요.';
+      case 'error':
+        return '상태 확인에 실패했습니다. 네트워크 또는 백엔드 설정을 확인한 뒤 “다시 확인”을 눌러 주세요.';
+      case 'absent':
+      default:
+        return 'Leantime 이 아직 설치·기동되지 않았습니다. 아래 설치 절차를 마친 뒤 “다시 확인”을 누르면 활성화됩니다.';
+    }
+  })();
 
   return (
     <section
@@ -48,6 +68,9 @@ export function LeantimeStatus() {
         <div className="flex items-center gap-2">
           <StatusBadge phase={phase} />
           <span className="text-xs text-ink-3">감지 대상 {target}</span>
+          {typeof latency === 'number' && (
+            <span className="text-xs text-ink-3">({latency}ms)</span>
+          )}
         </div>
         <button
           type="button"
@@ -59,21 +82,19 @@ export function LeantimeStatus() {
         </button>
       </div>
 
-      <p className="text-sm leading-relaxed text-ink-2">
-        {phase === 'up'
-          ? 'Leantime 이 구동 중입니다. 아래 버튼으로 새 탭에서 엽니다.'
-          : phase === 'checking'
-            ? '구동 여부를 확인하는 중입니다…'
-            : 'Leantime 이 아직 설치·기동되지 않았습니다. 아래 설치 절차를 마친 뒤 “다시 확인”을 누르면 활성화됩니다.'}
-      </p>
+      <p className="text-sm leading-relaxed text-ink-2">{guidance}</p>
 
-      <LeantimeLaunch port={port} enabled={phase === 'up'} />
+      {detail && (phase === 'unhealthy' || phase === 'error' || phase === 'starting') && (
+        <p className="text-xs leading-relaxed text-ink-3">사유: {detail}</p>
+      )}
+
+      <LeantimeLaunch port={port} enabled={phase === 'ready'} launchUrl={health?.launch_url} />
     </section>
   );
 }
 
 function StatusBadge({ phase }: { phase: Phase }) {
-  if (phase === 'up') {
+  if (phase === 'ready') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-600">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 구동 중
@@ -87,9 +108,30 @@ function StatusBadge({ phase }: { phase: Phase }) {
       </span>
     );
   }
+  if (phase === 'starting') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> 기동 중
+      </span>
+    );
+  }
+  if (phase === 'unhealthy') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> 응답 이상
+      </span>
+    );
+  }
+  if (phase === 'error') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> 확인 실패
+      </span>
+    );
+  }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-600">
-      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> 미설치 · 미구동
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-3/10 px-3 py-1 text-xs font-semibold text-ink-3">
+      <span className="h-1.5 w-1.5 rounded-full bg-ink-3/60" /> 미설치 · 미구동
     </span>
   );
 }

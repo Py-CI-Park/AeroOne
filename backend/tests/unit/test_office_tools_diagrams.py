@@ -94,6 +94,7 @@ def test_generate_diagram_without_client_warns(app, tmp_path: Path) -> None:
     assert record['status'] == 'completed'
     assert record['mermaid'].startswith('flowchart TD')
     assert any('활성 LLM 연결이 없어' in w for w in record['warnings'])
+    assert record['llm_used'] is False
     filenames = {a['filename'] for a in record['artifacts']}
     assert {'diagram.mmd', 'diagram_spec.json', 'manifest.json'} <= filenames
 
@@ -113,6 +114,7 @@ def test_generate_diagram_uses_llm_when_available(app, tmp_path: Path) -> None:
     record = generate_diagram(store=store, owner_id=_admin_id(app), request=request, client=fake, app_version='9.9.9')
     assert record['mermaid'].startswith('flowchart LR')
     assert record['warnings'] == []
+    assert record['llm_used'] is True
 
 
 def test_generate_diagram_falls_back_when_llm_returns_forbidden(app, tmp_path: Path) -> None:
@@ -123,6 +125,7 @@ def test_generate_diagram_falls_back_when_llm_returns_forbidden(app, tmp_path: P
     # 금지 지시어 → 폴백 규칙 기반 + 경고. 최종 소스에는 click 이 없어야 한다.
     assert 'click' not in record['mermaid']
     assert any('규칙 기반' in w for w in record['warnings'])
+    assert record['llm_used'] is False
 
 
 # --- 라우트(HTTP) ----------------------------------------------------------------
@@ -144,6 +147,7 @@ def test_generate_route_returns_mermaid(app, csrf_client: TestClient, tmp_path: 
         body = resp.json()
         assert body['mermaid'].startswith('flowchart TD')
         assert body['diagram_type'] == 'flowchart'
+        assert body['llm_used'] is False
         assert body['preview_url'].endswith('/diagram.mmd')
         # 소유자는 산출물을 내려받는다.
         art = csrf_client.get(f"/api/v1/office-tools/jobs/{body['job_id']}/artifacts/diagram.mmd")

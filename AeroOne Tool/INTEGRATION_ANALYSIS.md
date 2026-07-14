@@ -1,14 +1,22 @@
-# AeroOne Tool — 두 MVP 통합 분석 (2026-07-11)
+# AeroOne Tool — 두 MVP 통합 분석: 역사적 분석 기록 (2026-07-11)
 
-- 작성 워크트리: `.worktrees/dashboard-enhancements` (`feature/dashboard-enhancements`)
-- 대상: 대시보드에 "로그인하면 보이는 기능"으로 두 MVP를 붙이기 위한 사전 검토
-- 원본 보존: `AeroOne Tool/_originals/*.zip`, 추출본: `tool-mvp-v0.1.0/`, `saas-kit-v2.0.0/`
-- 상태: **구현 완료(병합 전).** 아래 §10 최종 결정·구현 상태 참조. 이 §0~§9 는 구현 전 분석
-  원본을 보존하며, 확정 결정과 실제 착지점은 §10 에서 갱신한다.
+> **문서 상태:** §0~§9는 구현 전의 비교·권고를 보존한 역사적 분석이다. §10도 2026-07-12의
+> 완료 스냅샷으로 보존하며 현재 배포·운영 계약이 아니다. 현재 Office Studio와 Leantime의
+> 운영 사실은 [`docs/runbook/office-tools.md`](../docs/runbook/office-tools.md) 및
+> [`docs/runbook/leantime-codeploy.md`](../docs/runbook/leantime-codeploy.md)를 우선한다.
+>
+> **2026-07-13 현재 기준:** Office는 `office.use` 권한의 단일 `Office Studio` 허브
+> (`/office-tools`)이며 AI 미구성·실패 시 규칙 기반 폴백을 쓴다. Office 카드와 Leantime 내부
+> 안내 카드(`/leantime`)의 최종 마이그레이션 head는 `20260712_0014`이고 frontend fallback ID는
+> 각각 `11`, `12`다. owner 격리·quota·보존·관리자 purge/recovery lifecycle 계약과 413/422
+> 업로드 계약은 `office-tools.md` 및 `backend/app/modules/office_tools/`가 진실 원천이다.
+>
+> 원본 MVP 보존 위치: `AeroOne Tool/_originals/*.zip`, 추출본: `tool-mvp-v0.1.0/`,
+> `saas-kit-v2.0.0/`.
 
 ---
 
-## 0. 결론 먼저
+## 0. [역사 기록] 결론 먼저
 
 두 MVP는 성격이 정반대라 통합 경로도 다르다.
 
@@ -178,37 +186,36 @@ AeroOne은 이미 도구를 카드로 붙이는 정형 패턴이 있다(예: `/a
 
 ---
 
-## 10. 최종 결정·구현 상태 (2026-07-12 갱신)
+## 10. 2026-07-12 완료 스냅샷 (역사 기록, 현재 계약 아님)
 
-§9 의 결정표는 아래로 확정됐고, 이 워크트리(`feature/dashboard-enhancements`)에 구현했다.
-게이트: backend `pytest tests` 356 passed / 2 failed(사전 실패 `run_all.bat` 관련 2건, 새 회귀
-0), frontend Vitest 336 passed(72 files) / 0 failed, `tsc --noEmit` 통과, `next build` 성공.
+> 이 절은 당시 구현 상태와 검증 기록을 보존한다. 당시의 개별 Office 카드, 외부 Leantime 링크,
+> `0010~0011`을 head로 보는 마이그레이션 상태, 권한·lifecycle 이전 설명 및 pass 수는 현재
+> 운영 사실이 아니다. 이 절의 수치를 다시 실행하거나 현재 gate 결과로 인용하지 않는다.
 
-### 10.1 확정된 결정 (§9 대비)
+### 10.1 당시 확정 사항의 보존
 
-| # | 결정 | 확정 |
-|---|---|---|
-| D1 | Tool MVP 범위 | **3종 전부**(보고서/차트/다이어그램) 흡수 |
-| D2 | LLM 백엔드 | **OpenAI 호환 단일화** — 관리자가 base_url+api_key 등록, `/v1/models`·`/v1/chat/completions`. Ollama(`/v1`)·외부 gpt-oss 모두 커버 |
-| D3 | 차트/다이어그램 렌더 | **브라우저 렌더만**(ECharts/Mermaid). 서버 PNG(CairoSVG/Matplotlib) 비활성. 차트 집계는 pandas 서버 처리 |
-| D4 | 프런트 방식 | **Next.js 이관**(로그인/테마/nav 일관) |
-| D5 | SaaS Kit 취급 | **Leantime 외부 링크 카드 + `run_all.bat` 기동 훅 + 런북**. 포털/헬스체크 코드는 미이식(개념만). Plane 보류 |
-| D6 | 폴더/깃 전략 | `AeroOne Tool/` 원본은 참조. 이식한 소스만 `backend/app/modules/office_tools/` 로 정식 편입 |
-| D7 | 카드 노출 | 개발 중 `visibility='admin'` — 안정화 후 `public` 전환(운영자 결정) |
-
-### 10.2 실제 착지점 (진실 원천)
-
-| 산출물 | 코드/문서 위치 |
+| 당시 결정 | 2026-07-12 기록 |
 |---|---|
-| A. LLM 연결 레지스트리 | `backend/app/modules/ai/{models.py(LlmConnection),schemas.py,llm_connection_service.py,llm_crypto.py,openai_client.py,api/admin.py}`, mig `20260711_0009`, `frontend/components/admin/sections/admin-llm-connections-card.tsx`, 런북 `docs/runbook/llm-connections.md` |
-| B. 오피스 도구 3종 | `backend/app/modules/office_tools/`, `main.py`(`/api/v1/office-tools`), `frontend/app/office-tools/*`, `frontend/components/office-tools/*`, 프록시 `frontend/app/api/frontend/office-tools/[...segments]/route.ts`, 런북 `docs/runbook/office-tools.md` |
-| C. 대시보드 카드 | mig `20260711_0010`(office 3종)·`20260711_0011`(Leantime) + `admin/api.py DEFAULT_SERVICE_MODULES` + `page.tsx FALLBACK_MODULES` 3자리 일치 |
-| D. Leantime 동거 | `scripts/run_all.bat` 기동 훅(`AEROONE_LEANTIME_LAUNCHER`), `scripts/leantime/start-leantime.bat`, 런북 `docs/runbook/leantime-codeploy.md`. **IIS/PHP/MariaDB 실설치는 이 환경에서 검증 불가 — 통합면/스크립트/문서만, 운영자 검증 필요** |
-| E. 의존성 | `backend/requirements.txt` +pandas/numpy/openpyxl(서버 PNG용 CairoSVG/Matplotlib/CJK 폰트는 미도입) |
+| Tool MVP 범위 | 보고서·차트·다이어그램 3종을 AeroOne에 흡수 |
+| LLM 배선 | 관리자가 OpenAI 호환 연결을 등록하고 Office AI 보조가 소비 |
+| 렌더 | 차트 ECharts·다이어그램 Mermaid의 브라우저 렌더, 서버 PNG 미도입 |
+| 프런트 | Next.js 페이지와 same-origin 프록시 |
+| Leantime | 별도 스택의 링크·기동 훅·런북 통합면 |
 
-### 10.3 운영자 검증 필요(미완결로 명시)
+당시 기록의 `pytest`/Vitest/typecheck/build 통계는 **2026-07-12 시점의 관측값**일 뿐이며, 현재
+회귀 결과·릴리즈 gate를 뜻하지 않는다.
 
-- Leantime 실 스택(IIS/PHP/MariaDB, 8081/3307) 설치·기동은 이 환경에서 실행 불가 → 카드·훅·런북
-  만 제공. 실 배포 PC 에서 운영자가 설치·검증해야 "동거 완료".
-- 실 LLM 엔드포인트 등록·`/v1/models` 검증, pandas/numpy wheelhouse(운영 동일 OS/Python) 확보,
-  카드 `visibility` public 전환은 운영자 몫(각 런북 체크리스트 참조).
+### 10.2 2026-07-13 현재 참조 지도
+
+| 영역 | 현재 진실 원천 |
+|---|---|
+| Office 접근·API·입력·lifecycle·테스트 계약 | [`docs/runbook/office-tools.md`](../docs/runbook/office-tools.md), `backend/app/modules/office_tools/`, `backend/tests/unit/test_office_tools_*.py`, `frontend/tests/app/office-tools-*.test.tsx` |
+| Office 대시보드 진입점 | 단일 `office-tools` 카드 → `/office-tools`; 허브의 보고서·차트·다이어그램 탭. 코드 시드는 `backend/app/modules/admin/api.py`, fallback은 `frontend/app/page.tsx` ID `11` |
+| Leantime 대시보드 진입점 | 내부 `/leantime` 안내 페이지; fallback ID `12`. 상세 동거 계약은 [`docs/runbook/leantime-codeploy.md`](../docs/runbook/leantime-codeploy.md) |
+| 카드 마이그레이션 최종 상태 | 초기 `20260711_0010/0011` 뒤 `20260712_0012`(단일 Office 허브), `0013`(Office Studio 제목), `0014`(Leantime 내부 안내). 현재 Alembic head `20260712_0014` |
+| AI 미구성·실패 동작 | 활성 연결을 사용하되 모든 Office 도구는 `rule-based` 폴백과 warning을 반환 |
+| 구현 시점 평가 | [`docs/runbook/office-leantime-architecture-review-2026-07-13.md`](../docs/runbook/office-leantime-architecture-review-2026-07-13.md) — 해결된 Office 항목과 별도 Leantime readiness/launcher 조건을 구분 |
+
+실제 운영 배포 전 IIS/PHP/MariaDB, 대응 소스오퍼, 백업·복구, LAN 방화벽과 Leantime HTTP readiness는
+`leantime-codeploy.md`의 운영자 검증 항목으로 남는다. 이는 Office Studio의 구현 완료 여부와 별개의
+Leantime co-deploy 준비도 조건이다.

@@ -161,8 +161,9 @@ Current development credentials come from `backend/.env`:
 
 ```text
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-me
+ADMIN_PASSWORD=<SETUP_UNIQUE_PASSWORD>
 ```
+> A unique setup credential is required; do not reuse a fixed development password.
 
 Public `/newsletters` viewing should remain unauthenticated.
 

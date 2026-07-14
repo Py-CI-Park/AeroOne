@@ -240,6 +240,7 @@ def generate_diagram(
             warnings=warnings,
             extra={
                 'title': spec.title,
+                'llm_used': llm_used,
                 'diagram_type': request.diagram_type,
                 'mermaid': spec.mermaid,
                 'preview_url': f'/api/v1/office-tools/jobs/{job_id}/artifacts/diagram.mmd',

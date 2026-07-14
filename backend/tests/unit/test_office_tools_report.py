@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import base64
 import io
+import stat
+import struct
 import zipfile
 from pathlib import Path
 
@@ -21,18 +23,319 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.modules.auth.models import User
+from app.modules.office_tools.api import reports
 from app.modules.office_tools.api.jobs import get_office_job_store
 from app.modules.office_tools.core.job_store import OfficeJobStore
+from app.modules.office_tools.limits import require_utf8_filename_within_limit
+from app.modules.office_tools.upload_limits import OfficeMultipartLimits
 from app.modules.office_tools.services.report import (
+    embed_markdown_images,
     enhance_markdown,
     generate_report,
     markdown_to_body,
+)
+from app.modules.office_tools.services.report import assets as report_assets
+from app.modules.office_tools.services.report.assets import (
+    UploadSizeLimitExceeded,
+    read_bounded_bytes,
+    unpack_asset_zip,
 )
 
 # 1x1 투명 PNG(테스트용 최소 이미지).
 _PNG_BYTES = base64.b64decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
 )
+
+
+class _RecordingStream(io.BytesIO):
+    def __init__(self, data: bytes) -> None:
+        super().__init__(data)
+        self.read_sizes: list[int] = []
+
+    def read(self, size: int = -1) -> bytes:
+        self.read_sizes.append(size)
+        return super().read(size)
+
+class _FailingSeekStream:
+    def __init__(
+        self,
+        error_type: type[OSError] | type[RuntimeError],
+    ) -> None:
+        self._error_type = error_type
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        raise self._error_type('stream is unavailable')
+
+class _MisleadingUpload:
+    def __init__(self, filename: str, data: bytes) -> None:
+        self.filename = filename
+        self.size = 0
+        self.file = _RecordingStream(data)
+
+
+def test_read_bounded_bytes_allows_exact_limit_with_bounded_reads() -> None:
+    stream = _RecordingStream(b'abcd')
+
+    assert read_bounded_bytes(stream, max_bytes=4) == b'abcd'
+    assert stream.read_sizes
+    assert all(0 < size <= 5 for size in stream.read_sizes)
+
+
+def test_read_bounded_bytes_rejects_over_limit_without_unbounded_read() -> None:
+    stream = _RecordingStream(b'abcde')
+
+    with pytest.raises(UploadSizeLimitExceeded):
+        read_bounded_bytes(stream, max_bytes=4)
+
+    assert stream.read_sizes
+    assert all(0 < size <= 5 for size in stream.read_sizes)
+
+
+def test_collect_assets_rejects_misleading_upload_size() -> None:
+    upload = _MisleadingUpload('image.png', b'abcde')
+
+    with pytest.raises(UploadSizeLimitExceeded):
+        reports._collect_assets([upload], max_upload_bytes=4, max_total_bytes=4)
+
+    assert upload.file.read_sizes
+    assert all(0 < size <= 5 for size in upload.file.read_sizes)
+
+
+def test_unpack_asset_zip_rejects_compression_bomb() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr('bomb.svg', b'x' * 4096)
+
+    with pytest.raises(ValueError, match='압축률'):
+        unpack_asset_zip(
+            buffer.getvalue(),
+            max_member_bytes=8192,
+            max_total_bytes=8192,
+            max_compression_ratio=10,
+        )
+
+
+def test_unpack_asset_zip_rejects_unsafe_path_and_symlink() -> None:
+    path_buffer = io.BytesIO()
+    with zipfile.ZipFile(path_buffer, 'w') as archive:
+        archive.writestr('../image.png', b'x')
+    with pytest.raises(ValueError, match='안전하지 않은 경로'):
+        unpack_asset_zip(path_buffer.getvalue())
+
+    symlink_buffer = io.BytesIO()
+    info = zipfile.ZipInfo('image-link.png')
+    info.create_system = 3
+    info.external_attr = (stat.S_IFLNK | 0o777) << 16
+    with zipfile.ZipFile(symlink_buffer, 'w') as archive:
+        archive.writestr(info, b'')
+    with pytest.raises(ValueError, match='심볼릭 링크'):
+        unpack_asset_zip(symlink_buffer.getvalue())
+
+def test_unpack_asset_zip_rejects_central_directory_amplification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('image.png', _PNG_BYTES)
+
+    def _zipfile_must_not_be_created(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise AssertionError('central-directory preflight must run before ZipFile creation')
+
+    monkeypatch.setattr(report_assets.zipfile, 'ZipFile', _zipfile_must_not_be_created)
+    with pytest.raises(ValueError, match='중앙 디렉터리'):
+        unpack_asset_zip(buffer.getvalue(), max_central_directory_bytes=1)
+
+def test_unpack_asset_zip_rejects_huge_zip64_record_offset() -> None:
+    payload = struct.pack(
+        '<4sIQI',
+        b'PK\x06\x07',
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        1,
+    ) + struct.pack(
+        '<4sHHHHIIH',
+        b'PK\x05\x06',
+        0,
+        0,
+        0xFFFF,
+        0xFFFF,
+        0xFFFFFFFF,
+        0xFFFFFFFF,
+        0,
+    )
+
+    with pytest.raises(ValueError, match='ZIP64'):
+        unpack_asset_zip(payload)
+
+
+def test_unpack_asset_zip_rejects_oversized_bytes_before_bytesio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _bytesio_must_not_be_created(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise AssertionError('oversized bytes must be rejected before BytesIO construction')
+
+    monkeypatch.setattr(report_assets, 'BytesIO', _bytesio_must_not_be_created)
+
+    with pytest.raises(UploadSizeLimitExceeded, match='ZIP 압축 업로드 총 용량'):
+        unpack_asset_zip(b'abcde', max_compressed_bytes=4)
+
+
+@pytest.mark.parametrize('error_type', (OSError, RuntimeError))
+def test_unpack_asset_zip_preserves_operational_stream_errors(
+    error_type: type[OSError] | type[RuntimeError],
+) -> None:
+    with pytest.raises(error_type, match='stream is unavailable'):
+        unpack_asset_zip(_FailingSeekStream(error_type))
+
+
+def test_asset_filename_utf8_limit_is_shared_by_registry_and_preflight() -> None:
+    filename = '한.png'
+    filename_bytes = 7
+    require_utf8_filename_within_limit(
+        filename,
+        filename_bytes,
+        limit_message='shared filename limit',
+    )
+    with pytest.raises(ValueError, match='shared filename limit'):
+        require_utf8_filename_within_limit(
+            filename,
+            filename_bytes - 1,
+            limit_message='shared filename limit',
+        )
+
+    registry = report_assets.AssetNameRegistry(1, filename_bytes)
+    registry.reserve([filename])
+    with pytest.raises(ValueError, match='자산 파일명 바이트 상한'):
+        report_assets.AssetNameRegistry(1, filename_bytes - 1).reserve([filename])
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr(filename, _PNG_BYTES)
+
+    assert unpack_asset_zip(buffer.getvalue(), max_filename_bytes=filename_bytes) == {
+        filename: _PNG_BYTES
+    }
+    with pytest.raises(ValueError, match='자산 파일명 바이트 상한'):
+        unpack_asset_zip(buffer.getvalue(), max_filename_bytes=filename_bytes - 1)
+
+def test_unpack_asset_zip_rejects_double_encoded_traversal() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('%252e%252e%252fimage.png', _PNG_BYTES)
+
+    with pytest.raises(ValueError, match='안전하지 않은 경로'):
+        unpack_asset_zip(buffer.getvalue())
+    nul_buffer = io.BytesIO()
+    with zipfile.ZipFile(nul_buffer, 'w') as archive:
+        archive.writestr('null.png', _PNG_BYTES)
+    nul_payload = nul_buffer.getvalue().replace(b'null.png', b'nul\x00.png')
+
+    with pytest.raises(ValueError, match='안전하지 않은 경로'):
+        unpack_asset_zip(nul_payload)
+
+
+def test_asset_names_keep_literal_percent_encoding_and_reject_encoded_path_controls() -> None:
+    assert report_assets.canonical_asset_name('literal%2Epng') == 'literal%2Epng'
+
+    for unsafe_name in (
+        '%25252e%25252e%25252fimage.png',
+        '.%252e%252fimage.png',
+        'C%253a%255ctemp.png',
+        'folder%25252fimage.png',
+        'image%252500.png',
+    ):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as archive:
+            archive.writestr(unsafe_name, _PNG_BYTES)
+        with pytest.raises(ValueError, match='안전하지 않은 경로'):
+            unpack_asset_zip(buffer.getvalue())
+
+
+def test_embed_markdown_images_decodes_once_and_rejects_remaining_encoded_escape() -> None:
+    embedded, warnings, count = embed_markdown_images(
+        '![그림](images%2Fpic.png)',
+        {'images/pic.png': _PNG_BYTES},
+    )
+
+    assert count == 1
+    assert warnings == []
+    assert 'data:image/png;base64,' in embedded
+
+    unsafe_markdown = '![그림](%252e%252e%252fpic.png)'
+    embedded, warnings, count = embed_markdown_images(unsafe_markdown, {'pic.png': _PNG_BYTES})
+    assert embedded == unsafe_markdown
+    assert count == 0
+    assert any('안전하지 않은' in warning for warning in warnings)
+
+
+@pytest.mark.parametrize(
+    'reference',
+    (
+        '%FF.png',
+        '%C3%28.png',
+        '%E2%82.png',
+    ),
+    ids=('invalid_lead_byte', 'invalid_continuation', 'truncated_sequence'),
+)
+def test_embed_markdown_images_rejects_malformed_utf8_percent_references(reference: str) -> None:
+    markdown = f'![그림]({reference})'
+
+    embedded, warnings, count = embed_markdown_images(markdown, {'image.png': _PNG_BYTES})
+
+    assert embedded == markdown
+    assert count == 0
+    assert warnings == [f'안전하지 않은 이미지 자산 경로입니다: {reference}']
+
+
+def test_embed_markdown_images_caches_repeated_image_and_enforces_budgets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    original_encode = report_assets.base64.b64encode
+
+    def _recording_encode(data: bytes) -> bytes:
+        nonlocal calls
+        calls += 1
+        return original_encode(data)
+
+    monkeypatch.setattr(report_assets.base64, 'b64encode', _recording_encode)
+    markdown = '![첫](pic.png)\n![둘](pic.png)'
+    embedded, warnings, count = embed_markdown_images(markdown, {'pic.png': _PNG_BYTES})
+
+    assert warnings == []
+    assert count == 2
+    assert embedded.count('data:image/png;base64,') == 2
+    assert calls == 1
+
+    with pytest.raises(ValueError, match='이미지 참조 수'):
+        embed_markdown_images(markdown, {'pic.png': _PNG_BYTES}, max_image_references=1)
+    calls_before_output_budget = calls
+    with pytest.raises(ValueError, match='최종 용량'):
+        embed_markdown_images('![x](pic.png)', {'pic.png': _PNG_BYTES}, max_embedded_bytes=20)
+    assert calls == calls_before_output_budget
+@pytest.mark.parametrize(
+    ('max_embedded_bytes', 'raises_limit'),
+    (
+        (6, False),
+        (5, True),
+    ),
+    ids=('exact_utf8_bytes', 'one_over_utf8_bytes'),
+)
+def test_embed_markdown_images_enforces_initial_utf8_byte_budget(
+    max_embedded_bytes: int,
+    raises_limit: bool,
+) -> None:
+    markdown = '한글'
+
+    if raises_limit:
+        with pytest.raises(ValueError, match='최종 용량'):
+            embed_markdown_images(markdown, {}, max_embedded_bytes=max_embedded_bytes)
+    else:
+        assert embed_markdown_images(markdown, {}, max_embedded_bytes=max_embedded_bytes) == (
+            markdown,
+            [],
+            0,
+        )
 
 
 def _admin_id(app) -> int:
@@ -193,6 +496,21 @@ def test_generate_route_rejects_bad_extension(csrf_client: TestClient) -> None:
     assert resp.status_code == 422
 
 
+def test_generate_route_rejects_oversized_markdown_with_413(
+    csrf_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(reports, 'MAX_REPORT_UPLOAD_BYTES', 4)
+
+    resp = csrf_client.post(
+        '/api/v1/office-tools/reports/generate',
+        files={'markdown_file': ('report.md', b'# 123', 'text/markdown')},
+        data={'ai_mode': 'none'},
+    )
+
+    assert resp.status_code == 413
+
+
 def test_generate_route_rejects_bad_ai_mode(csrf_client: TestClient) -> None:
     resp = csrf_client.post(
         '/api/v1/office-tools/reports/generate',
@@ -221,3 +539,266 @@ def test_generate_route_accepts_image_zip(app, csrf_client: TestClient, tmp_path
         assert 'data:image/png;base64,' in resp.json()['html']
     finally:
         app.dependency_overrides.pop(get_office_job_store, None)
+
+def test_generate_route_applies_compressed_budget_across_zip_parts_with_413(
+    csrf_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('pic.png', _PNG_BYTES)
+    payload = buffer.getvalue()
+    monkeypatch.setattr(reports, 'MAX_REPORT_ASSET_COMPRESSED_BYTES', len(payload) * 2 - 1)
+    monkeypatch.setattr(reports, 'MAX_REPORT_UPLOAD_BYTES', len(payload) + 1)
+    monkeypatch.setattr(reports, 'MAX_REPORT_ASSET_TOTAL_BYTES', len(_PNG_BYTES) * 2 + 1)
+    monkeypatch.setattr(reports, 'MAX_REPORT_ASSET_UPLOADS', 2)
+
+    resp = csrf_client.post(
+        '/api/v1/office-tools/reports/generate',
+        files=[
+            ('markdown_file', ('report.md', b'# report', 'text/markdown')),
+            ('assets', ('first.zip', payload, 'application/zip')),
+            ('assets', ('second.zip', payload, 'application/zip')),
+        ],
+        data={'ai_mode': 'none'},
+    )
+
+    assert resp.status_code == 413
+    assert resp.json()['detail'] == '보고서 자산 압축 업로드 총 용량 상한을 초과했습니다'
+
+
+def test_generate_route_rejects_duplicate_canonical_key_across_zip_parts_with_422(
+    csrf_client: TestClient,
+) -> None:
+    first_buffer = io.BytesIO()
+    with zipfile.ZipFile(first_buffer, 'w') as archive:
+        archive.writestr('pic.png', _PNG_BYTES)
+    second_buffer = io.BytesIO()
+    with zipfile.ZipFile(second_buffer, 'w') as archive:
+        archive.writestr('./pic.png', _PNG_BYTES)
+
+    resp = csrf_client.post(
+        '/api/v1/office-tools/reports/generate',
+        files=[
+            ('markdown_file', ('report.md', b'# report', 'text/markdown')),
+            ('assets', ('first.zip', first_buffer.getvalue(), 'application/zip')),
+            ('assets', ('second.zip', second_buffer.getvalue(), 'application/zip')),
+        ],
+        data={'ai_mode': 'none'},
+    )
+
+    assert resp.status_code == 422
+    assert '중복된 자산 canonical key' in resp.json()['detail']
+
+
+@pytest.mark.parametrize(
+    'content_type',
+    (
+        b'application/x-www-form-urlencoded',
+        b'application/octet-stream',
+    ),
+    ids=('urlencoded', 'raw'),
+)
+def test_report_ingress_stops_chunked_non_multipart_overflow_before_starlette_or_downstream(
+    app,
+    office_ingress_harness,
+    monkeypatch: pytest.MonkeyPatch,
+    content_type: bytes,
+) -> None:
+    from starlette.requests import Request
+
+    path = '/api/v1/office-tools/reports/generate'
+    form_calls: list[object] = []
+
+    async def _form_must_not_run(*args, **kwargs):  # noqa: ANN002, ANN003
+        form_calls.append((args, kwargs))
+        raise AssertionError('non-multipart overflow must not reach Starlette form parsing')
+
+    monkeypatch.setattr(Request, 'form', _form_must_not_run)
+    office_ingress_harness.set_limits(
+        app,
+        {path: OfficeMultipartLimits(max_total_bytes=4, max_file_bytes=4, max_files=1)},
+    )
+    sentinel = {'type': 'http.request', 'body': b'sentinel-must-remain-unread', 'more_body': False}
+    receive_messages = [
+        {'type': 'http.request', 'body': b'ai_', 'more_body': True},
+        {'type': 'http.request', 'body': b'mode=none', 'more_body': True},
+        sentinel,
+    ]
+
+    status, response = office_ingress_harness.request(
+        app,
+        path=path,
+        headers=[
+            (b'content-type', content_type),
+            (b'transfer-encoding', b'chunked'),
+        ],
+        receive_messages=receive_messages,
+    )
+
+    assert status == 413
+    assert response == {'detail': '업로드 전체 크기가 허용 상한을 초과했습니다'}
+    assert receive_messages == [sentinel]
+    assert form_calls == []
+
+
+@pytest.mark.parametrize(
+    'content_type',
+    (
+        b'application/x-www-form-urlencoded',
+        b'application/octet-stream',
+    ),
+    ids=('urlencoded', 'raw'),
+)
+def test_report_ingress_accepts_exact_total_then_truthfully_rejects_non_multipart_media_type(
+    app,
+    office_ingress_harness,
+    monkeypatch: pytest.MonkeyPatch,
+    content_type: bytes,
+) -> None:
+    from starlette.requests import Request
+
+    path = '/api/v1/office-tools/reports/generate'
+    form_calls: list[object] = []
+
+    async def _form_must_not_run(*args, **kwargs):  # noqa: ANN002, ANN003
+        form_calls.append((args, kwargs))
+        raise AssertionError('non-multipart media rejection must precede Starlette form parsing')
+
+    monkeypatch.setattr(Request, 'form', _form_must_not_run)
+    office_ingress_harness.set_limits(
+        app,
+        {path: OfficeMultipartLimits(max_total_bytes=4, max_file_bytes=4, max_files=1)},
+    )
+    receive_messages = [{'type': 'http.request', 'body': b'abcd', 'more_body': False}]
+
+    status, response = office_ingress_harness.request(
+        app,
+        path=path,
+        headers=[(b'content-type', content_type)],
+        receive_messages=receive_messages,
+    )
+
+    assert status == 415
+    assert response == {'detail': 'multipart/form-data 요청만 지원합니다'}
+    assert receive_messages == []
+    assert form_calls == []
+
+
+@pytest.mark.parametrize(
+    'content_disposition',
+    (
+        b"Content-Disposition: form-data; name=\"markdown_file\"; filename*=UTF-8''r%C3%A9port%2Emd",
+        b"Content-Disposition: form-data; name=\"markdown_file\"; "
+        b"filename*0*=UTF-8''r%C3%A9port%2E; filename*1*=md",
+    ),
+    ids=('percent_escaped_filename_star', 'rfc2231_filename_continuation'),
+)
+@pytest.mark.parametrize(
+    'content_type',
+    (
+        b"multipart/form-data; boundary*=us-ascii''report-ingress-boundary",
+        b"multipart/form-data; boundary*0*=us-ascii''report-ingress-; boundary*1*=boundary",
+    ),
+    ids=('boundary_star', 'boundary_continuation'),
+)
+@pytest.mark.parametrize(
+    ('limit_case', 'expected_status', 'expected_detail'),
+    (
+        ('exact', 401, 'Authentication required'),
+        ('file_one_over', 413, '업로드 파일이 허용 크기를 초과했습니다'),
+        ('total_one_over', 413, '업로드 전체 크기가 허용 상한을 초과했습니다'),
+    ),
+)
+def test_report_ingress_honors_rfc2231_boundary_forms_at_exact_and_one_over_limits(
+    app,
+    office_ingress_harness,
+    content_disposition: bytes,
+    content_type: bytes,
+    limit_case: str,
+    expected_status: int,
+    expected_detail: str,
+) -> None:
+    path = '/api/v1/office-tools/reports/generate'
+    data = b'# bounded report\n'
+    body = office_ingress_harness.multipart_body(
+        [(content_disposition, data)],
+        boundary=b'report-ingress-boundary',
+        content_type=b'application/octet-stream',
+    )
+    office_ingress_harness.set_limits(
+        app,
+        {
+            path: OfficeMultipartLimits(
+                max_total_bytes=len(body) - int(limit_case == 'total_one_over'),
+                max_file_bytes=len(data) - int(limit_case == 'file_one_over'),
+                max_files=1,
+            )
+        },
+    )
+
+    status, response = office_ingress_harness.request(
+        app,
+        path=path,
+        headers=[(b'content-type', content_type)],
+        receive_messages=[{'type': 'http.request', 'body': body, 'more_body': False}],
+    )
+
+    assert status == expected_status
+    assert response == {'detail': expected_detail}
+
+
+@pytest.mark.parametrize(
+    ('file_count', 'max_files', 'expected_status', 'expected_detail'),
+    (
+        (2, 2, 401, 'Authentication required'),
+        (3, 2, 413, '업로드 파일 수가 허용 상한을 초과했습니다'),
+    ),
+    ids=('exact', 'one_over'),
+)
+def test_report_ingress_enforces_exact_and_one_over_file_count(
+    app,
+    office_ingress_harness,
+    file_count: int,
+    max_files: int,
+    expected_status: int,
+    expected_detail: str,
+) -> None:
+    path = '/api/v1/office-tools/reports/generate'
+    data = b'# report\n'
+    parts = [
+        (
+            f'Content-Disposition: form-data; name="assets"; filename="asset-{index}.zip"'.encode(
+                'ascii'
+            ),
+            data,
+        )
+        for index in range(file_count)
+    ]
+    body = office_ingress_harness.multipart_body(
+        parts,
+        boundary=b'report-ingress-boundary',
+        content_type=b'application/octet-stream',
+    )
+    office_ingress_harness.set_limits(
+        app,
+        {
+            path: OfficeMultipartLimits(
+                max_total_bytes=len(body),
+                max_file_bytes=len(data),
+                max_files=max_files,
+            )
+        },
+    )
+
+    status, response = office_ingress_harness.request(
+        app,
+        path=path,
+        headers=[
+            (b'content-type', b'multipart/form-data; boundary=report-ingress-boundary')
+        ],
+        receive_messages=[{'type': 'http.request', 'body': body, 'more_body': False}],
+    )
+
+    assert status == expected_status
+    assert response == {'detail': expected_detail}

@@ -1,6 +1,6 @@
 # 단계별 변경 보고서 색인
 
-폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
+폐쇄망 운영 보강 4단계 + 기능 모듈 5건(읽음추적·민간 항공기 보고서·문서 보관소·컬렉션 프록시/Civil·NSA·사다리·Ollama AI 검색) + Open WebUI 참조 연구 1건 + AI 대화 영속화/문서 근거 2차 증분 1건 + 뷰어-에디터/런처·AeroAI·스크롤 수정 1건 + 1.6.2 폐쇄망 smoke 패치 1건 + 1.7.0 AeroAI/Viewer UX 릴리즈 1건 + 대시보드 개발중 섹션/1.7.1 뉴스레터 UX 패치 1건 + 1.8.0 관리자 RBAC·운영 콘솔 1건 + 1.9.0 관리자 노출·모듈 관리·비밀번호 변경 1건 + 1.10.0 관리자 권한 강화 1건 + 1.11.0 관리자 콘솔 UX/same-origin 프록시 통합 1건 + 1.12.0 관리자 콘솔 UX/UI 개선 1건의 의도·합의안·구현·검증·후속 후보를 단일 commit 단위로 묶어 둔 보고서 색인입니다. 본 디렉토리는 "왜 그렇게 만들었는가" 의 진실 원천이며, "어떻게 사용하는가" 는 [`docs/CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md) 와 [`docs/runbook/windows-offline.md`](../runbook/windows-offline.md) 에 있습니다.
 
 ---
 
@@ -153,7 +153,7 @@
 - 분류: minor (`1.9.0`) — 관리자(서버 실행자) 전용 노출 제어와 대시보드 운영 편의 강화.
 - 무엇: `service_modules.visibility`(public/admin) 신설로 개발중(Development)·Coming soon 카드와 Admin 메뉴를 관리자에게만 노출, 헤더를 다크·사용법·Admin 순서로 정리, `/admin` 에서 모듈 추가·삭제·노출 대상 관리, 관리자 비밀번호 콘솔 변경, `start_offline` 마이그레이션 preflight 로 stale-DB 500 예방, `개발중` 섹션 라벨 영어(Development)화.
 - 코드: `backend/alembic/versions/20260703_0005_service_module_visibility.py`, `backend/app/modules/admin/{models,schemas,api}.py`, `backend/app/modules/auth/{api,schemas,dependencies}.py`, `frontend/components/layout/{app-shell,admin-nav-link,help-manual-button}.tsx`, `frontend/app/page.tsx`, `frontend/components/admin/admin-home-console.tsx`, `frontend/lib/{api,types,server-auth,changelog}.ts`, `start_offline.bat`
-- 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 10개·`27882788` 로그인).
+- 회귀 방지: backend `pytest tests` 181 passed(경고 3), frontend Vitest 206 passed(47 파일), `tsc --noEmit`, `next build`, sqlite alembic upgrade, 라이브 API/브라우저 smoke(익명 4개 공개 카드·관리자 10개·당시 초기 관리자 로그인).
 
 
 ### 단계 23 — 관리자 권한 강화·NSA 서버측 접근제어·접속자 대시보드 (1.10.0)
@@ -193,6 +193,13 @@
 - 무엇: 헤더 버전 배지에서 날짜를 즉시 노출하지 않고 클릭한 업데이트 모달에서만 보이게 했으며, 대시보드 상단에 한국 시간을 실시간 표시합니다. 로그인 화면은 중앙 카드형 계정 접속 UI로 재배치하고, 로그인 후 헤더에는 `로그인:` 접두어 없이 아이디만 표시합니다. 세션 탭은 세로 공간을 키워 로그인/로그아웃 목록을 더 쉽게 읽게 했습니다.
 - 코드: `frontend/components/layout/{version-badge,korean-clock,admin-nav-link,app-shell}.tsx`, `frontend/components/auth/login-form.tsx`, `frontend/components/admin/sections/admin-sessions-section.tsx`, `frontend/lib/changelog.ts`
 - 회귀 방지: backend `pytest tests` 268 passed, frontend Vitest 313 passed(66 파일), `tsc --noEmit`, `next build`, live dashboard/admin smoke.
+
+### 단계 26 — Office 보안·수명주기 + Leantime 동거 통합 최종 검증 (1.x.0)
+
+- 파일: [`phase-26-office-leantime-integration.md`](phase-26-office-leantime-integration.md)
+- 무엇: Office Studio 보안·산출물 수명주기 강화(G001/G008)와 Leantime 동거 통합(readiness 5상태·서버 JSON-RPC 어댑터·네이티브 대시보드·오프라인 패키징/운영 준수·OIDC·LDAP 분리 세션)의 8 목표 완료 증거와 표 형식 성과 보고·human_blocked 분류·핸드오프.
+- 코드: `backend/app/modules/{office_tools,leantime}/`, `frontend/components/office-tools/`, `scripts/leantime/`, `packaging/leantime/`, `docs/runbook/leantime-{codeploy,oidc-ldap}.md`
+- 회귀 방지: backend 775 passed(integration 202·unit core 128·Office 337·Leantime 71·batch 37, 0 failed), frontend Vitest 430 passed(82 파일), `tsc --noEmit`, `next build`, alembic head `20260714_0016`, 스토리별 architect CLEAR/APPROVE 및 executor QA red-team 통과.
 
 ---
 

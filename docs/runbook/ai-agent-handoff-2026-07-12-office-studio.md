@@ -3,11 +3,12 @@
 - 작성일: 2026-07-12 (최초) · 갱신: 2026-07-13 (연속 세션)
 - 작성 워크트리: `D:\Chanil_Park\Project\Programming\AeroOne\.worktrees\dashboard-enhancements`
 - 브랜치: `feature/dashboard-enhancements` (로컬 전용, origin push 안 됨)
-- 이 문서 최초 작성 커밋: `e8abd8d` / **최신 반영 커밋: `ada45b0`**
+- 이 문서 최초 작성 커밋: `e8abd8d` / **최신 반영 커밋: `337b4ed`**
 - **연속 세션(2026-07-13)에서 추가**: Leantime 킷 기반 실시간 감지, 예제 원클릭 생성, 상시 사용법 안내, 다계열 차트(누적·그룹·다계열선·누적영역), 예제 칩·단계 박스·차트 제목/범례/흰배경 UI 정교화, 보고서 폼 2단계 재구성, 샘플 13→22종. 아래 본문·§2 커밋 목록에 모두 반영됨.
 - 선행 핸드오프: [`ai-agent-handoff-2026-07-11-dashboard-enhancements.md`](ai-agent-handoff-2026-07-11-dashboard-enhancements.md) — 이 브랜치가 왜 `1.13.0-dev` 활성 계획과 독립인지, 병합 보류 조건
 - 대상 독자: 이 워크트리를 이어받는 AI 에이전트 / 사람 운영자
 - 목적: 이 세션에서 구현한 **Office Studio(오피스 도구) + 관리자 LLM 연결 + Leantime 동거**의 전체 그림, 실행·검증 방법, 남은 운영자 작업, 진실 원천 지도를 한 자리에서 파악하게 한다.
+> **릴리즈 경계:** 이 문서는 `feature/dashboard-enhancements`의 미릴리즈 구현 핸드오프입니다. 패키지 검증된 기준선은 `1.12.2`이며 Office Studio·LLM 연결·Leantime 동거는 main 병합과 새 오프라인 패키지 검증 전까지 `1.12.2` 기능 또는 운영 배포로 취급하지 않습니다.
 
 ---
 
@@ -15,10 +16,10 @@
 
 | 질문 | 답 |
 |---|---|
-| 무엇을 만들었나 | 대시보드에 로그인 후 보이는 **Office Studio**(보고서·차트·다이어그램 허브) + 관리자 등록형 **LLM 연결(AI 연결)** + **Leantime 동거** 통합면 |
+| 무엇을 만들었나 | `feature/dashboard-enhancements`에서만 구현한 **미릴리즈 Office Studio**(보고서·차트·다이어그램 허브) + 관리자 등록형 **LLM 연결(AI 연결)** + **Leantime 동거** 통합면 |
 | 지금 동작하나 | 예. 로컬에서 backend(18437)+frontend(29501) 프로덕션 기동 상태로 브라우저 실구동 확인함(원클릭 다계열 차트·Leantime 상태·보고서 2단계 렌더 확인) |
 | 병합됐나 | 아니오. `feature/dashboard-enhancements` 에만 있음. main 병합은 운영자 승인 + `1.13.0-dev` Task 10 gate 확인 후(선행 핸드오프 참조) |
-| 테스트 통과하나 | backend 378 passed / 2 failed, frontend 363 passed(78 파일), typecheck 0, build 성공 (2건은 사전 실패, §9) |
+| 테스트 통과하나 | **아니오. 전체 backend suite는 non-green:** 378 passed / 2 failed. frontend 363 passed(78 파일), typecheck 0, build 성공이지만, 두 backend 실패가 해결될 때까지 병합·릴리즈 게이트를 통과하지 못한다(§9). |
 | 커밋 규칙 | `AGENTS.md`/`CLAUDE.md` 동일 적용(한국어 3문단 + Lore trailer). 전 커밋 준수 |
 | 커밋 안 한 것 | `AeroOne Tool/`(원본 MVP zip·추출본)은 `.gitignore` 참조로만 두고 미추적. 런타임 DB(`backend/data/aeroone.db`)도 미추적 |
 
@@ -36,13 +37,13 @@
 - Tool MVP(`AeroOne Tool/tool-mvp-v0.1.0/`)의 보고서(SVC-01)·차트(SVC-02)·다이어그램(SVC-03)을 AeroOne 백엔드 라우터 + Next.js 페이지로 **흡수**(새 포트·배치 0).
 - **단일 허브**: 대시보드 카드 1장 `Office Studio`(`/office-tools`) → 다이어그램/차트/보고서 **탭 허브**. 딥링크 `/office-tools?tab=chart`.
 - **처리 과정 표시**: 각 도구에 파이프라인 스텝퍼(입력→AI/규칙→검증→렌더→산출물), 생성 후 완료·사용 엔진(AI/규칙) 표기.
-- **표현 고급화**: 차트=검증 팔레트+라운드 막대(단일 막대 그라디언트)·부드러운 선+영역 그라디언트·파이 보더·툴팁/레전드(`echarts-beautify.ts`), 다이어그램=Mermaid 브랜드 컬러 `base` 테마+곡선 엣지. **다계열 지원**: `ChartSpec.stacked` + 그룹/다중 y → 누적막대·그룹막대·다계열선·누적영역(누적 세그먼트는 2px 표면 틈). **차트 가독성(연속 세션)**: 제목 18px 굵게 상단, 다계열 범례를 제목 아래(top 40)로 내려 겹침 제거(파이는 하단 범례), 배경 `#ffffff` 고정.
+- **표현 고급화**: 차트=검증 팔레트+라운드 막대(단일 막대 그라디언트)·부드러운 선+영역 그라디언트·파이 보더·툴팁/레전드(`frontend/lib/echarts-beautify.ts`), 다이어그램=Mermaid 브랜드 컬러 `base` 테마+곡선 엣지. **다계열 지원**: `ChartSpec.stacked` + 그룹/다중 y → 누적막대·그룹막대·다계열선·누적영역(누적 세그먼트는 2px 표면 틈). **차트 가독성(연속 세션)**: 제목 18px 굵게 상단, 다계열 범례를 제목 아래(top 40)로 내려 겹침 제거(파이는 하단 범례), 배경 `#ffffff` 고정.
 - **입력 방식(3가지)**: 각 폼 상단 `UsageGuide`(기본 펼침)가 ① 예제 선택 → 바로 생성 / ② 파일·정형 텍스트 / ③ 목적·서술형을 상시 안내. 차트·보고서는 파일 ↔ 직접 입력 토글(`DataInput`, 모드별 형식 힌트). **예제 칩(`SamplePicker`)은 accent 박스 + ▶ 아이콘 버튼으로 강조**(연속 세션).
 - **단계형 UX**: `StepSection` 이 헤더 밴드·divider·굵은 좌측선·2px 테두리로 박스를 뚜렷이 구분하고 완료 시 ✓. 다이어그램·차트는 ① 입력 → ② 옵션 → ③ 생성 3단계, **보고서는 문서 정보·AI 편집을 입력 단계로 합쳐 ① 원문과 옵션 → ② 생성 2단계**(연속 세션 — "메타·AI 편집" 직관화).
 - **예제 원클릭 생성**: 예제 칩을 누르면 폼을 채우고 **곧바로 생성까지** 실행(`runGenerate` 명시 인자). 다계열 예제는 완성된 `manual_spec`(ChartSpec)을 그대로 넘겨 결정적 렌더.
 - **예제 샘플 22종**: 다이어그램 7(플로우·시퀀스·상태·간트·로드맵·주문 결제 시퀀스·**주문 생애주기**), 차트 11(막대·선·파이·산점·히스토그램·누적막대·그룹막대·다계열선·**누적영역·5계열 지표선·5부서 그룹**), 보고서 4(매출·장애 사후분석·주간·경영 대시보드). 도구별 '예제' 칩(`SamplePicker`, accent 박스로 강조). 다계열/누적은 `manual_spec` 완성 ChartSpec 으로 결정적 렌더.
 - 서버 PNG(CairoSVG/Matplotlib)는 폐쇄망 마찰이라 **비활성**(브라우저 ECharts/Mermaid 렌더). 차트 집계는 pandas 서버 처리.
-- 산출물은 `OfficeJobStore`(`backend/data/office_jobs`)에 `owner_id` 스코프(타인 접근 403).
+- **보안·수명주기**: 모든 Office API는 `office.use` 권한이 필요하고 mutation은 CSRF를 검증한다. `OfficeJobStore`는 `owner_id` 스코프(타인 접근 403), 기본 30일 보존, 사용자별 job/byte quota와 최소 디스크 여유를 적용하며, 만료 purge는 `admin.office.manage`+CSRF의 `POST /api/v1/office-tools/jobs/admin/purge`만 허용한다.
 
 ### 1.3 Leantime 동거 (커밋 `35ae363` → `9b5df55`)
 - Leantime(PHP+MariaDB+IIS 완제품, AGPL)은 **흡수 불가** → 동거: 링크 카드 + `run_all.bat` 기동 훅 + 오프라인 런북.
@@ -55,7 +56,7 @@
 
 ---
 
-## 2. 이 워크트리 커밋 목록 (`034bd03..HEAD`, 최신순 아래로 이어짐)
+## 2. 이 워크트리 커밋 목록 (`034bd03..HEAD`, 19개)
 
 | 커밋 | 요지 |
 |---|---|
@@ -77,6 +78,7 @@
 | `1346afe` | 핸드오프 §2 커밋 목록 현행화 |
 | `9a62fdd` | 예제 칩 강조·단계 박스 구분·차트 제목/범례/흰배경·보고서 폼 2단계 재구성 |
 | `ada45b0` | 더 복잡한 다계열 차트 예제 5종(누적영역·5계열선·5부서 그룹·상태 9단계), 샘플 18→22종 |
+| `337b4ed` | 연속 세션 전체를 핸드오프 문서에 반영 |
 
 ---
 
@@ -89,7 +91,7 @@
 | 대시보드 카드(DB 시드) | `backend/alembic/versions/*` bulk_insert / update + `backend/app/modules/admin/api.py` `DEFAULT_SERVICE_MODULES` |
 | 대시보드 카드(Fallback) | `frontend/app/page.tsx` `FALLBACK_MODULES` (회귀 계약 `frontend/tests/app/home-page.test.tsx`) |
 | 프런트 페이지 | `frontend/app/office-tools/page.tsx`(허브) + `/office-tools/{report,chart,diagram}` + `/leantime` |
-| 백엔드 라우터 | `backend/app/modules/office_tools/api/router.py` → `main.py` `include_router('/api/v1/office-tools')`, 상위 라우터가 `Depends(get_current_user)` 로 로그인 강제 |
+| 백엔드 라우터·보안·수명주기 | `backend/app/modules/office_tools/api/router.py` → `main.py` `include_router('/api/v1/office-tools')`, `api/jobs.py`, `core/job_store.py` — 상위 라우터가 로그인과 `office.use`를 강제하고 mutation은 CSRF를 검증한다. job은 소유자 격리·보존/quota를 적용하며, `admin.office.manage`+CSRF purge 경로는 `/api/v1/office-tools/jobs/admin/purge` |
 | same-origin 프록시 | `frontend/app/api/frontend/office-tools/[...segments]/route.ts`, LLM 은 admin 프록시 재사용 |
 | LLM 게이트웨이 | `backend/app/modules/ai/{llm_connection_service,llm_crypto,openai_client,api/admin}.py` |
 
@@ -126,7 +128,7 @@ python -m venv .venv
 export DATABASE_URL="sqlite:///<절대경로>/backend/data/aeroone.db"
 export PYTHONPATH=.
 ./.venv/Scripts/python.exe -m alembic upgrade head
-./.venv/Scripts/python.exe -m scripts.seed      # 관리자 admin / (settings.admin_password 기본 'change-me')
+./.venv/Scripts/python.exe -m scripts.seed      # backend/.env의 워크트리 전용 ADMIN_PASSWORD로 관리자 생성; 공유 고정 비밀번호 금지
 
 # 3) 프런트 의존성
 cd ../frontend && npm install
@@ -146,8 +148,8 @@ cd frontend && npm run dev      # next dev -p 29501
 cd frontend && npm run build && npm run start   # next start -p 29501, /office-tools 즉시 응답
 ```
 
-- 접속: `http://localhost:29501`, 로그인 `admin` / (이 세션 로컬 DB 는 비번을 `27882788` 로 재설정해 둠 — 신규 DB 는 `ADMIN_PASSWORD` 환경변수 또는 기본값).
-- 폐쇄망 정식 배포는 기존 `setup_offline.bat`/`start_offline.bat` 체계 + `alembic upgrade head`. 신규 파이썬 의존성(pandas/numpy/openpyxl)은 wheelhouse 재생성 필요.
+- 접속: `http://localhost:29501`. 관리자 로그인 자격증명은 이 워크트리의 `backend/.env` 에서 확인하고, 공유 고정 비밀번호를 문서나 코드에 기록하지 않는다.
+- 폐쇄망 정식 배포는 단일 PC면 `setup_offline.bat --local`/`start_offline.bat --local` 체계 + `alembic upgrade head`를 사용한다. LAN은 옵션 없는 `setup_offline.bat`/`start_offline.bat`가 LAN 기본이거나 `--allow-host=<IP>`를 사용한다. 신규 파이썬 의존성(pandas/numpy/openpyxl)은 wheelhouse 재생성 필요.
 
 ---
 
@@ -155,7 +157,7 @@ cd frontend && npm run build && npm run start   # next start -p 29501, /office-t
 
 | 게이트 | 명령 | 결과 |
 |---|---|---|
-| backend | `cd backend && ./.venv/Scripts/python.exe -m pytest tests -q` | **378 passed / 2 failed**(사전 실패 2건, §9) |
+| backend | `cd backend && ./.venv/Scripts/python.exe -m pytest tests -q` | **378 passed / 2 failed — 전체 suite non-green**(정확한 실패는 §9, 병합/릴리즈 차단) |
 | frontend 단위 | `cd frontend && npx vitest run` | **363 passed (78 파일) / 0 failed** |
 | frontend 타입 | `cd frontend && npm run typecheck` | 에러 0 |
 | frontend 빌드 | `cd frontend && npm run build` | 성공(전 라우트) |
@@ -168,7 +170,7 @@ cd frontend && npm run build && npm run start   # next start -p 29501, /office-t
 
 - backend uvicorn `127.0.0.1:18437`(연속 세션 코드로 재기동 — leantime health 라우터·샘플 22종 반영), frontend `next start` `29501`(연속 세션 UI 반영 재빌드) 기동 상태. 세션이 끝나면 프로세스가 정리될 수 있으니 §5 로 재기동.
 - **코드 변경 후 재기동 규칙**: 백엔드 라우터/샘플 레지스트리 변경은 uvicorn 재시작 필요(샘플은 import 시 `_SAMPLES` 로드), 프런트 UI 변경은 `npm run build` 후 `npm run start` 재시작 필요(프로덕션 빌드는 캐시됨).
-- 로컬 DB `backend/data/aeroone.db` 에 마이그레이션 head + 관리자(admin/27882788) + 카드 시드가 들어 있음(gitignore, 커밋 안 됨).
+- 로컬 DB `backend/data/aeroone.db` 에 마이그레이션 head + 관리자 계정 + 카드 시드가 들어 있음(gitignore, 커밋 안 됨). 비밀번호는 `backend/.env` 기준이며 공유하지 않는다.
 
 ---
 
@@ -180,16 +182,16 @@ cd frontend && npm run build && npm run start   # next start -p 29501, /office-t
 4. 차트 서버 PNG 를 켤 경우에만 CairoSVG/Matplotlib 네이티브 런타임 + CJK 폰트 설치(현재 빌드는 불필요).
 5. 안정화 후 `office-tools`·`leantime` 카드 `visibility` 를 `admin`→`public` 전환 여부 결정.
 6. `AeroOne Tool/` 참조 패키지(원본 zip·추출본)를 정식 커밋할지 결정(현재 gitignore).
-7. 병합 판단: `1.13.0-dev` Task 10 gate 상태 재확인 후 운영자 승인 하에(선행 핸드오프 §2).
+7. 병합 판단: `1.13.0-dev` Task 10 gate 상태 재확인과 운영자 승인 후 main에 병합하고, 새 오프라인 패키지를 검증한 뒤에만 운영 배포로 승격.
 
 ---
 
 ## 9. 알려진 이슈 / 함정
 
-- **사전 실패 2건**: `tests/unit/shared/test_windows_batch_scripts.py::test_run_all_dry_run_waits_for_open_notebook_readiness`, `::test_run_all_passes_network_mode_to_open_notebook_bundle`. 이 워크트리에 Open Notebook 번들(`..\AeroOne-bundle`)이 없어 `run_all.bat --dry-run` 이 "번들 없음 폴백"을 출력해 나는 **환경 사전 실패**로, 이 세션 작업과 무관(변경 전 기준선에서도 동일). 새 회귀 아님.
+- **전체 backend suite 실패 2건(현재 non-green, 해결 전 병합·릴리즈 차단):** `tests/unit/shared/test_windows_batch_scripts.py::test_run_all_dry_run_waits_for_open_notebook_readiness`, `::test_run_all_passes_network_mode_to_open_notebook_bundle`. 이 워크트리에 Open Notebook 번들(`..\AeroOne-bundle`)이 없어 `run_all.bat --dry-run`(옵션 없으면 LAN 기본)이 "번들 없음 폴백"을 출력한다. 원인이 환경/기준선에 있었더라도 현재 전체 suite가 실패한 사실을 가리거나 제외해 회귀 0으로 보고하면 안 된다.
 - **예제 샘플 칩은 로그인 필요**: `SamplePicker` 가 `/api/frontend/office-tools/samples`(로그인 필수)를 호출한다. 미로그인 시 401 → 칩을 우아하게 숨김(폼은 정상). 로그인해야 칩이 뜬다.
 - **dev vs 프로덕션 속도**: dev 는 라우트 첫 진입 시 컴파일 지연(특히 mermaid ~5000모듈)로 느리게 느껴진다. 실사용 체감은 프로덕션 빌드로 확인.
-- **로컬 dev 계정**: `admin`/기본 `change-me`(이 DB 는 `27882788`). 실배포는 `ADMIN_PASSWORD`(≥12자) + `JWT_SECRET_KEY`(≥32자)를 `closed_network`/`production` 에서 강제.
+- **로컬 dev 계정:** 사용자명 기본값은 `admin`; 시드 전 `backend/.env`에 워크트리 전용 `ADMIN_PASSWORD`를 설정하고 그 값만 사용한다. 공유 고정 비밀번호를 문서·코드·다른 워크트리와 재사용하지 않는다. 실배포는 `ADMIN_PASSWORD`(≥12자) + `JWT_SECRET_KEY`(≥32자)를 `closed_network`/`production`에서 강제한다.
 - **AI 산출물 품질**: 실 LLM 미연결 상태에선 규칙 기반 폴백이라 AI 제안 경로는 mock/규칙 기준으로만 검증됨.
 
 ---
@@ -214,9 +216,20 @@ cd frontend && npm run build && npm run start   # next start -p 29501, /office-t
 ## 11. 다음 에이전트 실행 순서
 
 1. `git log --oneline 034bd03..HEAD` 로 이 워크트리 커밋(§2)과 워킹트리 clean 확인.
-2. §5 로 로컬 부트스트랩(venv/npm/alembic/seed) 후 **프로덕션 빌드로 기동**(`npm run build && npm run start`, 백엔드 uvicorn), 브라우저에서 로그인(admin/27882788)→Office Studio→각 탭 예제 칩 클릭(원클릭 생성)·Leantime 상태 배지 확인.
-3. §6 게이트 재실행으로 회귀 0(사전 실패 2건 제외) 확인.
+2. §5 로 로컬 부트스트랩(venv/npm/alembic/seed) 후 **프로덕션 빌드로 기동**(`npm run build && npm run start`, 백엔드 uvicorn), `backend/.env` 의 관리자 자격증명으로 로그인→Office Studio→각 탭 예제 칩 클릭(원클릭 생성)·Leantime 상태 배지 확인.
+3. §6 게이트를 재실행해 backend와 frontend 전체 suite가 모두 green인지 확인한다. §9의 두 backend 실패를 제외하거나 회귀 0으로 보고하지 않는다.
 4. 운영자 요청이 있으면 §8 후속 작업으로 진행. 병합은 별도 승인 필요(선행 핸드오프 §2).
 5. **새 샘플 추가**: `samples_service.py` 레지스트리에 항목 + `samples/` 파일만 추가하면 프런트 칩 자동 반영. **화려한 다계열 차트**는 `hints.manual_spec` 에 완성 `ChartSpec`(`stacked`/`group`/다중 `y`)을 담아 LLM 없이 결정적 렌더(규칙 엔진은 단일 계열만 자동 추론). 추가 후 uvicorn 재시작 필요.
 6. **새 도구/카드**는 진실 원천 3자리(마이그레이션+`DEFAULT_SERVICE_MODULES`+`FALLBACK_MODULES`) 일치를 지킨다.
 7. 아직 안 한 것(후속 아이디어): 차트 폼에 x/y[]/group/stacked 수동 입력 UI(현재 다계열은 예제 manual_spec 으로만), Leantime 외 co-deploy 서비스(Open WebUI/vLLM) 감지 확장(킷 `services.seed.json` 참조).
+---
+
+## 12. 후속 아키텍처 검토(2026-07-13)
+
+이 핸드오프 이후 `docs/office-leantime-architecture-review` 브랜치에서
+[`office-leantime-architecture-review-2026-07-13.md`](office-leantime-architecture-review-2026-07-13.md)를 작성했다.
+
+- Office Studio의 CSRF·접근 정책·산출물 수명주기·UX 상태 보강을 P0/P1로 분류한다.
+- Leantime은 AeroOne 코드로 흡수하거나 전 기능을 재구현하지 않고, 독립 co-deploy를 유지한 채 **고정 버전 오프라인 패키징 + FastAPI JSON-RPC Adapter + 선택적 OIDC/LDAP**로 확장하는 안을 권장한다.
+- TCP 포트 감지는 HTTP readiness와 canonical launch URL로 교체하고, 런처 종료 코드·중지/복구·AGPL 대응 소스·실제 Windows 폐쇄망 검증을 배포 게이트로 둔다.
+- 이 검토는 의사결정 문서이며, 제품 코드 구현이나 Leantime 패키징 승인을 의미하지 않는다.

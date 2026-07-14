@@ -79,7 +79,7 @@ Leantime 완제품 설치는 SaaS Kit(`AeroOne Tool/saas-kit-v2.0.0/`)의 comple
 - Leantime 애플리케이션을 IIS AppPool + Website 로 등록, 포트 8081 바인딩.
 - Leantime 최초 관리자 계정/조직 초기 설정(브라우저 최초 접속 시).
 
-### 3.3 AeroOne 기동 훅 연결
+### 3.3 AeroOne 기동 훅 연결 & 수명주기 스크립트
 
 AeroOne 런처(`scripts/run_all.bat`)가 Leantime 을 선택적으로 함께 띄우게 하려면 환경변수로
 Leantime 런처를 가리킨다.
@@ -90,18 +90,61 @@ set "AEROONE_LEANTIME_LAUNCHER=C:\AeroOneSuite\start-leantime.bat"
 
 :: 또는 AeroOne 이 동봉한 얇은 래퍼를 쓰고, 그 래퍼가 SaaS Kit 스크립트를 가리키게 함
 set "AEROONE_LEANTIME_LAUNCHER=%CD%\scripts\leantime\start-leantime.bat"
-set "AEROONE_LEANTIME_SCRIPTS=C:\AeroOneSuite\scripts"   :: Start-All.ps1 이 있는 폴더
+set "AEROONE_LEANTIME_SCRIPTS=C:\AeroOneSuite\scripts"   :: Start-All.ps1/Stop-All.ps1 이 있는 폴더
 
 run_all.bat
 ```
 
-- 런처가 존재하면 `run_all.bat` 이 AeroOne backend health 확인 후 위임 호출한다.
+- 런처가 존재하면 `run_all.bat` 이 AeroOne backend health 확인 후 위임 호출하고, 이어서 **선택적**
+  준비 대기(최대 30초, `Invoke-WebRequest` 폴링)를 한 번 더 수행해
+  `[RUN-ALL][LEANTIME][READY]` 또는 `[RUN-ALL][LEANTIME][WARN]` 를 출력한다. 이 대기는 결과와
+  무관하게 **AeroOne/Open Notebook 흐름을 절대 중단하지 않는다**(Leantime 은 독립적/선택적).
 - 런처가 없으면 `[RUN-ALL][INFO ] Leantime launcher not found ... operator install required` 를
   출력하고 AeroOne 만 진행한다(동거는 **선택적**, Leantime 부재가 AeroOne 기동을 막지 않는다).
-- 계획만 확인하려면 `run_all.bat --dry-run` 으로 Leantime 훅 분기를 미리 볼 수 있다.
+- 계획만 확인하려면 `run_all.bat --dry-run` 으로 Leantime 훅 분기(런처 호출 + 준비 대기 계획)를
+  미리 볼 수 있다.
 - AeroOne 이 동봉한 래퍼: [`scripts/leantime/start-leantime.bat`](../../scripts/leantime/start-leantime.bat)
   — `AEROONE_LEANTIME_SCRIPTS` 아래 `Start-All.ps1`(IIS/MariaDB start)을 위임 호출하는 얇은
   참조 배치. 실제 서비스명/AppPool 명은 **운영자 검증 필요**.
+
+#### 수명주기 스크립트 (`scripts/leantime/`)
+
+| 스크립트 | 동작 | 관리자 권한 |
+|---|---|---|
+| `start-leantime.bat` | `Start-All.ps1` 위임 호출 후 HTTP 준비 대기(폴링). | 배치 자체는 불필요 — `Start-All.ps1` 이 IIS/MariaDB 서비스를 켜므로 그 안에서 필요할 수 있음(**운영자 검증 필요**). |
+| `stop-leantime.bat` | `Stop-All.ps1` 위임 호출(있으면), 없으면 INFO 로만 알리고 no-op. | 위와 동일. |
+| `restart-leantime.bat` | `stop-leantime.bat` 호출 후 `start-leantime.bat` 호출(준비 대기 포함). 정지 단계 실패는 무시하고 항상 재기동을 시도한다. | 위와 동일. |
+| `status-leantime.bat` | 대상 host:port 로 단발 HTTP 프로브를 수행해 한 줄 상태를 출력(운영자 CLI 확인용, AeroOne 백엔드 API 를 호출하지 않는 독립 도구). | 불필요. |
+
+**로그 계약** (모든 스크립트 공통, `[LEANTIME][LEVEL] message` 형식):
+
+- `start-leantime.bat` / `stop-leantime.bat` / `restart-leantime.bat`: `INFO` / `READY` / `WARN` / `ERROR`.
+- `status-leantime.bat`: 단 한 줄만 `[LEANTIME][STATUS] <status> target=<host:port>` 형식으로
+  출력한다. `<status>` 는 `ready` / `starting` / `unhealthy` / `absent` / `error` 중 하나(백엔드
+  `GET /api/v1/leantime/health` 와 같은 판정 축, 다만 이 스크립트는 직접 프로브라 `app_identified`
+  까지 백엔드와 동일하게 판정하지는 않는다 — 정밀 판정은 항상 백엔드 API 가 원천이다).
+
+**종료 코드**:
+
+| 스크립트 | 0 | 2 | 3 | 1 |
+|---|---|---|---|---|
+| `start-leantime.bat` | 스택 미설치(선택적 폴백) 또는 준비 완료 | 위임은 했으나 타임아웃 내 준비 완료 확인 실패 | — | — |
+| `stop-leantime.bat` | 항상(정지 훅은 참고용, 호출자를 막지 않음) | — | — | — |
+| `restart-leantime.bat` | `start-leantime.bat` 의 종료 코드를 그대로 반환 (0 또는 2) | (위와 동일) | — | — |
+| `status-leantime.bat` | ready | — | starting / unhealthy / absent (준비 안 됨) | error (프로브 자체 실패) |
+
+**환경변수** (모든 스크립트 공통, 없으면 아래 기본값):
+
+- `AEROONE_LEANTIME_SCRIPTS` — 운영자 Leantime 스택 스크립트 폴더(기본 `..\Leantime\scripts`,
+  `Start-All.ps1`/`Stop-All.ps1` 위치).
+- `LEANTIME_PORT` — 기본 `8081`.
+- `AEROONE_LEANTIME_HEALTH_URL` — 프로브 대상(기본 `http://127.0.0.1:%LEANTIME_PORT%`).
+- `AEROONE_LEANTIME_READY_TIMEOUT` — `start-leantime.bat`/`restart-leantime.bat` 의 준비 대기
+  타임아웃(초, 기본 `60`). `run_all.bat` 자체의 보조 대기는 항상 짧게 고정(최대 30초)이다.
+
+**AeroOne 독립성**: 위 스크립트/훅 중 어떤 것도 실패·타임아웃하더라도 AeroOne(backend/frontend)이나
+Open Notebook 기동 흐름을 중단시키지 않는다. Leantime 은 어디까지나 동거(co-deploy)하는 선택적
+외부 스택이다.
 
 ---
 
@@ -177,13 +220,102 @@ Leantime 은 **GNU AGPL v3** 로 배포된다. AGPL 은 "네트워크를 통해 
       부재 시 경고 후 AeroOne 진행).
 - [ ] Leantime MariaDB 덤프/업로드 백업 + 복구 리허설 1회 수행.
 - [ ] 방화벽: 8081 은 LAN 범위로만, 3307 은 로컬 전용 확인.
+- [ ] `scripts/leantime/verify-bundle.bat <bundle_dir>` 실행 시 매니페스트의 모든 실측(non-placeholder) 컴포넌트가 `ok` 로 판정되는지 확인(§8.1).
+- [ ] `NOTICE.txt`/`SBOM.md` 가 실제 반입 산출물과 버전이 일치하는지 확인(§8.2).
+- [ ] `backup-leantime.bat` / `restore-leantime.bat` 로 백업→복구 리허설 1회 수행, `rollback-leantime.bat` 로 이전 핀 버전 롤백 경로 확인(§8.3).
+- [ ] `allow-leantime-firewall.cmd` 로 8081 인바운드가 LocalSubnet 범위로만 열리는지 확인, 불필요 시 `--remove` 로 원복(§8.3).
+
+---
+
+## 8. 패키징 매니페스트·검증·수명주기 계약 (G006)
+
+**(본 절 전체 운영자 검증 필요 — 실 스테이징 전에는 매니페스트 sha256 항목이 `<fill-on-staging>` 플레이스홀더다.)**
+
+### 8.1 SHA-256 매니페스트 및 검증
+
+Leantime 반입물은 **핀 고정 버전 + 컴포넌트별 SHA-256 매니페스트**로 관리한다. 매니페스트 경로:
+[`packaging/leantime/leantime-bundle.manifest.json`](../../packaging/leantime/leantime-bundle.manifest.json).
+
+- 최상위 `leantime` 필드에 핀 버전/릴리즈 URL/라이선스/전체 SHA-256, `components` 배열에
+  Leantime 본체·PHP FastCGI·MariaDB·IIS 선행조건 등 각 산출물의 `name`/`filename`/`sha256`/
+  `source_url`/`license`.
+- `notice`(`NOTICE.txt`), `sbom`(`SBOM.md`) 필드로 8.2절 문서를 가리킨다.
+- `policy` 필드: `unmodified_release: true`, `no_plugin_patch: true`, `no_core_patch: true` —
+  기본값은 **공식 무수정 릴리즈, 플러그인/코어 패치 없음**이다. 이 정책을 바꾸려면(예: 실제로
+  코어를 수정) 매니페스트 값과 4절 AGPL 소스오퍼 의무(수정 소스 공개)를 함께 갱신해야 한다.
+- 스테이징 전 각 `sha256` 값은 문자열 그대로 `<fill-on-staging>` 플레이스홀더다. 인터넷 스테이징
+  PC 에서 실제 반입물을 내려받은 뒤 실측 SHA-256 으로 채운다(3.1절).
+
+검증 스크립트: [`scripts/leantime/verify-bundle.bat`](../../scripts/leantime/verify-bundle.bat)
+`<bundle_dir> [manifest_path]` — `manifest_path` 생략 시 저장소 루트 기준
+`packaging/leantime/leantime-bundle.manifest.json` 을 기본으로 쓴다.
+
+- 컴포넌트별 한 줄 출력: `[LEANTIME][VERIFY] <name> ok|mismatch|missing|placeholder`.
+- 매니페스트에 리터럴 `<fill-on-staging>` 이 남아 있는 컴포넌트는 `placeholder` 로만 보고되고
+  pass/fail 판정에서 **제외**된다(스테이징 전 CI/드라이런에서 거짓 실패를 내지 않기 위함).
+- 종료 코드: **0** = placeholder 를 제외한 모든 컴포넌트 일치, **2** = 불일치 또는 파일 누락 1건
+  이상, **1** = 매니페스트 파싱 오류 등 스크립트 자체 오류.
+- 실 배포 전 반드시 `verify-bundle.bat` 을 0 종료로 통과시킨 뒤 3.2절 설치 절차를 진행한다.
+
+### 8.2 소스 제공·라이선스 문서 (NOTICE / SBOM)
+
+이 절은 4절 AGPL v3 소스오퍼 의무의 실무 문서 산출물이다.
+
+- [`packaging/leantime/NOTICE.txt`](../../packaging/leantime/NOTICE.txt) — Leantime 및 동봉 컴포넌트의
+  라이선스 고지(AGPL-3.0 등), 대응 소스 접근 경로 안내.
+- [`packaging/leantime/SBOM.md`](../../packaging/leantime/SBOM.md) — 반입 컴포넌트 SBOM(구성요소 목록·
+  버전·라이선스·출처 URL), 매니페스트 `components` 배열과 1:1 대응.
+- 기본 정책은 **공식 배포판을 무수정으로 반입**(`unmodified_release`)하며, **플러그인 패치 없음**
+  (`no_plugin_patch`)·**코어 패치 없음**(`no_core_patch`) 이다. 이 상태에서도 AGPL 은 "네트워크
+  상호작용" 만으로 대응 소스 제공 의무를 발생시키므로(4절), NOTICE/SBOM 은 수정 여부와 무관하게
+  유지한다.
+
+### 8.3 선택적 수명주기 계약 — 백업 / 복구 / 롤백 / 방화벽
+
+start/stop/restart/status 는 3.3절 참조. 아래 4종은 G006 에서 추가된 **선택적**(operator opt-in)
+스크립트로, 모두 `scripts/leantime/` 아래 있으며 시작/정지 스크립트와 동일한 로그·독립성 계약을
+따른다.
+
+| 스크립트 | 동작 | 관리자 권한 |
+|---|---|---|
+| `backup-leantime.bat` | 운영자 `Backup-All.ps1` 이 있으면 위임 호출, 없으면 INFO 로만 알리고 no-op. | `Backup-All.ps1` 내부 요구사항에 따름(**운영자 검증 필요**). |
+| `restore-leantime.bat` | 운영자 `Restore-All.ps1` 위임 호출(같은 존재 여부 분기). | 위와 동일. |
+| `rollback-leantime.bat` | 운영자 `Rollback-All.ps1` 위임 호출 — 이전 핀 매니페스트/버전으로 재배치. | 위와 동일. |
+| `allow-leantime-firewall.cmd` | `scripts/allow_lan_firewall.cmd` 와 동일 패턴으로 Leantime 포트(기본 8081, `LEANTIME_PORT` 로 재정의) 인바운드를 `remoteip=LocalSubnet` 로 허용. `--remove` 로 원복 지원. | **필수** — Administrator 아니면 종료 코드 1. |
+
+**로그 계약**: 위 배치/스크립트 3종(`backup`/`restore`/`rollback`)은 시작/정지 스크립트와 동일하게
+`[LEANTIME][LEVEL] message` (`INFO`/`READY`/`WARN`/`ERROR`) 형식을 따른다.
+
+**종료 코드**:
+
+| 스크립트 | 0 | 1 | 2 |
+|---|---|---|---|
+| `backup-leantime.bat` | 성공 또는 위임 대상 부재(no-op) | 스크립트 자체 오류 | 위임 호출은 됐으나 실패 |
+| `restore-leantime.bat` | 성공 또는 위임 대상 부재(no-op) | 스크립트 자체 오류 | 위임 호출은 됐으나 실패 |
+| `rollback-leantime.bat` | 성공 또는 위임 대상 부재(no-op) | 스크립트 자체 오류 | 위임 호출은 됐으나 실패 |
+| `allow-leantime-firewall.cmd` | 규칙 추가/제거 성공 | 관리자 권한 아님 | — |
+
+**AeroOne 독립성 (재확인)**: `backup`/`restore`/`rollback`/방화벽 스크립트 중 어느 것이 실패·
+타임아웃하더라도 AeroOne(backend/frontend) 이나 Open Notebook 기동/운영 흐름을 절대 중단시키지
+않는다 — 3.3절의 독립성 원칙과 동일하게, 이 4종도 어디까지나 Leantime 쪽 선택적 운영 도구다.
+
+### 8.4 OIDC/LDAP (공통 IdP 가 있을 때, 선택)
+
+공통 사내 IdP(OIDC/LDAP)가 있어 Leantime 도 같은 IdP 로 로그인하게 하려면 별도 런북
+[`leantime-oidc-ldap.md`](leantime-oidc-ldap.md) 를 따른다. **AeroOne 세션 쿠키를 Leantime 과
+공유하는 SSO 는 금지**이며, 두 앱은 항상 각자의 로그인/세션을 유지한다(2절의 JSON-RPC 헬스
+경계와 동일하게 통합은 읽기 전용 서버측 호출로 한정된다).
 
 ---
 
 ## 관련 문서
 
+- 통합 방향·내장/재구현 결정·단계별 게이트: [`office-leantime-architecture-review-2026-07-13.md`](office-leantime-architecture-review-2026-07-13.md)
 - SaaS Kit complete-stack 런북: `AeroOne Tool/saas-kit-v2.0.0/aeroone-tool/docs/COMPLETE_STACK_RUNBOOK.md`
 - SaaS Kit 라이선스 경계: `AeroOne Tool/saas-kit-v2.0.0/aeroone-tool/docs/SECURITY_LICENSE.md`
 - AeroOne 폐쇄망 종합 가이드: [`../CLOSED_NETWORK_GUIDE.md`](../CLOSED_NETWORK_GUIDE.md)
 - Open Notebook 동거(같은 co-deploy 패턴 선례): [`open-notebook-airgap.md`](open-notebook-airgap.md)
 - AeroOne 측 얇은 래퍼: [`../../scripts/leantime/start-leantime.bat`](../../scripts/leantime/start-leantime.bat)
+- 패키징 매니페스트: [`../../packaging/leantime/leantime-bundle.manifest.json`](../../packaging/leantime/leantime-bundle.manifest.json)
+- 번들 검증 스크립트: [`../../scripts/leantime/verify-bundle.bat`](../../scripts/leantime/verify-bundle.bat)
+- OIDC/LDAP 별도 세션 통합 절차(선택, 공통 IdP 있을 때): [`leantime-oidc-ldap.md`](leantime-oidc-ldap.md)

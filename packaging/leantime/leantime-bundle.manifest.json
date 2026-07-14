@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "leantime": {
+    "version": "3.5.13",
+    "release_url": "https://github.com/Leantime/leantime/releases/tag/v3.5.13",
+    "license": "AGPL-3.0"
+  },
+  "components": [
+    {
+      "name": "leantime",
+      "filename": "leantime-3.5.13.zip",
+      "sha256": "<fill-on-staging>",
+      "source_url": "https://github.com/Leantime/leantime/releases/tag/v3.5.13",
+      "license": "AGPL-3.0"
+    },
+    {
+      "name": "php-fastcgi",
+      "filename": "php-8.2-nts-Win32-vs16-x64.zip",
+      "sha256": "<fill-on-staging>",
+      "source_url": "https://windows.php.net/download",
+      "license": "PHP-3.01"
+    },
+    {
+      "name": "mariadb",
+      "filename": "mariadb-11.4-winx64.msi",
+      "sha256": "<fill-on-staging>",
+      "source_url": "https://mariadb.org/download/",
+      "license": "GPL-2.0"
+    },
+    {
+      "name": "iis-prereq",
+      "filename": "iis-prereq-bundle.zip",
+      "sha256": "<fill-on-staging>",
+      "source_url": "https://learn.microsoft.com/iis/",
+      "license": "Microsoft-Windows-Feature"
+    }
+  ],
+  "notice": "NOTICE.txt",
+  "sbom": "SBOM.md",
+  "policy": {
+    "unmodified_release": true,
+    "no_plugin_patch": true,
+    "no_core_patch": true
+  }
+}

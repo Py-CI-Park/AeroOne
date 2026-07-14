@@ -128,6 +128,7 @@ test('chart: a manual_spec example passes the full ChartSpec through (stacked/gr
   expect(payload.manualSpecJson).toBeTruthy();
   expect(JSON.parse(payload.manualSpecJson).stacked).toBe(true);
   expect(JSON.parse(payload.manualSpecJson).group).toBe('channel');
+  expect(payload.manualSpec).toBeUndefined();
 });
 
 test('report: clicking an example generates immediately (one click)', async () => {

@@ -59,6 +59,9 @@ class ResourceGrant(Base):
 
 class AdminAuditEvent(Base):
     __tablename__ = 'admin_audit_events'
+    __table_args__ = (
+        UniqueConstraint('idempotency_key', name='uq_admin_audit_events_idempotency_key'),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     actor_user_id: Mapped[int | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
@@ -73,6 +76,7 @@ class AdminAuditEvent(Base):
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     before_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     after_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)

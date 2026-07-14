@@ -90,6 +90,20 @@ if exist "%LEANTIME_LAUNCHER%" (
   echo [RUN-ALL] starting Leantime via launcher...
   call "%LEANTIME_LAUNCHER%"
   if errorlevel 1 echo [RUN-ALL][WARN ] Leantime launcher returned error. AeroOne remains up.
+
+  REM 선택적 준비 대기(짧게, 최대 30s) — Leantime 이 준비되지 않아도 AeroOne/ON 흐름은 계속된다.
+  if not defined AEROONE_LEANTIME_HEALTH_URL (
+    set "LEANTIME_HEALTH_URL=http://127.0.0.1:%LEANTIME_PORT%"
+  ) else (
+    set "LEANTIME_HEALTH_URL=%AEROONE_LEANTIME_HEALTH_URL%"
+  )
+  echo [RUN-ALL] waiting for Leantime readiness ^(optional, max 30s^)...
+  call :wait_health "!LEANTIME_HEALTH_URL!" 30
+  if errorlevel 1 (
+    echo [RUN-ALL][LEANTIME][WARN ] Leantime not ready within 30s at !LEANTIME_HEALTH_URL!. AeroOne remains up ^(co-deploy is optional^).
+  ) else (
+    echo [RUN-ALL][LEANTIME][READY] Leantime responded at !LEANTIME_HEALTH_URL!.
+  )
 ) else (
   echo [RUN-ALL][INFO ] Leantime launcher not found ^(%LEANTIME_LAUNCHER%^) -^> integration surface only, operator install required.
 )
@@ -151,6 +165,7 @@ echo [DRY-RUN] would call "%ROOT%\start_offline.bat" --no-pause%PASSTHRU%
 echo [DRY-RUN] would wait backend health http://127.0.0.1:%BACKEND_PORT%/api/v1/health ^(max 30s^)
 if exist "%LEANTIME_LAUNCHER%" (
   echo [DRY-RUN] would call Leantime launcher "%LEANTIME_LAUNCHER%"
+  echo [DRY-RUN] would wait Leantime readiness ^(optional, max 30s^) at http://127.0.0.1:%LEANTIME_PORT% ^(or AEROONE_LEANTIME_HEALTH_URL^)
 ) else (
   echo [DRY-RUN] Leantime launcher missing at "%LEANTIME_LAUNCHER%" -^> integration surface only, operator install required
 )
@@ -206,5 +221,7 @@ echo.
 echo Leantime co-deploy (optional): after AeroOne is healthy, if a Leantime launcher exists it is
 echo delegated to (IIS/PHP/MariaDB stack on port 8081); if missing, only the dashboard link card is
 echo provided and the operator must install Leantime. Set env AEROONE_LEANTIME_LAUNCHER to point at
-echo the launcher (default ..\Leantime\start-leantime.bat). See docs\runbook\leantime-codeploy.md.
+echo the launcher (default ..\Leantime\start-leantime.bat). After delegating, run_all waits up to
+echo 30s (optional) for Leantime HTTP readiness and logs [RUN-ALL][LEANTIME][READY^|WARN], but never
+echo aborts AeroOne or Open Notebook. See docs\runbook\leantime-codeploy.md.
 exit /b 0

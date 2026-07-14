@@ -2,6 +2,7 @@ import React from 'react';
 
 import { AppShell } from '@/components/layout/app-shell';
 import { LeantimeStatus } from '@/components/office-tools/leantime-status';
+import { LeantimeDashboard } from '@/components/office-tools/leantime-dashboard';
 import { getAppTheme } from '@/lib/server-theme';
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,8 @@ export default async function LeantimePage({
         </div>
 
         <LeantimeStatus />
+
+        <LeantimeDashboard />
 
         <section className="flex flex-col gap-3 rounded-xl border border-ink-3/15 bg-surface-sunken/50 px-5 py-5">
           <h2 className="text-sm font-semibold text-ink-1">설치·기동 절차</h2>

@@ -6,8 +6,9 @@
 차단하고 소스만 JobStore 에 등록한다. cairosvg PNG export 는 없다.
 
 AI 보조(``ai_assist``)는 ``core.llm_bridge`` 의 활성 연결을 우선 사용하고, 없거나
-실패하면 규칙 기반 폴백으로 내려간다(경고 첨부). 상위 라우터가 세션 로그인을
-강제하므로 미로그인은 401 이다.
+실패하면 규칙 기반 폴백으로 내려간다(경고 첨부). 상위 라우터가 세션 로그인과 ``office.use`` 를
+강제하므로 미로그인은 401, 권한 없이는 403 이다. JobStore 를 변경하는 ``POST /generate`` 는
+``require_csrf`` 도 요구하며 유효하지 않은 CSRF 는 403 이다.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.modules.auth.dependencies import get_current_user, get_db, get_settings
+from app.modules.auth.dependencies import get_current_user, get_db, get_settings, require_csrf
 from app.modules.auth.models import User
 from app.modules.office_tools.api.jobs import get_office_job_store
 from app.modules.office_tools.core import llm_bridge
@@ -27,7 +28,7 @@ from app.modules.office_tools.services.diagram_service import generate_diagram
 router = APIRouter(tags=['office-tools'])
 
 
-@router.post('/generate', response_model=DiagramGenerateResponse)
+@router.post('/generate', response_model=DiagramGenerateResponse, dependencies=[Depends(require_csrf)])
 def generate(
     request: DiagramGenerateRequest,
     db: Session = Depends(get_db),
@@ -52,6 +53,7 @@ def generate(
         job_id=record['job_id'],
         status=record['status'],
         title=record['title'],
+        llm_used=record['llm_used'],
         diagram_type=record['diagram_type'],
         mermaid=record['mermaid'],
         warnings=record.get('warnings', []),

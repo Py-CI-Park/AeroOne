@@ -21,3 +21,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return relayFrontendRequest(request, OFFICE_TOOLS_ALLOWLIST);
 }
+export async function DELETE(request: NextRequest) {
+  return relayFrontendRequest(request, OFFICE_TOOLS_ALLOWLIST);
+}
