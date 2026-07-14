@@ -235,7 +235,9 @@ class AiChatService:
         except (ProviderSelectionInvalid, ProviderCredentialUnavailable) as exc:
             raise OllamaUnavailable(f'Compatible provider unavailable (reason=binding_unavailable): {exc}') from exc
 
-        payload_messages = [message.model_dump() for message in self._messages_with_context(messages, citations)]
+        # 컨텍스트+시스템 프롬프트 조립은 provider 중립 로직이므로 OllamaClient 헬퍼를 재사용한다
+        # (AiChatService 자체에는 정의가 없다 — 과거 self._messages_with_context 호출은 AttributeError).
+        payload_messages = [message.model_dump() for message in self.ollama._messages_with_context(messages, citations)]
         try:
             outcome = chat_completion(
                 binding.canonical_url,
