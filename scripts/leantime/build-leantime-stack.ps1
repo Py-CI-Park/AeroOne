@@ -68,10 +68,26 @@ foreach ($c in $Components) {
   }
 }
 
-# Orchestration scripts + operator README at the stack root.
-Copy-Item (Join-Path $ScriptsSrc 'setup-leantime-stack.bat') $Staging -Force
-Copy-Item (Join-Path $ScriptsSrc 'start-leantime-stack.bat') $Staging -Force
-Copy-Item (Join-Path $ScriptsSrc 'stop-leantime-stack.bat')  $Staging -Force
+# Orchestration scripts + operator README at the stack root. Batch files MUST ship
+# with CRLF line endings: cmd.exe mis-parses LF-only .bat files (setlocal -> 'tlocal',
+# chcp -> 'cp'), which breaks the closed-network install. Copy-Item would preserve
+# whatever the builder checkout produced (LF on a checkout that did not apply the
+# .gitattributes eol=crlf rule), so normalize to CRLF on stage instead of trusting it.
+function Copy-BatchAsCrlf {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    $text = [System.IO.File]::ReadAllText($Source)
+    $text = $text -replace "`r`n", "`n"
+    $text = $text -replace "`r", "`n"
+    $text = $text -replace "`n", "`r`n"
+    [System.IO.File]::WriteAllText($Destination, $text, (New-Object System.Text.UTF8Encoding($false)))
+}
+foreach ($bat in @('setup-leantime-stack.bat', 'start-leantime-stack.bat', 'stop-leantime-stack.bat')) {
+    Copy-BatchAsCrlf (Join-Path $ScriptsSrc $bat) (Join-Path $Staging $bat)
+    Write-Host "[STACK] staged (CRLF-normalized) $bat"
+}
 $readme = Join-Path $ScriptsSrc 'README-LEANTIME-STACK.txt'
 if (Test-Path $readme) { Copy-Item $readme (Join-Path $Staging 'README.txt') -Force }
 

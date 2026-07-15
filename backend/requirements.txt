@@ -7,7 +7,10 @@ pydantic==2.12.5
 pydantic-settings==2.6.1
 PyJWT==2.10.1
 passlib[bcrypt]==1.7.4
-bcrypt<5
+# passlib 1.7.4 reads bcrypt.__about__.__version__ on load; bcrypt>=4.1 removed __about__,
+# which prints an AttributeError traceback during offline setup/seed hashing. 4.0.1 is the
+# last release that keeps __about__ and still supports bcrypt_sha256, so passlib loads clean.
+bcrypt==4.0.1
 beautifulsoup4==4.12.3
 Markdown==3.7
 # Chart Studio (svc02) data aggregation. Offline wheels required for closed network (BUILD_CONTRACT section 7).

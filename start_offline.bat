@@ -94,14 +94,34 @@ exit /b 0
 
 if defined MAINTENANCE_PREFLIGHT goto :maintenance_preflight
 powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%ENTRY_BATCH%" -RawBatchArguments "--maintenance-preflight"
+set "GATE_EXIT=%ERRORLEVEL%"
+if "%GATE_EXIT%"=="0" goto :maintenance_preflight_complete
+if "%GATE_EXIT%"=="97" goto :gate_unavailable_fallback
+goto :gate_preflight_failed
+
+:gate_unavailable_fallback
+echo [WARN ] Maintenance gate unavailable on this host - locked-down environment ^(no global-object privilege^) or a reparse-point in the install path.
+echo [WARN ] Continuing with a direct startup preflight ^(safe: TCP port check + idempotent DB migration only; matches pre-gate behavior^).
+call :run_startup_preflight
 if errorlevel 1 exit /b 1
 goto :maintenance_preflight_complete
+
+:gate_preflight_failed
+echo [ERROR] Startup maintenance preflight did not pass ^(exit %GATE_EXIT%^).
+if "%GATE_EXIT%"=="98" echo [INFO ] Another AeroOne maintenance operation ^(e.g. credential rotation^) is holding the gate. Let it finish, then rerun start_offline.bat.
+echo [INFO ] Resolve the reported cause above and rerun start_offline.bat.
+if not defined NO_PAUSE pause
+exit /b 1
 
 :maintenance_preflight
 if /I not "%AEROONE_MAINTENANCE_GATE_HELD%"=="1" (
   echo [ERROR] Internal maintenance preflight must run under the workspace gate.
   exit /b 1
 )
+call :run_startup_preflight
+exit /b !errorlevel!
+
+:run_startup_preflight
 call :ensure_port_free %BACKEND_PORT% "offline backend"
 if errorlevel 1 exit /b 1
 call :ensure_port_free %FRONTEND_PORT% "offline frontend"
@@ -265,6 +285,8 @@ del /f /q "%PCV_SCRIPT%" >nul 2>&1
 if not "%PCV_EXIT%"=="0" (
   echo [ERROR] Provider credential store root failed identity/DACL/reparse/hardlink validation ^(fail-closed^).
   echo [INFO ] No provider key was created, read, written, or printed by this check.
+  echo [INFO ] Re-run setup_offline.bat to re-provision the SID-scoped credential store, then rerun start_offline.bat.
+  if not defined NO_PAUSE pause
   exit /b 1
 )
 exit /b 0
