@@ -40,6 +40,35 @@ def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -
     assert _SETUP_OFFLINE_SCRIPT.index(admin_username) < _SETUP_OFFLINE_SCRIPT.index(migration)
 
 
+_BUILD_LEANTIME_STACK = (
+    REPO_ROOT / "scripts" / "leantime" / "build-leantime-stack.ps1"
+).read_text(encoding="utf-8")
+_LEANTIME_STACK_DIR = REPO_ROOT / "scripts" / "leantime" / "stack"
+_LEANTIME_STACK_BATS = (
+    "setup-leantime-stack.bat",
+    "start-leantime-stack.bat",
+    "stop-leantime-stack.bat",
+)
+
+
+def test_leantime_stack_builder_forces_crlf_batch_line_endings() -> None:
+    # cmd.exe mis-parses LF-only .bat files (setlocal -> 'tlocal', chcp -> 'cp'),
+    # which breaks the closed-network Leantime install. The stack builder must
+    # normalize to CRLF instead of Copy-Item-ing whatever the checkout produced.
+    assert "Copy-BatchAsCrlf" in _BUILD_LEANTIME_STACK
+    assert "`r`n" in _BUILD_LEANTIME_STACK
+    for bat in _LEANTIME_STACK_BATS:
+        assert f"Copy-Item (Join-Path $ScriptsSrc '{bat}')" not in _BUILD_LEANTIME_STACK
+
+
+def test_leantime_stack_batch_sources_are_crlf_without_bom() -> None:
+    for bat in _LEANTIME_STACK_BATS:
+        raw = (_LEANTIME_STACK_DIR / bat).read_bytes()
+        assert not raw.startswith(b"\xef\xbb\xbf"), f"{bat} ships a UTF-8 BOM"
+        assert b"\r\n" in raw, f"{bat} is not CRLF"
+        assert b"\n" not in raw.replace(b"\r\n", b""), f"{bat} has a lone LF"
+
+
 _START_OFFLINE_SCRIPT = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
 
 

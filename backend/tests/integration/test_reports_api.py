@@ -42,3 +42,25 @@ def test_civil_aircraft_report_404_when_missing(client) -> None:
     response = client.get('/api/v1/reports/civil-aircraft/content/html')
 
     assert response.status_code == 404
+
+def test_civil_aircraft_dashboard_app_serves_bundle_index_with_self_csp(client) -> None:
+    response = client.get('/api/v1/reports/civil-aircraft/app')
+
+    assert response.status_code == 200
+    csp = response.headers.get('content-security-policy', '')
+    assert "default-src 'self'" in csp
+    # self-only bundle: no external origin may appear in the CSP.
+    assert 'http://' not in csp and 'https://' not in csp
+    assert response.headers.get('x-content-type-options') == 'nosniff'
+
+    body = response.text
+    assert 'Civil Aircraft Data Portal' in body
+    # 운영자 요청으로 삭제한 히어로 문구는 더 이상 서빙되지 않는다.
+    assert '선 중심 레이더를 유지하고' not in body
+    assert '정리했습니다' not in body
+
+
+def test_civil_aircraft_dashboard_app_rejects_path_traversal(client) -> None:
+    response = client.get('/api/v1/reports/civil-aircraft/app/..%2f..%2f..%2fsecret.html')
+
+    assert response.status_code == 404
