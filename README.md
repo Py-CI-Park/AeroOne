@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.16.1-1f6feb)
+![version](https://img.shields.io/badge/version-1.16.2-1f6feb)
 ![status](https://img.shields.io/badge/status-immutable-release-success)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
@@ -18,7 +18,7 @@
 </div>
 
 > [!CAUTION]
-> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.16.1`이며, `1.16.0`/1.15.1/1.15.0/1.14.0/1.13.2/1.13.1/1.13.0은 변경하지 않는 역사 릴리스로 보존합니다(`1.15.0`은 오프라인 설치 차단 결함으로 `1.15.1`로 대체됨). `1.16.1`은 `1.16.0` 위에 폐쇄망 실사용 결함 4건(오프라인 설치 시 bcrypt `__about__` traceback, start_offline 게이트 무음 종료 회귀, Leantime 스택 배치 LF 줄바꿈으로 인한 `tlocal` 오파싱, Civil Aircraft 포털 문구)을 바로잡은 forward-only 교정판입니다. `1.16.0`은 1.15.1 위에 대시보드 섹션 재편(AI/ETC), Civil Aircraft v1.7 인터랙티브 대시보드, Leantime 실기동 포터블 반입물(별도 ZIP), 버전 표기 정합을 얹은 forward-only feature 릴리스입니다. 이전 immutable 릴리스의 tag·asset·digest는 변경하지 않습니다. Release publication은 완료되어도 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
+> **1.12.2 배포본은 철회되었습니다.** 현재 운영 반입물은 immutable 정식 `1.16.2`이며, `1.16.0`/1.15.1/1.15.0/1.14.0/1.13.2/1.13.1/1.13.0은 변경하지 않는 역사 릴리스로 보존합니다(`1.15.0`은 오프라인 설치 차단 결함으로 `1.15.1`로 대체됨). `1.16.2`는 `1.16.0` 위에 폐쇄망 실사용 결함 4건(오프라인 설치 시 bcrypt `__about__` traceback, start_offline 게이트 무음 종료 회귀, Leantime 스택 배치 LF 줄바꿈으로 인한 `tlocal` 오파싱, Civil Aircraft 포털 문구)을 바로잡은 forward-only 교정판입니다. `1.16.0`은 1.15.1 위에 대시보드 섹션 재편(AI/ETC), Civil Aircraft v1.7 인터랙티브 대시보드, Leantime 실기동 포터블 반입물(별도 ZIP), 버전 표기 정합을 얹은 forward-only feature 릴리스입니다. 이전 immutable 릴리스의 tag·asset·digest는 변경하지 않습니다. Release publication은 완료되어도 사람이 air-gapped network에 물리적으로 import했다는 의미는 아닙니다.
 
 <table>
   <tr>
@@ -78,7 +78,7 @@
 | 데이터 모델 | `users / groups / user_permissions / group_permissions / resource_grants / admin_audit_events / service_modules / backup_records / categories / tags / newsletters / newsletter_tags / newsletter_assets / ai_request_logs` |
 | 운영 모드 | `development` / `test` / `closed_network` / `production` 4 모드. `closed_network` 는 HTTP 폐쇄망에서 secret 강도 검증을 강제하면서 secure cookie 는 끔 |
 | 기본 LAN / loopback | 1.0.22+ 기본은 LAN(`0.0.0.0`, 이 PC 의 LAN IP 자동 감지) — backend·frontend·CORS·NEXT_PUBLIC_API·자동 오픈 URL 5자리 일괄 적용. 이 PC 전용은 `--local`, 호스트 고정은 `--allow-host=<IP>` |
-| 검증 | `1.16.1`은 폐쇄망 실사용 결함 4건을 재현·수정하고 타깃 회귀로 검증했습니다 — bcrypt==4.0.1로 passlib 경고 0건 clean-load(auth **29 passed**), start_offline 게이트 폴백(환경무능력 exit 97→직접 preflight)으로 무음 종료 제거(batch **43 passed**·게이트 경합 **1 passed**), Leantime 스택 배치 CRLF 강제(LF→`tlocal` 재현 후 정규화), Civil Aircraft 앱 라우트 200·self CSP·traversal 404(reports **5 passed**). `1.16.0`은 frontend 전체 vitest **88 files green**, `tsc --noEmit`, Next 15.5.18 production build를 통과했습니다. backend 변경 영역(reports 정적-앱 라우트·마이그레이션 `20260714_0018`·batch·seed)은 green이고, 전체 integration 42%+ / unit 74%+ 구간 0 failed(기반 `1.15.1` = backend **775 passed**)입니다. Leantime 포터블 스택은 이 PC에서 스키마 37테이블+관리자 설치 후 웹 `http://localhost:8081/auth/login` **200**, Civil Aircraft 앱 라우트는 TestClient로 index/에셋 **200**·self CSP·traversal **404**를 실측했습니다. 1.15.x/1.14.0/1.13.x의 역사적 검증 사실은 그대로 보존합니다. |
+| 검증 | `1.16.2`는 폐쇄망 실사용 결함 4건을 재현·수정하고 타깃 회귀로 검증했습니다 — bcrypt==4.0.1로 passlib 경고 0건 clean-load(auth **29 passed**), start_offline 게이트 폴백(환경무능력 exit 97→직접 preflight)으로 무음 종료 제거(batch **43 passed**·게이트 경합 **1 passed**), Leantime 스택 배치 CRLF 강제(LF→`tlocal` 재현 후 정규화), Civil Aircraft 앱 라우트 200·self CSP·traversal 404(reports **5 passed**). `1.16.0`은 frontend 전체 vitest **88 files green**, `tsc --noEmit`, Next 15.5.18 production build를 통과했습니다. backend 변경 영역(reports 정적-앱 라우트·마이그레이션 `20260714_0018`·batch·seed)은 green이고, 전체 integration 42%+ / unit 74%+ 구간 0 failed(기반 `1.15.1` = backend **775 passed**)입니다. Leantime 포터블 스택은 이 PC에서 스키마 37테이블+관리자 설치 후 웹 `http://localhost:8081/auth/login` **200**, Civil Aircraft 앱 라우트는 TestClient로 index/에셋 **200**·self CSP·traversal **404**를 실측했습니다. 1.15.x/1.14.0/1.13.x의 역사적 검증 사실은 그대로 보존합니다. |
 | 배포 | Docker Compose (개발), Windows 배치 스크립트 (운영/폐쇄망) |
 | 폐쇄망 오픈소스 도입 | 검증된 vendoring·airgap 번들·자동 프로비저닝 프로세스로 외부 오픈소스를 폐쇄망에 도입 — 재사용 플레이북: [`docs/closed-network-oss-adoption-process.md`](docs/closed-network-oss-adoption-process.md) |
 
