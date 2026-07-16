@@ -93,7 +93,9 @@ exit /b 0
 :real_run
 
 if defined MAINTENANCE_PREFLIGHT goto :maintenance_preflight
-powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%ENTRY_BATCH%" -RawBatchArguments "--maintenance-preflight"
+call :check_already_running
+if errorlevel 1 exit /b 1
+powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\invoke_with_maintenance_gate.ps1" -WorkspaceRoot "%ROOT%" -BatchPath "%ENTRY_BATCH%" -RawBatchArguments "--maintenance-preflight" -WaitTimeoutSeconds 20
 set "GATE_EXIT=%ERRORLEVEL%"
 if "%GATE_EXIT%"=="0" goto :maintenance_preflight_complete
 if "%GATE_EXIT%"=="97" goto :gate_unavailable_fallback
@@ -108,7 +110,7 @@ goto :maintenance_preflight_complete
 
 :gate_preflight_failed
 echo [ERROR] Startup maintenance preflight did not pass ^(exit %GATE_EXIT%^).
-if "%GATE_EXIT%"=="98" echo [INFO ] Another AeroOne maintenance operation ^(e.g. credential rotation^) is holding the gate. Let it finish, then rerun start_offline.bat.
+if "%GATE_EXIT%"=="98" echo [INFO ] An AeroOne backend from a previous run is still holding the maintenance gate. Close its window, run stop_offline.bat, or reboot, then rerun start_offline.bat.
 echo [INFO ] Resolve the reported cause above and rerun start_offline.bat.
 if not defined NO_PAUSE pause
 exit /b 1
@@ -128,6 +130,17 @@ call :ensure_port_free %FRONTEND_PORT% "offline frontend"
 if errorlevel 1 exit /b 1
 call :ensure_db_migrated
 exit /b !errorlevel!
+
+:check_already_running
+powershell -NoLogo -NoProfile -Command "$busy = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() | Where-Object { $_.Port -eq %BACKEND_PORT% -or $_.Port -eq %FRONTEND_PORT% }; if ($busy) { exit 1 } else { exit 0 }"
+if errorlevel 1 (
+  echo [ERROR] AeroOne is already running ^(port %BACKEND_PORT% or %FRONTEND_PORT% is in use^).
+  echo [INFO ] A previous backend is still holding the maintenance gate. Close the AeroOne backend/frontend windows,
+  echo [INFO ] run stop_offline.bat, or reboot, then rerun start_offline.bat.
+  if not defined NO_PAUSE pause
+  exit /b 1
+)
+exit /b 0
 
 :maintenance_preflight_complete
 

@@ -10,7 +10,7 @@ const REPORT_PATH = '/reports/civil-aircraft';
 // Same-origin proxy entry for the bundled interactive v1.7 dashboard. Relative links
 // inside the bundle (assets/, apps/, data/) resolve under this base and are proxied
 // back to the backend static-app route, which enforces a self-only CSP.
-const APP_SRC = '/api/frontend/reports/civil-aircraft/app/';
+const APP_SRC = '/api/frontend/reports/civil-aircraft/app/index.html';
 
 type SearchParams = {
   theme?: string;

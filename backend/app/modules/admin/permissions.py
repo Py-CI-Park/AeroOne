@@ -65,7 +65,17 @@ def is_valid_resource_id(resource_id: str) -> bool:
 
 DEFAULT_ROLE_PERMISSIONS: dict[str, set[str]] = {
     'admin': set(ADMIN_PERMISSIONS),
-    'user': {'search.use', 'ai.use', 'ai.history.manage_own', 'dashboard.openwebui.launch'},
+    # 발급된 로그인 계정(user 역할)은 개발중 섹션 카드까지 포함해 대시보드를 운영한다.
+    # NSA(collections.nsa.read)는 접근제어 대상이라 역할 기본값에 넣지 않는다 —
+    # 필요한 계정에만 권한/그룹/ResourceGrant 로 개별 부여한다.
+    'user': {
+        'search.use',
+        'ai.use',
+        'ai.history.manage_own',
+        'dashboard.openwebui.launch',
+        'office.use',
+        'leantime.read',
+    },
     'pending': set(),
 }
 

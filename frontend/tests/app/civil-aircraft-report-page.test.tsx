@@ -29,7 +29,7 @@ afterEach(() => {
 
 // v1.16.0: the Civil Aircraft catalog is the interactive v1.7 dashboard embedded via a
 // same-origin proxy (scripts run), replacing the previous sanitized single-report view.
-const APP_SRC = '/api/frontend/reports/civil-aircraft/app/';
+const APP_SRC = '/api/frontend/reports/civil-aircraft/app/index.html';
 
 test('renders the interactive v1.7 dashboard in a same-origin iframe', async () => {
   const { container } = render(await CivilAircraftReportPage({ searchParams: Promise.resolve({}) }));

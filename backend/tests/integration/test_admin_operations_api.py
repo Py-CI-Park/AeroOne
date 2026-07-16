@@ -188,6 +188,20 @@ def test_public_modules_include_nsa_for_direct_permission_user(client, app) -> N
     keys = {module['key'] for module in response.json()}
     assert {'newsletter', 'civil-aircraft', 'document', 'nsa'} <= keys
 
+def test_issued_user_sees_dev_cards_but_not_gated_nsa(client, app) -> None:
+    _create_user(app, 'issued-dashboard-user')
+    login_response = client.post('/api/v1/auth/login', json={'username': 'issued-dashboard-user', 'password': 'password'})
+    assert login_response.status_code == 200
+
+    response = client.get('/api/v1/admin/service-modules/public')
+    assert response.status_code == 200
+    keys = {module['key'] for module in response.json()}
+    # 1.16.3: 발급된 로그인 계정(user 역할)은 개발중 섹션(admin 가시성) 카드까지 본다.
+    assert {'newsletter', 'civil-aircraft', 'document', 'viewer', 'ai', 'open-notebook', 'ladder'} <= keys
+    # NSA 는 접근제어 대상이라 역할 기본값에 없어 계속 숨겨지고, coming_soon 비활성 카드도 숨겨진다.
+    assert 'nsa' not in keys
+    assert 'announcement' not in keys
+
 
 
 def test_service_module_activation_patch_is_audited_and_changes_public_visibility(csrf_client, app) -> None:
