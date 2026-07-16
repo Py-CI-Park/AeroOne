@@ -63,9 +63,11 @@ stop-leantime-stack.bat
 ```
 
 - 구성: 포터블 **PHP 8.3.32 + MariaDB 11.4.8(127.0.0.1:3307) + Leantime v3.9.8** — 폐쇄망 무설치.
-- Leantime 접속: `http://localhost:8081`
+- Leantime 접속: 본인 PC 는 `http://localhost:8081`, 다른 PC 는 READY 줄에 표시되는 LAN 주소(예: `http://192.168.x.x:8081`). 페이지 내 링크·자산 기준 URL 은 LAN IPv4 자동 감지값이며 `set LEANTIME_APP_URL=http://<IP>:8081` 로 고정 가능.
 - **Leantime 관리자(기본)**: `admin@aeroone.local` / `AeroOneLean2026!`
   - 설치 전 변경: `set LEANTIME_ADMIN_EMAIL=...` / `set LEANTIME_ADMIN_PASSWORD=...` 후 `setup-leantime-stack.bat`
+- 더블클릭 실행 시 창이 자동으로 닫히지 않고 결과를 보여준 뒤 아무 키나 누르면 닫힙니다(자동화는 `AEROONE_LT_NO_PAUSE=1`).
+- setup 중 demo 프로젝트 생성에서 `AuthorizationException(tickets.create)` 가 출력될 수 있으나 스키마·관리자 계정은 정상 생성됩니다 — 로그인 후 프로젝트를 직접 만드세요.
 - 포트 변경(선택): `set LEANTIME_PORT=8081` / `set LEANTIME_DB_PORT=3307`
 - 외부 접속 허용: `scripts\leantime\allow-leantime-firewall.cmd`
 - 완전 초기화: 스택의 `data\` 폴더 삭제 후 `setup-leantime-stack.bat` 재실행.

@@ -69,6 +69,77 @@ def test_leantime_stack_batch_sources_are_crlf_without_bom() -> None:
         assert b"\n" not in raw.replace(b"\r\n", b""), f"{bat} has a lone LF"
 
 
+def test_leantime_stack_batches_disable_delayed_expansion() -> None:
+    # EnableDelayedExpansion 은 값 안의 '!' 를 조용히 제거한다 — 기본 관리자 비밀번호
+    # AeroOneLean2026! 가 AeroOneLean2026 으로 시드되어 문서화된 비밀번호로 로그인이
+    # 불가능해지는 실결함이 있었다. 스택 배치는 '!var!' 를 쓰지 않으므로 항상 OFF.
+    for bat in _LEANTIME_STACK_BATS:
+        text = (_LEANTIME_STACK_DIR / bat).read_text(encoding="utf-8")
+        assert "EnableDelayedExpansion" not in text, f"{bat} re-enables delayed expansion"
+
+
+def test_leantime_stack_setup_escapes_parens_inside_blocks() -> None:
+    # 'echo ... (skip).' 처럼 블록 안 비이스케이프 괄호는 cmd 파스 오류
+    # ('. was unexpected at this time.')로 setup 전체를 죽였던 회귀.
+    text = (_LEANTIME_STACK_DIR / "setup-leantime-stack.bat").read_text(encoding="utf-8")
+    assert "^(skip^)" in text
+    assert "already initialized (skip)" not in text
+
+
+def test_leantime_stack_batches_pause_on_doubleclick_with_optout() -> None:
+    # 더블클릭 실행 시 오류 창이 즉시 닫히지 않도록 pause 하되,
+    # 자동화(run_all/테스트)는 AEROONE_LT_NO_PAUSE=1 로 pause 를 끈다.
+    for bat in ("setup-leantime-stack.bat", "start-leantime-stack.bat"):
+        text = (_LEANTIME_STACK_DIR / bat).read_text(encoding="utf-8")
+        assert "cmdcmdline" in text, f"{bat} lost double-click detection"
+        assert "AEROONE_LT_NO_PAUSE" in text, f"{bat} lost the pause opt-out"
+        assert ":fail" in text, f"{bat} lost the visible failure path"
+
+
+def test_leantime_stack_start_defaults_app_url_to_lan_ip() -> None:
+    # LEAN_APP_URL 이 localhost 로 고정되면 다른 PC 브라우저가 자산/리다이렉트를
+    # 자기 자신(localhost)에서 찾다 깨진다. LAN IP 자동 감지 + override 를 보장한다.
+    text = (_LEANTIME_STACK_DIR / "start-leantime-stack.bat").read_text(encoding="utf-8")
+    assert "LEANTIME_APP_URL" in text
+    assert 'set "LEAN_APP_URL=%LT_APP_URL%"' in text
+    assert 'set "LEAN_APP_URL=http://localhost' not in text
+
+
+def test_leantime_stack_setup_fails_visibly_without_components(tmp_path: Path) -> None:
+    # 구성요소가 없으면 파스 오류/무음 종료가 아니라 ERROR 메시지 + exit 1 이어야 한다.
+    stack = tmp_path / "stack"
+    stack.mkdir()
+    src = (_LEANTIME_STACK_DIR / "setup-leantime-stack.bat").read_bytes()
+    (stack / "setup-leantime-stack.bat").write_bytes(src)
+
+    env = os.environ.copy()
+    env["AEROONE_LT_NO_PAUSE"] = "1"
+
+    result = _run_cmd(stack, "setup-leantime-stack.bat", env=env)
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "missing stack component" in combined
+    assert "unexpected at this time" not in combined
+
+
+def test_leantime_stack_start_fails_visibly_without_setup(tmp_path: Path) -> None:
+    # setup 이전(data\mysql 부재)의 start 는 안내 메시지 + exit 1 로 끝나야 한다.
+    stack = tmp_path / "stack"
+    stack.mkdir()
+    src = (_LEANTIME_STACK_DIR / "start-leantime-stack.bat").read_bytes()
+    (stack / "start-leantime-stack.bat").write_bytes(src)
+
+    env = os.environ.copy()
+    env["AEROONE_LT_NO_PAUSE"] = "1"
+
+    result = _run_cmd(stack, "start-leantime-stack.bat", env=env)
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "Run setup-leantime-stack.bat first" in result.stdout + result.stderr
+
+
+
 _START_OFFLINE_SCRIPT = (REPO_ROOT / "start_offline.bat").read_text(encoding="utf-8")
 
 
