@@ -21,7 +21,9 @@ def user_can_access_module(db: Session, user: User | None, module: ServiceModule
     if not module.is_enabled or module.visibility == 'hidden' or module.status == 'hidden':
         return False
     if module.visibility == 'admin':
-        return bool(user and validate_role(user.role) == 'admin' and user.is_active)
+        # 발급된 활성 로그인 계정(admin·user)은 개발중 섹션을 포함한 전체 대시보드를 본다.
+        # 익명·pending 은 여전히 admin-가시성 카드를 볼 수 없다.
+        return bool(user and user.is_active and validate_role(user.role) in ('admin', 'user'))
     if module.visibility != 'public':
         return False
     if not module.required_permission:

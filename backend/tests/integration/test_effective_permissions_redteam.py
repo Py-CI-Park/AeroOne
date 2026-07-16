@@ -53,9 +53,18 @@ def test_plain_user_sees_only_role_defaults_not_admin_permissions(client: TestCl
 
     assert response.status_code == 200
     payload = response.json()
-    # v1.14.0: 'dashboard.openwebui.launch' is a default 'user' role permission so the
-    # OpenWebUI launcher card shows for every active logged-in user (admin + user).
-    assert set(payload['permissions']) == {'search.use', 'ai.use', 'ai.history.manage_own', 'dashboard.openwebui.launch'}
+    # 1.16.3: 발급된 'user' 역할은 개발중 섹션 카드까지 운영하므로 dev-기능 운영 권한
+    # (office.use, leantime.read)과 openwebui.launch 가 역할 기본값에 포함된다.
+    # NSA(collections.nsa.read)는 접근제어 대상이라 역할 기본값에 없다.
+    assert set(payload['permissions']) == {
+        'search.use',
+        'ai.use',
+        'ai.history.manage_own',
+        'dashboard.openwebui.launch',
+        'office.use',
+        'leantime.read',
+    }
+    assert 'collections.nsa.read' not in payload['permissions']
     assert 'admin.users.manage' not in payload['permissions']
     assert 'admin.users.read' not in payload['permissions']
     assert payload['resources'] == []

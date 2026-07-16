@@ -15,6 +15,23 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.16.3',
+    date: '2026-07-16',
+    items: [
+      'Civil Aircraft Spec Catalog(민간 항공기 대시보드) 렌더링이 모두 깨져 보이던 문제를 수정했습니다 — 프록시 iframe 진입 경로를 index.html 로 고정해 CSS·스크립트 상대경로가 올바로 로드됩니다.',
+      '로그인 계정이 발급된 사용자는 개발중 섹션을 포함한 전체 대시보드 카드를 보고 사용할 수 있습니다(익명·대기 계정은 기존대로 공개 카드만 노출).',
+      '폐쇄망 start_offline.bat 이 이전 실행이 남긴 백엔드에 유지보수 게이트가 잡혀 5분 대기 후 exit 98 로 끝나던 문제를 개선했습니다 — 이미 실행 중이면 즉시 안내하고, 남은 백엔드/프런트/게이트 프로세스를 정리하는 stop_offline.bat 을 추가했습니다.',
+      '헤더 버전 표기를 실제 릴리스(1.16.3)와 일치시켰습니다.',
+    ],
+  },
+  {
+    version: '1.16.2',
+    date: '2026-07-15',
+    items: [
+      '폐쇄망 실사용 결함 4건을 수정했습니다 — 오프라인 설치 시 bcrypt `__about__` 오류(bcrypt 4.0.1 고정), start_offline 유지보수 게이트 무음 종료 회귀, Leantime 스택 설치 시 setlocal→`tlocal` 오파싱(배치 CRLF 정규화), Civil Aircraft 포털 히어로 문구 정리.',
+    ],
+  },
+  {
     version: '1.16.0',
     date: '2026-07-14',
     items: [
