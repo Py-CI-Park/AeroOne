@@ -147,9 +147,9 @@ def _mount_read_api(app) -> TestClient:
     return TestClient(app)
 
 
-def _create_plain_user(app) -> None:
+def _create_user(app, username: str, role: str) -> None:
     with app.state.db.session() as session:
-        UserRepository(session).create(username='plain-leantime', password_hash=hash_password('password123'), role='user')
+        UserRepository(session).create(username=username, password_hash=hash_password('password123'), role=role)
 
 
 def _login(client: TestClient, username: str, password: str) -> None:
@@ -169,11 +169,23 @@ def _add_connection(app, *, base_url='https://leantime.internal', api_key='scope
 
 
 def test_read_endpoint_requires_permission(app) -> None:
-    _create_plain_user(app)
+    # 1.16.3 부터 발급 계정(user 역할)은 leantime.read 를 기본 보유한다.
+    # 권한 없는 인증 주체는 역할 기본 권한이 빈 pending 계정으로 재현한다.
+    _create_user(app, 'pending-leantime', role='pending')
     client = _mount_read_api(app)
-    _login(client, 'plain-leantime', 'password123')
+    _login(client, 'pending-leantime', 'password123')
     resp = client.get('/api/v1/leantime/projects')
     assert resp.status_code == 403
+
+
+def test_read_endpoint_allows_issued_user_by_default(app) -> None:
+    # 발급 계정 전체 접근(1.16.3): 명시 부여 없이도 user 역할이면 읽기 가능(degraded 응답).
+    _create_user(app, 'issued-leantime', role='user')
+    client = _mount_read_api(app)
+    _login(client, 'issued-leantime', 'password123')
+    resp = client.get('/api/v1/leantime/projects')
+    assert resp.status_code == 200
+    assert resp.json()['degraded'] is True
 
 
 def test_read_endpoint_degrades_when_not_configured(app) -> None:

@@ -222,10 +222,13 @@ def test_activity_accessible_modules_enforce_audience_and_permissions(app, clien
         )
         session.flush()
 
+    # 1.16.3 발급 계정 전체 접근: visibility='admin' 모듈은 활성 admin·user 역할 모두에게
+    # 보인다. pending 은 여전히 admin-가시성 카드를 볼 수 없고, 권한 게이트 모듈(gated)은
+    # required_permission 보유자에게만 노출된다.
     expected_by_user = {
-        'activity-regular-user': [f'{prefix}free'],
+        'activity-regular-user': [f'{prefix}free', f'{prefix}admin'],
         'activity-pending-user': [f'{prefix}free'],
-        'activity-permitted-user': [f'{prefix}free', f'{prefix}gated'],
+        'activity-permitted-user': [f'{prefix}free', f'{prefix}gated', f'{prefix}admin'],
         'admin': [f'{prefix}free', f'{prefix}gated', f'{prefix}admin'],
     }
     for username, expected_keys in expected_by_user.items():

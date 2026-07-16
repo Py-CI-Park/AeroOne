@@ -257,13 +257,14 @@ def _user_client(
     username: str,
     *,
     permission_keys: tuple[str, ...] = (),
+    role: str = 'user',
 ) -> tuple[TestClient, str, int]:
     password = f'{username}-test-password'
     with app.state.db.session() as session:
         user = UserRepository(session).create(
             username=username,
             password_hash=hash_password(password),
-            role='user',
+            role=role,
         )
         for permission_key in permission_keys:
             session.add(UserPermission(user_id=user.id, permission_key=permission_key))
@@ -337,14 +338,16 @@ def test_all_office_post_endpoints_require_login(client: TestClient, endpoint: s
 
 
 @pytest.mark.parametrize('endpoint', _GET_ENDPOINTS)
-def test_plain_user_without_office_use_is_denied_get_access(app, endpoint: str) -> None:
-    plain_client, _, _ = _user_client(app, 'plain')
+def test_pending_user_without_office_use_is_denied_get_access(app, endpoint: str) -> None:
+    # 1.16.3 부터 발급 계정(user 역할)은 office.use 를 기본 보유한다. 권한 없는
+    # 인증 주체의 403 경로는 역할 기본 권한이 빈 pending 계정으로 검증한다.
+    plain_client, _, _ = _user_client(app, 'plain', role='pending')
     assert plain_client.get(endpoint).status_code == 403
 
 
 @pytest.mark.parametrize('endpoint', _POST_ENDPOINTS)
-def test_plain_user_without_office_use_is_denied_post_access(app, endpoint: str) -> None:
-    plain_client, csrf_token, _ = _user_client(app, 'plain')
+def test_pending_user_without_office_use_is_denied_post_access(app, endpoint: str) -> None:
+    plain_client, csrf_token, _ = _user_client(app, 'plain', role='pending')
     assert _office_post(plain_client, endpoint, csrf_token).status_code == 403
 
 def test_delegated_office_user_can_use_all_user_facing_routes(app, tmp_path) -> None:
@@ -539,10 +542,13 @@ def test_admin_office_management_routes_require_exact_permission_csrf_and_audit(
             target_id=target_id,
             audit_action=audit_action,
         )
+        # admin.office.manage 단독으로는 부족하다(office.use 병행 요구). user 역할은
+        # 1.16.3 부터 office.use 를 기본 보유하므로 pending 역할로 단독 보유를 재현한다.
         management_only, management_only_csrf_token, _ = _user_client(
             app,
             f'{resource}-{method.lower()}-manage-only',
             permission_keys=('admin.office.manage',),
+            role='pending',
         )
         _assert_denied_management_request(
             app,
