@@ -1,4 +1,4 @@
-# Civil Aircraft Data Dictionary v1.7
+# Civil Aircraft Data Dictionary v1.8
 
 - Release: 2026-07-14
 - Source snapshot: 2026-07-13
@@ -30,7 +30,7 @@
 
 ## Unified source registry
 
-The package-level `sources/Civil_Aircraft_Source_Registry_v1.7.json` contains:
+The package-level `sources/Civil_Aircraft_Source_Registry_v1.8.json` contains:
 
 | Field | Meaning |
 |---|---|
@@ -40,7 +40,7 @@ The package-level `sources/Civil_Aircraft_Source_Registry_v1.7.json` contains:
 | `sources[].localAttachments[]` | related local PDF filename/path/pages/size/SHA-256/official PDF URL |
 | `sources[].archiveStatus` | `local-attached` or `external-only` |
 
-`Civil_Aircraft_PDF_Integrity_v1.7.csv` is a machine QA table, not a second source registry.
+`Civil_Aircraft_PDF_Integrity_v1.8.csv` is a machine QA table, not a second source registry.
 
 ## Aircraft verification grades
 

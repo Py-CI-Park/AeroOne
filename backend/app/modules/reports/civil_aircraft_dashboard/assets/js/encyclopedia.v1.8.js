@@ -105,7 +105,7 @@
         {label:'Typical Seats',value:a=>CA.seats(a)},{label:'MTOW t',value:'mtowT'},{label:'Range nm',value:'rangeNm'},{label:'Payload t',value:'maxPayloadT'},
         {label:'Length m',value:'lengthM'},{label:'Span m',value:'spanM'},{label:'Height m',value:'heightM'},{label:'Verification',value:'verificationGrade'}
       ];
-      CA.downloadText('\ufeff'+CA.csv(filtered(),cols),'Civil_Aircraft_Catalog_v1.7.csv','text/csv;charset=utf-8');
+      CA.downloadText('\ufeff'+CA.csv(filtered(),cols),'Civil_Aircraft_Catalog_v1.8.csv','text/csv;charset=utf-8');
     });
 
     renderCatalog();renderMap();

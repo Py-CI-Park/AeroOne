@@ -1,18 +1,18 @@
-# Civil Aircraft Encyclopedia & Comparison Dashboard v1.7
+# Civil Aircraft Encyclopedia & Comparison Dashboard v1.8
 
 ## 실행
 
 압축 해제 후 루트의 `index.html`을 엽니다.
 
 ```text
-Civil_Aircraft_Encyclopedia_Dashboard_v1.7/index.html
+Civil_Aircraft_Encyclopedia_Dashboard_v1.8/index.html
 ```
 
 로컬 PDF는 패키지의 `sources/pdfs/` 폴더를 사용하므로 전체 폴더 구조를 유지해야 합니다.
 
 ## 릴리스 목적
 
-v1.7은 v1.6의 항공기 데이터와 비교 기능을 변경하지 않고 **Sources 정보구조와 Portal/Sources 분포 차트의 가독성만 정리한 유지보수 릴리스**입니다.
+v1.8은 v1.6의 항공기 데이터와 비교 기능을 변경하지 않고 **Sources 정보구조와 Portal/Sources 분포 차트의 가독성만 정리한 유지보수 릴리스**입니다.
 
 - 항공기: 65건
 - 출처 레코드: 55건
@@ -21,7 +21,7 @@ v1.7은 v1.6의 항공기 데이터와 비교 기능을 변경하지 않고 **So
 - 검증등급: A+ / A / B+ / B / C
 - 출처등급: A1 / A2 / B1 / B2
 
-## v1.7 변경사항
+## v1.8 변경사항
 
 ### 1. 출처 화면 통합
 
@@ -55,11 +55,11 @@ v1.7은 v1.6의 항공기 데이터와 비교 기능을 변경하지 않고 **So
 
 ```text
 sources/
-├─ Civil_Aircraft_Source_Registry_v1.7.json   # 55개 통합 레코드 + PDF 첨부정보
-├─ Civil_Aircraft_Source_Manifest_v1.7.csv    # 출처별 통합 매니페스트
-├─ Civil_Aircraft_PDF_Integrity_v1.7.csv      # PDF 25건 무결성 검사표
-├─ Civil_Aircraft_External_Source_Links_v1.7.csv
-├─ README_SOURCES_v1.7.md
+├─ Civil_Aircraft_Source_Registry_v1.8.json   # 55개 통합 레코드 + PDF 첨부정보
+├─ Civil_Aircraft_Source_Manifest_v1.8.csv    # 출처별 통합 매니페스트
+├─ Civil_Aircraft_PDF_Integrity_v1.8.csv      # PDF 25건 무결성 검사표
+├─ Civil_Aircraft_External_Source_Links_v1.8.csv
+├─ README_SOURCES_v1.8.md
 └─ pdfs/                                      # 로컬 PDF 25건
 ```
 
@@ -83,7 +83,7 @@ sources/
 
 ## 검증
 
-- Static QA: `qa/Civil_Aircraft_QA_Report_v1.7.json`
-- Runtime QA: `qa/Civil_Aircraft_QA_Runtime_v1.7.json`
-- Visual QA: `qa/Civil_Aircraft_Visual_QA_v1.7.json`
-- 배포 파일 해시: `SHA256SUMS_v1.7.txt`
+- Static QA: `qa/Civil_Aircraft_QA_Report_v1.8.json`
+- Runtime QA: `qa/Civil_Aircraft_QA_Runtime_v1.8.json`
+- Visual QA: `qa/Civil_Aircraft_Visual_QA_v1.8.json`
+- 배포 파일 해시: `SHA256SUMS_v1.8.txt`

@@ -213,6 +213,24 @@
     bindRadar();
   }
 
+  function bindScale(){
+    // v1.8 실척 실루엣 상호작용: hover 치수 툴팁 + 강조, 클릭 시 백과(상세 모달) 딥링크.
+    const host=document.getElementById('scaleView'),tip=CA.chartTooltip();
+    const hits=[...host.querySelectorAll('.silhouette-hit[data-aircraft-id]')];
+    hits.forEach(g=>{
+      const show=e=>{
+        const [m,meta,dims]=(g.dataset.tooltip||'').split('|');
+        tip.show(`<b>${CA.esc(m)}</b><br>${CA.esc(meta)}<br>${CA.esc(dims)}<br><small>클릭: 백과 상세</small>`,e.clientX||innerWidth/2,e.clientY||innerHeight/2);
+        hits.forEach(o=>{o.style.opacity=o===g?'1':'.2';});
+      };
+      const clear=()=>{tip.hide();hits.forEach(o=>o.style.opacity='');};
+      g.addEventListener('pointerenter',show);g.addEventListener('pointermove',show);g.addEventListener('pointerleave',clear);
+      g.addEventListener('focus',()=>show({clientX:innerWidth/2,clientY:innerHeight/2}));g.addEventListener('blur',clear);
+      g.addEventListener('click',()=>{state.focus=g.dataset.aircraftId;persist();renderInline();CA.dispatchAircraft(g.dataset.aircraftId);});
+      g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();g.click();}});
+    });
+  }
+
   function renderScale(){
     const list=selectedAircraft(),root=document.getElementById('scaleView');
     root.innerHTML=CA.SVG.compareSheet(list,state.shapeView,state.selected,state.shapeOverlay);
@@ -228,6 +246,7 @@
     document.getElementById('scaleModeNote').textContent=`${viewLabel} · Overlay ${state.shapeOverlay?'ON (단일 공통축척 오버레이)':'OFF (기체별 공통축척 패널)'}`;
     const light=document.getElementById('scaleLightbox');
     if(light.classList.contains('open')) light.querySelector('.scale-lightbox-view').innerHTML=root.innerHTML;
+    bindScale();
   }
 
   function openScaleLightbox(){
@@ -303,7 +322,8 @@
     document.querySelectorAll('[data-scale-view]').forEach(b=>b.addEventListener('click',()=>{state.shapeView=b.dataset.scaleView;persist();renderScale();}));
     document.getElementById('scaleOverlay').addEventListener('change',e=>{state.shapeOverlay=e.target.checked;persist();renderScale();});
     document.getElementById('scaleExpand').addEventListener('click',openScaleLightbox);
-    document.getElementById('scaleSaveSvg').addEventListener('click',()=>CA.downloadSvg(document.querySelector('#scaleView svg'),`Civil_Aircraft_v1.7_Same_Scale_${state.shapeView}_${state.shapeOverlay?'Overlay':'Panels'}.svg`));
+    document.getElementById('scaleSaveSvg').addEventListener('click',()=>CA.downloadSvg(document.querySelector('#scaleView svg'),`Civil_Aircraft_v1.8_Same_Scale_${state.shapeView}_${state.shapeOverlay?'Overlay':'Panels'}.svg`));
+    document.getElementById('scaleSavePng')?.addEventListener('click',()=>CA.downloadPng(document.querySelector('#scaleView svg'),`Civil_Aircraft_v1.8_Same_Scale_${state.shapeView}_${state.shapeOverlay?'Overlay':'Panels'}.png`));
 
     document.getElementById('copyUrl').addEventListener('click',()=>{persist();CA.copyText(location.href).then(()=>{const x=document.getElementById('selectionMessage');x.textContent='비교 URL을 복사했습니다.';setTimeout(()=>x.textContent='',1800);});});
     document.getElementById('resetSelection').addEventListener('click',()=>{state.selected=[...DEFAULT];state.baseline=state.selected[0];state.focus=state.selected[0];state.radarActive=state.selected[0];state.radarHidden.clear();state.radarMode='line';persist();renderAll();});
@@ -314,7 +334,7 @@
         {label:'Length m',value:'lengthM'},{label:'Span m',value:'spanM'},{label:'Height m',value:'heightM'},{label:'Size index',value:'sizeIndexA320neo100'},
         {label:'Verification',value:'verificationGrade'},{label:'Range basis',value:a=>a.comparisonBasis.rangeBasis},{label:'Weight variant',value:a=>a.comparisonBasis.weightVariant}
       ];
-      CA.downloadText('\ufeff'+CA.csv(list,cols),'Civil_Aircraft_Selected_Comparison_v1.7.csv','text/csv;charset=utf-8');
+      CA.downloadText('\ufeff'+CA.csv(list,cols),'Civil_Aircraft_Selected_Comparison_v1.8.csv','text/csv;charset=utf-8');
     });
 
     persist();
