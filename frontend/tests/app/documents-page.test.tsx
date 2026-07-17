@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 import DocumentsPage from '@/app/documents/page';
 
@@ -50,6 +50,8 @@ test('renders the documents workspace when documents exist', async () => {
   });
 
   render(await DocumentsPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByRole('heading', { name: 'Document' })).toBeInTheDocument();
   expect(screen.getByTestId('documents-workspace-stub')).toHaveTextContent('회사소개.html,항공/상용기.html');
@@ -60,6 +62,8 @@ test('shows a fallback message when there are no documents', async () => {
   fetchListMock.mockResolvedValue({ documents: [] });
 
   render(await DocumentsPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByText(/표시할 문서가 없습니다/)).toBeInTheDocument();
   expect(screen.queryByTestId('documents-workspace-stub')).not.toBeInTheDocument();
@@ -69,6 +73,8 @@ test('shows a fallback message when the list request fails', async () => {
   fetchListMock.mockRejectedValue(new Error('boom'));
 
   render(await DocumentsPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByText(/표시할 문서가 없습니다/)).toBeInTheDocument();
   expect(screen.getByText(/boom/)).toBeInTheDocument();

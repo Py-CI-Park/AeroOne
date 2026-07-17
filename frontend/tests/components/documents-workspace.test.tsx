@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { DocumentsWorkspace } from '@/components/documents/documents-workspace';
 
@@ -277,10 +277,13 @@ test('persists open folder state to sessionStorage and restores it on remount', 
   // 접힌 폴더를 펼치면 sessionStorage 에 기록된다.
   fireEvent.click(screen.getByTestId('doc-folder-항공'));
   expect(JSON.parse(window.sessionStorage.getItem('aeroone.collection.document.openFolders') ?? '[]')).toEqual(['항공']);
+  await act(async () => {});
   unmount();
 
   // 재마운트(문서 이동/새로 고침에 해당) 시 저장된 펼침 상태가 복원된다.
   render(<DocumentsWorkspace documents={DOCS} defaultSidebarOpen />);
+  // 본문 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
   expect(screen.getByTestId('doc-folder-항공')).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByTestId('doc-item-항공/상용기.html')).toBeInTheDocument();
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
@@ -128,6 +128,8 @@ afterEach(() => {
 
 test('renders the reading view in a token-themed shell with the newsletters nav active and calendar expanded', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByTestId('newsletters-reading')).toBeInTheDocument();
   expect(screen.getByTestId('newsletter-date-calendar')).toHaveAttribute('data-theme', 'light');
@@ -139,6 +141,8 @@ test('renders the reading view in a token-themed shell with the newsletters nav 
 
 test('collapsing the calendar also narrows the desktop grid column', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   const reading = screen.getByTestId('newsletters-reading');
   expect(reading).toHaveAttribute('data-calendar-open', 'true');
@@ -155,6 +159,8 @@ test('query theme overrides cookie and env defaults and reaches the calendar', a
   vi.stubEnv('NEWSLETTERS_THEME', 'dark');
 
   render(await NewslettersPage({ searchParams: Promise.resolve({ theme: 'light' }) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByTestId('newsletter-date-calendar')).toHaveAttribute('data-theme', 'light');
 });
@@ -163,6 +169,8 @@ test('uses dark cookie theme when no query is provided', async () => {
   cookieThemeMock.mockReturnValue('dark');
 
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByRole('link', { name: '라이트 테마로 전환' })).toBeInTheDocument();
 });

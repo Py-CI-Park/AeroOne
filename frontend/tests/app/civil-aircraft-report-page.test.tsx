@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 import CivilAircraftReportPage from '@/app/reports/civil-aircraft/page';
 
@@ -33,6 +33,8 @@ const APP_SRC = '/api/frontend/reports/civil-aircraft/app/index.html';
 
 test('renders the interactive v1.7 dashboard in a same-origin iframe', async () => {
   const { container } = render(await CivilAircraftReportPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByRole('heading', { name: 'Civil Aircraft Spec Catalog' })).toBeInTheDocument();
 
@@ -46,6 +48,8 @@ test('renders the interactive v1.7 dashboard in a same-origin iframe', async () 
 
 test('offers a new-tab launch link to the dashboard entry', async () => {
   render(await CivilAircraftReportPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   const openLink = screen.getByRole('link', { name: /새 창으로 열기/ });
   expect(openLink).toHaveAttribute('href', APP_SRC);
