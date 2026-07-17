@@ -27,11 +27,11 @@ afterEach(() => {
   cookieThemeMock.mockReset();
 });
 
-// v1.16.0: the Civil Aircraft catalog is the interactive v1.7 dashboard embedded via a
+// v1.16.0: the Civil Aircraft catalog is the interactive v1.8 dashboard embedded via a
 // same-origin proxy (scripts run), replacing the previous sanitized single-report view.
 const APP_SRC = '/api/frontend/reports/civil-aircraft/app/index.html';
 
-test('renders the interactive v1.7 dashboard in a same-origin iframe', async () => {
+test('renders the interactive v1.8 dashboard in a same-origin iframe', async () => {
   const { container } = render(await CivilAircraftReportPage({ searchParams: Promise.resolve({}) }));
   // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
   await act(async () => {});
@@ -41,7 +41,7 @@ test('renders the interactive v1.7 dashboard in a same-origin iframe', async () 
   const frame = container.querySelector('iframe');
   expect(frame).not.toBeNull();
   expect(frame).toHaveAttribute('src', APP_SRC);
-  expect(frame).toHaveAttribute('title', 'Civil Aircraft Data Portal v1.7');
+  expect(frame).toHaveAttribute('title', 'Civil Aircraft Data Portal v1.8');
   // Scripts must be allowed so the bundled dashboard runs (unlike the sanitized report path).
   expect(frame?.getAttribute('sandbox') ?? '').toContain('allow-scripts');
 });

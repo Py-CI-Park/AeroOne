@@ -15,7 +15,7 @@ router = APIRouter()
 
 service = HtmlCollectionService()
 
-# Bundled interactive Civil Aircraft dashboard (v1.7). Shipped with the package under
+# Bundled interactive Civil Aircraft dashboard (v1.8). Shipped with the package under
 # the reports module so it is always present; an operator override under
 # _database/civil_aircraft/dashboard/ takes precedence when it exists.
 _DASHBOARD_BUNDLE = Path(__file__).resolve().parents[1] / 'civil_aircraft_dashboard'
@@ -112,7 +112,7 @@ def get_civil_aircraft_report(response: Response, settings: Settings = Depends(g
 @router.get('/civil-aircraft/app')
 @router.get('/civil-aircraft/app/{path:path}')
 def get_civil_aircraft_app(path: str = '', settings: Settings = Depends(get_settings)) -> FileResponse:
-    # Serve the interactive v1.7 dashboard bundle as same-origin static files so its
+    # Serve the interactive v1.8 dashboard bundle as same-origin static files so its
     # own bundled scripts run (unlike the sanitized single-report path above). Path is
     # guarded against traversal and only files under the bundle/override root are served.
     base = _dashboard_root(settings)
