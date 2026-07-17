@@ -56,6 +56,9 @@ def test_sha256sums_v18_matches_actual_repo_files() -> None:
     }
     listed = set(entries)
     assert present == listed, f'manifest drift — only-in-repo={present - listed}, only-in-manifest={listed - present}'
+    # BUILD_INTEGRITY 문서의 파일수 표기가 실제 매니페스트 길이와 일치하도록 잠근다(문서 드리프트 방지).
+    build_integrity = json.loads((_BUNDLE / 'BUILD_INTEGRITY_v1.8.json').read_text(encoding='utf-8'))
+    assert build_integrity['repoSubsetManifest']['files'] == len(entries)
 
 
 def test_meta_bundle_is_pure_derivation_of_full_data() -> None:
