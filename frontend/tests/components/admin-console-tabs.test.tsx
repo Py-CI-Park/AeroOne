@@ -112,11 +112,16 @@ function mockAdminData() {
   vi.mocked(api.purgeSessions).mockResolvedValue({ login_events_deleted: 2, session_activity_deleted: 3 } as never);
 }
 
+// G008: 9개 평면 탭이 6개 그룹(overview/accounts/content/system/ai/audit) 으로 재편되어
+// 대부분의 옛 항목(사용자/RBAC/세션 → 계정, 모듈/분류/검색 → 콘텐츠, 백업 → 시스템)이
+// 같은 그룹 패널 안에서 함께 렌더된다. '의미 보존': 각 옛 섹션의 컨트롤이 여전히
+// 존재/동작함을 확인하되, 그룹 탭을 먼저 클릭해 도달한다.
 const parityMatrix = [
   {
-    tab: '모듈',
+    tab: '콘텐츠(모듈)',
     expected: ['대시보드 모듈 DB 관리', 'dashboard module row', 'module row save', 'module create'],
     assertPresent: async () => {
+      fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
       expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
       expect(screen.getByText('dashboard')).toBeInTheDocument();
       expect(screen.getAllByRole('button', { name: '저장' }).length).toBeGreaterThan(0);
@@ -124,22 +129,22 @@ const parityMatrix = [
     },
   },
   {
-    tab: '사용자',
+    tab: '계정(사용자)',
     expected: ['사용자/RBAC', 'user-create', 'operator user row', 'user row save', 'password reset'],
     assertPresent: async () => {
-      fireEvent.click(screen.getByRole('tab', { name: '사용자' }));
+      fireEvent.click(screen.getByRole('tab', { name: '계정' }));
       expect(await screen.findByText('사용자/RBAC')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '사용자 생성' })).toBeInTheDocument();
-      expect(screen.getByText('operator')).toBeInTheDocument();
+      expect(screen.getAllByText('operator').length).toBeGreaterThan(0);
       expect(screen.getAllByRole('button', { name: '저장' }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('button', { name: '비밀번호 재설정' }).length).toBeGreaterThan(0);
     },
   },
   {
-    tab: 'RBAC',
+    tab: '계정(RBAC)',
     expected: ['resource grant create', 'membership add/remove', 'grant delete', 'RBAC matrix'],
     assertPresent: async () => {
-      fireEvent.click(screen.getByRole('tab', { name: 'RBAC' }));
+      fireEvent.click(screen.getByRole('tab', { name: '계정' }));
       expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
       expect(screen.getByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '리소스 권한 부여' })).toBeInTheDocument();
@@ -151,10 +156,10 @@ const parityMatrix = [
     },
   },
   {
-    tab: '세션',
+    tab: '계정(세션)',
     expected: ['purge button', 'active sessions', 'recent login events', 'read tracking'],
     assertPresent: async () => {
-      fireEvent.click(screen.getByRole('tab', { name: '세션' }));
+      fireEvent.click(screen.getByRole('tab', { name: '계정' }));
       expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '오래된 세션/로그 정리' })).toBeInTheDocument();
       expect(screen.getByText('활성 세션')).toBeInTheDocument();
@@ -165,39 +170,47 @@ const parityMatrix = [
   },
   {
     tab: '시스템',
-    expected: ['config-health', 'asset/config root', 'AI status', 'AI provider config', 'password change'],
+    expected: ['config-health', 'asset/config root', 'password change'],
     assertPresent: async () => {
       fireEvent.click(screen.getByRole('tab', { name: '시스템' }));
       expect(await screen.findByText('DB/자산 경로 상태')).toBeInTheDocument();
       expect(screen.getByText('config-health')).toBeInTheDocument();
       expect(screen.getByText('import')).toBeInTheDocument();
-      expect(screen.getByText('AI 운영 상태')).toBeInTheDocument();
-      expect(await screen.findByText('AI 제공자 설정')).toBeInTheDocument();
-      expect(screen.getByText('provider-config')).toBeInTheDocument();
-      expect(screen.getByLabelText('compatible canonical url')).toBeInTheDocument();
-      expect(screen.getByLabelText('compatible api key')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '비밀번호 변경' })).toBeInTheDocument();
       expect(screen.getByLabelText('current password')).toBeInTheDocument();
     },
   },
   {
-    tab: '분류',
-    expected: ['category create', 'tag create', 'category row save', 'tag row save'],
+    tab: 'AI',
+    expected: ['AI status', 'AI provider config'],
     assertPresent: async () => {
-      fireEvent.click(screen.getByRole('tab', { name: '분류' }));
-      expect(await screen.findByText('카테고리/태그 관리')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '카테고리 생성' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '태그 생성' })).toBeInTheDocument();
-      expect(screen.getByDisplayValue('분류')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('태그')).toBeInTheDocument();
-      expect(screen.getAllByRole('button', { name: '저장' })).toHaveLength(2);
+      fireEvent.click(screen.getByRole('tab', { name: 'AI' }));
+      expect(await screen.findByText('AI 운영 상태')).toBeInTheDocument();
+      expect(await screen.findByText('AI 제공자 설정')).toBeInTheDocument();
+      expect(screen.getByText('provider-config')).toBeInTheDocument();
+      expect(screen.getByLabelText('compatible canonical url')).toBeInTheDocument();
+      expect(screen.getByLabelText('compatible api key')).toBeInTheDocument();
     },
   },
   {
-    tab: '검색',
+    tab: '콘텐츠(분류)',
+    expected: ['category create', 'tag create', 'category row save', 'tag row save'],
+    assertPresent: async () => {
+      fireEvent.click(screen.getByRole('tab', { name: '콘텐츠' }));
+      expect(await screen.findByText('카테고리/태그 관리')).toBeInTheDocument();
+      const taxonomySection = screen.getByText('카테고리/태그 관리').closest('section') as HTMLElement;
+      expect(within(taxonomySection).getByRole('button', { name: '카테고리 생성' })).toBeInTheDocument();
+      expect(within(taxonomySection).getByRole('button', { name: '태그 생성' })).toBeInTheDocument();
+      expect(within(taxonomySection).getByDisplayValue('분류')).toBeInTheDocument();
+      expect(within(taxonomySection).getByDisplayValue('태그')).toBeInTheDocument();
+      expect(within(taxonomySection).getAllByRole('button', { name: '저장' })).toHaveLength(2);
+    },
+  },
+  {
+    tab: '콘텐츠(검색)',
     expected: ['search input', 'NSA toggle', 'search button'],
     assertPresent: async () => {
-      fireEvent.click(screen.getByRole('tab', { name: '검색' }));
+      fireEvent.click(screen.getByRole('tab', { name: '콘텐츠' }));
       expect(await screen.findByText('통합 검색 / AI 운영')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('뉴스레터·Document·Civil 검색')).toBeInTheDocument();
       expect(screen.getByLabelText('NSA 포함')).toBeInTheDocument();
@@ -205,10 +218,10 @@ const parityMatrix = [
     },
   },
   {
-    tab: '백업',
+    tab: '시스템(백업)',
     expected: ['create backup', 'backup list', 'validate', 'restore dry run'],
     assertPresent: async () => {
-      fireEvent.click(screen.getByRole('tab', { name: '백업' }));
+      fireEvent.click(screen.getByRole('tab', { name: '시스템' }));
       expect(await screen.findByRole('heading', { name: '백업' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '백업 생성' })).toBeInTheDocument();
       expect(screen.getByText('backup.zip')).toBeInTheDocument();
@@ -243,11 +256,12 @@ test('admin list UX filters, sorts, renders empty state, and exposes tab/toast a
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  const modulesTab = await screen.findByRole('tab', { name: '모듈' });
+  const contentTab = await screen.findByRole('tab', { name: '콘텐츠' });
   expect(screen.getByRole('tablist', { name: '관리자 콘솔 탭' })).toBeInTheDocument();
-  expect(modulesTab).toHaveAttribute('aria-selected', 'true');
-  expect(modulesTab).toHaveAttribute('aria-current', 'page');
-  expect(screen.getByRole('tabpanel', { name: '모듈' })).toBeInTheDocument();
+  fireEvent.click(contentTab);
+  expect(contentTab).toHaveAttribute('aria-selected', 'true');
+  expect(contentTab).toHaveAttribute('aria-current', 'page');
+  expect(await screen.findByRole('tabpanel', { name: '콘텐츠' })).toBeInTheDocument();
 
   const analytics = await screen.findByText('analytics');
   const dashboard = screen.getByText('dashboard');
@@ -256,18 +270,19 @@ test('admin list UX filters, sorts, renders empty state, and exposes tab/toast a
   fireEvent.change(screen.getByLabelText('모듈 정렬'), { target: { value: 'key-desc' } });
   expect(screen.getByText('dashboard').compareDocumentPosition(screen.getByText('analytics')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-  fireEvent.click(screen.getByRole('tab', { name: '사용자' }));
+  fireEvent.click(screen.getByRole('tab', { name: '계정' }));
   expect(await screen.findByText('사용자/RBAC')).toBeInTheDocument();
-  expect(screen.getByLabelText('사용자 검색')).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: 'analyst' } });
-  expect(screen.getByText('analyst')).toBeInTheDocument();
-  expect(screen.queryByText('operator')).not.toBeInTheDocument();
-  expect(screen.getByText('결과 1 / 2건')).toBeInTheDocument();
+  const usersSection = screen.getByText('사용자/RBAC').closest('section') as HTMLElement;
+  expect(within(usersSection).getByLabelText('사용자 검색')).toBeInTheDocument();
+  fireEvent.change(within(usersSection).getByLabelText('사용자 검색'), { target: { value: 'analyst' } });
+  expect(within(usersSection).getByText('analyst')).toBeInTheDocument();
+  expect(within(usersSection).queryByText('operator')).not.toBeInTheDocument();
+  expect(within(usersSection).getByText('결과 1 / 2건')).toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: 'nomatch' } });
-  expect(screen.getByText('검색 조건에 맞는 사용자가 없습니다.')).toBeInTheDocument();
+  fireEvent.change(within(usersSection).getByLabelText('사용자 검색'), { target: { value: 'nomatch' } });
+  expect(within(usersSection).getByText('검색 조건에 맞는 사용자가 없습니다.')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: '모듈' }));
+  fireEvent.click(screen.getByRole('tab', { name: '콘텐츠' }));
   fireEvent.change(await screen.findByLabelText('new module key'), { target: { value: 'valid-module' } });
   fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Valid Module' } });
   fireEvent.change(screen.getByLabelText('new module href'), { target: { value: '/valid' } });
@@ -278,26 +293,27 @@ test('admin console number shortcuts switch tabs, skip focused inputs, and expos
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+  expect(await screen.findByText('사용자 통계')).toBeInTheDocument();
   expect(screen.getByText('콘솔 사용 도움말')).toBeInTheDocument();
-  expect(screen.getByText(/대시보드 모듈 노출과 정렬/)).toBeInTheDocument();
-  expect(screen.getByText(/숫자 키 1~9/)).toBeInTheDocument();
+  expect(screen.getByText(/전체 운영 지표 요약/)).toBeInTheDocument();
+  expect(screen.getByText(/숫자 키 1~6/)).toBeInTheDocument();
 
-  fireEvent.keyDown(window, { key: '3' });
-  await waitFor(() => expect(screen.getByRole('tab', { name: 'RBAC' })).toHaveAttribute('aria-selected', 'true'));
+  fireEvent.keyDown(window, { key: '2' });
+  await waitFor(() => expect(screen.getByRole('tab', { name: '계정' })).toHaveAttribute('aria-selected', 'true'));
   expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
 
   const groupKey = screen.getByLabelText('group key');
   groupKey.focus();
-  fireEvent.keyDown(window, { key: '9' });
-  expect(screen.getByRole('tab', { name: 'RBAC' })).toHaveAttribute('aria-selected', 'true');
+  fireEvent.keyDown(window, { key: '6' });
+  expect(screen.getByRole('tab', { name: '계정' })).toHaveAttribute('aria-selected', 'true');
   expect(screen.getByRole('tab', { name: '감사' })).toHaveAttribute('aria-selected', 'false');
 
   groupKey.blur();
-  fireEvent.keyDown(window, { key: '9' });
+  fireEvent.keyDown(window, { key: '6' });
   await waitFor(() => expect(screen.getByRole('tab', { name: '감사' })).toHaveAttribute('aria-selected', 'true'));
   expect(await screen.findByRole('heading', { name: '감사 로그' })).toBeInTheDocument();
 });
+
 test('AdminHomeConsole renders the tab shell and tab switching preserves parent state', async () => {
   mockAdminData();
   render(<AdminHomeConsole />);
@@ -305,16 +321,17 @@ test('AdminHomeConsole renders the tab shell and tab switching preserves parent 
   expect(await screen.findByText('운영 콘솔은 DB, 자산, 권한, 감사, 백업 상태를 한 화면에 모읍니다.')).toBeInTheDocument();
   const tablist = screen.getByRole('tablist', { name: '관리자 콘솔 탭' });
   expect(tablist).toBeInTheDocument();
-  expect(within(tablist).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['모듈', '사용자', 'RBAC', '세션', '시스템', '분류', '검색', '백업', '감사']);
+  expect(within(tablist).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['개요', '계정', '콘텐츠', '시스템', 'AI', '감사']);
 
-  const newModuleKey = screen.getByLabelText('new module key');
+  fireEvent.click(screen.getByRole('tab', { name: '콘텐츠' }));
+  const newModuleKey = await screen.findByLabelText('new module key');
   fireEvent.change(newModuleKey, { target: { value: 'qa-module' } });
   expect(newModuleKey).toHaveValue('qa-module');
 
-  fireEvent.click(screen.getByRole('tab', { name: '사용자' }));
+  fireEvent.click(screen.getByRole('tab', { name: '계정' }));
   expect(await screen.findByText('사용자/RBAC')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: '모듈' }));
+  fireEvent.click(screen.getByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
   expect(screen.getByLabelText('new module key')).toHaveValue('qa-module');
 });
@@ -323,6 +340,7 @@ test('module status and visibility controls expose only allowed select options',
   mockAdminData();
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
 
   const statusOptions = within(screen.getByLabelText('new module status')).getAllByRole('option').map((option) => (option as HTMLOptionElement).value);
@@ -339,6 +357,7 @@ test('module custom section path is explicit and validates non-empty custom inpu
   mockAdminData();
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
 
   const sectionSelect = screen.getByLabelText('new module section');
@@ -360,6 +379,7 @@ test('invalid module create is blocked with inline validation before calling cre
   mockAdminData();
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Missing Key Module' } });
   fireEvent.change(screen.getByLabelText('new module href'), { target: { value: '/missing-key' } });
@@ -373,6 +393,7 @@ test('valid module create still calls the shell create handler with the existing
   mockAdminData();
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('new module key'), { target: { value: 'valid-module' } });
   fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Valid Module' } });
@@ -402,7 +423,7 @@ test('destructive resource grant delete requires in-app confirm before calling t
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
 
   vi.clearAllMocks();
@@ -424,6 +445,7 @@ test('successful actions render a dismissible toast stack item', async () => {
   mockAdminData();
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('new module key'), { target: { value: 'toast-module' } });
   fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Toast Module' } });
@@ -439,6 +461,7 @@ test('module create performs scoped refresh for modules, overview, and audits', 
   mockAdminData();
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
   vi.clearAllMocks();
 
@@ -461,7 +484,7 @@ test('membership remove requires confirm, cancel and Escape do not call API, con
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('membership user'), { target: { value: '1' } });
   fireEvent.change(screen.getByLabelText('membership group'), { target: { value: '2' } });
@@ -491,7 +514,7 @@ test('resource grant save refreshes recent audits in its scoped refetch', async 
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
   vi.clearAllMocks();
 
@@ -513,7 +536,7 @@ test('destructive resource grant delete cancel paths include Escape before API c
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
 
   vi.clearAllMocks();
@@ -535,7 +558,7 @@ test('session metadata purge requires confirm, cancel and Escape do not call API
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
 
   vi.clearAllMocks();
@@ -562,6 +585,7 @@ test('toast stack exposes success status, error alert, manual dismiss, and auto 
   mockAdminData();
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('new module key'), { target: { value: 'toast-module' } });
   fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Toast Module' } });
@@ -586,9 +610,10 @@ test('session purge performs scoped refresh for connected users and audits and u
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
-  expect(screen.getAllByText('operator').length).toBeGreaterThan(0);
+  const sessionsSection = screen.getByText('접속자/세션').closest('section') as HTMLElement;
+  expect(within(sessionsSection).getAllByText('operator').length).toBeGreaterThan(0);
 
   vi.clearAllMocks();
   vi.mocked(api.fetchConnectedUsers).mockResolvedValue({ active_sessions: [], active_count: 0, recent_login_events: [], login_failure_count: 0, read_tracking_summary: { rows: 0, total_reads: 0 } } as never);
@@ -605,7 +630,7 @@ test('session purge performs scoped refresh for connected users and audits and u
   expect(api.fetchAdminOverview).not.toHaveBeenCalled();
   expect(api.fetchAdminUsers).not.toHaveBeenCalled();
   expect(await screen.findByText('활성 로그인 세션 없음')).toBeInTheDocument();
-  expect(screen.queryByText('operator')).not.toBeInTheDocument();
+  expect(within(sessionsSection).queryByText('operator')).not.toBeInTheDocument();
 });
 
 test('admin page keeps the server guard, sync AppShell, and client island import', () => {
@@ -624,7 +649,7 @@ test('AI provider panel masks compatible config: only compatible_display_url ren
   vi.mocked(api.fetchAiProviderConfig).mockResolvedValue(aiProviderConfigWithCompatibleFixture as never);
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   expect(await screen.findByText(aiProviderConfigWithCompatibleFixture.compatible_display_url)).toBeInTheDocument();
   expect(document.body.innerHTML).not.toContain('dpapi-ref-should-never-render');
   expect(document.body.innerHTML).not.toContain('internal-secret-upstream');
@@ -636,7 +661,7 @@ test('API key field is an uncontrolled input with no value attribute that is cle
   vi.mocked(api.stageAiProviderCompatibleConfig).mockResolvedValue(aiProviderConfigFixture as never);
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   const canonicalUrlInput = await screen.findByLabelText('compatible canonical url');
   const displayUrlInput = screen.getByLabelText('compatible display url');
   const modelInput = screen.getByLabelText('compatible model');
@@ -676,7 +701,7 @@ test('API key input is cleared even when the stage request rejects', async () =>
   vi.mocked(api.stageAiProviderCompatibleConfig).mockRejectedValue(new Error('요청 처리에 실패했습니다'));
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   fireEvent.change(await screen.findByLabelText('compatible canonical url'), { target: { value: 'https://internal.example.net/v1' } });
   fireEvent.change(screen.getByLabelText('compatible display url'), { target: { value: 'https://api.example.com/***' } });
   fireEvent.change(screen.getByLabelText('compatible model'), { target: { value: 'gpt-4o-mini' } });
@@ -695,8 +720,8 @@ test('staging is blocked client-side with a safe validation toast when URL, mode
   mockAdminData();
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
-  fireEvent.click(screen.getByRole('button', { name: '설정 저장/회전' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
+  fireEvent.click(await screen.findByRole('button', { name: '설정 저장/회전' }));
 
   expect(await screen.findByText('Canonical URL, Display URL, 모델, 세대, API 키를 모두 입력하세요.')).toBeInTheDocument();
   expect(api.stageAiProviderCompatibleConfig).not.toHaveBeenCalled();
@@ -710,7 +735,7 @@ test('activation is gated on compatible_state === verified and reports a generic
   vi.mocked(api.fetchAiProviderConfig).mockResolvedValueOnce({ ...aiProviderConfigWithCompatibleFixture, compatible_state: 'unverified' } as never);
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   expect(await screen.findByText('미검증')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '활성화 확인' })).toBeDisabled();
   expect(api.activateAiProviderCompatible).not.toHaveBeenCalled();
@@ -734,7 +759,7 @@ test('explicit provider selection requires an in-app apply action and calls the 
   vi.mocked(api.selectAiProviderKind).mockResolvedValue(aiProviderConfigFixture as never);
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   await screen.findByText('AI 제공자 설정');
   const kindSelect = screen.getByLabelText('provider kind') as HTMLSelectElement;
   fireEvent.change(kindSelect, { target: { value: 'openai_compatible' } });
@@ -750,7 +775,7 @@ test('deleting the compatible credential requires in-app confirm before calling 
   vi.mocked(api.deleteAiProviderCredential).mockResolvedValue(aiProviderConfigFixture as never);
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   fireEvent.click(await screen.findByRole('button', { name: '자격 증명 삭제' }));
   expect(api.deleteAiProviderCredential).not.toHaveBeenCalled();
 
@@ -771,8 +796,8 @@ test('reconcile reports safe reconciled/drift status from the flat reconcile res
   vi.mocked(api.reconcileAiProviderConfig).mockResolvedValue({ reconciled: false, compatible_state: 'unverified', config_version: 2 } as never);
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
-  fireEvent.click(screen.getByRole('button', { name: '정합성 점검' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
+  fireEvent.click(await screen.findByRole('button', { name: '정합성 점검' }));
   expect(await screen.findByText('정합성 점검: 불일치가 감지되어 재보정했습니다')).toBeInTheDocument();
 
   expect(api.getSafeAiProviderReasonMessage(null)).toBe('연동 테스트 성공');
@@ -786,7 +811,7 @@ test('staged-config test uses the current canonical_url/model/generation with th
   vi.mocked(api.testAiProviderStagedConfig).mockResolvedValue({ success: false, reason_code: 'connect-failed', tested_at: '2026-07-05T00:00:00Z', canonical_url: 'https://internal.example.net/v1', model: 'gpt-4o-mini', generation: 'gen-3' } as never);
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   fireEvent.change(await screen.findByLabelText('compatible canonical url'), { target: { value: 'https://internal.example.net/v1' } });
   fireEvent.change(screen.getByLabelText('compatible model'), { target: { value: 'gpt-4o-mini' } });
   fireEvent.change(screen.getByLabelText('compatible generation'), { target: { value: 'gen-3' } });
@@ -807,7 +832,7 @@ test('AI provider actions disable their triggers while busy and re-enable once t
   vi.mocked(api.stageAiProviderCompatibleConfig).mockImplementation(() => new Promise<api.AiProviderConfigResponse>((resolve) => { resolveStage = resolve; }));
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   fireEvent.change(await screen.findByLabelText('compatible canonical url'), { target: { value: 'https://internal.example.net/v1' } });
   fireEvent.change(screen.getByLabelText('compatible display url'), { target: { value: 'https://api.example.com/***' } });
   fireEvent.change(screen.getByLabelText('compatible model'), { target: { value: 'gpt-4o-mini' } });

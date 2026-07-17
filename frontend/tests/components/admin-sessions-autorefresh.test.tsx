@@ -63,7 +63,7 @@ afterEach(() => {
 test('세션 자동 새로고침은 켠 뒤 connectedUsers만 15초마다 다시 불러오고 끄면 정리된다', async () => {
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '세션' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByRole('heading', { name: '접속자/세션' })).toBeInTheDocument();
   await waitFor(() => expect(api.fetchConnectedUsers).toHaveBeenCalledTimes(1));
 

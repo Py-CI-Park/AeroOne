@@ -75,9 +75,13 @@ function mockAdminData() {
   vi.mocked(api.purgeSessions).mockResolvedValue({ login_events_deleted: 0, session_activity_deleted: 0 } as never);
 }
 
+// G008: 9평면탭 → 6그룹(overview/accounts/content/system/ai/audit) 재편으로 숫자 단축키는
+// 이제 1~6 만 유효한 그룹에 대응한다(개요=1, 계정=2, 콘텐츠=3, 시스템=4, AI=5, 감사=6).
+// 아래 테스트들은 '숫자키로 그룹 전환·편집 포커스 시 무시·언마운트 정리·도움말 존재'라는
+// 원래 의도를 그대로 보존하되, 매핑 대상 탭 이름/인덱스만 새 그룹 순서로 갱신한다.
 async function renderConsole() {
   const view = render(<AdminConsoleTabs />);
-  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+  expect(await screen.findByText('사용자 통계')).toBeInTheDocument();
   return view;
 }
 
@@ -90,57 +94,57 @@ async function pressShortcutAndExpect(key: string, tabName: string) {
   await waitFor(() => expectSelectedTab(tabName));
 }
 
-test('G004 maps digit shortcuts 1, 3, and 9 to the exact admin tabs when focus is not editable', async () => {
+test('G004 maps digit shortcuts 3, 2, and 6 to the exact admin tabs when focus is not editable', async () => {
   await renderConsole();
 
-  await pressShortcutAndExpect('1', '모듈');
-  expect(screen.getByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
+  await pressShortcutAndExpect('3', '콘텐츠');
+  expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
 
-  await pressShortcutAndExpect('3', 'RBAC');
+  await pressShortcutAndExpect('2', '계정');
   expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
 
-  await pressShortcutAndExpect('9', '감사');
+  await pressShortcutAndExpect('6', '감사');
   expect(await screen.findByRole('heading', { name: '감사 로그' })).toBeInTheDocument();
 });
 
 test('G004 ignores 0, non-digits, and modified digit shortcuts', async () => {
   await renderConsole();
-  fireEvent.keyDown(window, { key: '3' });
-  await waitFor(() => expectSelectedTab('RBAC'));
+  fireEvent.keyDown(window, { key: '2' });
+  await waitFor(() => expectSelectedTab('계정'));
 
   fireEvent.keyDown(window, { key: '0' });
-  expectSelectedTab('RBAC');
+  expectSelectedTab('계정');
 
   fireEvent.keyDown(window, { key: 'a' });
-  expectSelectedTab('RBAC');
+  expectSelectedTab('계정');
 
   fireEvent.keyDown(window, { key: '1', ctrlKey: true });
-  expectSelectedTab('RBAC');
+  expectSelectedTab('계정');
 
   fireEvent.keyDown(window, { key: '1', metaKey: true });
-  expectSelectedTab('RBAC');
+  expectSelectedTab('계정');
 
   fireEvent.keyDown(window, { key: '1', altKey: true });
-  expectSelectedTab('RBAC');
+  expectSelectedTab('계정');
 });
 
 test('G004 ignores digit shortcuts while an input or select has focus', async () => {
   await renderConsole();
-  fireEvent.click(screen.getByRole('tab', { name: 'RBAC' }));
-  await waitFor(() => expectSelectedTab('RBAC'));
+  fireEvent.click(screen.getByRole('tab', { name: '계정' }));
+  await waitFor(() => expectSelectedTab('계정'));
 
   const groupKey = await screen.findByLabelText('group key');
   groupKey.focus();
   fireEvent.keyDown(window, { key: '1' });
-  expectSelectedTab('RBAC');
-  expect(screen.getByRole('tab', { name: '모듈' })).toHaveAttribute('aria-selected', 'false');
+  expectSelectedTab('계정');
+  expect(screen.getByRole('tab', { name: '개요' })).toHaveAttribute('aria-selected', 'false');
 
   groupKey.blur();
   const subjectType = screen.getByLabelText('grant subject type');
   subjectType.focus();
   fireEvent.keyDown(window, { key: '1' });
-  expectSelectedTab('RBAC');
-  expect(screen.getByRole('tab', { name: '모듈' })).toHaveAttribute('aria-selected', 'false');
+  expectSelectedTab('계정');
+  expect(screen.getByRole('tab', { name: '개요' })).toHaveAttribute('aria-selected', 'false');
 });
 
 test('G004 removes the global shortcut listener on unmount', async () => {
@@ -161,7 +165,7 @@ test('G004 exposes collapsible onboarding help with audit tab and shortcut guida
   expect(helpList).not.toBeNull();
   expect(within(helpList as HTMLElement).getByText(/감사/)).toBeInTheDocument();
   expect(within(helpList as HTMLElement).getByText(/운영 이벤트와 CSV 내보내기/)).toBeInTheDocument();
-  expect(within(helpList as HTMLElement).getByText(/숫자 키 1~9/)).toBeInTheDocument();
+  expect(within(helpList as HTMLElement).getByText(/숫자 키 1~6/)).toBeInTheDocument();
 });
 
 test('release version constants advance to 1.17.1', () => {

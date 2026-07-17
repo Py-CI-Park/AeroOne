@@ -157,8 +157,8 @@ test('AdminAuditSection composes status, period, and search filters inside the �
 test('백업 tab does not duplicate the audit log list and keeps a pointer to the 감사 tab', async () => {
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '백업' }));
-  const backupPanel = await screen.findByRole('tabpanel', { name: '백업' });
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  const backupPanel = await screen.findByRole('tabpanel', { name: '시스템' });
 
   expect(within(backupPanel).getByRole('heading', { name: '백업' })).toBeInTheDocument();
   expect(within(backupPanel).getByRole('button', { name: '백업 생성' })).toBeInTheDocument();
