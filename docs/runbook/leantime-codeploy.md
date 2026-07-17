@@ -10,6 +10,8 @@
 
 
 > **1.16.0 업데이트 — 포터블 실기동 반입물(권장):** 이제 IIS 외부 설치 대신 **포터블 PHP+MariaDB+Leantime 별도 반입물**(`AeroOne-Leantime-Stack-v3.9.8-*.zip`)로 폐쇄망에서 무설치 실기동한다. 반입·설치·실행·연동 절차는 [`closed-network-usage.md`](closed-network-usage.md) 참고. 빌더 `scripts/leantime/build-leantime-stack.ps1`, 오케스트레이션 `scripts/leantime/stack/{setup,start,stop}-leantime-stack.bat`, AeroOne 런처 위임 `scripts/leantime/start-leantime.bat`(`AEROONE_LEANTIME_STACK` 감지). 아래 IIS 기반 절차는 대안·역사 참고로 보존한다.
+
+> ⚠ **PHP 내장 서버 단일 워커 한계 (포터블 스택):** 포터블 스택은 `scripts/leantime/stack/start-leantime-stack.bat` 에서 `php -S 0.0.0.0:<port> -t public` 로 Leantime 을 띄운다. PHP 내장 웹 서버(`php -S`)는 **단일 워커·단일 스레드**라 한 번에 요청 1건만 처리한다 — 느리거나 블로킹되는 요청 하나가 뒤따르는 모든 요청을 대기시키고, 동시 접속·대용량 첨부·장기 실행 리포트에서 눈에 띄게 느려진다. 이는 개발/소규모 폐쇄망 내부용 무설치 실기동에는 적합하나 **다중 사용자 상시 운영에는 부적합**하다. 상시·다중 사용자 운영이 필요하면 IIS(FastCGI, 다중 워커) 기반 절차(아래) 또는 PHP-FPM+리버스 프록시로 승격한다. 이 한계는 AeroOne backend(uvicorn)와 무관하며 Leantime 프로세스에만 해당한다.
 ---
 
 ## 1. 두 스택의 경계 (가장 중요)

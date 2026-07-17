@@ -1,0 +1,5 @@
+
+> Build error occurred
+Error: git worktree is dirty
+    at deterministicBuildId (next.config.mjs:26:35)
+    at generateBuildId (next.config.mjs:30:45)
