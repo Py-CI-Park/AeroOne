@@ -36,3 +36,13 @@ class ReadEventsResponse(BaseModel):
 
 class PurgeResponse(BaseModel):
     deleted: int
+
+
+class RecentReadItem(BaseModel):
+    slug: str
+    title: str
+    last_seen_at: datetime
+
+
+class RecentReadsResponse(BaseModel):
+    items: list[RecentReadItem]

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from app.modules.auth.dependencies import get_db
-from app.modules.read_tracking.schemas.read_event import ReadBeaconResponse
+from app.modules.read_tracking.schemas.read_event import ReadBeaconResponse, RecentReadItem, RecentReadsResponse
 from app.modules.read_tracking.services.read_tracking_service import ReadTrackingService
 
 router = APIRouter()
@@ -37,3 +37,21 @@ def record_newsletter_read(
     """
     service.record(newsletter_id, _client_ip(request))
     return ReadBeaconResponse(recorded=True)
+
+
+@router.get('/read-events/mine', response_model=RecentReadsResponse)
+def list_my_recent_reads(
+    request: Request,
+    response: Response,
+    limit: int = 6,
+    service: ReadTrackingService = Depends(get_read_tracking_service),
+) -> RecentReadsResponse:
+    """호출 브라우저(직접호출 IP)가 최근 열람한 뉴스레터 목록. 무인증 · IP 스코프.
+
+    read 비콘과 동일한 계열 — 브라우저가 백엔드를 직접 호출해야 request.client.host 가
+    독자 LAN IP 다(BFF/SSR 경유는 Next 서버 IP 로 퇴화해 엉뚱한 목록이 나온다).
+    응답은 개인화(IP 스코프)된 데이터라 캐시되면 안 되므로 no-store.
+    """
+    response.headers['Cache-Control'] = 'no-store'
+    items = service.recent_for_ip(_client_ip(request), limit)
+    return RecentReadsResponse(items=[RecentReadItem(**item) for item in items])

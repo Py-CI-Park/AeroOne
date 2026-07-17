@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 
 import { ServiceCard } from '@/components/dashboard/service-card';
-import type { ServiceModule } from '@/lib/types';
+import { fetchLauncherHealth } from '@/lib/api';
+import type { LauncherHealth, ServiceModule } from '@/lib/types';
 
 // Reserved external launcher kinds. Each is a fixed same-host co-deploy port; the frontend
 // resolves the destination itself from window.location — a ServiceModule row (or any degraded
@@ -32,6 +33,8 @@ function formatHost(host: string): string {
   return host;
 }
 
+type HealthPhase = 'checking' | 'ready' | 'starting' | 'absent' | 'error';
+
 export function ExternalLauncherCard({
   title,
   description,
@@ -49,13 +52,41 @@ export function ExternalLauncherCard({
   // the pre-hydration render is unambiguous.
   const [host, setHost] = useState<string | undefined>(undefined);
   const [isSecureContext, setIsSecureContext] = useState(false);
+  const [healthPhase, setHealthPhase] = useState<HealthPhase>('checking');
+  const [health, setHealth] = useState<LauncherHealth | null>(null);
 
   useEffect(() => {
     setHost(window.location.hostname);
     setIsSecureContext(window.location.protocol === 'https:');
   }, []);
 
-  if (!isReservedLauncherKind(launcherKind)) {
+  const reserved = isReservedLauncherKind(launcherKind);
+
+  // Health polling is scoped to reserved kinds on active cards only — an inactive (coming-soon)
+  // module or an unknown/unsupported kind never triggers a backend probe.
+  useEffect(() => {
+    if (!reserved || !active) {
+      return undefined;
+    }
+    let cancelled = false;
+    setHealthPhase('checking');
+    fetchLauncherHealth(launcherKind as ReservedLauncherKind)
+      .then((result) => {
+        if (cancelled) return;
+        setHealth(result);
+        setHealthPhase(result.status);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHealth(null);
+        setHealthPhase('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reserved, active, launcherKind]);
+
+  if (!reserved) {
     // Fail closed: an unknown or 'none' launcher kind never gets a clickable external link,
     // regardless of what is_external/href say.
     return (
@@ -83,16 +114,67 @@ export function ExternalLauncherCard({
 
   const port = RESERVED_LAUNCHER_PORTS[launcherKind];
   const targetHref = `http://${formatHost(host)}:${port}`;
+  // Only a 'ready' health probe unlocks the click-through — a dead link that opens a blank tab
+  // for a not-yet-started co-deploy app is worse than a disabled card with a reason.
+  const cardActive = active && healthPhase === 'ready';
 
   return (
-    <ServiceCard
-      title={title}
-      description={description}
-      href={targetHref}
-      badge={badge}
-      active={active}
-      external
-    />
+    <div className="flex flex-col gap-2">
+      <ServiceCard
+        title={title}
+        description={description}
+        href={targetHref}
+        badge={badge}
+        active={cardActive}
+        external
+      />
+      {active && (
+        <div className="flex flex-wrap items-center gap-2 px-1" data-testid={`launcher-health-${launcherKind}`}>
+          <LauncherHealthBadge phase={healthPhase} />
+          {healthPhase !== 'ready' && healthPhase !== 'checking' && health?.detail && (
+            <span className="text-xs text-ink-3">{health.detail}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Badge styling mirrors the Leantime co-deploy status indicator (components/office-tools/
+// leantime-status.tsx) so all external co-deploy health signals read consistently.
+function LauncherHealthBadge({ phase }: { phase: HealthPhase }) {
+  if (phase === 'ready') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 구동 중
+      </span>
+    );
+  }
+  if (phase === 'checking') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-3/10 px-3 py-1 text-xs font-semibold text-ink-3">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-3" /> 확인 중
+      </span>
+    );
+  }
+  if (phase === 'starting') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> 기동 중
+      </span>
+    );
+  }
+  if (phase === 'error') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> 확인 실패
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-3/10 px-3 py-1 text-xs font-semibold text-ink-3">
+      <span className="h-1.5 w-1.5 rounded-full bg-ink-3/60" /> 미설치 · 미구동
+    </span>
   );
 }
 

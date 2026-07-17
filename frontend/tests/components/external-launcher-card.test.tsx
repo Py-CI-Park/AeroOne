@@ -1,8 +1,26 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { ExternalLauncherCard, NotebookLinkCard } from '@/components/dashboard/notebook-link-card';
+
+const { fetchLauncherHealthMock } = vi.hoisted(() => ({ fetchLauncherHealthMock: vi.fn() }));
+
+vi.mock('@/lib/api', () => ({ fetchLauncherHealth: fetchLauncherHealthMock }));
+
+function health(status: 'ready' | 'starting' | 'absent' | 'error', overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    status,
+    port: 8080,
+    probe_target: '127.0.0.1:8080',
+    checked_at: '2026-07-17T00:00:00Z',
+    latency_ms: status === 'ready' ? 12 : null,
+    detail: `detail:${status}`,
+    ...overrides,
+  };
+}
+
+const READY = health('ready');
 
 function setLocation(overrides: Partial<Location>) {
   Object.defineProperty(window, 'location', {
@@ -16,54 +34,63 @@ function setLocation(overrides: Partial<Location>) {
   });
 }
 
+beforeEach(() => {
+  fetchLauncherHealthMock.mockReset();
+  fetchLauncherHealthMock.mockResolvedValue(READY);
+});
+
 afterEach(() => {
   setLocation({});
 });
 
-test('resolves an open_notebook launcher to the current browser host on port 8502', () => {
+test('resolves an open_notebook launcher to the current browser host on port 8502', async () => {
   setLocation({ hostname: 'workstation-07' });
 
   render(
     <ExternalLauncherCard title="Notebook" badge="Active" launcherKind="open_notebook" />,
   );
 
-  const link = screen.getByRole('link', { name: /Notebook/i });
+  const link = await screen.findByRole('link', { name: /Notebook/i });
   expect(link).toHaveAttribute('href', 'http://workstation-07:8502');
 });
 
-test('resolves an open_webui launcher to the current browser host on port 8080', () => {
+test('resolves an open_webui launcher to the current browser host on port 8080', async () => {
   setLocation({ hostname: 'workstation-07' });
 
   render(
     <ExternalLauncherCard title="OpenWebUI" badge="Active" launcherKind="open_webui" />,
   );
 
-  const link = screen.getByRole('link', { name: /OpenWebUI/i });
+  const link = await screen.findByRole('link', { name: /OpenWebUI/i });
   expect(link).toHaveAttribute('href', 'http://workstation-07:8080');
 });
 
-test('preserves an already-bracketed IPv6 hostname as-is', () => {
+test('preserves an already-bracketed IPv6 hostname as-is', async () => {
   setLocation({ hostname: '[fe80::1]' });
 
   render(<ExternalLauncherCard title="OpenWebUI" badge="Active" launcherKind="open_webui" />);
 
-  expect(screen.getByRole('link', { name: /OpenWebUI/i })).toHaveAttribute('href', 'http://[fe80::1]:8080');
+  await waitFor(() =>
+    expect(screen.getByRole('link', { name: /OpenWebUI/i })).toHaveAttribute('href', 'http://[fe80::1]:8080'),
+  );
 });
 
-test('defensively brackets an unbracketed IPv6 hostname', () => {
+test('defensively brackets an unbracketed IPv6 hostname', async () => {
   setLocation({ hostname: '::1' });
 
   render(<ExternalLauncherCard title="Notebook" badge="Active" launcherKind="open_notebook" />);
 
-  expect(screen.getByRole('link', { name: /Notebook/i })).toHaveAttribute('href', 'http://[::1]:8502');
+  await waitFor(() =>
+    expect(screen.getByRole('link', { name: /Notebook/i })).toHaveAttribute('href', 'http://[::1]:8502'),
+  );
 });
 
-test('sets target=_blank and rel=noopener noreferrer for reserved launchers', () => {
+test('sets target=_blank and rel=noopener noreferrer for reserved launchers', async () => {
   setLocation({ hostname: 'localhost' });
 
   render(<ExternalLauncherCard title="Notebook" badge="Active" launcherKind="open_notebook" />);
 
-  const link = screen.getByRole('link', { name: /Notebook/i });
+  const link = await screen.findByRole('link', { name: /Notebook/i });
   expect(link).toHaveAttribute('target', '_blank');
   expect(link).toHaveAttribute('rel', 'noopener noreferrer');
 });
@@ -85,6 +112,7 @@ test('fails closed for the "none" launcher kind: no link, no fetch/health/proxy 
 
   expect(screen.queryByRole('link', { name: /Untagged/i })).not.toBeInTheDocument();
   expect(screen.getByText('Untagged').closest('[aria-disabled="true"]')).not.toBeNull();
+  expect(fetchLauncherHealthMock).not.toHaveBeenCalled();
 });
 
 test('fails closed for an unrecognized launcher kind value', () => {
@@ -99,15 +127,17 @@ test('fails closed for an unrecognized launcher kind value', () => {
   );
 
   expect(screen.queryByRole('link', { name: /Mystery/i })).not.toBeInTheDocument();
+  expect(fetchLauncherHealthMock).not.toHaveBeenCalled();
 });
 
-test('disables the launcher under an https page instead of downgrading to a plain-http destination', () => {
+test('disables the launcher under an https page instead of downgrading to a plain-http destination', async () => {
   setLocation({ hostname: 'aeroone.internal', protocol: 'https:' });
 
   render(<ExternalLauncherCard title="OpenWebUI" badge="Active" launcherKind="open_webui" />);
 
   expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
   expect(screen.getByText('OpenWebUI').closest('[aria-disabled="true"]')).not.toBeNull();
+  await waitFor(() => expect(fetchLauncherHealthMock).toHaveBeenCalledWith('open_webui'));
 });
 
 test('respects an inactive module by rendering a disabled card instead of a link', () => {
@@ -116,9 +146,10 @@ test('respects an inactive module by rendering a disabled card instead of a link
   render(<ExternalLauncherCard title="OpenWebUI" badge="Coming soon" launcherKind="open_webui" active={false} />);
 
   expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
+  expect(fetchLauncherHealthMock).not.toHaveBeenCalled();
 });
 
-test('Notebook and OpenWebUI launchers resolve to independent hosts/ports and can coexist', () => {
+test('Notebook and OpenWebUI launchers resolve to independent hosts/ports and can coexist', async () => {
   setLocation({ hostname: 'lan-pc-3' });
 
   render(
@@ -128,27 +159,95 @@ test('Notebook and OpenWebUI launchers resolve to independent hosts/ports and ca
     </>,
   );
 
-  expect(screen.getByRole('link', { name: /Notebook/i })).toHaveAttribute('href', 'http://lan-pc-3:8502');
+  await waitFor(() =>
+    expect(screen.getByRole('link', { name: /Notebook/i })).toHaveAttribute('href', 'http://lan-pc-3:8502'),
+  );
   expect(screen.getByRole('link', { name: /OpenWebUI/i })).toHaveAttribute('href', 'http://lan-pc-3:8080');
 });
 
-test('never renders a fetch/health/proxy affordance — the launcher is a plain external anchor only', () => {
+test('never renders a fetch/health/proxy affordance — the launcher is a plain external anchor only', async () => {
   setLocation({ hostname: 'localhost' });
 
   const { container } = render(
     <ExternalLauncherCard title="OpenWebUI" description="Ollama 호환 챗 UI" badge="Active" launcherKind="open_webui" />,
   );
 
+  await screen.findByRole('link', { name: /OpenWebUI/i });
   expect(container.querySelectorAll('button')).toHaveLength(0);
   expect(container.querySelectorAll('form')).toHaveLength(0);
 });
 
-test('NotebookLinkCard remains a backward-compatible alias bound to open_notebook on 8502', () => {
+test('NotebookLinkCard remains a backward-compatible alias bound to open_notebook on 8502', async () => {
   setLocation({ hostname: 'localhost' });
 
   render(<NotebookLinkCard title="Notebook" description="NotebookLM 대안" badge="Active" />);
 
-  const link = within(screen.getByRole('link', { name: /Notebook/i }));
-  expect(link.getByTestId('service-card-description')).toHaveTextContent('NotebookLM 대안');
-  expect(screen.getByRole('link', { name: /Notebook/i })).toHaveAttribute('href', 'http://localhost:8502');
+  const link = await screen.findByRole('link', { name: /Notebook/i });
+  expect(within(link).getByTestId('service-card-description')).toHaveTextContent('NotebookLM 대안');
+  expect(link).toHaveAttribute('href', 'http://localhost:8502');
+});
+
+// --- Health badge / disabled-until-ready behavior (G004 슬라이스 A) ---
+
+test('shows a 구동 중 badge and an enabled link when the health probe reports ready', async () => {
+  setLocation({ hostname: 'localhost' });
+  fetchLauncherHealthMock.mockResolvedValue(READY);
+
+  render(<ExternalLauncherCard title="OpenWebUI" badge="Active" launcherKind="open_webui" />);
+
+  await waitFor(() => expect(screen.getByText('구동 중')).toBeInTheDocument());
+  expect(screen.getByRole('link', { name: /OpenWebUI/i })).toHaveAttribute('href', 'http://localhost:8080');
+});
+
+test('shows a 기동 중 badge and disables the card (no link) when the health probe reports starting', async () => {
+  setLocation({ hostname: 'localhost' });
+  fetchLauncherHealthMock.mockResolvedValue(health('starting'));
+
+  render(<ExternalLauncherCard title="OpenWebUI" badge="Active" launcherKind="open_webui" />);
+
+  await waitFor(() => expect(screen.getByText('기동 중')).toBeInTheDocument());
+  expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
+  expect(screen.getByText('detail:starting')).toBeInTheDocument();
+});
+
+test('shows a 미설치 · 미구동 badge and disables the card when the health probe reports absent', async () => {
+  setLocation({ hostname: 'localhost' });
+  fetchLauncherHealthMock.mockResolvedValue(health('absent'));
+
+  render(<ExternalLauncherCard title="Notebook" badge="Active" launcherKind="open_notebook" />);
+
+  await waitFor(() => expect(screen.getByText('미설치 · 미구동')).toBeInTheDocument());
+  expect(screen.queryByRole('link', { name: /Notebook/i })).not.toBeInTheDocument();
+});
+
+test('shows a 확인 실패 badge, reason text, and a disabled card when the health fetch rejects', async () => {
+  setLocation({ hostname: 'localhost' });
+  fetchLauncherHealthMock.mockRejectedValue(new Error('network down'));
+
+  render(<ExternalLauncherCard title="OpenWebUI" badge="Active" launcherKind="open_webui" />);
+
+  await waitFor(() => expect(screen.getByText('확인 실패')).toBeInTheDocument());
+  expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
+});
+
+test('does not query health or render a badge for an inactive (coming-soon) module', () => {
+  setLocation({ hostname: 'localhost' });
+
+  render(<ExternalLauncherCard title="OpenWebUI" badge="Coming soon" launcherKind="open_webui" active={false} />);
+
+  expect(screen.queryByText('구동 중')).not.toBeInTheDocument();
+  expect(screen.queryByText('기동 중')).not.toBeInTheDocument();
+  expect(screen.queryByText('미설치 · 미구동')).not.toBeInTheDocument();
+  expect(fetchLauncherHealthMock).not.toHaveBeenCalled();
+});
+
+test('never renders an actual <button>/<form> affordance even when the card is disabled by health', async () => {
+  setLocation({ hostname: 'localhost' });
+  fetchLauncherHealthMock.mockResolvedValue(health('absent'));
+
+  const { container } = render(<ExternalLauncherCard title="OpenWebUI" badge="Active" launcherKind="open_webui" />);
+
+  await waitFor(() => expect(screen.getByText('미설치 · 미구동')).toBeInTheDocument());
+  expect(container.querySelectorAll('button')).toHaveLength(0);
+  expect(container.querySelectorAll('form')).toHaveLength(0);
 });

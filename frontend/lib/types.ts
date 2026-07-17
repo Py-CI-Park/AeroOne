@@ -482,6 +482,16 @@ export interface ReadEventsResponse {
   loopback_only: boolean;
 }
 
+export interface RecentReadItem {
+  slug: string;
+  title: string;
+  last_seen_at: string;
+}
+
+export interface RecentReadsResponse {
+  items: RecentReadItem[];
+}
+
 export interface DocumentListItem {
   // _database/document 기준 상대 경로(.html), 표시 이름(stem), 부모 폴더("" = 루트).
   path: string;
@@ -631,6 +641,18 @@ export interface LeantimeHealth {
   latency_ms: number | null;
   detail: string;
   app_identified: boolean;
+}
+
+
+// 외부 런처(Open Notebook/OpenWebUI) 동거 스택의 실시간 감지 결과. 신원 마커는 요구하지
+// 않는다 — HTTP 응답만 오면 status='ready'.
+export interface LauncherHealth {
+  status: 'ready' | 'starting' | 'absent' | 'error';
+  port: number;
+  probe_target: string;
+  checked_at: string;
+  latency_ms: number | null;
+  detail: string;
 }
 
 

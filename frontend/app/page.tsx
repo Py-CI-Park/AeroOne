@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { AppShell } from '@/components/layout/app-shell';
 import { ServiceCard } from '@/components/dashboard/service-card';
 import { ExternalLauncherCard } from '@/components/dashboard/notebook-link-card';
+import { RecentReadsStrip } from '@/components/dashboard/recent-reads-strip';
 import { fetchPublicServiceModules } from '@/lib/api';
 import { resolveIsAdmin } from '@/lib/server-auth';
 import { getAppTheme } from '@/lib/server-theme';
@@ -92,6 +93,8 @@ export default async function HomePage({
             service_modules migration 을 확인하세요.
           </div>
         ) : null}
+
+        <RecentReadsStrip />
         {orderSections(sortedModules).map((sectionName) => {
           const sectionModules = sortedModules.filter((module) => module.section === sectionName);
           if (sectionModules.length === 0) return null;

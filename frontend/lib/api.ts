@@ -33,6 +33,7 @@ import type {
   DiagramGenerateResponse,
   OfficeSample,
   LeantimeHealth,
+  LauncherHealth,
   LeantimeProject,
   LeantimeTask,
   LeantimeCalendarEntry,
@@ -47,6 +48,7 @@ import type {
   NewsletterDetail,
   NewsletterItem,
   ReadEventsResponse,
+  RecentReadsResponse,
   Permission,
   RbacMatrixUser,
   ResourceGrant,
@@ -807,6 +809,18 @@ export function recordNewsletterRead(newsletterId: number): void {
   });
 }
 
+// 최근 본 뉴스레터 스트립 — read 비콘과 동일 계열(공개·무인증·IP 스코프)이라 same-origin
+// BFF 를 거치지 않고 브라우저가 백엔드를 직접 호출해야 한다(프록시/SSR 경로는 Next 서버 IP 로
+// 퇴화해 엉뚱한 목록을 반환한다). credentials 는 보낼 필요가 없다(쿠키 세션과 무관한 IP 스코프).
+export async function fetchMyRecentReads(limit = 6): Promise<RecentReadsResponse> {
+  const url = `${getBrowserApiBase()}/api/v1/newsletters/read-events/mine?limit=${limit}`;
+  const response = await fetch(url, { method: 'GET', cache: 'no-store' });
+  if (!response.ok) {
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
+  }
+  return (await response.json()) as RecentReadsResponse;
+}
+
 export async function fetchAdminReadEvents(params?: { newsletter_id?: number; ip?: string }): Promise<ReadEventsResponse> {
   const query = new URLSearchParams();
   if (params?.newsletter_id != null) query.set('newsletter_id', String(params.newsletter_id));
@@ -1103,6 +1117,14 @@ export async function fetchOfficeSamples(): Promise<OfficeSample[]> {
 // 구분해 '열기' 버튼을 조건부로 활성화하는 데 쓴다.
 export async function fetchLeantimeHealth(): Promise<LeantimeHealth> {
   return browserFetch<LeantimeHealth>('/api/frontend/leantime/health', { method: 'GET' });
+}
+
+
+// 외부 런처(Open Notebook/OpenWebUI) 카드의 기동 여부를 실시간으로 조회한다. 대시보드
+// 카드가 '구동 중/기동 중/미설치·미구동/확인 실패' 배지를 구분해 '실행'을 조건부로
+// 활성화하는 데 쓴다.
+export async function fetchLauncherHealth(kind: 'open_notebook' | 'open_webui'): Promise<LauncherHealth> {
+  return browserFetch<LauncherHealth>(`/api/frontend/launchers/${kind}/health`, { method: 'GET' });
 }
 
 

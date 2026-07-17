@@ -3,11 +3,13 @@ import { render, screen, within } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 
-const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClientSessionMock, MODULES } = vi.hoisted(() => ({
+const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClientSessionMock, fetchMyRecentReadsMock, fetchLauncherHealthMock, MODULES } = vi.hoisted(() => ({
   cookieThemeMock: vi.fn<() => string | undefined>(),
   isAdminMock: vi.fn<() => boolean>(),
   fetchPublicServiceModulesMock: vi.fn(),
   fetchClientSessionMock: vi.fn(),
+  fetchMyRecentReadsMock: vi.fn(),
+  fetchLauncherHealthMock: vi.fn(),
   MODULES: [
     { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, launcher_kind: 'none', visibility: 'public' },
     { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, launcher_kind: 'none', visibility: 'public' },
@@ -41,6 +43,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     fetchPublicServiceModules: fetchPublicServiceModulesMock,
     fetchClientSession: fetchClientSessionMock,
+    fetchMyRecentReads: fetchMyRecentReadsMock,
+    fetchLauncherHealth: fetchLauncherHealthMock,
   };
 });
 
@@ -53,6 +57,12 @@ beforeEach(() => {
     Promise.resolve(isAdminMock() ? MODULES : MODULES.filter((m) => m.visibility === 'public' && !m.required_permission)),
   );
   fetchClientSessionMock.mockReturnValue(new Promise(() => {}));
+  // 홈 대시보드 테스트는 최근 본 뉴스레터 스트립 자체를 검증하지 않는다 — 영영 미해결
+  // Promise 로 고정해 스트립이 조용히 렌더 생략 상태(null)로 머물게 하고, act() 경고 없이
+  // 기존 섹션/카드 단언에 영향이 없게 한다.
+  fetchMyRecentReadsMock.mockReturnValue(new Promise(() => {}));
+  // 런처 헬스는 ready 로 목킹 — 외부 앱 카드 링크 단언(8502/8080)이 기존 의미를 유지한다.
+  fetchLauncherHealthMock.mockResolvedValue({ status: 'ready', port: 0, probe_target: '', checked_at: '', latency_ms: 1, detail: null });
 });
 
 afterEach(() => {
@@ -61,6 +71,8 @@ afterEach(() => {
   isAdminMock.mockReset();
   fetchPublicServiceModulesMock.mockReset();
   fetchClientSessionMock.mockReset();
+  fetchMyRecentReadsMock.mockReset();
+  fetchLauncherHealthMock.mockReset();
 });
 
 test('removes the home hero copy while keeping the Newsletter link and theme selector', async () => {
@@ -146,8 +158,8 @@ test('operator dashboard groups cards into ordered Newsletter/Document/AI/Develo
   const aiLink = screen.getByRole('link', { name: /AeroAI/i });
   const viewerLink = screen.getByRole('link', { name: /Viewer/i });
   const ladderLink = screen.getByRole('link', { name: /Ladder/i });
-  const notebookLink = screen.getByRole('link', { name: /Notebook/i });
-  const openwebuiLink = screen.getByRole('link', { name: /OpenWebUI/i });
+  const notebookLink = await screen.findByRole('link', { name: /Notebook/i });
+  const openwebuiLink = await screen.findByRole('link', { name: /OpenWebUI/i });
   const announcement = screen.getByRole('heading', { name: 'Announcement' });
   const schedule = screen.getByRole('heading', { name: 'Schedule' });
 
@@ -270,7 +282,7 @@ test('operator dashboard shows an external Notebook card opening the co-deploy a
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   const main = screen.getByRole('main');
-  const notebookLink = within(main).getByRole('link', { name: /Notebook/i });
+  const notebookLink = await within(main).findByRole('link', { name: /Notebook/i });
 
   expect(notebookLink).toHaveAttribute('target', '_blank');
   expect(notebookLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
@@ -284,8 +296,8 @@ test('operator dashboard shows an external OpenWebUI card opening the co-deploy 
   render(await HomePage({ searchParams: Promise.resolve({}) }));
 
   const main = screen.getByRole('main');
-  const notebookLink = within(main).getByRole('link', { name: /Notebook/i });
-  const openwebuiLink = within(main).getByRole('link', { name: /OpenWebUI/i });
+  const notebookLink = await within(main).findByRole('link', { name: /Notebook/i });
+  const openwebuiLink = await within(main).findByRole('link', { name: /OpenWebUI/i });
 
   expect(openwebuiLink).toHaveAttribute('target', '_blank');
   expect(openwebuiLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
