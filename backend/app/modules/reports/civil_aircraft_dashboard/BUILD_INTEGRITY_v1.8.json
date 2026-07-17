@@ -53,7 +53,7 @@
   ],
   "repoSubsetManifest": {
     "note": "저장소에는 대용량 공식 PDF(sources/pdfs), standalone/, qa/ 스냅샷을 제외한 실행 번들 subset 만 포함한다(v1.7과 동일 정책). SHA256SUMS_v1.8.txt 는 저장소에 실재하는 파일만 나열한다.",
-    "files": 33
+    "files": 37
   },
   "v18Changes": [
     "interactive same-scale silhouettes: hover dimension tooltip + highlight, click encyclopedia deeplink",

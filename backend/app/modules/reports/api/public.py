@@ -27,7 +27,9 @@ _DASHBOARD_CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline'; "
     "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data:; "
+    # blob: 는 PNG 내보내기(SVG를 blob URL 이미지로 로드→canvas 직렬화)에 필요하다.
+    # blob: 는 same-origin ephemeral URL 이라 self-only 원칙을 깨지 않는다(외부 origin 아님).
+    "img-src 'self' data: blob:; "
     "font-src 'self' data:; "
     "connect-src 'self'; "
     "frame-ancestors 'self'; "

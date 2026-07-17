@@ -213,9 +213,10 @@
     bindRadar();
   }
 
-  function bindScale(){
+  function bindScale(host){
     // v1.8 실척 실루엣 상호작용: hover 치수 툴팁 + 강조, 클릭 시 백과(상세 모달) 딥링크.
-    const host=document.getElementById('scaleView'),tip=CA.chartTooltip();
+    // host 를 인자로 받아 인라인 뷰(#scaleView)와 라이트박스 확대 뷰 양쪽에 동일하게 바인딩한다.
+    host=host||document.getElementById('scaleView');const tip=CA.chartTooltip();
     const hits=[...host.querySelectorAll('.silhouette-hit[data-aircraft-id]')];
     hits.forEach(g=>{
       const show=e=>{
@@ -245,7 +246,7 @@
     const viewLabel=state.shapeView==='top'?'Top / 상면':state.shapeView==='side'?'Side / 측면':'Front / 정면';
     document.getElementById('scaleModeNote').textContent=`${viewLabel} · Overlay ${state.shapeOverlay?'ON (단일 공통축척 오버레이)':'OFF (기체별 공통축척 패널)'}`;
     const light=document.getElementById('scaleLightbox');
-    if(light.classList.contains('open')) light.querySelector('.scale-lightbox-view').innerHTML=root.innerHTML;
+    if(light.classList.contains('open')){light.querySelector('.scale-lightbox-view').innerHTML=root.innerHTML;bindScale(light.querySelector('.scale-lightbox-view'));}
     bindScale();
   }
 
@@ -253,6 +254,7 @@
     const lb=document.getElementById('scaleLightbox'),svg=document.querySelector('#scaleView svg');
     if(!svg) return;
     lb.querySelector('.scale-lightbox-view').innerHTML=svg.outerHTML;
+    bindScale(lb.querySelector('.scale-lightbox-view'));
     CA.openModal(lb,document.getElementById('scaleExpand'));
   }
 

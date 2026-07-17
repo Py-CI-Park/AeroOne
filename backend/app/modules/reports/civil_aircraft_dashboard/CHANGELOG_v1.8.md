@@ -25,5 +25,5 @@ Release date: 2026-07-17
 
 ## Integrity
 
-- `SHA256SUMS_v1.8.txt`: 저장소 실재 번들 파일 33건의 SHA-256 매니페스트. 회귀 테스트가 실제 파일 해시와 정합을 강제.
+- `SHA256SUMS_v1.8.txt`: 저장소 실재 번들 파일 37건의 SHA-256 매니페스트. 회귀 테스트가 실제 파일 해시와 정합을 강제.
 - `BUILD_INTEGRITY_v1.8.json`: v1.8 변경 요약·출처 아키텍처·repo subset 정책.

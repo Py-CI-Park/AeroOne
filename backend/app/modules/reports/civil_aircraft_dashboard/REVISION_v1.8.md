@@ -37,7 +37,7 @@
 
 ### 배포·검증
 
-- `SHA256SUMS_v1.8.txt` — 저장소 실재 번들 파일 33건 매니페스트.
+- `SHA256SUMS_v1.8.txt` — 저장소 실재 번들 파일 37건 매니페스트.
 - `BUILD_INTEGRITY_v1.8.json`, `CHANGELOG_v1.8.md`, `README_v1.8.md`, 본 문서.
 - 회귀: `backend/tests/integration/test_reports_api.py`(서빙·CSP·traversal), `backend/tests/unit/test_civil_dashboard_bundle.py`(신규: v1.8 무결성·메타 파생 정합·프리셋/상호작용 마커).
 

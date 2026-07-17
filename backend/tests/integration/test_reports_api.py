@@ -51,6 +51,9 @@ def test_civil_aircraft_dashboard_app_serves_bundle_index_with_self_csp(client) 
     assert "default-src 'self'" in csp
     # self-only bundle: no external origin may appear in the CSP.
     assert 'http://' not in csp and 'https://' not in csp
+    # v1.8 PNG 내보내기(SVG→blob URL 이미지→canvas)는 img-src 에 blob: 이 있어야 동작한다.
+    # blob: 는 same-origin ephemeral 이라 self-only 원칙을 깨지 않는다.
+    assert 'img-src' in csp and 'blob:' in csp
     assert response.headers.get('x-content-type-options') == 'nosniff'
 
     body = response.text

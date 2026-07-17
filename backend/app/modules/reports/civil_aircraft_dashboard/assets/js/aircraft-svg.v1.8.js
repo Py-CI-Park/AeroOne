@@ -19,7 +19,7 @@ const FAMILY_PRESETS={
  'ATR 72':{wingSweepDeg:3,wingletType:'none',wingTaper:0.55,noseLengthPct:0.10},
  'E-Jet E2':{wingSweepDeg:26,wingletType:'raked',wingTaper:0.23,noseLengthPct:0.12}
 };
-function resolveParams(a){const base=(a.visual&&a.visual.params)||{},preset=FAMILY_PRESETS[a.family]||null;return preset?Object.assign({},base,preset):base;}
+function resolveParams(a){const base=(a.visual&&a.visual.params)||{},preset=FAMILY_PRESETS[a.family]||null;return preset?Object.assign({},base,preset):Object.assign({},base);}
 function nn(v,d=2){return Number.isFinite(v)?Number(v.toFixed(d)):0}function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function hasGeometry(a){return Number.isFinite(a.lengthM)&&Number.isFinite(a.spanM)&&Number.isFinite(a.heightM)}
 function base(label,body,desc=''){return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${CA.esc(label)}" xmlns="${NS}"><title>${CA.esc(label)}</title>${desc?`<desc>${CA.esc(desc)}</desc>`:''}${body}</svg>`}
