@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from app.core.security import hash_password
@@ -43,9 +45,12 @@ def test_collection_list_includes_subfolders_and_skips_debug(client, test_paths)
     response = client.get('/api/v1/collections/document/list')
 
     assert response.status_code == 200
-    assert response.json()['documents'] == [
-        {'path': '회사소개.html', 'name': '회사소개', 'folder': ''},
-        {'path': '항공/상용기_스펙.html', 'name': '상용기_스펙', 'folder': '항공'},
+    documents = response.json()['documents']
+    # 수정일 메타는 오늘 생성한 파일의 로컬 날짜(YYYY-MM-DD)로 내려온다.
+    today = date.today().isoformat()
+    assert documents == [
+        {'path': '회사소개.html', 'name': '회사소개', 'folder': '', 'modified_at': today},
+        {'path': '항공/상용기_스펙.html', 'name': '상용기_스펙', 'folder': '항공', 'modified_at': today},
     ]
 
 

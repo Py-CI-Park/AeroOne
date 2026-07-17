@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from app.modules.newsletter.services.html_render_service import HtmlRenderService
@@ -31,10 +32,17 @@ class HtmlCollectionService:
             # 폴더 구분/선택을 위해 상대 경로(forward-slash), 표시 이름(stem), 부모 폴더("" = 루트)를 함께 넘긴다.
             parent = relative.parent
             folder = '' if parent == Path('.') else str(parent).replace('\\', '/')
+            # 수정일 메타 — 파일 mtime 의 로컬 날짜(YYYY-MM-DD). 운영자가 문서를 떨군 시점을
+            # 목록에서 바로 보이게 한다. stat 실패(경합 삭제 등)는 항목 자체를 죽이지 않는다.
+            try:
+                modified_at = date.fromtimestamp(path.stat().st_mtime).isoformat()
+            except OSError:
+                modified_at = ''
             items.append({
                 'path': str(relative).replace('\\', '/'),
                 'name': path.stem,
                 'folder': folder,
+                'modified_at': modified_at,
             })
         # 폴더 → 이름 순으로 안정 정렬해 좌측 트리가 결정적으로 그려지게 한다.
         items.sort(key=lambda item: (item['folder'], item['name']))

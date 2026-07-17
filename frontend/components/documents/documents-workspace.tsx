@@ -53,6 +53,41 @@ function recentDocumentKey(collection: string): string {
   return `aeroone.collection.${collection}.recentDocument`;
 }
 
+function openFoldersKey(collection: string): string {
+  return `aeroone.collection.${collection}.openFolders`;
+}
+
+// 폴더 펼침 상태를 sessionStorage 에서 복원한다 — 같은 탭에서 문서를 오가도 트리가
+// 매번 접히지 않게. 저장값이 없거나 접근이 막히면 defaultFoldersOpen 정책으로 폴백.
+function restoreOpenFolders(
+  collection: string,
+  documents: DocumentListItem[],
+  defaultFoldersOpen: boolean,
+): Set<string> {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.sessionStorage.getItem(openFoldersKey(collection));
+      if (raw !== null) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return new Set(parsed.filter((item): item is string => typeof item === 'string'));
+        }
+      }
+    } catch {
+      // sessionStorage 접근/파싱 실패 시 기본 정책으로 시작한다.
+    }
+  }
+  return defaultFoldersOpen ? new Set(collectFolderPaths(documents)) : new Set();
+}
+
+function persistOpenFolders(collection: string, openFolders: Set<string>): void {
+  try {
+    window.sessionStorage.setItem(openFoldersKey(collection), JSON.stringify([...openFolders]));
+  } catch {
+    // 저장 실패는 탐색 자체를 막지 않는다.
+  }
+}
+
 function resolveInitialSelected(
   documents: DocumentListItem[],
   collection: 'document' | 'civil' | 'nsa',
@@ -107,12 +142,21 @@ function DocumentButton({
         aria-current={selected ? 'true' : undefined}
         onClick={() => onSelect(doc)}
         style={{ paddingLeft: 10 + depth * 16 }}
+        title={doc.modified_at ? `${doc.name} — 수정일 ${doc.modified_at}` : doc.name}
         className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left text-base"
       >
         <span className="text-ink-3">
           <Icon.doc size={14} />
         </span>
         <span className="min-w-0 truncate">{doc.name}</span>
+        {doc.modified_at ? (
+          <span
+            data-testid={`doc-modified-${doc.path}`}
+            className="ml-auto flex-shrink-0 pl-1 text-[11px] tabular-nums text-ink-3"
+          >
+            {doc.modified_at}
+          </span>
+        ) : null}
       </button>
       <a
         href={downloadHref}
@@ -248,7 +292,7 @@ export function DocumentsWorkspace({
   const tree = useMemo(() => buildTree(filteredDocuments), [filteredDocuments]);
   const selectGroups = useMemo(() => buildSelectGroups(filteredDocuments), [filteredDocuments]);
   const [openFolders, setOpenFolders] = useState<Set<string>>(() =>
-    defaultFoldersOpen ? new Set(collectFolderPaths(documents)) : new Set(),
+    restoreOpenFolders(collection, documents, defaultFoldersOpen),
   );
   // 좌측 목록을 접어 뷰어가 전체 폭을 쓰게 한다. 접으면 상단 셀렉트로 문서를 고른다(위치 위로 이동).
   const [sidebarOpen, setSidebarOpen] = useState(defaultSidebarOpen);
@@ -309,6 +353,7 @@ export function DocumentsWorkspace({
       } else {
         next.add(path);
       }
+      persistOpenFolders(collection, next);
       return next;
     });
   }

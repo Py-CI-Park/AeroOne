@@ -45,6 +45,7 @@ beforeEach(() => {
     Promise.resolve({ asset_type: 'html', content_html: `<p>${path}</p>` }),
   );
   window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -253,4 +254,41 @@ test('expanding sidebar and re-collapsing restores select', async () => {
   fireEvent.click(screen.getByTestId('documents-sidebar-toggle'));
   expect(screen.queryByTestId('documents-tree')).not.toBeInTheDocument();
   expect(screen.getByTestId('documents-select')).toBeInTheDocument();
+});
+
+test('shows the modified date meta on document rows when provided', async () => {
+  const docsWithMeta = [
+    { path: '회사소개.html', name: '회사소개', folder: '', modified_at: '2026-07-15' },
+    { path: '항공/상용기.html', name: '상용기', folder: '항공' },
+  ];
+  render(<DocumentsWorkspace documents={docsWithMeta} defaultSidebarOpen defaultFoldersOpen />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
+
+  // 수정일이 있는 행에만 날짜 메타가 붙고, 없는 행(구버전 응답)은 그대로 이름만 보인다.
+  expect(screen.getByTestId('doc-modified-회사소개.html')).toHaveTextContent('2026-07-15');
+  expect(screen.getByTestId('doc-item-회사소개.html')).toHaveAttribute('title', '회사소개 — 수정일 2026-07-15');
+  expect(screen.queryByTestId('doc-modified-항공/상용기.html')).not.toBeInTheDocument();
+});
+
+test('persists open folder state to sessionStorage and restores it on remount', async () => {
+  const { unmount } = render(<DocumentsWorkspace documents={DOCS} defaultSidebarOpen />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
+
+  // 접힌 폴더를 펼치면 sessionStorage 에 기록된다.
+  fireEvent.click(screen.getByTestId('doc-folder-항공'));
+  expect(JSON.parse(window.sessionStorage.getItem('aeroone.collection.document.openFolders') ?? '[]')).toEqual(['항공']);
+  unmount();
+
+  // 재마운트(문서 이동/새로 고침에 해당) 시 저장된 펼침 상태가 복원된다.
+  render(<DocumentsWorkspace documents={DOCS} defaultSidebarOpen />);
+  expect(screen.getByTestId('doc-folder-항공')).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByTestId('doc-item-항공/상용기.html')).toBeInTheDocument();
+});
+
+test('restores collapsed state even when defaultFoldersOpen is true', async () => {
+  // 사용자가 명시적으로 접은 상태([])가 defaultFoldersOpen 초기 정책보다 우선한다.
+  window.sessionStorage.setItem('aeroone.collection.document.openFolders', '[]');
+  render(<DocumentsWorkspace documents={DOCS} defaultSidebarOpen defaultFoldersOpen />);
+  await waitFor(() => expect(fetchCollectionContentMock).toHaveBeenCalled());
+  expect(screen.getByTestId('doc-folder-항공')).toHaveAttribute('aria-expanded', 'false');
 });

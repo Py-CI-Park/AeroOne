@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 
 def test_documents_list_includes_subfolders_and_skips_debug(client, test_paths) -> None:
     root = test_paths['document_root']
@@ -14,9 +16,10 @@ def test_documents_list_includes_subfolders_and_skips_debug(client, test_paths) 
     assert response.status_code == 200
     documents = response.json()['documents']
     # _debug.html 은 제외 → 2건. 폴더 → 이름 순 정렬(빈 폴더가 먼저).
+    today = date.today().isoformat()
     assert documents == [
-        {'path': '회사소개.html', 'name': '회사소개', 'folder': ''},
-        {'path': '항공/상용기_스펙.html', 'name': '상용기_스펙', 'folder': '항공'},
+        {'path': '회사소개.html', 'name': '회사소개', 'folder': '', 'modified_at': today},
+        {'path': '항공/상용기_스펙.html', 'name': '상용기_스펙', 'folder': '항공', 'modified_at': today},
     ]
 
 

@@ -497,6 +497,8 @@ export interface DocumentListItem {
   path: string;
   name: string;
   folder: string;
+  // 파일 mtime 로컬 날짜(YYYY-MM-DD). 구버전 응답/stat 실패 시 비어 있을 수 있다.
+  modified_at?: string;
 }
 
 export interface CollectionSearchResult {

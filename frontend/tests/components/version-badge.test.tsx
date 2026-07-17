@@ -11,8 +11,8 @@ test('shows the current version label and hides the dialog initially', () => {
   expect(screen.queryByTestId('version-dialog')).not.toBeInTheDocument();
 });
 
-test('tracks the current 1.17.0 release version and update date', () => {
-  expect(APP_VERSION).toBe('1.17.0');
+test('tracks the current 1.17.1 release version and update date', () => {
+  expect(APP_VERSION).toBe('1.17.1');
   expect(APP_UPDATED_DATE).toBe('2026-07-17');
 });
 
