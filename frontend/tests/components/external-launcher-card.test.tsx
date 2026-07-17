@@ -261,3 +261,17 @@ test('never renders an actual <button>/<form> affordance even when the card is d
   expect(container.querySelectorAll('button')).toHaveLength(0);
   expect(container.querySelectorAll('form')).toHaveLength(0);
 });
+
+test('link port follows the health payload, not the reserved constant, under env override', async () => {
+  // 회귀 구별 테스트: 기본상수(8502)로 되돌려도 통과하지 않도록 비기본 포트를 응답한다.
+  fetchLauncherHealthMock.mockResolvedValue(health('ready', { port: 9999, probe_target: '127.0.0.1:9999' }));
+  setLocation({ hostname: 'localhost' });
+
+  render(
+    <ExternalLauncherCard title="Notebook" description="d" badge="b" active launcherKind="open_notebook" />,
+  );
+
+  await waitFor(() => {
+    expect(screen.getByRole('link', { name: /Notebook/ })).toHaveAttribute('href', 'http://localhost:9999');
+  });
+});
