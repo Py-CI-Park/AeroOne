@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .data_loader import dataframe_profile, load_dataframe
 from .processor import echarts_option, prepare_chart
+from .refine import llm_refine_chart_spec, rule_refine_chart_spec
 from .schemas import ChartSpec
 from .service import generate_chart, inspect_data
 from .spec_builder import auto_chart_spec, llm_chart_spec
@@ -20,6 +21,8 @@ __all__ = [
     'generate_chart',
     'inspect_data',
     'llm_chart_spec',
+    'llm_refine_chart_spec',
     'load_dataframe',
     'prepare_chart',
+    'rule_refine_chart_spec',
 ]

@@ -80,12 +80,19 @@ def generate(
     ai_assist: bool = Form(default=True),
     chart_type: ChartType | None = Form(default=None),
     manual_spec_json: str = Form(default=''),
+    previous_spec_json: str = Form(default=''),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
     store: OfficeJobStore = Depends(get_office_job_store),
     user: User = Depends(get_current_user),
 ) -> ChartGenerateResponse:
-    """데이터를 ECharts option 으로 집계한다. 업로드 크기 초과는 413이다."""
+    """데이터를 ECharts option 으로 집계한다. 업로드 크기 초과는 413이다.
+
+    ``previous_spec_json`` 은 직전 생성의 ChartSpec JSON 직렬화다. ``manual_spec_json`` 이
+    함께 오면 수동 스펙이 우선하고 경고 1건이 첨부된다. 그렇지 않으면 직전 스펙을
+    ``prompt`` 명령으로 리파인한다(LLM 우선, 실패/미설정 시 규칙 기반 폴백). 잘못된 값은
+    422다.
+    """
 
     _require_data_suffix(data_file.filename)
     try:
@@ -99,6 +106,7 @@ def generate(
             ai_assist=ai_assist,
             requested_type=chart_type,
             manual_spec_json=manual_spec_json,
+            previous_spec_json=previous_spec_json,
             client=llm_bridge.resolve_active_client(db, settings),
             app_version=settings.app_version,
             max_upload_bytes=MAX_CHART_UPLOAD_BYTES,

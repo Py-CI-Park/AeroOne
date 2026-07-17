@@ -939,6 +939,9 @@ export interface ChartGenerateInput {
   chartType?: ChartType | '';
   manualSpec?: ChartManualSpecInput;
   manualSpecJson?: string;
+  // 후속 명령: 직전 성공 결과의 result.chart_spec 을 그대로 넘긴다. manualSpec 이 있으면
+  // 서버가 manualSpec 을 우선 처리하므로 프런트는 둘을 동시에 채우지 않는다.
+  previousSpec?: Record<string, unknown>;
 }
 
 export async function generateChart(input: ChartGenerateInput, csrfToken: string, signal?: AbortSignal) {
@@ -953,6 +956,7 @@ export async function generateChart(input: ChartGenerateInput, csrfToken: string
   form.append('ai_assist', String(input.aiAssist ?? true));
   if (input.chartType) form.append('chart_type', input.chartType);
   if (manualSpecJson) form.append('manual_spec_json', manualSpecJson);
+  if (input.previousSpec !== undefined) form.append('previous_spec_json', JSON.stringify(input.previousSpec));
   return browserFetch<ChartGenerateResponse>('/api/frontend/office-tools/charts/generate', {
     method: 'POST',
     body: form,

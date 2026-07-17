@@ -23,6 +23,7 @@ from app.modules.office_tools.core.job_store import OfficeJobStore
 
 from .data_loader import dataframe_profile, load_dataframe
 from .processor import echarts_option, prepare_chart
+from .refine import llm_refine_chart_spec, rule_refine_chart_spec
 from .schemas import ChartSpec
 from .spec_builder import auto_chart_spec, llm_chart_spec
 
@@ -42,18 +43,30 @@ def inspect_data(
     return dataframe_profile(frame)
 
 
+def _parse_spec_json(spec_json: str | None, *, label: str) -> dict[str, Any] | None:
+    """스펙 JSON 문자열을 dict 로 파싱한다. 비면 None, 잘못되면 ValueError."""
+
+    if not spec_json or not spec_json.strip():
+        return None
+    try:
+        parsed = json.loads(spec_json)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f'{label} JSON 이 유효하지 않습니다: {exc}') from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(f'{label}은(는) JSON 객체여야 합니다')
+    return parsed
+
+
 def _parse_manual_spec(manual_spec_json: str | None) -> dict[str, Any] | None:
     """수동 스펙 JSON 문자열을 dict 로 파싱한다. 비면 None, 잘못되면 ValueError."""
 
-    if not manual_spec_json or not manual_spec_json.strip():
-        return None
-    try:
-        parsed = json.loads(manual_spec_json)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f'수동 차트 스펙 JSON 이 유효하지 않습니다: {exc}') from exc
-    if not isinstance(parsed, dict):
-        raise ValueError('수동 차트 스펙은 JSON 객체여야 합니다')
-    return parsed
+    return _parse_spec_json(manual_spec_json, label='수동 차트 스펙')
+
+
+def _parse_previous_spec(previous_spec_json: str | None) -> dict[str, Any] | None:
+    """직전 스펙 JSON 문자열을 dict 로 파싱한다. 비면 None, 잘못되면 ValueError."""
+
+    return _parse_spec_json(previous_spec_json, label='직전 차트 스펙')
 
 
 def _resolve_spec(
@@ -63,25 +76,44 @@ def _resolve_spec(
     ai_assist: bool,
     requested_type: str | None,
     manual_spec: dict[str, Any] | None,
+    previous_spec: dict[str, Any] | None,
     client: OpenAiCompatibleClient | None,
-) -> tuple[ChartSpec, list[str], dict[str, Any]]:
-    """수동 → LLM → 규칙 기반 순으로 스펙을 결정한다. (스펙, 경고, llm메타) 반환."""
+) -> tuple[ChartSpec, list[str], dict[str, Any], bool]:
+    """수동 > 직전 스펙+명령(refine) > LLM 신규 > 규칙 기반 신규 순으로 스펙을 결정한다.
+
+    (스펙, 경고, llm메타, 직전 스펙에서 리파인했는지) 를 반환한다.
+    """
 
     columns = [str(c) for c in frame.columns]
     warnings: list[str] = []
     if manual_spec is not None:
         spec = ChartSpec.model_validate(manual_spec)
         spec.validate_columns(columns)
-        return spec, warnings, {'used': False}
+        if previous_spec is not None:
+            warnings.append('수동 스펙과 직전 스펙이 함께 전달되어 수동 스펙을 사용했습니다.')
+        return spec, warnings, {'used': False}, False
+
+    if previous_spec is not None:
+        previous = ChartSpec.model_validate(previous_spec)
+        previous.validate_columns(columns)
+        if ai_assist and client is not None:
+            try:
+                spec, meta = llm_refine_chart_spec(frame, previous, prompt, client)
+                return spec, warnings, {'used': True, **meta}, True
+            except Exception as exc:  # noqa: BLE001 - 폴백 신호로 흡수
+                warnings.append(f'LLM 차트 리파인 실패로 규칙 기반 리파인을 사용했습니다: {exc}')
+        spec, refine_warnings = rule_refine_chart_spec(previous, prompt)
+        return spec, [*warnings, *refine_warnings], {'used': False}, True
+
     if ai_assist and client is not None:
         try:
             spec, meta = llm_chart_spec(frame, prompt, client)
-            return spec, warnings, {'used': True, **meta}
+            return spec, warnings, {'used': True, **meta}, False
         except Exception as exc:  # noqa: BLE001 - 폴백 신호로 흡수
             warnings.append(f'LLM 차트 추천 실패로 규칙 기반 추천을 사용했습니다: {exc}')
     elif ai_assist and client is None:
         warnings.append('AI 추천을 요청했지만 활성 LLM 연결이 없어 규칙 기반 추천을 사용했습니다.')
-    return auto_chart_spec(frame, prompt, requested_type), warnings, {'used': False}
+    return auto_chart_spec(frame, prompt, requested_type), warnings, {'used': False}, False
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -98,6 +130,7 @@ def generate_chart(
     ai_assist: bool,
     requested_type: str | None,
     manual_spec_json: str | None,
+    previous_spec_json: str | None = '',
     client: OpenAiCompatibleClient | None,
     app_version: str,
     max_upload_bytes: int,
@@ -119,15 +152,17 @@ def generate_chart(
         if len(data) > max_upload_bytes:
             raise ValueError('데이터 업로드가 허용 크기를 초과했습니다')
         manual_spec = _parse_manual_spec(manual_spec_json)
+        previous_spec = _parse_previous_spec(previous_spec_json)
         frame = load_dataframe(filename, data, max_data_rows)
         profile = dataframe_profile(frame)
 
-        spec, warnings, llm_meta = _resolve_spec(
+        spec, warnings, llm_meta, refined_from_previous = _resolve_spec(
             frame,
             prompt=prompt,
             ai_assist=ai_assist,
             requested_type=requested_type,
             manual_spec=manual_spec,
+            previous_spec=previous_spec,
             client=client,
         )
         prepared = prepare_chart(frame, spec)
@@ -144,7 +179,7 @@ def generate_chart(
             'job_id': job_id,
             'generated_at': datetime.now(UTC).isoformat(),
             'input': {'filename': Path(filename).name, 'sha256': _sha256_bytes(data), 'profile': profile},
-            'processing': {'llm': llm_meta, 'spec': spec.model_dump()},
+            'processing': {'llm': llm_meta, 'spec': spec.model_dump(), 'refined_from_previous': refined_from_previous},
             'outputs': {'render': 'browser ECharts', 'data_rows': int(len(prepared.frame))},
             'warnings': warnings,
         }
