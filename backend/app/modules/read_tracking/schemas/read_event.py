@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ReadBeaconResponse(BaseModel):
@@ -16,8 +16,7 @@ class ReadEventRow(BaseModel):
     first_seen_at: datetime | None = None
     last_seen_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NewsletterReadSummary(BaseModel):

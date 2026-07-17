@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 
@@ -82,8 +82,16 @@ afterEach(() => {
   fetchLauncherHealthMock.mockReset();
 });
 
+// 대시보드 렌더 헬퍼 — ExternalLauncherCard 의 헬스 fetch 가 렌더 직후 상태를 갱신하므로
+// act 로 마이크로태스크를 플러시해 "not wrapped in act" 경고 없이 안정 상태에서 단언한다.
+async function renderHome(searchParams: Record<string, string> = {}) {
+  const ui = await HomePage({ searchParams: Promise.resolve(searchParams) });
+  render(ui);
+  await act(async () => {});
+}
+
 test('removes the home hero copy while keeping the Newsletter link and theme selector', async () => {
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.queryByText('AeroOne Internal Platform')).not.toBeInTheDocument();
   expect(screen.queryByText('사내 문서형 서비스 시작점')).not.toBeInTheDocument();
@@ -98,7 +106,7 @@ test('removes the home hero copy while keeping the Newsletter link and theme sel
 
 test('non-admin dashboard hides required-permission NSA plus development and coming-soon cards', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   expect(within(main).getByRole('link', { name: /Newsletter/i })).toBeInTheDocument();
@@ -116,7 +124,7 @@ test('non-admin fallback dashboard drops required-permission NSA cards', async (
   fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
   isAdminMock.mockReturnValue(false);
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   expect(within(main).getByRole('link', { name: /Newsletter/i })).toBeInTheDocument();
@@ -128,7 +136,7 @@ test('degraded fallback keeps login visible, Admin hidden, and the main nav to 3
   fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
   isAdminMock.mockReturnValue(false);
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const nav = screen.getByRole('navigation', { name: '주요 메뉴' });
   const navLinks = within(nav).getAllByRole('link');
@@ -142,7 +150,7 @@ test('degraded fallback keeps login visible, Admin hidden, and the main nav to 3
 });
 
 test('adds an active Civil Aircraft Spec Catalog card linking to the report page', async () => {
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const reportLink = within(main).getByRole('link', { name: /Civil Aircraft Spec Catalog/i });
@@ -154,7 +162,7 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
 
 test('operator dashboard groups cards into ordered Newsletter/Document/AI/Development/ETC sections', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const newsletterSection = screen.getAllByRole('heading', { name: 'Newsletter' })[0];
   const documentSection = screen.getAllByRole('heading', { name: 'Document' })[0];
@@ -190,7 +198,7 @@ test('operator dashboard groups cards into ordered Newsletter/Document/AI/Develo
 
 test('operator dashboard shows the unified office-tools hub card in Development', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const hubLink = within(main).getByRole('link', { name: /Office Studio/ });
@@ -200,14 +208,14 @@ test('operator dashboard shows the unified office-tools hub card in Development'
 
 test('non-admin dashboard hides the admin-only office-tools hub card', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.queryByRole('link', { name: /Office Studio/ })).not.toBeInTheDocument();
 });
 
 test('operator dashboard links the Leantime card to the internal co-deploy landing page', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const leantimeLink = within(main).getByRole('link', { name: /Leantime/i });
@@ -220,14 +228,14 @@ test('operator dashboard links the Leantime card to the internal co-deploy landi
 
 test('non-admin dashboard hides the admin-only Leantime card', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.queryByRole('link', { name: /Leantime/i })).not.toBeInTheDocument();
 });
 
 test('adds an active NSA card linking to /nsa', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const nsaLink = within(main).getByRole('link', { name: /NSA/i });
@@ -239,7 +247,7 @@ test('adds an active NSA card linking to /nsa', async () => {
 
 test('operator dashboard shows an active Ladder card linking to /games/ladder', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const ladderLink = within(main).getByRole('link', { name: /Ladder/i });
@@ -250,7 +258,7 @@ test('operator dashboard shows an active Ladder card linking to /games/ladder', 
 });
 
 test('adds an active Document card linking to the documents page', async () => {
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const documentLink = within(main).getByRole('link', { name: /Browse HTML documents organized in folders/i });
@@ -262,7 +270,7 @@ test('adds an active Document card linking to the documents page', async () => {
 
 test('operator dashboard shows an active Viewer card linking to /viewer', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const viewerLink = within(main).getByRole('link', { name: /Viewer/i });
@@ -274,7 +282,7 @@ test('operator dashboard shows an active Viewer card linking to /viewer', async 
 
 test('operator dashboard shows an active AeroAI card linking to /ai', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const aiLink = within(main).getByRole('link', { name: /AeroAI/i });
@@ -286,7 +294,7 @@ test('operator dashboard shows an active AeroAI card linking to /ai', async () =
 
 test('operator dashboard shows an external Notebook card opening the co-deploy app on port 8502', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const notebookLink = await within(main).findByRole('link', { name: /Notebook/i });
@@ -300,7 +308,7 @@ test('operator dashboard shows an external Notebook card opening the co-deploy a
 
 test('operator dashboard shows an external OpenWebUI card opening the co-deploy app on port 8080, coexisting with Notebook', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const notebookLink = await within(main).findByRole('link', { name: /Notebook/i });
@@ -317,7 +325,7 @@ test('operator dashboard shows an external OpenWebUI card opening the co-deploy 
 
 test('non-admin dashboard (active session, no dashboard.openwebui.launch grant) hides the OpenWebUI card', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
 });
@@ -326,7 +334,7 @@ test('degraded fallback hides the OpenWebUI card for non-admins even though it i
   fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
   isAdminMock.mockReturnValue(false);
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   // required_permission is unverifiable in degraded mode, so the conservative fallback filter
   // must drop it for non-admins even though visibility is 'public'.
@@ -336,7 +344,7 @@ test('degraded fallback hides the OpenWebUI card for non-admins even though it i
 test('home page uses dark theme from cookie', async () => {
   cookieThemeMock.mockReturnValue('dark');
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.getByRole('link', { name: '라이트 테마로 전환' })).toBeInTheDocument();
 });
