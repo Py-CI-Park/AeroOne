@@ -3,11 +3,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
 
+import { mockStreamResolves } from './ai-stream-test-utils';
+
 const mocks = vi.hoisted(() => ({
   fetchAiStatus: vi.fn(),
   fetchCollectionSearch: vi.fn(),
   fetchCollectionContent: vi.fn(),
-  sendAiChat: vi.fn(),
+  streamAiChat: vi.fn(),
   listAiConversations: vi.fn(),
 }));
 
@@ -17,7 +19,7 @@ vi.mock('@/lib/api', async () => {
 });
 
 const CITATION = {
-  collection: 'document',
+  collection: 'document' as const,
   path: '항공/정비.html',
   name: '정비',
   folder: '항공',
@@ -33,7 +35,7 @@ beforeEach(() => {
   mocks.fetchCollectionSearch.mockResolvedValue({ results: [], degraded: false, collections: ['document', 'civil'] });
   mocks.listAiConversations.mockResolvedValue({ conversations: [] });
   mocks.fetchCollectionContent.mockResolvedValue({ asset_type: 'html', content_html: '<h1>정비 본문</h1>' });
-  mocks.sendAiChat.mockResolvedValue({
+  mockStreamResolves(mocks.streamAiChat, {
     model: 'gemma4:12b',
     message: { role: 'assistant', content: '근거 답변' },
     citations: [CITATION],
@@ -61,7 +63,7 @@ test('citation link opens the viewer in a new tab', async () => {
 });
 
 test('citation panel rejects unsafe navigation URLs from persisted citations', async () => {
-  mocks.sendAiChat.mockResolvedValue({
+  mockStreamResolves(mocks.streamAiChat, {
     model: 'gemma4:12b',
     message: { role: 'assistant', content: '근거 답변' },
     citations: [{ ...CITATION, navigation_url: '//evil.example/path' }],

@@ -511,6 +511,11 @@ export interface AiChatMessage {
   content: string;
 }
 
+export interface AiAttachment {
+  name: string;
+  content: string;
+}
+
 export interface AiCitation extends CollectionSearchResult {}
 
 export interface AiStatusResponse {

@@ -9,7 +9,9 @@ import type {
   BackupRecord,
   BackupRestoreDryRun,
   AiAdminStatus,
+  AiAttachment,
   AiChatMessage,
+  AiCitation,
   AiChatResponse,
   AiConversationDetail,
   AiConversationListResponse,
@@ -286,7 +288,7 @@ export async function fetchAiStatus(): Promise<AiStatusResponse> {
   return (await response.json()) as AiStatusResponse;
 }
 
-export async function sendAiChat(payload: {
+export interface AiChatRequestPayload {
   messages: AiChatMessage[];
   use_search?: boolean;
   collections?: Array<'document' | 'civil' | 'nsa'>;
@@ -294,7 +296,10 @@ export async function sendAiChat(payload: {
   conversation_id?: number | null;
   temporary?: boolean;
   selected_refs?: Array<{ collection: 'document' | 'civil' | 'nsa'; path: string }>;
-}, options?: { signal?: AbortSignal }): Promise<AiChatResponse> {
+  attachments?: AiAttachment[];
+}
+
+export async function sendAiChat(payload: AiChatRequestPayload, options?: { signal?: AbortSignal }): Promise<AiChatResponse> {
   const response = await fetch('/api/frontend/ai/chat', {
     method: 'POST',
     cache: 'no-store',
@@ -307,6 +312,129 @@ export async function sendAiChat(payload: {
     throw new Error(text || `AI request failed: ${response.status}`);
   }
   return (await response.json()) as AiChatResponse;
+}
+
+// AeroAI 스트리밍(SSE) 프레임 계약: citations(0~1) -> delta(N) -> done(1), 실패 시 error.
+// 순수 파서(parseSseBuffer)는 청크 경계에서 잘린 이벤트를 다음 청크와 이어 붙이도록
+// 소비하지 못한 나머지(rest)를 돌려준다 — 단위 테스트로 청크 분절 케이스를 검증한다.
+export interface AiSseFrame {
+  event: string;
+  data: string;
+}
+
+export function parseSseBuffer(buffer: string): { frames: AiSseFrame[]; rest: string } {
+  const normalized = buffer.replace(/\r\n/g, '\n');
+  const parts = normalized.split('\n\n');
+  const rest = parts.pop() ?? '';
+  const frames: AiSseFrame[] = [];
+  for (const part of parts) {
+    const frame = parseSseFrame(part);
+    if (frame) frames.push(frame);
+  }
+  return { frames, rest };
+}
+
+function parseSseFrame(rawFrame: string): AiSseFrame | null {
+  const dataLines: string[] = [];
+  let event = 'message';
+  for (const line of rawFrame.split('\n')) {
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5).trim());
+    }
+  }
+  if (dataLines.length === 0) return null;
+  return { event, data: dataLines.join('\n') };
+}
+
+export interface AiStreamCitationsData {
+  citations: AiCitation[];
+}
+export interface AiStreamDeltaData {
+  content: string;
+}
+export interface AiStreamDoneData {
+  model: string;
+  conversation_id?: number | null;
+  persisted?: boolean;
+  /** 답변은 완결됐지만 영속화가 실패한 경우의 간략 사유(경고 표시용). */
+  persist_error?: string;
+}
+export interface AiStreamErrorData {
+  detail: string;
+  status?: number;
+}
+
+export interface AiStreamHandlers {
+  onCitations?: (citations: AiCitation[]) => void;
+  onDelta?: (content: string) => void;
+  onDone?: (payload: AiStreamDoneData) => void;
+  onError?: (detail: string, status?: number) => void;
+}
+
+// AeroAI 채팅 스트리밍 클라이언트 — EventSource 는 POST/헤더를 지원하지 않아 사용할 수 없으므로
+// fetch + ReadableStream 으로 SSE 프레임을 직접 파싱한다. AbortController 로 중단하면 서버는
+// 미완결 응답을 영속화하지 않는다(로컬 표시만 유지된다).
+export async function streamAiChat(
+  payload: AiChatRequestPayload,
+  signal: AbortSignal | undefined,
+  handlers: AiStreamHandlers,
+): Promise<void> {
+  // CSRF 헤더 미사용: AI 채팅은 익명 접근을 포함하는 공개 경로로 sendAiChat 과 동일하게
+  // 쿠키만 중계한다(백엔드/BFF 도 이 경로에서 CSRF 를 검증하지 않는다 — 죽은 헤더 금지).
+  const response = await fetch('/api/frontend/ai/chat/stream', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal,
+  });
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || `AI stream request failed: ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { frames, rest } = parseSseBuffer(buffer);
+      buffer = rest;
+      for (const frame of frames) dispatchAiSseFrame(frame, handlers);
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      const { frames } = parseSseBuffer(`${buffer}\n\n`);
+      for (const frame of frames) dispatchAiSseFrame(frame, handlers);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function dispatchAiSseFrame(frame: AiSseFrame, handlers: AiStreamHandlers): void {
+  try {
+    if (frame.event === 'citations') {
+      const parsed = JSON.parse(frame.data) as AiStreamCitationsData;
+      handlers.onCitations?.(parsed.citations);
+    } else if (frame.event === 'delta') {
+      const parsed = JSON.parse(frame.data) as AiStreamDeltaData;
+      handlers.onDelta?.(parsed.content);
+    } else if (frame.event === 'done') {
+      const parsed = JSON.parse(frame.data) as AiStreamDoneData;
+      handlers.onDone?.(parsed);
+    } else if (frame.event === 'error') {
+      const parsed = JSON.parse(frame.data) as AiStreamErrorData;
+      handlers.onError?.(parsed.detail, parsed.status);
+    }
+  } catch {
+    // 파싱 불가한 프레임(빈 keep-alive 등)은 조용히 무시한다.
+  }
 }
 
 export async function listAiConversations(includeArchived = false): Promise<AiConversationListResponse> {

@@ -3,10 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
 
+import { mockStreamResolves } from './ai-stream-test-utils';
+
 const mocks = vi.hoisted(() => ({
   fetchAiStatus: vi.fn(),
   fetchCollectionSearch: vi.fn(),
-  sendAiChat: vi.fn(),
+  streamAiChat: vi.fn(),
   listAiConversations: vi.fn(),
 }));
 
@@ -30,7 +32,7 @@ beforeEach(() => {
     enabled: true, base_url: '', model: 'gemma4:12b', reachable: true, model_available: true, status: 'ok', detail: null,
   });
   mocks.fetchCollectionSearch.mockResolvedValue({ results: [RESULT], degraded: false, collections: ['document', 'civil'] });
-  mocks.sendAiChat.mockResolvedValue({ model: 'gemma4:12b', message: { role: 'assistant', content: '근거 답변' }, citations: [] });
+  mockStreamResolves(mocks.streamAiChat, { model: 'gemma4:12b', message: { role: 'assistant', content: '근거 답변' }, citations: [] });
   mocks.listAiConversations.mockResolvedValue({ conversations: [] });
 });
 
@@ -53,8 +55,9 @@ test('selecting a search result sends it as selected_refs in the next chat', asy
   fireEvent.click(screen.getByRole('button', { name: '보내기' }));
 
   await waitFor(() =>
-    expect(mocks.sendAiChat).toHaveBeenCalledWith(
+    expect(mocks.streamAiChat).toHaveBeenCalledWith(
       expect.objectContaining({ selected_refs: [{ collection: 'document', path: '항공/정비.html' }] }),
+      expect.anything(),
       expect.anything(),
     ),
   );
@@ -65,8 +68,9 @@ test('with no selection selected_refs is an empty array', async () => {
   fireEvent.change(screen.getByTestId('ai-chat-input'), { target: { value: '그냥 질문' } });
   fireEvent.click(screen.getByRole('button', { name: '보내기' }));
   await waitFor(() =>
-    expect(mocks.sendAiChat).toHaveBeenCalledWith(
+    expect(mocks.streamAiChat).toHaveBeenCalledWith(
       expect.objectContaining({ selected_refs: [] }),
+      expect.anything(),
       expect.anything(),
     ),
   );
