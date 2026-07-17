@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 // 3경로 First Load JS 를 정확히 뽑고, 예산 초과를 fail 로 판정하는지 고정한다.
 import {
   ROUTE_BUDGETS,
+  buildBudgetRecord,
   evaluateJsBudgets,
   parseFirstLoadKb,
   // @ts-expect-error — 저장소 루트의 node 게이트 스크립트(.mjs) 를 직접 import 한다.
@@ -68,5 +69,25 @@ describe('release budget gate evaluation', () => {
       expect(b.minPerformance).toBeGreaterThan(0);
       expect(b.maxFcpMs).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('release budget gate record schema', () => {
+  test('buildBudgetRecord produces the stable artifact shape with ok reflecting pass/fail', () => {
+    const results = evaluateJsBudgets(SAMPLE_BUILD);
+    const record = buildBudgetRecord(results, '9.9.9', new Date('2026-07-17T00:00:00Z'));
+    expect(record.schemaVersion).toBe(1);
+    expect(record.kind).toBe('release-performance-budget');
+    expect(record.version).toBe('9.9.9');
+    expect(record.generatedAt).toBe('2026-07-17T00:00:00.000Z');
+    expect(typeof record.note).toBe('string');
+    expect(record.results).toBe(results);
+    expect(record.ok).toBe(true);
+  });
+
+  test('ok is false when any route is not pass', () => {
+    const overBudget = SAMPLE_BUILD.replace('131 kB', '999 kB');
+    const record = buildBudgetRecord(evaluateJsBudgets(overBudget), '9.9.9');
+    expect(record.ok).toBe(false);
   });
 });

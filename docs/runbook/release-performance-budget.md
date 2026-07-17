@@ -13,7 +13,7 @@
 |`/newsletters`|뉴스레터|170 kB|90|2200 ms|
 |`/reports/civil-aircraft`|Civil|160 kB|85|2500 ms|
 
-First Load JS 상한은 현재 실측(대시보드 131 · 뉴스레터 138 · Civil 129 kB, 1.18.0 기준)에
+First Load JS 상한은 현재 실측(대시보드 132 · 뉴스레터 138 · Civil 130 kB, 1.18.0 기준)에
 회귀 여유를 둔 값입니다. 상한을 낮추거나 예산을 바꿀 때는 이 표와 스크립트, 그리고
 `frontend/tests/qa/release-budget-gate.test.ts` 를 함께 갱신합니다.
 

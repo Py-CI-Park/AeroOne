@@ -28,7 +28,7 @@ v1.13 Lighthouse 러너를 릴리스 게이트로 승격했다. 사용자 체감
 실측을 산출물로 남긴다.
 
 - 게이트: `scripts/qa/release_budget_gate.mjs`(라우트 First Load JS 상한 강제, `next build` 파싱).
-- 예산·실측(1.18.0): 대시보드 `/` 131/160 kB · 뉴스레터 `/newsletters` 138/170 kB · Civil `/reports/civil-aircraft` 129/160 kB — 3/3 pass. 산출물 `artifacts/qa/release-budget/1.18.0.json`.
+- 예산·실측(1.18.0): 대시보드 `/` 132/160 kB · 뉴스레터 `/newsletters` 138/170 kB · Civil `/reports/civil-aircraft` 130/160 kB — 3/3 pass. 산출물 `artifacts/qa/release-budget/1.18.0.json`.
 - 성능 점수·FCP 예산은 같은 매니페스트에 정의, Chrome 딥패스(`run_v113_lighthouse.mjs`)로 측정.
 - 문서: [`AGENTS.md`](../../AGENTS.md) §9.3, [`docs/runbook/release-performance-budget.md`](../runbook/release-performance-budget.md).
 - Leantime PHP 내장 서버(`php -S`) 단일 워커 한계를 [`docs/runbook/leantime-codeploy.md`](../runbook/leantime-codeploy.md) 에 명시(다중 사용자 상시 운영은 IIS FastCGI/PHP-FPM 승격).

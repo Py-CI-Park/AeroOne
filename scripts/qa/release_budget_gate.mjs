@@ -1,5 +1,6 @@
-#!/usr/bin/env node
 // AeroOne 릴리스 성능 예산 게이트 (v1.18.0 승격).
+// (shebang 없음: `node scripts/qa/release_budget_gate.mjs` 로 실행하며, vitest 가 순수함수를
+//  import 할 때 shebang 이 잘못된 토큰이 되는 것을 피한다.)
 //
 // v1.13 Lighthouse 러너(run_v113_lighthouse.mjs)를 릴리스 게이트로 승격하는 축의 하나로,
 // 사용자 체감 3경로(대시보드 / · 뉴스레터 /newsletters · Civil /reports/civil-aircraft)에
@@ -19,7 +20,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 
 // 사용자 체감 3경로의 성능 예산. maxFirstLoadKb 는 이 게이트가 강제하고,
 // minPerformance/maxFcpMs 는 Lighthouse 딥패스가 측정하는 계약값이다.
-// 예산은 현재 실측(대시보드 131 / 뉴스레터 138 / Civil 129 kB)에 회귀 여유를 둔 상한이다.
+// 예산은 현재 실측(대시보드 132 / 뉴스레터 138 / Civil 130 kB)에 회귀 여유를 둔 상한이다.
 export const ROUTE_BUDGETS = [
   { route: '/', label: '대시보드', maxFirstLoadKb: 160, minPerformance: 90, maxFcpMs: 2000 },
   { route: '/newsletters', label: '뉴스레터', maxFirstLoadKb: 170, minPerformance: 90, maxFcpMs: 2200 },
@@ -67,7 +68,7 @@ export function evaluateJsBudgets(buildText, budgets = ROUTE_BUDGETS) {
 }
 
 function parseArgs(argv) {
-  const args = { version: '1.18.0', buildLog: null, out: null };
+  const args = { version: null, buildLog: null, out: null };
   for (let i = 2; i < argv.length; i += 1) {
     const [key, value] = argv[i].includes('=') ? argv[i].split(/=(.*)/s) : [argv[i], argv[i + 1]];
     if (key === '--version') args.version = value;
@@ -78,6 +79,19 @@ function parseArgs(argv) {
   return args;
 }
 
+// 산출물 레코드를 만든다(스키마 회귀 테스트가 이 형태를 고정한다).
+export function buildBudgetRecord(results, version, now = new Date()) {
+  return {
+    schemaVersion: 1,
+    kind: 'release-performance-budget',
+    version,
+    generatedAt: now.toISOString(),
+    note: 'First Load JS is enforced from next build output. performance score / FCP budgets are measured by the Lighthouse deep pass (scripts/qa/run_v113_lighthouse.mjs, Chrome required).',
+    results,
+    ok: results.every((r) => r.status === 'pass'),
+  };
+}
+
 function main() {
   const args = parseArgs(process.argv);
   if (!args.buildLog) {
@@ -85,18 +99,16 @@ function main() {
     process.exitCode = 2;
     return;
   }
+  if (!args.version) {
+    // fail-closed: 버전 미지정 시 잘못된 파일을 덮어쓰지 않도록 중단한다.
+    console.error('release budget gate: --version <X.Y.Z> is required');
+    process.exitCode = 2;
+    return;
+  }
   const buildText = fs.readFileSync(path.resolve(REPO_ROOT, args.buildLog), 'utf8');
-  const results = evaluateJsBudgets(buildText);
+  const record = buildBudgetRecord(evaluateJsBudgets(buildText), args.version);
+  const results = record.results;
   const failed = results.filter((r) => r.status !== 'pass');
-  const record = {
-    schemaVersion: 1,
-    kind: 'release-performance-budget',
-    version: args.version,
-    generatedAt: new Date().toISOString(),
-    note: 'First Load JS is enforced from next build output. performance score / FCP budgets are measured by the Lighthouse deep pass (scripts/qa/run_v113_lighthouse.mjs, Chrome required).',
-    results,
-    ok: failed.length === 0,
-  };
   const outPath = path.resolve(REPO_ROOT, args.out ?? `artifacts/qa/release-budget/${args.version}.json`);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
