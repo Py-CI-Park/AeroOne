@@ -471,3 +471,5 @@ def test_write_request_repr_never_exposes_api_key() -> None:
         assert secret not in str(request)
         # 직렬화(model_dump)에는 남아 있어야 한다 — 저장 경로가 소비.
         assert request.api_key == secret
+        assert request.model_dump()['api_key'] == secret
+        assert secret in request.model_dump_json()
