@@ -126,6 +126,12 @@ test('G004 ignores 0, non-digits, and modified digit shortcuts', async () => {
 
   fireEvent.keyDown(window, { key: '1', altKey: true });
   expectSelectedTab('계정');
+
+  // 6그룹 재편 후 7~9 는 유효한 탭이 없으므로 무시된다(정규식 [1-6] + tabs[idx] 부재 no-op).
+  fireEvent.keyDown(window, { key: '7' });
+  expectSelectedTab('계정');
+  fireEvent.keyDown(window, { key: '9' });
+  expectSelectedTab('계정');
 });
 
 test('G004 ignores digit shortcuts while an input or select has focus', async () => {

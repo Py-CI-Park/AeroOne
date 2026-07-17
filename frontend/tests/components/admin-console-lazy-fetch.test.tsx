@@ -170,3 +170,48 @@ test('re-entering an already-loaded group does not refetch (per-group cache)', a
   await screen.findByText('사용자 통계');
   expect(api.fetchAdminOverview).toHaveBeenCalledTimes(1);
 });
+
+// G008: ?tab= 하위호환·canonical 재작성 회귀. 구 9평면탭 키가 신규 6그룹으로 매핑되고,
+// 알 수 없는 값은 개요로 폴백하며, 진입 후 URL 이 정규 그룹키로 재작성되는지 고정한다.
+function tabSelected(name: string) {
+  return screen.getByRole('tab', { name }).getAttribute('aria-selected') === 'true';
+}
+
+test('legacy ?tab= keys map to their new group and lazily fetch that group on mount', async () => {
+  window.history.replaceState({}, '', '/admin?tab=users');
+  render(<AdminConsoleTabs />);
+
+  // 구 'users' 탭 딥링크 → 계정 그룹 활성 + 계정 그룹 refreshKeys 만 lazy fetch(개요 아님).
+  await waitFor(() => expect(api.fetchAdminUsers).toHaveBeenCalledTimes(1));
+  expect(tabSelected('계정')).toBe(true);
+  expect(api.fetchAdminOverview).not.toHaveBeenCalled();
+  // URL 은 정규 그룹키(accounts)로 재작성된다.
+  expect(new URLSearchParams(window.location.search).get('tab')).toBe('accounts');
+});
+
+test('legacy content-family ?tab= keys (modules/taxonomy/search) resolve to the 콘텐츠 group', async () => {
+  window.history.replaceState({}, '', '/admin?tab=modules');
+  render(<AdminConsoleTabs />);
+
+  await waitFor(() => expect(api.fetchServiceModulesAdmin).toHaveBeenCalledTimes(1));
+  expect(tabSelected('콘텐츠')).toBe(true);
+  expect(new URLSearchParams(window.location.search).get('tab')).toBe('content');
+});
+
+test('an unknown ?tab= value falls back to the 개요 group', async () => {
+  window.history.replaceState({}, '', '/admin?tab=totally-unknown');
+  render(<AdminConsoleTabs />);
+
+  await waitFor(() => expect(api.fetchAdminOverview).toHaveBeenCalledTimes(1));
+  expect(tabSelected('개요')).toBe(true);
+  expect(api.fetchAdminUsers).not.toHaveBeenCalled();
+  expect(new URLSearchParams(window.location.search).get('tab')).toBe('overview');
+});
+
+test('switching groups rewrites ?tab= to the canonical group key', async () => {
+  render(<AdminConsoleTabs />);
+  await waitFor(() => expect(api.fetchAdminOverview).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  await waitFor(() => expect(new URLSearchParams(window.location.search).get('tab')).toBe('system'));
+});

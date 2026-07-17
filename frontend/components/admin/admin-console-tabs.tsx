@@ -180,7 +180,9 @@ export function tagToDraft(tag: Tag): TaxonomyDraft {
 
 type AdminConsoleContextValue = {
   state: PanelState;
-  refresh: (keys?: RefreshKey[]) => Promise<void>;
+  // refresh 는 이 사이클에 오류가 없었는지(true=성공)를 반환한다. 대부분의 소비자는 결과를
+  // 무시하지만, lazy 그룹 로더는 실패 그룹을 캐시에서 롤백하는 데 사용한다.
+  refresh: (keys?: RefreshKey[]) => Promise<boolean>;
   moduleDrafts: Record<number, ModuleDraft>;
   setModuleDrafts: React.Dispatch<React.SetStateAction<Record<number, ModuleDraft>>>;
   userDrafts: Record<number, UserDraft>;
@@ -430,6 +432,9 @@ function AdminConsoleTabsContent() {
       if (next.users) setUserDrafts(Object.fromEntries(next.users.map((user) => [user.id, userToDraft(user)])));
       if (next.categories) setCategoryDrafts(Object.fromEntries(next.categories.map((category) => [category.id, categoryToDraft(category)])));
       if (next.tags) setTagDrafts(Object.fromEntries(next.tags.map((tag) => [tag.id, tagToDraft(tag)])));
+      // 이 refresh 사이클에서 오류가 없었는지 반환한다 — lazy 그룹 로더가 실패한 그룹을
+      // 캐시에서 롤백해 재진입 시 재시도할 수 있게 한다.
+      return errors.length === 0 && !connectedUsersError;
     } finally {
       setState((current) => ({ ...current, busy: current.busy === 'refresh' || current.busy === 'initial-load' ? undefined : current.busy }));
     }
@@ -437,8 +442,11 @@ function AdminConsoleTabsContent() {
 
   async function ensureGroupLoaded(tab: TabKey) {
     if (loadedGroupsRef.current.has(tab)) return;
+    // 진입 즉시 캐시에 넣어 in-flight 중복 fetch(빠른 재진입/strict-mode 이중 호출)를 막고,
+    // 실패하면 캐시에서 제거해 재진입 시 재시도가 되게 한다.
     loadedGroupsRef.current.add(tab);
-    await refresh(groupRefreshKeys[tab]);
+    const ok = await refresh(groupRefreshKeys[tab]);
+    if (!ok) loadedGroupsRef.current.delete(tab);
   }
 
   // 그룹 전환마다: (1) 아직 로드하지 않은 그룹이면 해당 그룹의 refreshKeys 만 lazy fetch
@@ -712,7 +720,8 @@ function AdminConsoleTabsContent() {
 
     function handleNumberShortcut(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (!/^[1-9]$/.test(event.key)) return;
+      // 6그룹이므로 1~6만 유효하다(7~9 등은 무시). tabs[idx] 부재 시 아래에서도 no-op.
+      if (!/^[1-6]$/.test(event.key)) return;
       if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) return;
       const tab = tabs[Number(event.key) - 1];
       if (!tab) return;
