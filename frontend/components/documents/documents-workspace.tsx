@@ -59,6 +59,9 @@ function openFoldersKey(collection: string): string {
 
 // 폴더 펼침 상태를 sessionStorage 에서 복원한다 — 같은 탭에서 문서를 오가도 트리가
 // 매번 접히지 않게. 저장값이 없거나 접근이 막히면 defaultFoldersOpen 정책으로 폴백.
+// [SSR invariant] 이 값은 useState lazy init 에서 읽히므로, FolderTree 를 SSR 마크업에
+// 노출하는 defaultSidebarOpen=true 조합이 생기면 hydration mismatch 가 난다 — 그때는
+// mount effect 로 이관할 것(현행 호출자는 모두 defaultSidebarOpen=false).
 function restoreOpenFolders(
   collection: string,
   documents: DocumentListItem[],

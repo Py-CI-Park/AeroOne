@@ -22,6 +22,8 @@ class HtmlCollectionService:
     def discover_list(self, root: Path) -> list[dict[str, str]]:
         # 루트 아래 .html 을 재귀(rglob) 수집한다. 하위 폴더 구조를 그대로 인식하며,
         # 뉴스레터/보고서와 같은 정책으로 _debug.html 은 제외한다. 루트가 없으면 빈 목록.
+        # [불변식] Path.rglob 은 디렉터리 symlink 를 따라가지 않는다 — 루트 밖 문서가
+        # 목록에 새는 것을 이 stdlib 기본값이 막고 있으니 다른 순회 방식으로 바꾸지 말 것.
         if not root.exists() or not root.is_dir():
             return []
         items: list[dict[str, str]] = []
@@ -32,8 +34,9 @@ class HtmlCollectionService:
             # 폴더 구분/선택을 위해 상대 경로(forward-slash), 표시 이름(stem), 부모 폴더("" = 루트)를 함께 넘긴다.
             parent = relative.parent
             folder = '' if parent == Path('.') else str(parent).replace('\\', '/')
-            # 수정일 메타 — 파일 mtime 의 로컬 날짜(YYYY-MM-DD). 운영자가 문서를 떨군 시점을
-            # 목록에서 바로 보이게 한다. stat 실패(경합 삭제 등)는 항목 자체를 죽이지 않는다.
+            # 수정일 메타 — 파일 mtime 의 로컬 날짜(YYYY-MM-DD). 파일의 최종 수정 시점이며
+            # 반입(복사) 시점이 아니다(Windows 복사는 원본 mtime 보존). stat 실패(경합 삭제
+            # 등)는 항목 자체를 죽이지 않는다.
             try:
                 modified_at = date.fromtimestamp(path.stat().st_mtime).isoformat()
             except OSError:

@@ -62,9 +62,9 @@ test('renders prev/next issue links pointing at the neighbor detail pages', () =
 
   const nav = screen.getByTestId('newsletter-issue-nav');
   expect(nav).toBeInTheDocument();
-  expect(screen.getByTestId('newsletter-issue-prev')).toHaveAttribute('href', '/newsletters/issue-0604');
+  expect(screen.getByTestId('newsletter-issue-prev')).toHaveAttribute('href', '/newsletters/issue-0604?theme=light');
   expect(screen.getByTestId('newsletter-issue-prev')).toHaveTextContent('이전 이슈 · 6월 첫 호');
-  expect(screen.getByTestId('newsletter-issue-next')).toHaveAttribute('href', '/newsletters/issue-0702');
+  expect(screen.getByTestId('newsletter-issue-next')).toHaveAttribute('href', '/newsletters/issue-0702?theme=light');
   expect(screen.getByTestId('newsletter-issue-next')).toHaveTextContent('다음 이슈 · 7월 첫 호');
 });
 

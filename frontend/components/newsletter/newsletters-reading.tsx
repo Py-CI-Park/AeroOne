@@ -93,7 +93,7 @@ export function NewslettersReading({
             {previous ? (
               <Link
                 data-testid="newsletter-issue-prev"
-                href={`/newsletters/${encodeURIComponent(previous.slug)}`}
+                href={`/newsletters/${encodeURIComponent(previous.slug)}?theme=${theme}`}
                 className="min-w-0 max-w-[48%] truncate text-ink-2 transition-colors hover:text-ink-1"
                 title={`이전 이슈 — ${previous.title} (${previous.date})`}
               >
@@ -105,7 +105,7 @@ export function NewslettersReading({
             {next ? (
               <Link
                 data-testid="newsletter-issue-next"
-                href={`/newsletters/${encodeURIComponent(next.slug)}`}
+                href={`/newsletters/${encodeURIComponent(next.slug)}?theme=${theme}`}
                 className="min-w-0 max-w-[48%] truncate text-right text-ink-2 transition-colors hover:text-ink-1"
                 title={`다음 이슈 — ${next.title} (${next.date})`}
               >
