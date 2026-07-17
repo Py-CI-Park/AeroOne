@@ -1,4 +1,4 @@
-// AeroOne 릴리스 성능 예산 게이트 (v1.18.0 승격).
+// AeroOne 릴리스 성능 예산 게이트 (v1.17.0 승격).
 // (shebang 없음: `node scripts/qa/release_budget_gate.mjs` 로 실행하며, vitest 가 순수함수를
 //  import 할 때 shebang 이 잘못된 토큰이 되는 것을 피한다.)
 //

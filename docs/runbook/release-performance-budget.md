@@ -1,6 +1,6 @@
 # 릴리스 성능 예산 게이트 (Release Performance Budget)
 
-1.18.0 에서 v1.13 Lighthouse 러너를 **릴리스 게이트**로 승격했습니다. 사용자 체감 3경로에
+1.17.0 에서 v1.13 Lighthouse 러너를 **릴리스 게이트**로 승격했습니다. 사용자 체감 3경로에
 성능 예산을 명문화하고, 릴리스 직전 실측 기록을 산출물로 남깁니다.
 
 ## 1. 대상 경로와 예산
@@ -13,7 +13,7 @@
 |`/newsletters`|뉴스레터|170 kB|90|2200 ms|
 |`/reports/civil-aircraft`|Civil|160 kB|85|2500 ms|
 
-First Load JS 상한은 현재 실측(대시보드 132 · 뉴스레터 138 · Civil 130 kB, 1.18.0 기준)에
+First Load JS 상한은 현재 실측(대시보드 132 · 뉴스레터 138 · Civil 130 kB, 1.17.0 기준)에
 회귀 여유를 둔 값입니다. 상한을 낮추거나 예산을 바꿀 때는 이 표와 스크립트, 그리고
 `frontend/tests/qa/release-budget-gate.test.ts` 를 함께 갱신합니다.
 
@@ -25,10 +25,10 @@ First Load JS 상한은 현재 실측(대시보드 132 · 뉴스레터 138 · Ci
 cd frontend
 npx next build > ..\build.log 2>&1
 cd ..
-node scripts/qa/release_budget_gate.mjs --build-log build.log --version 1.18.0
+node scripts/qa/release_budget_gate.mjs --build-log build.log --version 1.17.0
 ```
 
-- 산출물: `artifacts/qa/release-budget/1.18.0.json` (경로별 측정값·예산·pass/fail).
+- 산출물: `artifacts/qa/release-budget/1.17.0.json` (경로별 측정값·예산·pass/fail).
 - 예산 초과 또는 경로 누락(fail-closed) 시 종료 코드 1 로 병합을 차단합니다.
 - `next build` 출력의 라우트 표에서 각 경로의 First Load JS 컬럼을 파싱하며, `/` 가
   `/newsletters` 같은 하위 경로 행을 잘못 읽지 않도록 경로 뒤 2칸 공백을 요구합니다.

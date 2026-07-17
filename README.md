@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.18.0-1f6feb)
+![version](https://img.shields.io/badge/version-1.17.0-1f6feb)
 ![status](https://img.shields.io/badge/status-immutable-release-success)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)

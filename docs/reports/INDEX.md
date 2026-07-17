@@ -238,13 +238,13 @@
 - 회귀 방지: `test_windows_batch_scripts.py` leantime 6건 신규(총 14건) + leantime adapter 발급 계정 기본 접근 1건, backend 전체 **1,179 passed / 0 failed**(unit 834 + integration 345), frontend Vitest 540 passed(88 파일), `tsc --noEmit` 통과.
 - 후속: 폐쇄망 실 PC 재검증 후 `1.16.4` hotfix 로 새 스택 ZIP(`…20260716-212615.zip`, sha256 `2667088d94f1…`) 게시 — 게시된 1.16.3 스택 asset 은 깨진 판(immutable, 교체 불가).
 
-### 단계 32 — 1.16.3 개선 계획 완주 (1.17.1 → 1.18.0 ultragoal 9목표)
+### 단계 32 — 1.16.3 개선 계획 완주 (단일 1.17.0 릴리스, ultragoal 9목표)
 
-- 파일: [`phase-32-v1-18-0-ultragoal.md`](phase-32-v1-18-0-ultragoal.md)
-- 무엇: 1.16.3 전수 검사 개선 계획의 P0~P2 를 durable multi-goal 9목표로 분해해 1.18.0 까지 완주 — npm ci 드리프트 방지, 대화형 차트 컴포저, AeroAI SSE 스트리밍·첨부, 런처 배지·최근 열람, 문서 수정일·트리 상태·이슈 내비, 경고 부채 0, Civil v1.8(실루엣 상호작용·내보내기·프리셋·지연 로딩), 관리자 콘솔 6그룹 IA + lazy fetch(개요 진입 17→1), 릴리스 성능 예산 게이트 승격. 각 목표 2-pass architect CLEAR/APPROVE + executor QA red-team 통과.
+- 파일: [`phase-32-v1-17-0-ultragoal.md`](phase-32-v1-17-0-ultragoal.md)
+- 무엇: 1.16.3 전수 검사 개선 계획의 P0~P2 를 durable multi-goal 9목표로 분해해 완주 — npm ci 드리프트 방지, 대화형 차트 컴포저, AeroAI SSE 스트리밍·첨부, 런처 배지·최근 열람, 문서 수정일·트리 상태·이슈 내비, 경고 부채 0, Civil v1.8(실루엣 상호작용·내보내기·프리셋·지연 로딩), 관리자 콘솔 6그룹 IA + lazy fetch(개요 진입 17→1), 릴리스 성능 예산 게이트 승격. `1.17.0-dev` 브랜치 한 곳에 누적된 결과물이라 실제 게시는 **단일 1.17.0**(1.16.3 → 1.17.0, minor) 로 통합했다. 각 목표 2-pass architect CLEAR/APPROVE + executor QA red-team 통과.
 - 코드: `scripts/qa/release_budget_gate.mjs`, `backend/app/modules/reports/civil_aircraft_dashboard/`(v1.8), `frontend/components/admin/`(6그룹), `frontend/components/{ai,office-tools,dashboard,documents,newsletter}/`, `docs/runbook/release-performance-budget.md`, 커밋 `8d5dadb`~`1303ce1`·`6821e53` 외.
-- 회귀 방지: backend 전체 **1,283 passed / 0 failed**(unit 917 + integration 366, 경고 0), frontend Vitest **623 passed / 97 files**(act 경고 0), `tsc --noEmit`·`next build` 통과, 성능 예산 게이트 3/3 pass(`artifacts/qa/release-budget/1.18.0.json`).
-- 후속: 게시(main 병합·tag·Release·ZIP)·폐쇄망 실 PC 재검증은 운영자 승인 액션. 1.16.4 hotfix 는 코드 완료·게시 대기.
+- 회귀 방지: backend 전체 **1,283 passed / 0 failed**(unit 917 + integration 366, 경고 0), frontend Vitest **625 passed / 97 files**(act 경고 0), `tsc --noEmit`·`next build` 통과, 성능 예산 게이트 3/3 pass(`artifacts/qa/release-budget/1.17.0.json`).
+- 후속: 게시(main 병합·tag `1.17.0`·Release·ZIP)·폐쇄망 실 PC 재검증은 운영자 승인 액션. 1.16.4 hotfix 는 코드 완료·게시 대기.
 
 ---
 
