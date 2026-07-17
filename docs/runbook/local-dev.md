@@ -59,9 +59,18 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 18437
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
+
+> **의존성 복원은 항상 `npm ci`** (lockfile 고정) 를 사용합니다. `npm install` 은 lockfile 을
+> 조용히 갱신하거나 신규 의존성 추가 후 미설치 상태를 남길 수 있어, `tsc --noEmit` /
+> `next build` 게이트가 이 PC 에서만 깨지는 드리프트(예: 1.16.3 전수 검사에서 실측된
+> echarts/mermaid 미설치)를 만듭니다. `package.json` 의존성이 바뀌었거나 `tsc` 가
+> `Cannot find module` 로 실패하면 먼저 `npm ci` 로 node_modules 를 lockfile 과 정합화한
+> 뒤 게이트를 다시 실행하세요. `npm install` 은 의존성을 *의도적으로 추가/갱신*할 때만
+> 사용하고, 그 커밋에 package-lock.json 을 반드시 포함합니다. `package-lock.json` 이 없으면
+> `npm ci` 는 즉시 실패합니다(fail-closed) — lockfile 을 복구한 뒤 다시 실행하세요.
 
 ## 4. Docker Compose 실행
 

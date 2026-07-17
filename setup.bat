@@ -119,11 +119,14 @@ popd
 echo [OK] backend 설치 및 DB 준비 완료
 
 set "CURRENT_STEP=FRONTEND_SETUP"
-echo [6/7][FRONTEND] npm install
+REM lockfile 고정 설치(npm ci): package.json 과 node_modules 의 드리프트를 원천 차단한다.
+REM npm install 은 lockfile 을 조용히 갱신할 수 있어 tsc/next build 게이트가 로컬에서만
+REM 깨지는 상태(예: echarts/mermaid 미설치)를 만들 수 있다 — 1.16.3 전수 검사 실측 결함.
+echo [6/7][FRONTEND] npm ci ^(lockfile 고정 설치^)
 pushd "%FRONTEND_DIR%"
-call npm install || goto :fail_from_frontend
+call npm ci || goto :fail_from_frontend
 popd
-echo [OK] frontend 의존성 설치 완료
+echo [OK] frontend 의존성 설치 완료 ^(package-lock.json 기준^)
 
 set "CURRENT_STEP=NEXT_STEPS"
 echo [7/7][DONE] 최종 안내
@@ -139,7 +142,7 @@ echo           2. venv 생성 또는 재사용
 echo           3. pip install
 echo           4. alembic upgrade 또는 stamp
 echo           5. seed 실행
-echo           6. npm install
+echo           6. npm ci
 goto :success
 
 :fail_from_backend
@@ -159,6 +162,7 @@ echo 확인 권장:
 echo   1. Python 또는 py 명령 사용 가능 여부
 echo   2. 인터넷 연결 상태
 echo   3. backend 폴더 쓰기 권한
+echo   4. FRONTEND_SETUP 실패 시: frontend\package-lock.json 존재/정합 여부 ^(npm ci 는 lockfile 없이 실패^)
 echo ========================================
 if not defined NO_PAUSE pause
 exit /b 1
@@ -186,7 +190,7 @@ echo - backend .venv 생성 또는 재사용
 echo - pip install
 echo - alembic upgrade 또는 stamp
 echo - seed 실행
-echo - frontend npm install
+echo - frontend npm ci ^(lockfile 고정^)
 echo.
 echo --dry-run  : 실제 설치 없이 단계만 출력
 echo --no-pause : 완료 후 창을 멈추지 않음

@@ -8,7 +8,7 @@
 
 | 파일 | 위치 | 용도 |
 |---|---|---|
-| `setup.bat` | 온라인 PC | 개발/사전 설치 (가상환경, pip install, DB seed, npm install) |
+| `setup.bat` | 온라인 PC | 개발/사전 설치 (가상환경, pip install, DB seed, npm ci) |
 | `start.bat` | 온라인 PC | 백엔드/프런트 동시 실행 (개발용 dev 서버) |
 | `offline_package.bat` | 온라인 PC | `scripts\build_offline_package.ps1` 호환 wrapper: tracked allow-list + clean frontend production build + production wheelhouse + 정확한 인스톨러를 검증해 ZIP/SHA 생성 |
 | `setup_offline.bat` | 폐쇄망 PC | Python/Node 사전 점검, `.env` 재작성, 오프라인 pip install, DB, frontend production 빌드 |

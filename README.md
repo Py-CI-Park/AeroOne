@@ -87,7 +87,7 @@
 ## 빠른 시작 — 온라인 Windows PC
 
 ```cmd
-:: 1) 초기 설치 (가상환경, 의존성, DB, 시드, frontend npm install)
+:: 1) 초기 설치 (가상환경, 의존성, DB, 시드, frontend npm ci)
 setup.bat
 
 :: 2) 백엔드/프런트 실행 + 브라우저 자동 오픈
@@ -283,7 +283,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 18437
 
 # 다른 터미널
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 

@@ -40,6 +40,17 @@ def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -
     assert _SETUP_OFFLINE_SCRIPT.index(admin_username) < _SETUP_OFFLINE_SCRIPT.index(migration)
 
 
+def test_setup_installs_frontend_dependencies_with_lockfile_pinned_npm_ci() -> None:
+    # npm install 은 lockfile 을 조용히 갱신하거나 신규 의존성 미설치 드리프트를 남겨
+    # tsc/next build 게이트가 로컬에서만 깨진다(1.16.3 전수 검사 실측: echarts/mermaid).
+    # 개발 PC 초기 설치는 항상 lockfile 고정(npm ci)이어야 한다.
+    assert "call npm ci" in _SETUP_SCRIPT
+    assert "call npm install" not in _SETUP_SCRIPT
+    # 오프라인 설치는 node_modules 를 ZIP 으로 반입한다 — 어떤 npm 설치 명령도 금지(경계 고정).
+    assert "call npm ci" not in _SETUP_OFFLINE_SCRIPT
+    assert "call npm install" not in _SETUP_OFFLINE_SCRIPT
+
+
 _BUILD_LEANTIME_STACK = (
     REPO_ROOT / "scripts" / "leantime" / "build-leantime-stack.ps1"
 ).read_text(encoding="utf-8")
@@ -430,7 +441,9 @@ def test_setup_executes_full_flow_in_stub_repo(tmp_path: Path) -> None:
     assert any(line.startswith("python.bat scripts\\ensure_db_state.py data\\aeroone.db") for line in log_lines)
     assert any(line.startswith("alembic.bat upgrade head") for line in log_lines)
     assert any(line.startswith("python.bat scripts\\seed.py") for line in log_lines)
-    assert any(line.startswith("npm.cmd install") for line in log_lines)
+    # lockfile 고정 설치 — npm install 이 아니라 npm ci 여야 한다(드리프트 방지).
+    assert any(line.startswith("npm.cmd ci") for line in log_lines)
+    assert not any(line.startswith("npm.cmd install") for line in log_lines)
 
 
 def test_start_dry_run_requires_backend_and_frontend_directories(tmp_path: Path) -> None:

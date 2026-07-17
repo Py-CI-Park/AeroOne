@@ -131,7 +131,7 @@ export PYTHONPATH=.
 ./.venv/Scripts/python.exe -m scripts.seed      # backend/.env의 워크트리 전용 ADMIN_PASSWORD로 관리자 생성; 공유 고정 비밀번호 금지
 
 # 3) 프런트 의존성
-cd ../frontend && npm install
+cd ../frontend && npm ci
 ```
 
 **기동 (개발용, dev — 첫 라우트 컴파일 지연 있음):**
