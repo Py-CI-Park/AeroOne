@@ -20,7 +20,9 @@ export function RecentReadsStrip() {
       .then((response) => {
         if (!cancelled) setItems(response.items);
       })
-      .catch(() => {
+      .catch((error) => {
+        // 조용한 무렌더가 설정 오류(CORS/base URL)를 가리지 않게 진단 단서만 남긴다.
+        if (process.env.NODE_ENV !== 'production') console.debug('[recent-reads] fetch failed', error);
         if (!cancelled) setItems([]);
       });
     return () => {

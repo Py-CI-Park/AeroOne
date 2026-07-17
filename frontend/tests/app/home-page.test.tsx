@@ -62,7 +62,14 @@ beforeEach(() => {
   // 기존 섹션/카드 단언에 영향이 없게 한다.
   fetchMyRecentReadsMock.mockReturnValue(new Promise(() => {}));
   // 런처 헬스는 ready 로 목킹 — 외부 앱 카드 링크 단언(8502/8080)이 기존 의미를 유지한다.
-  fetchLauncherHealthMock.mockResolvedValue({ status: 'ready', port: 0, probe_target: '', checked_at: '', latency_ms: 1, detail: null });
+  fetchLauncherHealthMock.mockImplementation((kind: string) => Promise.resolve({
+    status: 'ready',
+    port: kind === 'open_notebook' ? 8502 : 8080,
+    probe_target: '',
+    checked_at: '',
+    latency_ms: 1,
+    detail: null,
+  }));
 });
 
 afterEach(() => {

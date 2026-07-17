@@ -20,6 +20,16 @@ function health(status: 'ready' | 'starting' | 'absent' | 'error', overrides: Pa
   };
 }
 
+// 링크 포트의 단일 원천은 헬스 페이로드다 — kind 별 실제 기본 포트로 응답해야
+// 카드 href 단언(8502/8080)이 실제 계약(백엔드 port 반영)을 검증한다.
+const KIND_PORTS: Record<string, number> = { open_notebook: 8502, open_webui: 8080 };
+
+function mockHealthPerKind(status: 'ready' | 'starting' | 'absent' | 'error' = 'ready') {
+  fetchLauncherHealthMock.mockImplementation((kind: string) => Promise.resolve(
+    health(status, { port: KIND_PORTS[kind] ?? 8080, probe_target: `127.0.0.1:${KIND_PORTS[kind] ?? 8080}` }),
+  ));
+}
+
 const READY = health('ready');
 
 function setLocation(overrides: Partial<Location>) {
@@ -36,7 +46,7 @@ function setLocation(overrides: Partial<Location>) {
 
 beforeEach(() => {
   fetchLauncherHealthMock.mockReset();
-  fetchLauncherHealthMock.mockResolvedValue(READY);
+  mockHealthPerKind('ready');
 });
 
 afterEach(() => {

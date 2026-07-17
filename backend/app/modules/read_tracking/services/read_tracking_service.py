@@ -54,16 +54,21 @@ class ReadTrackingService:
     def recent_for_ip(self, client_ip: str, limit: int) -> list[dict]:
         """호출 IP(=(newsletter_id, client_ip) 스코프)가 최근 열람한 뉴스레터 목록.
 
-        Newsletter 와 INNER JOIN 하므로 이미 삭제된(행이 사라진) 뉴스레터의 읽음
-        기록은 자동으로 제외된다. limit 은 대시보드 스트립 용도이므로 1..12 로
-        클램프(422 대신 조용히 보정 — 공개 무인증 엔드포인트라 엄격한 검증보다
-        견고성을 우선한다).
+        Newsletter 와 INNER JOIN + 공개 노출 조건(is_active, status='published')을
+        함께 강제한다 — 제품의 삭제는 soft-delete(archive, 행 존속)이므로 행 존재만
+        믿으면 보관/비활성 뉴스레터가 스트립에 노출된다. limit 은 대시보드 스트립
+        용도이므로 1..12 로 클램프(422 대신 조용히 보정 — 공개 무인증 엔드포인트라
+        엄격한 검증보다 견고성을 우선한다).
         """
         clamped_limit = max(1, min(12, limit))
         stmt = (
             select(Newsletter.slug, Newsletter.title, NewsletterReadEvent.last_seen_at)
             .join(Newsletter, Newsletter.id == NewsletterReadEvent.newsletter_id)
-            .where(NewsletterReadEvent.client_ip == client_ip)
+            .where(
+                NewsletterReadEvent.client_ip == client_ip,
+                Newsletter.is_active.is_(True),
+                Newsletter.status == 'published',
+            )
             .order_by(NewsletterReadEvent.last_seen_at.desc())
             .limit(clamped_limit)
         )

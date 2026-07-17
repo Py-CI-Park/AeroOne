@@ -59,10 +59,11 @@
 - backend `pytest tests` 전체 / frontend Vitest 전체 / `tsc --noEmit` / `next build` — 수치는 본 문서 하단 "최종 게이트 실측"에 기록.
 - 각 스토리는 2-pass architect 리뷰(최종 CLEAR/APPROVE)와 executor QA/red-team 레인 + 라이브 브라우저 실측(차트: CSV 붙여넣기→열 칩→생성→"가로 막대로" 재렌더 스크린샷, AI: 실 gemma4:12b 스트리밍 완결·미드스트림 커서·에러 프레임)을 통과했다. 증거: `artifacts/qa/ultragoal/G00{1,2,3,4}/`, ultragoal ledger.
 
-## 7. 최종 게이트 실측 (병합 직전 갱신)
+## 7. 최종 게이트 실측 (2026-07-17, 1.17.0-dev)
 
-- backend 전체: (기록 위치 — 병합 직전 실행 결과)
-- frontend 전체 + tsc + next build: (기록 위치 — 병합 직전 실행 결과)
+- backend `pytest tests` 전체: **1,272 passed / 0 failed** (unit 906 + integration 366).
+- frontend Vitest 전체: **599 passed / 94 files**, `tsc --noEmit` 통과, `next build` 통과(전 라우트 컴파일, First Load JS 공유 103KB).
+- 리뷰 반영(최근 열람 soft-delete 필터, 런처 링크 포트 단일 원천, backend app_version 1.17.0 정합) 후 대상 스위트 재실행 그린 — 세부는 각 스토리 게이트 증거(`artifacts/qa/ultragoal/G00{1,2,3,4}/`)와 ultragoal ledger.
 
 ## 8. 후속 / 연관
 

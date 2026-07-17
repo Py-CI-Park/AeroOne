@@ -112,7 +112,10 @@ export function ExternalLauncherCard({
     );
   }
 
-  const port = RESERVED_LAUNCHER_PORTS[launcherKind];
+  // 포트 단일 원천: 백엔드 헬스 페이로드의 port(env OPEN_*_PORT 재정의 반영)를 우선하고,
+  // 헬스 미수신(checking/error) 동안만 예약 상수로 폴백한다 — 재정의 환경에서 ready 배지가
+  // 죽은 기본 포트 링크를 가리키는 드리프트를 막는다.
+  const port = health?.port ?? RESERVED_LAUNCHER_PORTS[launcherKind];
   const targetHref = `http://${formatHost(host)}:${port}`;
   // Only a 'ready' health probe unlocks the click-through — a dead link that opens a blank tab
   // for a not-yet-started co-deploy app is worse than a disabled card with a reason.

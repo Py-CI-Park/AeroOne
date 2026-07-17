@@ -89,3 +89,22 @@ def test_recent_for_ip_excludes_deleted_newsletter(app) -> None:
         items = service.recent_for_ip('10.0.0.7', 6)
 
         assert [item['slug'] for item in items] == ['kept']
+
+
+def test_recent_for_ip_excludes_soft_deleted_and_unpublished_newsletters(app) -> None:
+    # 제품 삭제는 soft-delete(archive, 행 존속)다 — 보관/비활성 뉴스레터는 스트립에 노출 금지.
+    with app.state.db.session() as session:
+        visible = _make_newsletter(session, slug='recent-visible')
+        archived = _make_newsletter(session, slug='recent-archived')
+        inactive = _make_newsletter(session, slug='recent-inactive')
+        archived.status = 'archived'
+        inactive.is_active = False
+        session.flush()
+
+        repo = ReadEventRepository(session)
+        for target in (visible, archived, inactive):
+            repo.record_read(target.id, '10.0.0.9')
+        session.flush()
+
+        items = ReadTrackingService(session).recent_for_ip('10.0.0.9', 12)
+        assert [item['slug'] for item in items] == ['recent-visible']
