@@ -68,6 +68,7 @@ export interface AuthResponse {
     role: string;
     email?: string | null;
     is_active: boolean;
+    requires_password_change?: boolean;
   };
   csrf_token: string;
 }
@@ -88,6 +89,7 @@ export interface ClientSession {
   can_use_ai: boolean;
   permissions: string[];
   resources: ClientSessionResourceGrant[];
+  requires_password_change?: boolean;
 }
 
 export interface AuthActivityIdentity {

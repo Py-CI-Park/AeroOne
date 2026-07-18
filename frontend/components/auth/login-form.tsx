@@ -24,7 +24,12 @@ export function LoginForm({ next }: { next?: string | null } = {}) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      await login(username, password);
+      const result = await login(username, password);
+      if (result?.user?.requires_password_change) {
+        // 초기 비밀번호 미변경 계정은 대시보드 대신 전용 강제 변경 화면으로 보낸다.
+        window.location.assign('/change-password');
+        return;
+      }
       await waitForAuthenticatedSession();
       window.location.assign(resolveSafeNext(next));
     } catch (err) {

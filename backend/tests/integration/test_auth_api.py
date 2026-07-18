@@ -455,6 +455,42 @@ def test_setup_credential_requires_password_change_before_normal_routes(monkeypa
         reset_settings_cache()
         reset_db_caches()
 
+def test_requires_password_change_flag_exposed_in_auth_responses(monkeypatch, tmp_path) -> None:
+    bootstrap_password = 'current-bootstrap-password'
+    new_password = 'personal-admin-password'
+    _configure_auth_env(monkeypatch, tmp_path, ADMIN_PASSWORD=bootstrap_password)
+    app = create_app()
+    Base.metadata.create_all(bind=app.state.db.engine)
+    try:
+        with app.state.db.session() as session:
+            session.add(User(username='admin', password_hash=hash_password(_RETIRED_CREDENTIAL), session_version=3))
+
+        with TestClient(app) as client:
+            setup_login = client.post(
+                '/api/v1/auth/login',
+                json={'username': 'admin', 'password': bootstrap_password},
+            )
+            assert setup_login.status_code == 200
+            # 강제 변경 상태에서는 login/me 응답이 플래그로 프런트에 강제 변경 화면을 안내한다.
+            assert setup_login.json()['user']['requires_password_change'] is True
+            me_response = client.get('/api/v1/auth/me')
+            assert me_response.status_code == 200
+            assert me_response.json()['requires_password_change'] is True
+
+            change_response = client.post(
+                '/api/v1/auth/change-password',
+                json={'current_password': bootstrap_password, 'new_password': new_password},
+                headers={'x-csrf-token': setup_login.json()['csrf_token']},
+            )
+            assert change_response.status_code == 200
+            # 변경 직후 응답과 이어지는 me 응답 모두 플래그가 내려가야 정상 상태로 돌아온 것이다.
+            assert change_response.json()['user']['requires_password_change'] is False
+            assert client.get('/api/v1/auth/me').json()['requires_password_change'] is False
+    finally:
+        Base.metadata.drop_all(bind=app.state.db.engine)
+        reset_settings_cache()
+        reset_db_caches()
+
 @pytest.mark.parametrize(
     'retired_password',
     _RETIRED_PASSWORD_VARIANTS,

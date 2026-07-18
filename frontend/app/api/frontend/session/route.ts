@@ -19,11 +19,11 @@ function fetchInit(cookie: string): RequestInit {
   };
 }
 
-async function fetchAuthMe(base: string, cookie: string): Promise<{ username?: string | null; role?: string | null } | 'unauthorized' | null> {
+async function fetchAuthMe(base: string, cookie: string): Promise<{ username?: string | null; role?: string | null; requires_password_change?: boolean } | 'unauthorized' | null> {
   try {
     const upstream = await fetch(`${base}/api/v1/auth/me`, fetchInit(cookie));
     if (upstream.ok) {
-      return (await upstream.json()) as { username?: string | null; role?: string | null };
+      return (await upstream.json()) as { username?: string | null; role?: string | null; requires_password_change?: boolean };
     }
     if (upstream.status === 401) {
       return 'unauthorized';
@@ -81,6 +81,7 @@ function unauthenticatedResponse(): NextResponse {
     can_view_nsa: false,
     can_use_ai: false,
     ...EMPTY_HINTS,
+    requires_password_change: false,
   };
   return NextResponse.json(body, { status: 200, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -95,6 +96,7 @@ function unreachedResponse(): NextResponse {
     can_view_nsa: false,
     can_use_ai: false,
     ...EMPTY_HINTS,
+    requires_password_change: false,
   };
   return NextResponse.json(body, { status: 200, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -141,6 +143,7 @@ export async function GET(request: NextRequest) {
     can_use_ai: canUseAi,
     permissions: hints.permissions,
     resources: hints.resources,
+    requires_password_change: authMe.requires_password_change === true,
   };
 
   return NextResponse.json(body, { status: 200, headers: { 'Cache-Control': 'no-store' } });

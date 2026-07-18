@@ -31,6 +31,11 @@ export function AccountMenu({ active = false }: { active?: boolean }) {
       .then((data: ClientSession) => {
         if (cancelled) return;
         if (data?.authenticated === true) {
+          if (data.requires_password_change && window.location.pathname !== '/change-password') {
+            // 강제 변경 상태 계정이 어느 페이지로 진입하든 전용 변경 화면으로 유도한다.
+            window.location.assign('/change-password');
+            return;
+          }
           setSession({
             status: 'auth',
             username: data.username || data.role || '사용자',
