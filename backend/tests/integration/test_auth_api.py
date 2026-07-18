@@ -382,7 +382,9 @@ def test_startup_preflight_creation_is_idempotent_on_restart(monkeypatch, tmp_pa
         reset_db_caches()
 
 
-def test_optional_auth_endpoint_rethrows_first_change_requirement(monkeypatch, tmp_path) -> None:
+def test_optional_auth_endpoint_degrades_first_change_user_to_anonymous(monkeypatch, tmp_path) -> None:
+    # 초기 비밀번호 미변경(강제 변경) 계정이라도 공개(optional-auth) 엔드포인트는 익명으로
+    # 강등해 200 을 돌려줘야 한다 — 대시보드 공개 모듈 목록까지 403 나던 데드락을 막는다.
     bootstrap_password = 'current-bootstrap-password'
     _configure_auth_env(monkeypatch, tmp_path, ADMIN_PASSWORD=bootstrap_password)
     app = create_app()
@@ -398,8 +400,8 @@ def test_optional_auth_endpoint_rethrows_first_change_requirement(monkeypatch, t
 
             optional_response = client.get('/api/v1/admin/service-modules/public')
 
-            assert optional_response.status_code == 403
-            assert optional_response.json()['detail'] == 'Password change required'
+            assert optional_response.status_code == 200
+            assert isinstance(optional_response.json(), list)
             assert client.cookies.get('admin_session') == session_cookie
 
         with app.state.db.session() as session:
