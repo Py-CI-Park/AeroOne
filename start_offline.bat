@@ -199,12 +199,12 @@ if not exist "%BACKEND_DIR%\.venv\Scripts\activate.bat" (
 REM DATABASE_URL 을 명시적으로 넘겨 .env 로딩/작업 디렉토리 차이에 흔들리지 않게 한다.
 REM setlocal 로 이 변경을 서브루틴 안에만 가두어 backend/frontend 실행 창에는 새지 않게 한다.
 setlocal
-set "AEROONE_DB_URL_PATH=%BACKEND_DIR:\=/%/data/aeroone.db"
+set "AEROONE_DB_URL_PATH=%ROOT:\=/%/_database/db/aeroone.db"
 pushd "%BACKEND_DIR%"
 call .venv\Scripts\activate.bat
 set "PYTHONPATH=."
 set "DATABASE_URL=sqlite:///%AEROONE_DB_URL_PATH%"
-call python scripts\ensure_db_state.py data\aeroone.db
+call python scripts\ensure_db_state.py "%ROOT%\_database\db\aeroone.db"
 set "MIGRATION_MODE=%ERRORLEVEL%"
 if "%MIGRATION_MODE%"=="3" (
   echo [INFO ] Existing database without Alembic metadata detected. Stamping head.

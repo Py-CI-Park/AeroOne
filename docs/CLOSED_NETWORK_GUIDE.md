@@ -491,7 +491,7 @@ powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File scripts\vie
 - **IP 는 개인정보로 분류될 수 있다.** 고지 없는 수집은 사내 정책·법적 검토 대상이 될 수 있으므로 **사내 고지·보존기간 정책 수립을 권고**한다.
 - **IP ≠ 개인.** DHCP 표류·NAT·공유 PC 환경에서는 IP 가 사람과 1:1 이 아니다. LAN 모드에서만 실제 IP 가 잡히고, `--local` 이면 전부 `127.0.0.1` 로 퇴화한다.
 - **보존은 무기한**이며 자동 삭제가 없다. 정리는 관리자 화면 "전체 기록 삭제"(CSRF) 또는 SQL 로 수동 수행한다.
-- 읽음 기록은 `backend/data/aeroone.db` 에 저장되어 기존 DB 백업 대상에 자동 포함된다.
+- 읽음 기록은 `_database/db/aeroone.db` 에 저장되어 기존 DB 백업 대상에 자동 포함된다(1.17.0+: DB 가 `_database/` 아래로 이전되어 콘텐츠와 함께 한 폴더로 백업·이관된다).
 - 설계·한계·절차 상세: [`runbook/read-tracking.md`](runbook/read-tracking.md)
 
 ---

@@ -31,9 +31,9 @@ def test_setup_offline_installs_only_production_requirements_from_wheelhouse() -
     assert "requirements-dev.txt" not in _SETUP_OFFLINE_SCRIPT
 
     app_env = 'set "APP_ENV=closed_network"'
-    database_url = 'set "DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db"'
+    database_url = 'set "DATABASE_URL=sqlite:///%ROOT_FWD%/_database/db/aeroone.db"'
     admin_username = 'set "ADMIN_USERNAME=admin"'
-    migration = 'call python scripts\\ensure_db_state.py data\\aeroone.db'
+    migration = 'call python scripts\\ensure_db_state.py "%ROOT%\\_database\\db\\aeroone.db"'
 
     assert _SETUP_OFFLINE_SCRIPT.index(app_env) < _SETUP_OFFLINE_SCRIPT.index(migration)
     assert _SETUP_OFFLINE_SCRIPT.index(database_url) < _SETUP_OFFLINE_SCRIPT.index(migration)
@@ -438,7 +438,10 @@ def test_setup_executes_full_flow_in_stub_repo(tmp_path: Path) -> None:
 
     log_lines = log_file.read_text(encoding="utf-8").splitlines()
     assert any(line.startswith("pip.bat install -r requirements-dev.txt") for line in log_lines)
-    assert any(line.startswith("python.bat scripts\\ensure_db_state.py data\\aeroone.db") for line in log_lines)
+    assert any(
+        line.startswith("python.bat scripts\\ensure_db_state.py") and "_database\\db\\aeroone.db" in line
+        for line in log_lines
+    )
     assert any(line.startswith("alembic.bat upgrade head") for line in log_lines)
     assert any(line.startswith("python.bat scripts\\seed.py") for line in log_lines)
     # lockfile 고정 설치 — npm install 이 아니라 npm ci 여야 한다(드리프트 방지).

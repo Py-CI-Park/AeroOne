@@ -207,7 +207,7 @@
 | `_database/document/` | 문서 보관소 HTML (하위 폴더로 분류 가능) | NO (정책상 비공개) |
 | `_database/nsa/` | NSA 탭 문서 보관소 (서버측 권한/ResourceGrant 통과 후 표시, 암호화 저장소 아님) | NO (정책상 비공개) |
 | `storage/` | 운영 storage (썸네일·markdown·첨부) | NO |
-| `backend/data/aeroone.db` | 운영 DB | NO |
+| `_database/db/aeroone.db` | 운영 DB (1.17.0+: `backend/data/` → `_database/db/` 로 이전. 새 버전 설치 시 `_database/` 폴더만 복사하면 DB·콘텐츠가 함께 이관됨) | NO |
 | `%ProgramData%\AeroOne\provider-credentials\<backend-service-SID>\` (1.14+) | OpenAI-호환 프로바이더 API 키 DPAPI 암호문 + metadata-only journal (앱 저장소 밖, Windows OS 경로) | NO (백업/오프라인 패키지 모두 제외) |
 
 위 8자리는 **저장소 공개에 부적합** 하므로 wiki 색인에서 의도적으로 git 외 자리로 분리했습니다. 폐쇄망 PC 운영 시 백업 대상은 [`CLOSED_NETWORK_GUIDE.md`](CLOSED_NETWORK_GUIDE.md) §10 참고.

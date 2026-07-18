@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     frontend_port: int = 29501
     open_notebook_port: int = 8502
     open_webui_port: int = 8080
-    database_url: str = 'sqlite:///./backend/data/aeroone.db'
+    database_url: str = 'sqlite:///./_database/db/aeroone.db'
     jwt_secret_key: str = _RETIRED_CREDENTIAL_SENTINEL
     access_token_ttl_minutes: int = 30
     session_activity_debounce_seconds: int = 60

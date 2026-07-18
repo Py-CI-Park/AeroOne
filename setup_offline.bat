@@ -143,7 +143,7 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo APP_NAME=AeroOne Newsletter Platform
 >>"%BACKEND_ENV%" echo BACKEND_PORT=18437
 >>"%BACKEND_ENV%" echo FRONTEND_PORT=29501
->>"%BACKEND_ENV%" echo DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db
+>>"%BACKEND_ENV%" echo DATABASE_URL=sqlite:///%ROOT_FWD%/_database/db/aeroone.db
 >>"%BACKEND_ENV%" echo JWT_SECRET_KEY=%JWT_SECRET_KEY%
 >>"%BACKEND_ENV%" echo ADMIN_SESSION_COOKIE_NAME=admin_session
 >>"%BACKEND_ENV%" echo ACCESS_TOKEN_TTL_MINUTES=30
@@ -173,7 +173,7 @@ if exist "%FRONTEND_ENV%" copy /y "%FRONTEND_ENV%" "%FRONTEND_ENV%.bak" >nul
 REM The generated offline environment is authoritative during setup.
 REM Inherited developer/service variables must not redirect migrations or seeding.
 set "APP_ENV=closed_network"
-set "DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db"
+set "DATABASE_URL=sqlite:///%ROOT_FWD%/_database/db/aeroone.db"
 set "ADMIN_USERNAME=admin"
 
 if not exist "%BACKEND_VENV%\Scripts\python.exe" (
@@ -181,6 +181,7 @@ if not exist "%BACKEND_VENV%\Scripts\python.exe" (
 )
 
 if not exist "%BACKEND_DIR%\data" mkdir "%BACKEND_DIR%\data"
+if not exist "%ROOT%\_database\db" mkdir "%ROOT%\_database\db"
 if not exist "%ROOT%\_database\newsletter" mkdir "%ROOT%\_database\newsletter"
 if not exist "%ROOT%\_database\civil_aircraft" mkdir "%ROOT%\_database\civil_aircraft"
 if not exist "%ROOT%\_database\document" mkdir "%ROOT%\_database\document"
@@ -190,7 +191,7 @@ call "%BACKEND_VENV%\Scripts\activate.bat" || goto :fail
 pushd "%BACKEND_DIR%"
 call pip install --no-index --find-links "%WHEEL_DIR%" -r requirements.txt || goto :fail_from_backend
 set "PYTHONPATH=."
-call python scripts\ensure_db_state.py data\aeroone.db
+call python scripts\ensure_db_state.py "%ROOT%\_database\db\aeroone.db"
 set "MIGRATION_MODE=%ERRORLEVEL%"
 if "%MIGRATION_MODE%"=="3" (
   echo [INFO] Existing database detected without Alembic metadata. Stamping head.

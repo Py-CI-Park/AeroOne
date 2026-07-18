@@ -21,7 +21,7 @@
 | 병합됐나 | 아니오. `feature/dashboard-enhancements` 에만 있음. main 병합은 운영자 승인 + `1.13.0-dev` Task 10 gate 확인 후(선행 핸드오프 참조) |
 | 테스트 통과하나 | **아니오. 전체 backend suite는 non-green:** 378 passed / 2 failed. frontend 363 passed(78 파일), typecheck 0, build 성공이지만, 두 backend 실패가 해결될 때까지 병합·릴리즈 게이트를 통과하지 못한다(§9). |
 | 커밋 규칙 | `AGENTS.md`/`CLAUDE.md` 동일 적용(한국어 3문단 + Lore trailer). 전 커밋 준수 |
-| 커밋 안 한 것 | `AeroOne Tool/`(원본 MVP zip·추출본)은 `.gitignore` 참조로만 두고 미추적. 런타임 DB(`backend/data/aeroone.db`)도 미추적 |
+| 커밋 안 한 것 | `AeroOne Tool/`(원본 MVP zip·추출본)은 `.gitignore` 참조로만 두고 미추적. 런타임 DB(`_database/db/aeroone.db`, 1.17.0+ 이전 경로)도 미추적 |
 
 ---
 
@@ -125,7 +125,7 @@ python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements.txt -r requirements-dev.txt
 
 # 2) DB 생성 + 마이그레이션 + 관리자 시드 (SQLite, dev)
-export DATABASE_URL="sqlite:///<절대경로>/backend/data/aeroone.db"
+export DATABASE_URL="sqlite:///<절대경로>/_database/db/aeroone.db"
 export PYTHONPATH=.
 ./.venv/Scripts/python.exe -m alembic upgrade head
 ./.venv/Scripts/python.exe -m scripts.seed      # backend/.env의 워크트리 전용 ADMIN_PASSWORD로 관리자 생성; 공유 고정 비밀번호 금지
@@ -137,7 +137,7 @@ cd ../frontend && npm ci
 **기동 (개발용, dev — 첫 라우트 컴파일 지연 있음):**
 ```bash
 # 백엔드 (APP_ENV=development 여야 secure_cookies=false, 로그인 쿠키가 http localhost 에서 동작)
-cd backend && APP_ENV=development PYTHONPATH=. DATABASE_URL="sqlite:///.../backend/data/aeroone.db" \
+cd backend && APP_ENV=development PYTHONPATH=. DATABASE_URL="sqlite:///.../_database/db/aeroone.db" \
   ./.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 18437
 # 프런트
 cd frontend && npm run dev      # next dev -p 29501
@@ -170,7 +170,7 @@ cd frontend && npm run build && npm run start   # next start -p 29501, /office-t
 
 - backend uvicorn `127.0.0.1:18437`(연속 세션 코드로 재기동 — leantime health 라우터·샘플 22종 반영), frontend `next start` `29501`(연속 세션 UI 반영 재빌드) 기동 상태. 세션이 끝나면 프로세스가 정리될 수 있으니 §5 로 재기동.
 - **코드 변경 후 재기동 규칙**: 백엔드 라우터/샘플 레지스트리 변경은 uvicorn 재시작 필요(샘플은 import 시 `_SAMPLES` 로드), 프런트 UI 변경은 `npm run build` 후 `npm run start` 재시작 필요(프로덕션 빌드는 캐시됨).
-- 로컬 DB `backend/data/aeroone.db` 에 마이그레이션 head + 관리자 계정 + 카드 시드가 들어 있음(gitignore, 커밋 안 됨). 비밀번호는 `backend/.env` 기준이며 공유하지 않는다.
+- 로컬 DB `_database/db/aeroone.db` 에 마이그레이션 head + 관리자 계정 + 카드 시드가 들어 있음(gitignore, 커밋 안 됨). 비밀번호는 `backend/.env` 기준이며 공유하지 않는다.
 
 ---
 

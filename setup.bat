@@ -52,7 +52,7 @@ if exist "%BACKEND_ENV%" copy /y "%BACKEND_ENV%" "%BACKEND_ENV%.bak" >nul
 >>"%BACKEND_ENV%" echo APP_NAME=AeroOne Newsletter Platform
 >>"%BACKEND_ENV%" echo BACKEND_PORT=18437
 >>"%BACKEND_ENV%" echo FRONTEND_PORT=29501
->>"%BACKEND_ENV%" echo DATABASE_URL=sqlite:///%BACKEND_DIR_FWD%/data/aeroone.db
+>>"%BACKEND_ENV%" echo DATABASE_URL=sqlite:///%ROOT_FWD%/_database/db/aeroone.db
 >>"%BACKEND_ENV%" echo JWT_SECRET_KEY=%JWT_SECRET_KEY%
 >>"%BACKEND_ENV%" echo ADMIN_SESSION_COOKIE_NAME=admin_session
 >>"%BACKEND_ENV%" echo ACCESS_TOKEN_TTL_MINUTES=30
@@ -105,7 +105,7 @@ if errorlevel 1 goto :fail
 pushd "%BACKEND_DIR%"
 call pip install -r requirements-dev.txt || goto :fail_from_backend
 set "PYTHONPATH=."
-call python scripts\ensure_db_state.py data\aeroone.db
+call python scripts\ensure_db_state.py "%ROOT%\_database\db\aeroone.db"
 set "MIGRATION_MODE=%ERRORLEVEL%"
 if "%MIGRATION_MODE%"=="3" (
   echo [INFO] 기존 DB 감지: Alembic metadata 복구 ^(stamp head^)

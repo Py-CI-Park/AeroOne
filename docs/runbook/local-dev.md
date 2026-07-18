@@ -92,14 +92,14 @@ docker compose up --build
 
 - `backend/.venv`
 - `frontend/node_modules`
-- `backend/data/aeroone.db`
+- `_database/db/aeroone.db`
 - `_database/newsletter`
 
 이 상태에서 worktree에서 바로 `start.bat` 또는 backend/frontend를 실행하면 다음과 같은 문제가 생길 수 있습니다.
 
 - 백엔드 가상환경을 찾지 못해 backend startup 실패
 - 프런트 의존성을 찾지 못해 frontend startup 실패
-- `backend/data/aeroone.db`가 비어 새로 생성되어 `no such table: newsletters` 발생
+- `_database/db/aeroone.db`가 비어 새로 생성되어 `no such table: newsletters` 발생
 - `_database/newsletter`가 비어 있어 `/api/v1/newsletters/{id}/content/html` 또는 PDF download가 `500` 발생
 
 ### 권장 방법
