@@ -64,6 +64,19 @@ test('renders the default shell with light data-theme and a theme selector', asy
 
 test('opens the usage manual popup from the header', async () => {
   const user = userEvent.setup();
+  // 사용법 매뉴얼은 로그인 상태에 따라 노출 섹션이 달라진다 — 개발중(AeroAI)·관리자 섹션을
+  // 확인하려면 관리자 세션을 물려 audience 를 admin 으로 만든다.
+  fetchClientSessionMock.mockResolvedValue({
+    authenticated: true,
+    username: 'root',
+    role: 'admin',
+    is_admin: true,
+    can_view_document: true,
+    can_view_nsa: true,
+    can_use_ai: true,
+    permissions: [],
+    resources: [],
+  });
 
   render(
     <AppShell title="Manual Shell">
@@ -78,7 +91,7 @@ test('opens the usage manual popup from the header', async () => {
   await user.click(manualButton);
 
   expect(screen.getByRole('dialog', { name: '전체 기능 사용법' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'AeroAI' })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'AeroAI' })).toBeInTheDocument();
 
   await user.click(screen.getByRole('button', { name: 'AeroAI' }));
 

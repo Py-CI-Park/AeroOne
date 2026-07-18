@@ -220,9 +220,10 @@ test('operator dashboard links the Leantime card to the internal co-deploy landi
   const main = screen.getByRole('main');
   const leantimeLink = within(main).getByRole('link', { name: /Leantime/i });
 
-  // 외부 데드링크(:8081) 대신 내부 안내 페이지로 이동한다(설치 안 돼도 빈 화면이 안 나오게).
+  // 구동 중이면 새 탭에서 곧바로 Leantime 으로 이동하도록 /leantime 을 새 탭으로 연다
+  // (미구동이면 그 탭에 설치·기동 안내가 남아 AeroOne 대시보드는 원래 탭에 유지된다).
   expect(leantimeLink).toHaveAttribute('href', '/leantime');
-  expect(leantimeLink).not.toHaveAttribute('target', '_blank');
+  expect(leantimeLink).toHaveAttribute('target', '_blank');
   expect(within(leantimeLink).getByTestId('service-card-description')).toHaveTextContent(/프로젝트/);
 });
 
