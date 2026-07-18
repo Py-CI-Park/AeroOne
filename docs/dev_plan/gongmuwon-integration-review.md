@@ -1,5 +1,6 @@
 # gongmuwon(공무원) 내장 검토 — 다음 버전 목표
 
+> **갱신(방향 변경)**: 운영자 결정으로 방향이 "외부 gongmuwon 앱 내장" → **"AeroOne 안에 네이티브 재구현(Aero Work)"** 으로 바뀌었다. 최신 계획은 [`aero-work-plan.md`](aero-work-plan.md) 를 따른다. 본 문서의 §4~§5 외부 연동 권고는 참고용 이력으로 보존한다.
 - 상태: **검토(review) 단계 · 구현 미착수** — 다음 버전 목표로 타당성만 정리
 - 대상: [`Kminer2053/gongmuwon`](https://github.com/Kminer2053/gongmuwon) — "로컬 AI 에이전트 워크스페이스: 공무원"
 - 요청: AeroOne 대시보드에서 Leantime 옆 **새 단추(카드)** 로 gongmuwon 을 AeroOne 의 한 tool 로 내장하는 방안 검토
