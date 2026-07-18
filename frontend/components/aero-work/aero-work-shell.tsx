@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
 
 // Aero Work — gongmuwon(공무원) 워크스페이스의 AeroOne 네이티브 재구현 (P0 스캐폴딩).
 // gongmuwon 과 동일한 6메뉴 IA(업무대화·일정·문서작성·내 지식폴더·실행기록·환경설정) + 홈
@@ -20,7 +21,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { key: 'home', icon: '🏠', label: '홈 · 오늘의 브리핑', summary: '오늘 일정·이어서 하기·지식 요약·이용 팁을 한 화면에.', reuse: '대시보드·최근 열람 스트립', phase: 'P4' },
-  { key: 'chat', icon: '💬', label: '업무대화', summary: '로컬·외부 LLM 과 대화하고, 내 지식폴더에서 근거를 출처와 함께 붙여 답한다. 파일·이미지 첨부, 일정·문서작성으로 이어가기.', reuse: 'AeroAI(SSE 스트리밍·첨부·근거·provider)', phase: 'P1' },
+  { key: 'chat', icon: '💬', label: '업무대화', summary: '로컬·외부 LLM 과 대화하고, 내 지식폴더에서 근거를 출처와 함께 붙여 답한다. 파일·이미지 첨부, 일정·문서작성으로 이어가기.', reuse: 'AeroAI(SSE 스트리밍·첨부·근거·provider)', phase: '구현됨(P1)' },
   { key: 'schedule', icon: '📅', label: '일정', summary: '월/주/일 캘린더, 사전 알림, 업무대화 세션 연결.', reuse: '신규(대시보드 Schedule 자리 승격)', phase: 'P4' },
   { key: 'document', icon: '📝', label: '문서작성', summary: '지시 → 구조 검토 → 미리보기 그대로 HWPX(한글) 생성. 시행문·1p·풀버전·이메일·임의형식.', reuse: 'Office Studio 파이프라인 + HWPX(OWPML) 생성기', phase: 'P3' },
   { key: 'knowledge', icon: '📚', label: '내 지식폴더', summary: '지정 폴더를 그 자리에서 색인 → 업무 위키 자동 구성, 키워드·근거 검색, 증분 동기화(추가·수정·이동·삭제).', reuse: 'Ollama nomic-embed 임베딩 + 벡터 검색(신규)', phase: 'P2' },
@@ -78,6 +79,10 @@ export function AeroWorkShell() {
                 <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">{item.phase} · {item.reuse}</span>
               </button>
             ))}
+          </div>
+        ) : view === 'chat' ? (
+          <div className="mt-4">
+            <AiChatWorkspace />
           </div>
         ) : (
           <div className="mt-6 rounded-xl border border-dashed border-line-subtle bg-surface-base p-6">
