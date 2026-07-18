@@ -27,9 +27,22 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 if not defined LEANTIME_DB_PORT set "LEANTIME_DB_PORT=3307"
 if not defined LEANTIME_PORT set "LEANTIME_PORT=8081"
-if not defined LEANTIME_DB_PASSWORD set "LEANTIME_DB_PASSWORD=lean_local_pw"
+REM 초기 env: 자격증명은 이 스택 폴더의 leantime.env 에서 로드하고(재실행 멱등), env/파일에
+REM 없으면 설치마다 강random 으로 생성한다. 하드코딩 공용 비밀번호를 쓰지 않는다.
+REM 우선순위: 이미 설정된 프로세스 env(AeroOne 초기 env·운영자 오버라이드) > leantime.env > 신규 생성.
+set "LEANTIME_ENV_FILE=%ROOT%\leantime.env"
+if exist "%LEANTIME_ENV_FILE%" for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%LEANTIME_ENV_FILE%") do if not defined %%A set "%%A=%%B"
 if not defined LEANTIME_ADMIN_EMAIL set "LEANTIME_ADMIN_EMAIL=admin@aeroone.local"
-if not defined LEANTIME_ADMIN_PASSWORD set "LEANTIME_ADMIN_PASSWORD=AeroOneLean2026!"
+if not defined LEANTIME_DB_PASSWORD for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$b=[byte[]]::new(18);$r=[Security.Cryptography.RandomNumberGenerator]::Create();try{$r.GetBytes($b)}finally{$r.Dispose()};[BitConverter]::ToString($b).Replace('-','').ToLowerInvariant()"') do set "LEANTIME_DB_PASSWORD=%%S"
+if not defined LEANTIME_ADMIN_PASSWORD for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$b=[byte[]]::new(18);$r=[Security.Cryptography.RandomNumberGenerator]::Create();try{$r.GetBytes($b)}finally{$r.Dispose()};[BitConverter]::ToString($b).Replace('-','').ToLowerInvariant()"') do set "LEANTIME_ADMIN_PASSWORD=%%SAa1!"
+REM 확정된 자격증명을 초기 env 파일로 영속화한다(start-leantime-stack.bat 이 같은 값을 읽는다).
+REM 이 파일은 반출·공유·커밋 금지. 재생성하려면 파일을 지우고 setup 을 다시 실행한다.
+> "%LEANTIME_ENV_FILE%" echo # AeroOne Leantime stack initial env - do NOT share/commit. Delete this file and re-run setup to regenerate.
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_ADMIN_EMAIL=%LEANTIME_ADMIN_EMAIL%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_ADMIN_PASSWORD=%LEANTIME_ADMIN_PASSWORD%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_DB_PASSWORD=%LEANTIME_DB_PASSWORD%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_PORT=%LEANTIME_PORT%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_DB_PORT=%LEANTIME_DB_PORT%
 
 set "PHP=%ROOT%\php\php.exe"
 set "PHPINI=%ROOT%\php\php.ini"
@@ -110,6 +123,7 @@ if not "%LT_INSTALL_EXIT%"=="0" (
 )
 
 echo [LEANTIME][READY] setup complete. Admin: %LEANTIME_ADMIN_EMAIL%
+echo [LEANTIME][INFO ] admin/DB credentials saved to leantime.env (this stack folder). Keep it private; do not share/commit.
 echo [LEANTIME][INFO ] next: start-leantime-stack.bat  (serves http://localhost:%LEANTIME_PORT%)
 if defined AEROONE_LT_INTERACTIVE pause
 exit /b 0

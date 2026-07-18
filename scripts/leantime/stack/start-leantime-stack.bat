@@ -23,6 +23,7 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 if not defined LEANTIME_DB_PORT set "LEANTIME_DB_PORT=3307"
 if not defined LEANTIME_PORT set "LEANTIME_PORT=8081"
+if exist "%ROOT%\leantime.env" for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%ROOT%\leantime.env") do if not defined %%A set "%%A=%%B"
 if not defined LEANTIME_DB_PASSWORD set "LEANTIME_DB_PASSWORD=lean_local_pw"
 
 set "PHP=%ROOT%\php\php.exe"

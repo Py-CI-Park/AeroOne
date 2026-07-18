@@ -21,8 +21,13 @@ First-time setup (run once)
          installs the schema and the first admin account.
        - the window stays open (pause) so you can read the result; set
          AEROONE_LT_NO_PAUSE=1 to suppress the pause in automation.
-       - default admin: admin@aeroone.local / AeroOneLean2026!
-         (override before running via env vars LEANTIME_ADMIN_EMAIL / LEANTIME_ADMIN_PASSWORD)
+       - admin/DB credentials: set from the initial env. If LEANTIME_ADMIN_PASSWORD /
+         LEANTIME_DB_PASSWORD are not provided via env (nor already in leantime.env),
+         setup GENERATES a strong random one PER INSTALL (no shared hardcoded password).
+         The final values are persisted to leantime.env in this stack folder and reused by
+         start-leantime-stack.bat. Read leantime.env for the admin login. Override before
+         running via env vars LEANTIME_ADMIN_EMAIL / LEANTIME_ADMIN_PASSWORD /
+         LEANTIME_DB_PASSWORD. Keep leantime.env private; delete it + re-run setup to rotate.
        - note: db:migrate may print an AuthorizationException about the demo
          project (tickets.create) — schema and admin account are still created;
          log in and create your own project.
