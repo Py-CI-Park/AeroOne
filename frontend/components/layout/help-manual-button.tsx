@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { fetchClientSession } from '@/lib/api';
 
 const MANUAL_SECTIONS = [
   {
@@ -109,6 +110,23 @@ const MANUAL_SECTIONS = [
   },
 ] as const;
 
+// 사용법 섹션의 노출 대상. 대시보드 카드 노출 규칙과 맞춘다.
+// - all: 익명 포함 모두(공개 열람 서비스·폐쇄망 운영 안내)
+// - member: 로그인 사용자(개발중 Active 카드 사용법)
+// - admin: 앱 관리자(관리자 콘솔)
+const SECTION_AUDIENCE: Record<string, 'all' | 'member' | 'admin'> = {
+  dashboard: 'all',
+  newsletter: 'all',
+  documents: 'all',
+  offline: 'all',
+  ai: 'member',
+  viewer: 'member',
+  'office-studio': 'member',
+  leantime: 'member',
+  'notebook-ladder': 'member',
+  admin: 'admin',
+};
+
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -126,15 +144,54 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 
 export function HelpManualButton() {
   const [open, setOpen] = useState(false);
+  const [audience, setAudience] = useState<'anon' | 'member' | 'admin'>('anon');
   const [selectedId, setSelectedId] = useState<string>(MANUAL_SECTIONS[0].id);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const selected = useMemo(
-    () => MANUAL_SECTIONS.find((section) => section.id === selectedId) ?? MANUAL_SECTIONS[0],
-    [selectedId],
+
+  // 로그인 상태에 따라 사용법에 노출할 섹션이 달라진다(익명은 공개 열람·운영 안내만,
+  // 로그인은 개발중 기능, 관리자는 관리자 콘솔까지). 매니저를 열 때 same-origin 세션을
+  // 조회해 audience 를 정한다.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchClientSession()
+      .then((data) => {
+        if (cancelled) return;
+        setAudience(data?.is_admin === true ? 'admin' : data?.authenticated === true ? 'member' : 'anon');
+      })
+      .catch(() => {
+        if (!cancelled) setAudience('anon');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const visibleSections = useMemo(
+    () =>
+      MANUAL_SECTIONS.filter((section) => {
+        const need = SECTION_AUDIENCE[section.id] ?? 'all';
+        if (need === 'all') return true;
+        if (need === 'member') return audience === 'member' || audience === 'admin';
+        return audience === 'admin';
+      }),
+    [audience],
   );
+
+  const selected = useMemo(
+    () => visibleSections.find((section) => section.id === selectedId) ?? visibleSections[0] ?? MANUAL_SECTIONS[0],
+    [selectedId, visibleSections],
+  );
+
+  // 로그인 상태가 바뀌어 현재 선택 섹션이 숨겨지면 첫 노출 섹션으로 되돌린다.
+  useEffect(() => {
+    if (!visibleSections.some((section) => section.id === selectedId)) {
+      setSelectedId(visibleSections[0]?.id ?? MANUAL_SECTIONS[0].id);
+    }
+  }, [visibleSections, selectedId]);
 
   const closeManual = () => setOpen(false);
   const openManual = () => {
@@ -224,6 +281,13 @@ export function HelpManualButton() {
                     <h2 id="aeroone-manual-title" className="mt-1 text-2xl font-semibold text-ink-1">
                       전체 기능 사용법
                     </h2>
+                    <p className="mt-1 text-xs leading-5 text-ink-3">
+                      {audience === 'admin'
+                        ? '관리자 로그인 상태 — 공개 열람 서비스부터 개발중 기능·관리자 콘솔까지 전체 사용법이 표시됩니다.'
+                        : audience === 'member'
+                          ? '로그인 상태 — 공개 열람 서비스와 개발중 Active 기능 사용법이 표시됩니다.'
+                          : '로그인 전 — 공개 열람 서비스와 폐쇄망 운영 안내만 표시됩니다. 로그인하면 개발중 기능과 관리 도구 사용법이 함께 나타납니다.'}
+                    </p>
                   </div>
                   <button
                     ref={closeButtonRef}
@@ -238,7 +302,7 @@ export function HelpManualButton() {
                 <div className="grid max-h-[70vh] grid-cols-1 overflow-y-auto md:grid-cols-[180px_1fr]">
                   <nav className="border-b border-line-subtle p-4 md:border-b-0 md:border-r" aria-label="사용법 항목">
                     <div className="flex flex-wrap gap-2 md:flex-col">
-                      {MANUAL_SECTIONS.map((section) => (
+                      {visibleSections.map((section) => (
                         <button
                           key={section.id}
                           type="button"
