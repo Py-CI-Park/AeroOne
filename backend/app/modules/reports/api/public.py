@@ -15,7 +15,7 @@ router = APIRouter()
 
 service = HtmlCollectionService()
 
-# Bundled interactive Civil Aircraft dashboard (v1.7). Shipped with the package under
+# Bundled interactive Civil Aircraft dashboard (v1.8). Shipped with the package under
 # the reports module so it is always present; an operator override under
 # _database/civil_aircraft/dashboard/ takes precedence when it exists.
 _DASHBOARD_BUNDLE = Path(__file__).resolve().parents[1] / 'civil_aircraft_dashboard'
@@ -27,7 +27,9 @@ _DASHBOARD_CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline'; "
     "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data:; "
+    # blob: 는 PNG 내보내기(SVG를 blob URL 이미지로 로드→canvas 직렬화)에 필요하다.
+    # blob: 는 same-origin ephemeral URL 이라 self-only 원칙을 깨지 않는다(외부 origin 아님).
+    "img-src 'self' data: blob:; "
     "font-src 'self' data:; "
     "connect-src 'self'; "
     "frame-ancestors 'self'; "
@@ -112,7 +114,7 @@ def get_civil_aircraft_report(response: Response, settings: Settings = Depends(g
 @router.get('/civil-aircraft/app')
 @router.get('/civil-aircraft/app/{path:path}')
 def get_civil_aircraft_app(path: str = '', settings: Settings = Depends(get_settings)) -> FileResponse:
-    # Serve the interactive v1.7 dashboard bundle as same-origin static files so its
+    # Serve the interactive v1.8 dashboard bundle as same-origin static files so its
     # own bundled scripts run (unlike the sanitized single-report path above). Path is
     # guarded against traversal and only files under the bundle/override root are served.
     base = _dashboard_root(settings)

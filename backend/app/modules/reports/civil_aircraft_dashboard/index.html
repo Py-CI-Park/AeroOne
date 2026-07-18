@@ -4,20 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Civil Aircraft Data Portal v1.7</title>
-  <link rel="stylesheet" href="assets/css/civil-aircraft-v1.7.css">
+  <title>Civil Aircraft Data Portal v1.8</title>
+  <link rel="stylesheet" href="assets/css/civil-aircraft-v1.8.css">
 </head>
 <body data-encyclopedia-url="apps/encyclopedia.html">
 <a class="skip-link" href="#main">본문으로 건너뛰기</a>
 <header class="topbar">
-  <a class="brand" href="index.html"><span class="brand-mark">CA</span><span><span class="brand-title">Civil Aircraft v1.7</span><span class="brand-sub">ENCYCLOPEDIA · COMPARISON · TRACEABILITY</span></span></a>
+  <a class="brand" href="index.html"><span class="brand-mark">CA</span><span><span class="brand-title">Civil Aircraft v1.8</span><span class="brand-sub">ENCYCLOPEDIA · COMPARISON · TRACEABILITY</span></span></a>
   <button class="mobile-menu" type="button" aria-label="메뉴 열기" aria-expanded="false">☰</button>
   <nav class="topnav" aria-label="주요 메뉴"><a href="index.html" aria-current="page">Portal</a><a href="apps/encyclopedia.html">Encyclopedia</a><a href="apps/dashboard.html">Comparison</a><a href="apps/source_archive.html">Sources</a><button type="button" onclick="window.print()">Print / PDF</button></nav>
-  <span class="version-pill">v1.7</span>
+  <span class="version-pill">v1.8</span>
 </header>
 <section class="hero"><div class="hero-inner">
   <div class="eyebrow">Civil Aircraft / Full Archive & Comparison Workspace</div>
-  <h1>Civil Aircraft Data Portal <span style="color:#7dd3fc">v1.7</span></h1>
+  <h1>Civil Aircraft Data Portal <span style="color:#7dd3fc">v1.8</span></h1>
   <div class="hero-tags"><span class="hero-tag">65 Aircraft</span><span class="hero-tag">55 Source Records</span><span class="hero-tag">25 Local PDFs</span><span class="hero-tag">Wide Catalog</span><span class="hero-tag">Line-first Radar</span><span class="hero-tag">Overlay ON/OFF</span><span class="hero-tag">No Fallback Values</span></div>
   <div class="portal-search">
     <div class="portal-search-box">
@@ -30,9 +30,9 @@
 </div></section>
 <main id="main" class="page">
   <section class="section">
-    <div class="section-title"><div><h2>데이터 스냅샷</h2><p>공통 데이터 원본에서 KPI를 자동 집계합니다.</p></div><div class="section-actions"><a class="btn" href="data/Civil_Aircraft_Data_v1.7.json">Data JSON</a><a class="btn" href="data/Civil_Aircraft_Data_Schema_v1.7.json">Schema</a><a class="btn" href="REVISION_v1.7.md">Revision</a></div></div>
+    <div class="section-title"><div><h2>데이터 스냅샷</h2><p>공통 데이터 원본에서 KPI를 자동 집계합니다.</p></div><div class="section-actions"><a class="btn" href="data/Civil_Aircraft_Data_v1.8.json">Data JSON</a><a class="btn" href="data/Civil_Aircraft_Data_Schema_v1.8.json">Schema</a><a class="btn" href="REVISION_v1.8.md">Revision</a></div></div>
     <div class="kpis"><div class="kpi"><b id="aircraftCount">—</b><span>수록 기체</span></div><div class="kpi"><b id="sourceCount">—</b><span>출처 레지스트리</span></div><div class="kpi"><b id="completeCount">—</b><span>A+/A 검증</span></div><div class="kpi"><b id="scaleCount">—</b><span>실척 SVG 가능</span></div><div class="kpi"><b id="positionCount">—</b><span>포지션 맵 가능</span></div><div class="kpi"><b id="localPdfCount">—</b><span>로컬 공식 PDF</span></div></div>
-    <div class="grid grid-2" style="margin-top:10px"><div class="callout good"><strong>v1.7 데이터 정책</strong><br>필드별 출처·상태·비교조건 유지. C929 등 미공개값은 차트와 실척 SVG에서 제외함.</div><div class="callout good"><strong>출처 보관 상태</strong><br>v1.2/v1.3 공식 PDF 25건 복원. SHA-256·크기·페이지 수 25/25 일치. 추가 자료는 외부 공식 링크로 분리함.</div></div>
+    <div class="grid grid-2" style="margin-top:10px"><div class="callout good"><strong>v1.8 데이터 정책</strong><br>필드별 출처·상태·비교조건 유지. C929 등 미공개값은 차트와 실척 SVG에서 제외함.</div><div class="callout good"><strong>출처 보관 상태</strong><br>v1.2/v1.3 공식 PDF 25건 복원. SHA-256·크기·페이지 수 25/25 일치. 추가 자료는 외부 공식 링크로 분리함.</div></div>
   </section>
 
   <section class="section"><div class="section-title"><div><h2>애플리케이션</h2><p>백과·비교·출처 검증을 하나의 데이터 원본으로 연결합니다.</p></div></div><div class="grid grid-3">
@@ -43,15 +43,14 @@
 
   <section class="section"><div class="section-title"><div><h2>추천 비교 세트</h2><p>대표 경쟁군을 바로 불러옵니다.</p></div></div><div class="grid grid-4"><a class="card compare-preset" href="apps/dashboard.html?compare=a320neo,737-8,c919&metric=rangeNm"><b>Core Single-Aisle</b><span>A320neo · 737-8 · C919</span></a><a class="card compare-preset" href="apps/dashboard.html?compare=a321xlr,737-10&metric=rangeNm"><b>Upper Single-Aisle</b><span>A321XLR · 737-10</span></a><a class="card compare-preset" href="apps/dashboard.html?compare=787-9-imtow,a350-900,a330-900&metric=rangeNm"><b>Long-Haul Twin</b><span>787-9 iMTOW · A350-900 · A330-900</span></a><a class="card compare-preset" href="apps/dashboard.html?compare=777f,a350f,777-8f&metric=maxPayloadT"><b>New Freighter</b><span>777F · A350F · 777-8F</span></a></div></section>
 
-  <section class="section"><div class="grid grid-2 portal-chart-grid"><article class="chart-card portal-chart"><div class="chart-head"><div><div class="chart-title">세그먼트 구성</div><div class="chart-note">65개 기체 수록범위</div></div><div class="chart-actions"><button class="btn small" data-export-svg="#categoryChart" data-filename="Civil_Aircraft_v1.7_Category.svg">SVG</button><button class="btn small" data-export-png="#categoryChart" data-filename="Civil_Aircraft_v1.7_Category.png">PNG</button></div></div><div id="categoryChart" class="chart-host chart-host-distribution"></div></article><article class="chart-card portal-chart"><div class="chart-head"><div><div class="chart-title">검증등급 분포</div><div class="chart-note">등급 코드와 의미를 함께 표기</div></div><div class="chart-actions"><button class="btn small" data-export-svg="#qualityChart" data-filename="Civil_Aircraft_v1.7_Quality.svg">SVG</button></div></div><div id="qualityChart" class="chart-host chart-host-distribution"></div></article></div></section>
+  <section class="section"><div class="grid grid-2 portal-chart-grid"><article class="chart-card portal-chart"><div class="chart-head"><div><div class="chart-title">세그먼트 구성</div><div class="chart-note">65개 기체 수록범위</div></div><div class="chart-actions"><button class="btn small" data-export-svg="#categoryChart" data-filename="Civil_Aircraft_v1.8_Category.svg">SVG</button><button class="btn small" data-export-png="#categoryChart" data-filename="Civil_Aircraft_v1.8_Category.png">PNG</button></div></div><div id="categoryChart" class="chart-host chart-host-distribution"></div></article><article class="chart-card portal-chart"><div class="chart-head"><div><div class="chart-title">검증등급 분포</div><div class="chart-note">등급 코드와 의미를 함께 표기</div></div><div class="chart-actions"><button class="btn small" data-export-svg="#qualityChart" data-filename="Civil_Aircraft_v1.8_Quality.svg">SVG</button></div></div><div id="qualityChart" class="chart-host chart-host-distribution"></div></article></div></section>
 
-  <section class="section"><div class="section-title"><div><h2>v1.7 반영 핵심</h2><p>출처 화면 중복 제거와 분포 차트 가독성을 개선했습니다.</p></div></div><div class="grid grid-4"><div class="callout"><strong>출처</strong><br>공식 원문과 로컬 PDF 25건을 55개 통합 출처 카드에서 확인.</div><div class="callout"><strong>카탈로그</strong><br>13열 Wide Table, 고정 헤더, 가로 스크롤, 상세 패널 접기.</div><div class="callout"><strong>레이더</strong><br>선만 표시 기본, 연한 채우기·선택만 채우기, 범례 표시 전환.</div><div class="callout"><strong>거버넌스</strong><br>65기체·55출처·fieldEvidence·미공개값 비추정 정책 유지.</div></div></section>
+  <section class="section"><div class="section-title"><div><h2>v1.8 반영 핵심</h2><p>출처 화면 중복 제거와 분포 차트 가독성을 개선했습니다.</p></div></div><div class="grid grid-4"><div class="callout"><strong>출처</strong><br>공식 원문과 로컬 PDF 25건을 55개 통합 출처 카드에서 확인.</div><div class="callout"><strong>카탈로그</strong><br>13열 Wide Table, 고정 헤더, 가로 스크롤, 상세 패널 접기.</div><div class="callout"><strong>레이더</strong><br>선만 표시 기본, 연한 채우기·선택만 채우기, 범례 표시 전환.</div><div class="callout"><strong>거버넌스</strong><br>65기체·55출처·fieldEvidence·미공개값 비추정 정책 유지.</div></div></section>
 </main>
-<footer class="footer"><b>Civil Aircraft Encyclopedia & Comparison Dashboard v1.7</b> · Released 2026-07-14<br>공개 정보의 구조화·비교용 참고자료. 구매·운항·인증·공항 적합성·설계·정비 의사결정에 사용 금지.</footer>
+<footer class="footer"><b>Civil Aircraft Encyclopedia & Comparison Dashboard v1.8</b> · Released 2026-07-17<br>공개 정보의 구조화·비교용 참고자료. 구매·운항·인증·공항 적합성·설계·정비 의사결정에 사용 금지.</footer>
 <div class="chart-tooltip" aria-hidden="true"></div>
-<script src="assets/js/civil-aircraft-data.v1.7.js"></script>
-<script src="assets/js/core.v1.7.js"></script>
-<script src="assets/js/charts.v1.7.js"></script>
-<script src="assets/js/portal.v1.7.js"></script>
+<!-- v1.8 lazy split: 포털은 경량 메타(13KB)만 로드하고 전체 데이터(338KB)는 백과/비교 진입 시 로드한다. -->
+<script src="assets/js/civil-aircraft-meta.v1.8.js"></script>
+<script src="assets/js/portal.v1.8.js"></script>
 </body>
 </html>

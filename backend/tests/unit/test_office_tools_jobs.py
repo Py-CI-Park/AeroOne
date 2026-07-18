@@ -120,13 +120,21 @@ def _office_user_client(
     app,
     username: str,
     permissions: tuple[str, ...] = ('office.use',),
+    *,
+    role: str = 'pending',
 ) -> TestClient:
-    """명시된 Office 권한만 가진 일반 사용자의 세션을 만든다."""
+    """명시된 Office 권한'만' 가진 세션을 만든다.
+
+    1.16.3 부터 user 역할 기본값에 office.use 가 포함되므로, 명시 권한 외에는
+    아무것도 없는 주체를 만들기 위해 기본은 역할 기본 권한이 빈 pending 계정을 쓴다
+    (pending 도 로그인은 가능하다 — is_active 만 로그인 조건). 감사 로그의 actor
+    role 까지 검증하는 테스트는 role='user' 로 발급 계정을 명시한다.
+    """
     with app.state.db.session() as session:
         user = UserRepository(session).create(
             username=username,
             password_hash=hash_password('password123'),
-            role='user',
+            role=role,
         )
         session.add_all(UserPermission(user_id=user.id, permission_key=permission) for permission in permissions)
 
@@ -541,6 +549,7 @@ def test_recovery_discard_requires_csrf_audits_and_reflects_live_health(
             app,
             'recovery-discard-manager',
             permissions=('office.use', 'admin.office.manage'),
+            role='user',
         )
         manager_id = _user_id(app, 'recovery-discard-manager')
         pre_discard_inventory = manager_client.get('/api/v1/office-tools/jobs/recovery').json()

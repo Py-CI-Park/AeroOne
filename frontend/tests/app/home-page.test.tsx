@@ -1,26 +1,28 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 
-const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClientSessionMock, MODULES } = vi.hoisted(() => ({
+const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClientSessionMock, fetchMyRecentReadsMock, fetchLauncherHealthMock, MODULES } = vi.hoisted(() => ({
   cookieThemeMock: vi.fn<() => string | undefined>(),
   isAdminMock: vi.fn<() => boolean>(),
   fetchPublicServiceModulesMock: vi.fn(),
   fetchClientSessionMock: vi.fn(),
+  fetchMyRecentReadsMock: vi.fn(),
+  fetchLauncherHealthMock: vi.fn(),
   MODULES: [
     { id: 1, key: 'newsletter', title: 'Newsletter', href: '/newsletters', badge: 'Active', is_enabled: true, section: 'Newsletter', status: 'active', sort_order: 10, is_external: false, launcher_kind: 'none', visibility: 'public' },
     { id: 2, key: 'civil-aircraft', title: 'Civil Aircraft Spec Catalog', description: 'Commercial aircraft specs & market competition analysis.', href: '/reports/civil-aircraft', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 20, is_external: false, launcher_kind: 'none', visibility: 'public' },
     { id: 3, key: 'document', title: 'Document', description: 'Browse HTML documents organized in folders.', href: '/documents', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 30, is_external: false, launcher_kind: 'none', visibility: 'public' },
     { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, launcher_kind: 'none', visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
     { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-    { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-    { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
-    { id: 11, key: 'openwebui', title: 'OpenWebUI', description: 'Ollama 호환 챗 UI (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
+    { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
+    { id: 11, key: 'openwebui', title: 'AI', description: '', href: '', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
     { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'ETC', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-    { id: 13, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 13, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 45, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 14, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 안내·열기 페이지.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   ],
 }));
@@ -41,6 +43,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     fetchPublicServiceModules: fetchPublicServiceModulesMock,
     fetchClientSession: fetchClientSessionMock,
+    fetchMyRecentReads: fetchMyRecentReadsMock,
+    fetchLauncherHealth: fetchLauncherHealthMock,
   };
 });
 
@@ -53,6 +57,19 @@ beforeEach(() => {
     Promise.resolve(isAdminMock() ? MODULES : MODULES.filter((m) => m.visibility === 'public' && !m.required_permission)),
   );
   fetchClientSessionMock.mockReturnValue(new Promise(() => {}));
+  // 홈 대시보드 테스트는 최근 본 뉴스레터 스트립 자체를 검증하지 않는다 — 영영 미해결
+  // Promise 로 고정해 스트립이 조용히 렌더 생략 상태(null)로 머물게 하고, act() 경고 없이
+  // 기존 섹션/카드 단언에 영향이 없게 한다.
+  fetchMyRecentReadsMock.mockReturnValue(new Promise(() => {}));
+  // 런처 헬스는 ready 로 목킹 — 외부 앱 카드 링크 단언(8502/8080)이 기존 의미를 유지한다.
+  fetchLauncherHealthMock.mockImplementation((kind: string) => Promise.resolve({
+    status: 'ready',
+    port: kind === 'open_notebook' ? 8502 : 8080,
+    probe_target: '',
+    checked_at: '',
+    latency_ms: 1,
+    detail: null,
+  }));
 });
 
 afterEach(() => {
@@ -61,10 +78,20 @@ afterEach(() => {
   isAdminMock.mockReset();
   fetchPublicServiceModulesMock.mockReset();
   fetchClientSessionMock.mockReset();
+  fetchMyRecentReadsMock.mockReset();
+  fetchLauncherHealthMock.mockReset();
 });
 
+// 대시보드 렌더 헬퍼 — ExternalLauncherCard 의 헬스 fetch 가 렌더 직후 상태를 갱신하므로
+// act 로 마이크로태스크를 플러시해 "not wrapped in act" 경고 없이 안정 상태에서 단언한다.
+async function renderHome(searchParams: Record<string, string> = {}) {
+  const ui = await HomePage({ searchParams: Promise.resolve(searchParams) });
+  render(ui);
+  await act(async () => {});
+}
+
 test('removes the home hero copy while keeping the Newsletter link and theme selector', async () => {
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.queryByText('AeroOne Internal Platform')).not.toBeInTheDocument();
   expect(screen.queryByText('사내 문서형 서비스 시작점')).not.toBeInTheDocument();
@@ -79,7 +106,7 @@ test('removes the home hero copy while keeping the Newsletter link and theme sel
 
 test('non-admin dashboard hides required-permission NSA plus development and coming-soon cards', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   expect(within(main).getByRole('link', { name: /Newsletter/i })).toBeInTheDocument();
@@ -97,7 +124,7 @@ test('non-admin fallback dashboard drops required-permission NSA cards', async (
   fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
   isAdminMock.mockReturnValue(false);
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   expect(within(main).getByRole('link', { name: /Newsletter/i })).toBeInTheDocument();
@@ -109,7 +136,7 @@ test('degraded fallback keeps login visible, Admin hidden, and the main nav to 3
   fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
   isAdminMock.mockReturnValue(false);
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const nav = screen.getByRole('navigation', { name: '주요 메뉴' });
   const navLinks = within(nav).getAllByRole('link');
@@ -123,7 +150,7 @@ test('degraded fallback keeps login visible, Admin hidden, and the main nav to 3
 });
 
 test('adds an active Civil Aircraft Spec Catalog card linking to the report page', async () => {
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const reportLink = within(main).getByRole('link', { name: /Civil Aircraft Spec Catalog/i });
@@ -135,19 +162,19 @@ test('adds an active Civil Aircraft Spec Catalog card linking to the report page
 
 test('operator dashboard groups cards into ordered Newsletter/Document/AI/Development/ETC sections', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const newsletterSection = screen.getAllByRole('heading', { name: 'Newsletter' })[0];
   const documentSection = screen.getAllByRole('heading', { name: 'Document' })[0];
   const developmentSection = screen.getByRole('heading', { name: 'Development' });
-  const aiSection = screen.getByRole('heading', { name: 'AI' });
+  const aiSection = screen.getAllByRole('heading', { name: 'AI' })[0];
   const etcSection = screen.getByRole('heading', { name: 'ETC' });
   const nsaLink = screen.getByRole('link', { name: /NSA/i });
   const aiLink = screen.getByRole('link', { name: /AeroAI/i });
   const viewerLink = screen.getByRole('link', { name: /Viewer/i });
   const ladderLink = screen.getByRole('link', { name: /Ladder/i });
-  const notebookLink = screen.getByRole('link', { name: /Notebook/i });
-  const openwebuiLink = screen.getByRole('link', { name: /OpenWebUI/i });
+  const notebookLink = await screen.findByRole('link', { name: /Notebook/i });
+  const openwebuiLink = document.querySelector('main a[href*=":8080"]') as HTMLElement;
   const announcement = screen.getByRole('heading', { name: 'Announcement' });
   const schedule = screen.getByRole('heading', { name: 'Schedule' });
 
@@ -156,8 +183,8 @@ test('operator dashboard groups cards into ordered Newsletter/Document/AI/Develo
   expect(aiSection.compareDocumentPosition(developmentSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(developmentSection.compareDocumentPosition(etcSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(nsaLink.compareDocumentPosition(aiSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(aiSection.compareDocumentPosition(aiLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(aiSection.compareDocumentPosition(notebookLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(developmentSection.compareDocumentPosition(aiLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(developmentSection.compareDocumentPosition(notebookLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(aiSection.compareDocumentPosition(openwebuiLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(developmentSection.compareDocumentPosition(viewerLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(etcSection.compareDocumentPosition(ladderLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -171,7 +198,7 @@ test('operator dashboard groups cards into ordered Newsletter/Document/AI/Develo
 
 test('operator dashboard shows the unified office-tools hub card in Development', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const hubLink = within(main).getByRole('link', { name: /Office Studio/ });
@@ -181,34 +208,35 @@ test('operator dashboard shows the unified office-tools hub card in Development'
 
 test('non-admin dashboard hides the admin-only office-tools hub card', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.queryByRole('link', { name: /Office Studio/ })).not.toBeInTheDocument();
 });
 
 test('operator dashboard links the Leantime card to the internal co-deploy landing page', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const leantimeLink = within(main).getByRole('link', { name: /Leantime/i });
 
-  // 외부 데드링크(:8081) 대신 내부 안내 페이지로 이동한다(설치 안 돼도 빈 화면이 안 나오게).
+  // 구동 중이면 새 탭에서 곧바로 Leantime 으로 이동하도록 /leantime 을 새 탭으로 연다
+  // (미구동이면 그 탭에 설치·기동 안내가 남아 AeroOne 대시보드는 원래 탭에 유지된다).
   expect(leantimeLink).toHaveAttribute('href', '/leantime');
-  expect(leantimeLink).not.toHaveAttribute('target', '_blank');
+  expect(leantimeLink).toHaveAttribute('target', '_blank');
   expect(within(leantimeLink).getByTestId('service-card-description')).toHaveTextContent(/프로젝트/);
 });
 
 test('non-admin dashboard hides the admin-only Leantime card', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.queryByRole('link', { name: /Leantime/i })).not.toBeInTheDocument();
 });
 
 test('adds an active NSA card linking to /nsa', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const nsaLink = within(main).getByRole('link', { name: /NSA/i });
@@ -220,7 +248,7 @@ test('adds an active NSA card linking to /nsa', async () => {
 
 test('operator dashboard shows an active Ladder card linking to /games/ladder', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const ladderLink = within(main).getByRole('link', { name: /Ladder/i });
@@ -231,7 +259,7 @@ test('operator dashboard shows an active Ladder card linking to /games/ladder', 
 });
 
 test('adds an active Document card linking to the documents page', async () => {
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const documentLink = within(main).getByRole('link', { name: /Browse HTML documents organized in folders/i });
@@ -243,7 +271,7 @@ test('adds an active Document card linking to the documents page', async () => {
 
 test('operator dashboard shows an active Viewer card linking to /viewer', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const viewerLink = within(main).getByRole('link', { name: /Viewer/i });
@@ -255,7 +283,7 @@ test('operator dashboard shows an active Viewer card linking to /viewer', async 
 
 test('operator dashboard shows an active AeroAI card linking to /ai', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
   const aiLink = within(main).getByRole('link', { name: /AeroAI/i });
@@ -267,10 +295,10 @@ test('operator dashboard shows an active AeroAI card linking to /ai', async () =
 
 test('operator dashboard shows an external Notebook card opening the co-deploy app on port 8502', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
-  const notebookLink = within(main).getByRole('link', { name: /Notebook/i });
+  const notebookLink = await within(main).findByRole('link', { name: /Notebook/i });
 
   expect(notebookLink).toHaveAttribute('target', '_blank');
   expect(notebookLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
@@ -281,43 +309,43 @@ test('operator dashboard shows an external Notebook card opening the co-deploy a
 
 test('operator dashboard shows an external OpenWebUI card opening the co-deploy app on port 8080, coexisting with Notebook', async () => {
   isAdminMock.mockReturnValue(true);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   const main = screen.getByRole('main');
-  const notebookLink = within(main).getByRole('link', { name: /Notebook/i });
-  const openwebuiLink = within(main).getByRole('link', { name: /OpenWebUI/i });
+  const notebookLink = await within(main).findByRole('link', { name: /Notebook/i });
+  const openwebuiLink = document.querySelector('main a[href*=":8080"]') as HTMLElement;
 
   expect(openwebuiLink).toHaveAttribute('target', '_blank');
   expect(openwebuiLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
   expect(openwebuiLink.getAttribute('href')).toMatch(/^http:\/\/[^/]+:8080$/);
   expect(openwebuiLink).toHaveTextContent('Active');
-  expect(within(openwebuiLink).getByTestId('service-card-description')).toHaveTextContent(/Ollama 호환 챗 UI/);
+  expect(openwebuiLink).toHaveTextContent('AI');
   // Notebook (8502) and OpenWebUI (8080) are independent reserved launchers that coexist.
   expect(notebookLink.getAttribute('href')).not.toBe(openwebuiLink.getAttribute('href'));
 });
 
 test('non-admin dashboard (active session, no dashboard.openwebui.launch grant) hides the OpenWebUI card', async () => {
   isAdminMock.mockReturnValue(false);
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
-  expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
+  expect(document.querySelector('a[href*=":8080"]')).toBeNull();
 });
 
 test('degraded fallback hides the OpenWebUI card for non-admins even though it is visibility: public', async () => {
   fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
   isAdminMock.mockReturnValue(false);
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   // required_permission is unverifiable in degraded mode, so the conservative fallback filter
   // must drop it for non-admins even though visibility is 'public'.
-  expect(screen.queryByRole('link', { name: /OpenWebUI/i })).not.toBeInTheDocument();
+  expect(document.querySelector('a[href*=":8080"]')).toBeNull();
 });
 
 test('home page uses dark theme from cookie', async () => {
   cookieThemeMock.mockReturnValue('dark');
 
-  render(await HomePage({ searchParams: Promise.resolve({}) }));
+  await renderHome();
 
   expect(screen.getByRole('link', { name: '라이트 테마로 전환' })).toBeInTheDocument();
 });

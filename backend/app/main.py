@@ -33,6 +33,7 @@ from app.modules.office_tools.api.router import router as office_tools_router
 from app.modules.leantime.api import router as leantime_router
 from app.modules.leantime.admin_api import router as leantime_admin_router
 from app.modules.leantime.read_api import router as leantime_read_router
+from app.modules.launchers.api import router as launchers_router
 from app.modules.office_tools.core.job_store import OfficeJobStore
 from app.modules.office_tools.upload_limits import (
     CHART_MULTIPART_LIMITS,
@@ -158,6 +159,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(leantime_admin_router, prefix='/api/v1/admin')
     # Leantime 읽기 어댑터 — 프로젝트·작업·일정 요약을 서버 JSON-RPC 프록시로 제공(leantime.read).
     app.include_router(leantime_read_router, prefix='/api/v1/leantime')
+    # 외부 앱 런처(Open Notebook/OpenWebUI) 헬스 배지 — loopback 전용 TCP+HTTP 프로브.
+    app.include_router(launchers_router, prefix='/api/v1/launchers')
     return app
 
 

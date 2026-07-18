@@ -20,10 +20,18 @@ from app.modules.auth.activity_schemas import ActivityResponse
 from app.modules.auth.activity_service import build_activity_payload
 from app.modules.auth.dependencies import get_current_user, get_db, get_optional_user, get_settings, require_csrf
 from app.modules.auth.schemas import AuthResponse, LoginRequest, PasswordChangeRequest, UserResponse
-from app.modules.auth.services import AuthError, AuthService, set_user_password
+from app.modules.auth.services import AuthError, AuthService, requires_password_change, set_user_password
 from app.modules.auth.session_hash import hash_session_token
 
 router = APIRouter()
+
+
+def _user_response(user) -> UserResponse:
+    # 초기 비밀번호 미변경(강제 변경) 상태를 프런트가 감지해 전용 변경 화면으로 안내할 수 있도록
+    # UserResponse 에 requires_password_change 플래그를 실어 login/me/change-password 응답에 노출한다.
+    data = UserResponse.model_validate(user)
+    data.requires_password_change = requires_password_change(user)
+    return data
 
 
 @router.post('/login', response_model=AuthResponse)
@@ -40,7 +48,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     _set_session_cookies(response, settings, token, csrf_token)
-    return AuthResponse(user=UserResponse.model_validate(user), csrf_token=csrf_token)
+    return AuthResponse(user=_user_response(user), csrf_token=csrf_token)
 
 
 @router.post('/logout')
@@ -78,7 +86,7 @@ def logout(
 
 @router.get('/me', response_model=UserResponse)
 def me(current_user=Depends(get_current_user)) -> UserResponse:
-    return UserResponse.model_validate(current_user)
+    return _user_response(current_user)
 
 
 @router.get('/activity', response_model=ActivityResponse)
@@ -171,4 +179,4 @@ def change_password(
     )
     _set_session_cookies(response, settings, token, csrf_token)
     record_admin_audit(db, actor=current_user, action='account.password_change', target_type='user', target_id=current_user.id, request=request, metadata={'self': True})
-    return AuthResponse(user=UserResponse.model_validate(current_user), csrf_token=csrf_token)
+    return AuthResponse(user=_user_response(current_user), csrf_token=csrf_token)

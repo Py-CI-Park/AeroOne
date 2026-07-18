@@ -438,8 +438,18 @@ class AiProviderCompatibleWriteRequest(BaseModel):
     display_url: str = Field(min_length=1, max_length=500)
     model: str = Field(min_length=1, max_length=160)
     generation: str = Field(min_length=1, max_length=60)
-    api_key: str = Field(min_length=1, repr=False)
+    # repr 배제는 Field(repr=False) 대신 __repr_args__ 재정의로 보장한다 — FastAPI 가
+    # body 필드마다 TypeAdapter(Annotated[type, field_info]) 를 만들 때 repr 이 비지원
+    # 문맥이 되어 pydantic 2.12 UnsupportedFieldAttributeWarning 이 났다.
+    api_key: str = Field(min_length=1)
     expected_config_version: int
+
+    def __repr_args__(self):  # noqa: ANN204 - pydantic 시그니처 준수
+        # api_key 는 어떤 repr/str 출력에도 노출하지 않는다(우발 로깅 방지).
+        # [주의] 이 배제는 repr/str 한정이다 — api_key 자체가 422 검증 실패하면 FastAPI
+        # 기본 RequestValidationError 가 제출값을 input 으로 클라이언트에 되돌린다(제출한
+        # 관리자 본인에게만). 검증 오류 로깅 핸들러를 도입한다면 이 라우트의 input 마스킹 필수.
+        return [(key, value) for key, value in super().__repr_args__() if key != 'api_key']
 
 
 class AiProviderCompatibleTestRequest(BaseModel):

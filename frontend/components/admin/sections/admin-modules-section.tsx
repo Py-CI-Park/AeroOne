@@ -4,6 +4,9 @@ import { useMemo, useState } from 'react';
 
 import { Badge, moduleToDraft, useAdminConsoleData } from '../admin-console-tabs';
 import { compareNumber, compareText, ListFilter, ListState, matchesListQuery, normalizeListQuery, stableSort } from '../widgets/list-filter';
+import { updateServiceModule } from '@/lib/api';
+import { getCsrfCookie } from '@/lib/cookies';
+import type { ServiceModule } from '@/lib/types';
 
 const MODULE_SECTIONS = ['Newsletter', 'Document', 'Development'] as const;
 const MODULE_STATUSES = ['active', 'development', 'coming_soon', 'hidden'] as const;
@@ -100,6 +103,112 @@ function VisibilitySelect({ value, onChange, label }: { value: string; onChange:
   );
 }
 
+// 드래그로 카드 순서를 바꾸는 패널. 섹션별로 묶어 같은 섹션 안에서만 재배치하며,
+// 재배치 시 그 섹션이 원래 쓰던 sort_order 값 집합을 새 순서대로 재배정한다(다른 섹션
+// 값과 충돌하지 않고 변경분만 persist). 저장은 기존 updateServiceModule + refresh 로 한다.
+function ModuleReorderPanel() {
+  const { state, refresh } = useAdminConsoleData();
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const grouped = useMemo(() => {
+    const bySection = new Map<string, ServiceModule[]>();
+    [...state.modules]
+      .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+      .forEach((module) => {
+        const list = bySection.get(module.section) ?? [];
+        list.push(module);
+        bySection.set(module.section, list);
+      });
+    return Array.from(bySection.entries());
+  }, [state.modules]);
+
+  async function handleDrop(section: string, targetKey: string) {
+    const dragged = dragKey;
+    setDragKey(null);
+    setOverKey(null);
+    if (!dragged || dragged === targetKey) return;
+    const list = grouped.find(([s]) => s === section)?.[1] ?? [];
+    const fromIdx = list.findIndex((m) => m.key === dragged);
+    const toIdx = list.findIndex((m) => m.key === targetKey);
+    if (fromIdx < 0 || toIdx < 0) return; // 같은 섹션 안에서만 재배치
+    const reordered = [...list];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const values = list.map((m) => m.sort_order).sort((a, b) => a - b);
+    const changes = reordered
+      .map((module, index) => ({ module, sort_order: values[index] }))
+      .filter((entry) => entry.sort_order !== entry.module.sort_order);
+    if (!changes.length) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      const csrf = getCsrfCookie();
+      for (const change of changes) {
+        await updateServiceModule(change.module.id, { sort_order: change.sort_order }, csrf);
+      }
+      await refresh(['modules', 'overview']);
+      setMessage('카드 순서를 저장했습니다.');
+    } catch {
+      setMessage('순서 저장에 실패했습니다. 잠시 후 다시 시도하세요.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="module-reorder">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">카드 순서 변경 (드래그)</h2>
+        <Badge tone="green">drag &amp; drop</Badge>
+      </div>
+      <p className="mb-3 text-xs text-slate-500">
+        섹션 안에서 카드를 끌어다 놓아 순서를 바꿉니다. 놓는 즉시 저장되며 대시보드에 반영됩니다.
+      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {grouped.map(([section, modules]) => (
+          <div key={section} className="rounded-lg border border-slate-100 p-2">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{section}</p>
+            <ul className="space-y-1">
+              {modules.map((module) => (
+                <li
+                  key={module.key}
+                  draggable={!busy}
+                  aria-grabbed={dragKey === module.key}
+                  onDragStart={() => setDragKey(module.key)}
+                  onDragEnd={() => {
+                    setDragKey(null);
+                    setOverKey(null);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (overKey !== module.key) setOverKey(module.key);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    void handleDrop(section, module.key);
+                  }}
+                  className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1.5 text-sm transition-colors ${
+                    overKey === module.key ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-slate-50'
+                  } ${dragKey === module.key ? 'opacity-50' : ''}`}
+                >
+                  <span aria-hidden className="select-none text-slate-400">⠿</span>
+                  <span className="flex-1 truncate font-medium text-slate-700">{module.title}</span>
+                  <span className="font-mono text-[11px] text-slate-400">{module.sort_order}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      {message ? <p className="mt-3 text-xs text-slate-600" role="status">{message}</p> : null}
+      {busy ? <p className="mt-1 text-xs text-slate-400">저장 중…</p> : null}
+    </section>
+  );
+}
+
 export function AdminModulesSection() {
   const { state, moduleDrafts, setModuleDrafts, moduleForm, setModuleForm, saveModule, toggleModule, removeModule, createModule } = useAdminConsoleData();
   const [validationErrors, setValidationErrors] = useState<Partial<Record<ValidationTarget, string[]>>>({});
@@ -142,7 +251,9 @@ export function AdminModulesSection() {
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <>
+      <ModuleReorderPanel />
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">대시보드 모듈 DB 관리</h2><Badge tone="green">CRUD / reorder / status</Badge></div>
       <ListFilter
         id="admin-modules"
@@ -202,5 +313,6 @@ export function AdminModulesSection() {
         <button type="button" disabled={state.busy === 'module-create'} onClick={() => void validateAndCreate()} className="mt-2 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">모듈 추가</button>
       </div>
     </section>
+    </>
   );
 }

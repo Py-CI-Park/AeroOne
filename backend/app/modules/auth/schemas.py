@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     role: str
     email: str | None = None
     is_active: bool
+    requires_password_change: bool = False
 
 
 class AuthResponse(BaseModel):

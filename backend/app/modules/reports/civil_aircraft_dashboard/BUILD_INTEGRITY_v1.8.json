@@ -1,0 +1,65 @@
+{
+  "version": "1.8",
+  "releaseDate": "2026-07-17",
+  "rootFolder": "Civil_Aircraft_Encyclopedia_Dashboard_v1.8",
+  "distributionModel": "Single Full Package; local PDFs integrated with canonical source records; no duplicate PDF-only ZIP.",
+  "counts": {
+    "aircraft": 65,
+    "canonicalSources": 55,
+    "localPdfAttachments": 25,
+    "localPdfFiles": 25,
+    "standaloneHtml": 4
+  },
+  "sourceArchitecture": {
+    "canonicalRegistry": "sources/Civil_Aircraft_Source_Registry_v1.8.json",
+    "sourceManifest": "sources/Civil_Aircraft_Source_Manifest_v1.8.csv",
+    "pdfIntegrityTable": "sources/Civil_Aircraft_PDF_Integrity_v1.8.csv",
+    "localAttachmentField": "localAttachments[]",
+    "duplicatePdfCardRegistry": false,
+    "unassignedPdfAttachments": 0,
+    "separatePdfOnlyZip": false
+  },
+  "pdfIntegrity": {
+    "sha256Matches": 25,
+    "byteSizeMatches": 25,
+    "pdfHeaderMatches": 25,
+    "validatedDate": "2026-07-14"
+  },
+  "qa": {
+    "static": {
+      "total": 64,
+      "passed": 64,
+      "failed": 0
+    },
+    "runtime": {
+      "total": 41,
+      "passed": 41,
+      "failed": 0
+    },
+    "visual": {
+      "total": 12,
+      "passed": 12,
+      "failed": 0
+    }
+  },
+  "retainedPolicies": [
+    "fieldEvidence",
+    "comparisonBasis",
+    "no unpublished fallback values",
+    "wide catalog",
+    "line-first radar",
+    "same-scale SVG",
+    "position-map label modes"
+  ],
+  "repoSubsetManifest": {
+    "note": "저장소에는 대용량 공식 PDF(sources/pdfs), standalone/, qa/ 스냅샷을 제외한 실행 번들 subset 만 포함한다(v1.7과 동일 정책). SHA256SUMS_v1.8.txt 는 저장소에 실재하는 파일만 나열한다.",
+    "files": 37
+  },
+  "v18Changes": [
+    "interactive same-scale silhouettes: hover dimension tooltip + highlight, click encyclopedia deeplink",
+    "compare overlay/panel PNG and SVG export (canvas serialization)",
+    "manufacturer/generation silhouette presets (family parameter overrides; not a controlled drawing; 65 spec values unchanged)",
+    "side-view wing sweep projection",
+    "lazy data split: portal loads meta only; full data on encyclopedia/comparison entry"
+  ]
+}

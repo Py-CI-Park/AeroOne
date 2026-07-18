@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import json
 import ssl
+from collections.abc import Generator
 from typing import Any
 from urllib import error, request
+
 
 from app.core.config import Settings
 
@@ -109,3 +111,53 @@ class OpenAiCompatibleClient:
         if not isinstance(content, str) or not content.strip():
             raise LlmConnectionError('LLM response content is empty')
         return content.strip()
+
+    def chat_stream(self, messages: list[dict[str, str]], temperature: float = 0.2, max_tokens: int = 1200) -> Generator[str, None, None]:
+        """``POST {base}/chat/completions`` 를 ``stream=true`` 로 호출해 SSE ``data:`` 라인을
+        파싱하며 ``choices[0].delta.content`` 청크를 생성한다. 추론 필드는 노출하지 않는다.
+        ``chat()`` 은 이 메서드의 영향을 받지 않는다(완전히 별도 경로).
+
+        경고: 이 메서드를 프로덕션 요청 경로에서 직접 호출하지 마라 — SSRF 핀닝/egress 정책이
+        적용되는 ``app.modules.ai.egress_transport.chat_completion`` 을 반드시 경유해야 한다.
+        ``egress_transport`` 는 스트리밍을 지원하지 않으므로(설계상 변경 대상 아님), 현재
+        compatible 스트리밍 경로(``AiChatService._compatible_chat_stream``)는 완결된
+        ``chat_completion`` 응답을 단일 델타로 감싸 계약을 만족시키며 이 메서드는 쓰지 않는다.
+        """
+
+        if not self.model:
+            raise LlmConfigError('model is not configured for this connection')
+        payload: dict[str, Any] = {
+            'model': self.model,
+            'messages': messages,
+            'temperature': temperature,
+            'max_tokens': max_tokens,
+            'stream': True,
+        }
+        data = json.dumps(payload).encode('utf-8')
+        req = request.Request(self._endpoint('/chat/completions'), data=data, method='POST', headers=self._headers())
+        try:
+            with request.urlopen(req, timeout=self.settings.ollama_read_timeout_seconds, context=self._ssl_context()) as response:
+                for raw_line in response:
+                    line = raw_line.decode('utf-8').strip()
+                    if not line or not line.startswith('data:'):
+                        continue
+                    data_str = line[len('data:'):].strip()
+                    if data_str == '[DONE]':
+                        break
+                    try:
+                        frame = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = frame.get('choices') if isinstance(frame, dict) else None
+                    if not choices:
+                        continue
+                    delta = choices[0].get('delta') if isinstance(choices[0], dict) else None
+                    content = delta.get('content') if isinstance(delta, dict) else None
+                    if isinstance(content, str) and content:
+                        yield content
+        except error.HTTPError as exc:
+            raise LlmConnectionError(f'LLM HTTP error {exc.code} (base_url={self.base_url})') from exc
+        except LlmConnectionError:
+            raise
+        except Exception as exc:
+            raise LlmConnectionError(f'{exc} (reason=request_failed, base_url={self.base_url})') from exc

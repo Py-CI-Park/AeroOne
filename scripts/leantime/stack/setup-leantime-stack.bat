@@ -1,6 +1,8 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions DisableDelayedExpansion
 chcp 65001 >nul
+REM Delayed expansion stays OFF: passwords/values may contain '!' and cmd would
+REM silently strip it (documented default admin password ends with '!').
 REM ==========================================================================
 REM AeroOne Leantime co-deploy stack — first-time SETUP (portable PHP+MariaDB).
 REM Ships INSIDE the separate Leantime stack import (AeroOne-Leantime-Stack-*.zip),
@@ -15,13 +17,32 @@ REM   5) run Leantime db:migrate non-interactively (schema + first admin)
 REM Run start-leantime-stack.bat afterwards for day-to-day boot.
 REM ==========================================================================
 
+REM 더블클릭(탐색기) 실행 감지 — 오류/완료 시 창이 즉시 닫히지 않게 pause 한다.
+REM 자동화에서 pause 를 막으려면 AEROONE_LT_NO_PAUSE=1 을 설정한다.
+set "AEROONE_LT_INTERACTIVE="
+echo "%cmdcmdline%" | find /i "%~nx0" >nul && set "AEROONE_LT_INTERACTIVE=1"
+if defined AEROONE_LT_NO_PAUSE set "AEROONE_LT_INTERACTIVE="
+
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 if not defined LEANTIME_DB_PORT set "LEANTIME_DB_PORT=3307"
 if not defined LEANTIME_PORT set "LEANTIME_PORT=8081"
-if not defined LEANTIME_DB_PASSWORD set "LEANTIME_DB_PASSWORD=lean_local_pw"
+REM 초기 env: 자격증명은 이 스택 폴더의 leantime.env 에서 로드하고(재실행 멱등), env/파일에
+REM 없으면 설치마다 강random 으로 생성한다. 하드코딩 공용 비밀번호를 쓰지 않는다.
+REM 우선순위: 이미 설정된 프로세스 env(AeroOne 초기 env·운영자 오버라이드) > leantime.env > 신규 생성.
+set "LEANTIME_ENV_FILE=%ROOT%\leantime.env"
+if exist "%LEANTIME_ENV_FILE%" for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%LEANTIME_ENV_FILE%") do if not defined %%A set "%%A=%%B"
 if not defined LEANTIME_ADMIN_EMAIL set "LEANTIME_ADMIN_EMAIL=admin@aeroone.local"
-if not defined LEANTIME_ADMIN_PASSWORD set "LEANTIME_ADMIN_PASSWORD=AeroOneLean2026!"
+if not defined LEANTIME_DB_PASSWORD for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$b=[byte[]]::new(18);$r=[Security.Cryptography.RandomNumberGenerator]::Create();try{$r.GetBytes($b)}finally{$r.Dispose()};[BitConverter]::ToString($b).Replace('-','').ToLowerInvariant()"') do set "LEANTIME_DB_PASSWORD=%%S"
+if not defined LEANTIME_ADMIN_PASSWORD for /f "delims=" %%S in ('powershell -NoLogo -NoProfile -Command "$b=[byte[]]::new(18);$r=[Security.Cryptography.RandomNumberGenerator]::Create();try{$r.GetBytes($b)}finally{$r.Dispose()};[BitConverter]::ToString($b).Replace('-','').ToLowerInvariant()"') do set "LEANTIME_ADMIN_PASSWORD=%%SAa1!"
+REM 확정된 자격증명을 초기 env 파일로 영속화한다(start-leantime-stack.bat 이 같은 값을 읽는다).
+REM 이 파일은 반출·공유·커밋 금지. 재생성하려면 파일을 지우고 setup 을 다시 실행한다.
+> "%LEANTIME_ENV_FILE%" echo # AeroOne Leantime stack initial env - do NOT share/commit. Delete this file and re-run setup to regenerate.
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_ADMIN_EMAIL=%LEANTIME_ADMIN_EMAIL%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_ADMIN_PASSWORD=%LEANTIME_ADMIN_PASSWORD%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_DB_PASSWORD=%LEANTIME_DB_PASSWORD%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_PORT=%LEANTIME_PORT%
+>>"%LEANTIME_ENV_FILE%" echo LEANTIME_DB_PORT=%LEANTIME_DB_PORT%
 
 set "PHP=%ROOT%\php\php.exe"
 set "PHPINI=%ROOT%\php\php.ini"
@@ -32,7 +53,7 @@ for %%P in ("%PHP%" "%MARIADB%\mariadbd.exe" "%ROOT%\leantime\bin\leantime") do 
   if not exist "%%~P" (
     echo [LEANTIME][ERROR] missing stack component: %%~P
     echo [LEANTIME][ERROR] the stack was not assembled correctly. Re-import AeroOne-Leantime-Stack-*.zip.
-    exit /b 1
+    goto :fail
   )
 )
 
@@ -51,13 +72,13 @@ for %%E in (curl exif fileinfo gd gettext intl ldap mbstring mysqli openssl pdo_
 
 if not exist "%DATA%\mysql" (
   echo [LEANTIME][INFO ] initializing MariaDB data dir ...
-  "%MARIADB%\mariadb-install-db.exe" --datadir="%DATA%" >nul 2>&1
+  "%MARIADB%\mariadb-install-db.exe" --datadir="%DATA%" > "%ROOT%\setup-mariadb-install.log" 2>&1
   if errorlevel 1 (
-    echo [LEANTIME][ERROR] MariaDB data dir init failed.
-    exit /b 1
+    echo [LEANTIME][ERROR] MariaDB data dir init failed. See "%ROOT%\setup-mariadb-install.log".
+    goto :fail
   )
 ) else (
-  echo [LEANTIME][INFO ] MariaDB data dir already initialized (skip).
+  echo [LEANTIME][INFO ] MariaDB data dir already initialized ^(skip^).
 )
 
 echo [LEANTIME][INFO ] starting MariaDB on 127.0.0.1:%LEANTIME_DB_PORT% ...
@@ -65,7 +86,7 @@ start "aeroone-leantime-mariadbd" "%MARIADB%\mariadbd.exe" --datadir="%DATA%" --
 call :wait_tcp %LEANTIME_DB_PORT% 30
 if errorlevel 1 (
   echo [LEANTIME][ERROR] MariaDB did not start within 30s.
-  exit /b 1
+  goto :fail
 )
 
 echo [LEANTIME][INFO ] creating database + scoped user ...
@@ -76,7 +97,12 @@ set "SQLTMP=%TEMP%\aeroone_leantime_init_%RANDOM%.sql"
 >>"%SQLTMP%" echo GRANT ALL PRIVILEGES ON leantime.* TO 'leantime'@'127.0.0.1';
 >>"%SQLTMP%" echo GRANT ALL PRIVILEGES ON leantime.* TO 'leantime'@'localhost';
 >>"%SQLTMP%" echo FLUSH PRIVILEGES;
-"%MARIADB%\mariadb.exe" -u root --host=127.0.0.1 --port=%LEANTIME_DB_PORT% < "%SQLTMP%" >nul 2>&1
+"%MARIADB%\mariadb.exe" -u root --host=127.0.0.1 --port=%LEANTIME_DB_PORT% < "%SQLTMP%"
+if errorlevel 1 (
+  echo [LEANTIME][ERROR] database/user creation failed ^(see mariadb output above^).
+  del /q "%SQLTMP%" >nul 2>&1
+  goto :fail
+)
 del /q "%SQLTMP%" >nul 2>&1
 
 echo [LEANTIME][INFO ] installing Leantime schema + first admin (non-interactive) ...
@@ -89,7 +115,7 @@ set "LEAN_USE_REDIS=false"
 set "LEAN_NEWS_ENABLED=false"
 set "LEAN_APP_URL=http://localhost:%LEANTIME_PORT%"
 pushd "%ROOT%\leantime"
-"%PHP%" -c "%PHPINI%" bin\leantime db:migrate -n --email=%LEANTIME_ADMIN_EMAIL% --password=%LEANTIME_ADMIN_PASSWORD% --company-name=AeroOne --first-name=Admin --last-name=User
+"%PHP%" -c "%PHPINI%" bin\leantime db:migrate -n --email="%LEANTIME_ADMIN_EMAIL%" --password="%LEANTIME_ADMIN_PASSWORD%" --company-name=AeroOne --first-name=Admin --last-name=User
 set "LT_INSTALL_EXIT=%errorlevel%"
 popd
 if not "%LT_INSTALL_EXIT%"=="0" (
@@ -97,8 +123,15 @@ if not "%LT_INSTALL_EXIT%"=="0" (
 )
 
 echo [LEANTIME][READY] setup complete. Admin: %LEANTIME_ADMIN_EMAIL%
+echo [LEANTIME][INFO ] admin/DB credentials saved to leantime.env (this stack folder). Keep it private; do not share/commit.
 echo [LEANTIME][INFO ] next: start-leantime-stack.bat  (serves http://localhost:%LEANTIME_PORT%)
+if defined AEROONE_LT_INTERACTIVE pause
 exit /b 0
+
+:fail
+echo [LEANTIME][ERROR] setup did not complete. Review the messages above.
+if defined AEROONE_LT_INTERACTIVE pause
+exit /b 1
 
 :wait_tcp
 REM %1 port, %2 timeout seconds

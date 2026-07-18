@@ -59,9 +59,18 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 18437
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
+
+> **의존성 복원은 항상 `npm ci`** (lockfile 고정) 를 사용합니다. `npm install` 은 lockfile 을
+> 조용히 갱신하거나 신규 의존성 추가 후 미설치 상태를 남길 수 있어, `tsc --noEmit` /
+> `next build` 게이트가 이 PC 에서만 깨지는 드리프트(예: 1.16.3 전수 검사에서 실측된
+> echarts/mermaid 미설치)를 만듭니다. `package.json` 의존성이 바뀌었거나 `tsc` 가
+> `Cannot find module` 로 실패하면 먼저 `npm ci` 로 node_modules 를 lockfile 과 정합화한
+> 뒤 게이트를 다시 실행하세요. `npm install` 은 의존성을 *의도적으로 추가/갱신*할 때만
+> 사용하고, 그 커밋에 package-lock.json 을 반드시 포함합니다. `package-lock.json` 이 없으면
+> `npm ci` 는 즉시 실패합니다(fail-closed) — lockfile 을 복구한 뒤 다시 실행하세요.
 
 ## 4. Docker Compose 실행
 
@@ -83,14 +92,14 @@ docker compose up --build
 
 - `backend/.venv`
 - `frontend/node_modules`
-- `backend/data/aeroone.db`
+- `_database/db/aeroone.db`
 - `_database/newsletter`
 
 이 상태에서 worktree에서 바로 `start.bat` 또는 backend/frontend를 실행하면 다음과 같은 문제가 생길 수 있습니다.
 
 - 백엔드 가상환경을 찾지 못해 backend startup 실패
 - 프런트 의존성을 찾지 못해 frontend startup 실패
-- `backend/data/aeroone.db`가 비어 새로 생성되어 `no such table: newsletters` 발생
+- `_database/db/aeroone.db`가 비어 새로 생성되어 `no such table: newsletters` 발생
 - `_database/newsletter`가 비어 있어 `/api/v1/newsletters/{id}/content/html` 또는 PDF download가 `500` 발생
 
 ### 권장 방법

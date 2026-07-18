@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 import OfficeReportPage from '@/app/office-tools/report/page';
 import OfficeChartPage from '@/app/office-tools/chart/page';
@@ -45,6 +45,8 @@ afterEach(() => {
 
 test('report page renders AppShell title and the report form', async () => {
   render(await OfficeReportPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
   expect(screen.getAllByText('보고서 스튜디오').length).toBeGreaterThan(0);
   // 보고서 도구는 구현 완료 — 플레이스홀더가 아니라 폼이 렌더된다.
   expect(screen.getByTestId('report-form-stub')).toBeInTheDocument();
@@ -52,6 +54,8 @@ test('report page renders AppShell title and the report form', async () => {
 
 test('chart page renders AppShell title and the chart form', async () => {
   render(await OfficeChartPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
   expect(screen.getAllByText('차트 스튜디오').length).toBeGreaterThan(0);
   // 차트 도구는 구현 완료 — 플레이스홀더가 아니라 폼이 렌더된다.
   expect(screen.getByTestId('chart-form-stub')).toBeInTheDocument();
@@ -59,6 +63,8 @@ test('chart page renders AppShell title and the chart form', async () => {
 
 test('diagram page renders AppShell title and the diagram form', async () => {
   render(await OfficeDiagramPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
   expect(screen.getAllByText('다이어그램 스튜디오').length).toBeGreaterThan(0);
   // 다이어그램 도구는 구현 완료 — 플레이스홀더가 아니라 폼이 렌더된다.
   expect(screen.getByTestId('diagram-form-stub')).toBeInTheDocument();

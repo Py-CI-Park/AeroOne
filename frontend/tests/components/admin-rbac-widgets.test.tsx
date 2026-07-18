@@ -128,7 +128,7 @@ test('permission checkbox grid round-trips selected permission keys without addi
 });
 
 test('permission grid selects and serializes user and group permissions without CSV textareas', async () => {
-  await openTab('사용자');
+  await openTab('계정');
 
   expect(await screen.findByText('사용자/RBAC')).toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: 'operator permissions' })).not.toBeInTheDocument();
@@ -140,7 +140,7 @@ test('permission grid selects and serializes user and group permissions without 
   await waitFor(() => expect(api.updateAdminUser).toHaveBeenCalled());
   expect(vi.mocked(api.updateAdminUser).mock.calls[0][1]).toMatchObject({ permissions: ['admin.read', 'admin.write'] });
 
-  fireEvent.click(screen.getByRole('tab', { name: 'RBAC' }));
+  fireEvent.click(screen.getByRole('tab', { name: '계정' }));
   expect(await screen.findByText('그룹/RBAC 권한')).toBeInTheDocument();
   expect(screen.queryByPlaceholderText('permission keys, comma-separated')).not.toBeInTheDocument();
   fireEvent.click(screen.getByLabelText('group permissions ai.use'));
@@ -153,7 +153,7 @@ test('permission grid selects and serializes user and group permissions without 
 });
 
 test('resource grant form never offers global or non-resource keys and blocks tampered permission keys', async () => {
-  await openTab('RBAC');
+  await openTab('계정');
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
 
   const permissionSelect = screen.getByLabelText('grant permission key');
@@ -176,7 +176,7 @@ test('resource grant form never offers global or non-resource keys and blocks ta
 });
 
 test('NSA preset grants only the scoped NSA collection permission and does not select global permission checkboxes', async () => {
-  await openTab('RBAC');
+  await openTab('계정');
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'NSA 열람권 부여' }));
@@ -200,7 +200,7 @@ test('NSA preset grants only the scoped NSA collection permission and does not s
 });
 
 test('resource grant form blocks empty and path-like resource ids inline', async () => {
-  await openTab('RBAC');
+  await openTab('계정');
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
 
   fireEvent.change(screen.getByLabelText('grant subject'), { target: { value: '1' } });
@@ -225,6 +225,7 @@ test('resource grant form blocks empty and path-like resource ids inline', async
 test('module status and visibility selects expose only defined values and invalid create is blocked inline', async () => {
   render(<AdminConsoleTabs />);
 
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
   const statusValues = within(screen.getByLabelText('new module status')).getAllByRole('option').map((option) => (option as HTMLOptionElement).value);
   const visibilityValues = within(screen.getByLabelText('new module visibility')).getAllByRole('option').map((option) => (option as HTMLOptionElement).value);
@@ -242,7 +243,7 @@ test('module status and visibility selects expose only defined values and invali
 });
 
 test('user/group picker shows names and emits numeric ids', async () => {
-  await openTab('RBAC');
+  await openTab('계정');
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
 
   const userSelect = screen.getByLabelText('membership user');

@@ -2,6 +2,8 @@
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# pytest-asyncio 미래 기본값 변경 경고 제거 — 비동기 픽스처 루프 스코프를 명시 고정.
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 100

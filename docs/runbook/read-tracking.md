@@ -53,7 +53,7 @@
   DELETE FROM newsletter_read_events;                    -- 전체
   DELETE FROM newsletter_read_events WHERE newsletter_id = ?;  -- 특정 글
   ```
-- **백업**: 읽음 기록은 `backend/data/aeroone.db` 안에 있으므로 기존 DB 백업 대상에 자동 포함된다(별도 파일 없음).
+- **백업**: 읽음 기록은 `_database/db/aeroone.db` 안에 있으므로 기존 DB 백업 대상에 자동 포함된다(별도 파일 없음).
 
 ## 5. 개인정보(PIPA) 주의
 

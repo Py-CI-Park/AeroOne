@@ -3,10 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
 
+import { mockStreamResolves } from './ai-stream-test-utils';
+
 const mocks = vi.hoisted(() => ({
   fetchAiStatus: vi.fn(),
   fetchCollectionSearch: vi.fn(),
-  sendAiChat: vi.fn(),
+  streamAiChat: vi.fn(),
   listAiConversations: vi.fn(),
   fetchClientSession: vi.fn(),
 }));
@@ -22,7 +24,7 @@ beforeEach(() => {
     enabled: true, base_url: '', model: 'gemma4:12b', reachable: true, model_available: true, status: 'ok', detail: null,
   });
   mocks.fetchCollectionSearch.mockResolvedValue({ results: [], degraded: false, collections: ['document', 'civil'] });
-  mocks.sendAiChat.mockResolvedValue({ model: 'gemma4:12b', message: { role: 'assistant', content: 'ok' }, citations: [] });
+  mockStreamResolves(mocks.streamAiChat, { model: 'gemma4:12b', message: { role: 'assistant', content: 'ok' }, citations: [] });
   mocks.listAiConversations.mockResolvedValue({ conversations: [] });
   // Default: authenticated non-admin with NSA visibility off -> NSA scope stays locked.
   mocks.fetchClientSession.mockResolvedValue({
@@ -47,15 +49,16 @@ afterEach(() => {
 async function send() {
   fireEvent.change(screen.getByTestId('ai-chat-input'), { target: { value: '질문' } });
   fireEvent.click(screen.getByRole('button', { name: '보내기' }));
-  await waitFor(() => expect(mocks.sendAiChat).toHaveBeenCalled());
+  await waitFor(() => expect(mocks.streamAiChat).toHaveBeenCalled());
 }
 
 test('default scope sends document and civil collections', async () => {
   render(<AiChatWorkspace />);
   await send();
-  expect(mocks.sendAiChat).toHaveBeenCalledWith(
+  expect(mocks.streamAiChat).toHaveBeenCalledWith(
     expect.objectContaining({ collections: ['document', 'civil'] }),
-    expect.anything(),
+      expect.anything(),
+      expect.anything(),
   );
 });
 
@@ -65,9 +68,10 @@ test('unchecking civil narrows the chat scope to document only', async () => {
   // Civil is toggled via its label text
   fireEvent.click(screen.getByLabelText('Civil'));
   await send();
-  expect(mocks.sendAiChat).toHaveBeenCalledWith(
+  expect(mocks.streamAiChat).toHaveBeenCalledWith(
     expect.objectContaining({ collections: ['document'] }),
-    expect.anything(),
+      expect.anything(),
+      expect.anything(),
   );
 });
 
@@ -80,9 +84,10 @@ test('scope toggles do not silently fall back after the last active scope is cli
 
   expect(screen.getByLabelText('Document')).toBeChecked();
   await send();
-  expect(mocks.sendAiChat).toHaveBeenCalledWith(
+  expect(mocks.streamAiChat).toHaveBeenCalledWith(
     expect.objectContaining({ collections: ['document'] }),
-    expect.anything(),
+      expect.anything(),
+      expect.anything(),
   );
 });
 
@@ -110,8 +115,9 @@ test('nsa scope is disabled without permission and enabled once the session gran
   await waitFor(() => expect((screen.getByLabelText('NSA') as HTMLInputElement).disabled).toBe(false));
   fireEvent.click(screen.getByLabelText('NSA'));
   await send();
-  expect(mocks.sendAiChat).toHaveBeenCalledWith(
+  expect(mocks.streamAiChat).toHaveBeenCalledWith(
     expect.objectContaining({ collections: ['document', 'civil', 'nsa'] }),
-    expect.anything(),
+      expect.anything(),
+      expect.anything(),
   );
 });

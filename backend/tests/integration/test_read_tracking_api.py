@@ -67,3 +67,37 @@ def test_purge_deletes_with_csrf(csrf_client) -> None:
 
     after = csrf_client.get('/api/v1/admin/read-events')
     assert after.json()['events'] == []
+
+
+def test_recent_reads_mine_empty_before_any_beacon(client) -> None:
+    response = client.get('/api/v1/newsletters/read-events/mine')
+    assert response.status_code == 200
+    assert response.json() == {'items': []}
+    assert response.headers['cache-control'] == 'no-store'
+
+
+def test_recent_reads_mine_lists_after_beacon(client) -> None:
+    latest = client.get('/api/v1/newsletters/latest').json()
+    client.post(f"/api/v1/newsletters/{latest['id']}/read")
+
+    response = client.get('/api/v1/newsletters/read-events/mine?limit=6')
+    assert response.status_code == 200
+    assert response.headers['cache-control'] == 'no-store'
+    body = response.json()
+    assert len(body['items']) == 1
+    assert body['items'][0]['slug'] == latest['slug']
+    assert body['items'][0]['title']
+    assert body['items'][0]['last_seen_at']
+
+
+def test_recent_reads_mine_limit_is_clamped_not_rejected(client) -> None:
+    newsletter_id = _latest_newsletter_id(client)
+    client.post(f'/api/v1/newsletters/{newsletter_id}/read')
+
+    too_low = client.get('/api/v1/newsletters/read-events/mine?limit=0')
+    too_high = client.get('/api/v1/newsletters/read-events/mine?limit=999')
+
+    assert too_low.status_code == 200
+    assert too_high.status_code == 200
+    assert len(too_low.json()['items']) == 1
+    assert len(too_high.json()['items']) == 1

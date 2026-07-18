@@ -28,7 +28,7 @@ _LLM_SYSTEM_PROMPT = (
     '허용 orientation: vertical, horizontal.\n'
     '반드시 실제 columns 목록에 있는 열 이름만 사용한다. 계산 결과나 수치를 추측하지 않는다.\n'
     '스키마: {"type":"bar","title":"...","x":"column or null","y":["column"],"group":null,'
-    '"aggregation":"sum","sort":"none","limit":30,"orientation":"vertical","x_label":null,"y_label":null}.\n'
+    '"aggregation":"sum","sort":"none","limit":30,"orientation":"vertical","stacked":false,"x_label":null,"y_label":null}.\n'
     'raw reasoning 은 반환하지 않는다.'
 )
 

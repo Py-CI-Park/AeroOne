@@ -65,6 +65,7 @@ test('GET returns full derived flags and hints for an authenticated non-admin us
     resources: [
       { resource_type: 'collection', resource_id: 'nsa', permission_key: 'collections.nsa.read' },
     ],
+    requires_password_change: false,
   });
 });
 
@@ -86,6 +87,7 @@ test('GET grants NSA visibility for admins even without an explicit permission o
     can_use_ai: true,
     permissions: [],
     resources: [],
+    requires_password_change: false,
   });
 });
 
@@ -149,6 +151,7 @@ test('GET returns empty hints and default flags for anonymous sessions, keeping 
     can_use_ai: false,
     permissions: [],
     resources: [],
+    requires_password_change: false,
   });
 });
 
@@ -170,6 +173,7 @@ test('GET returns unknown identity, protected flags false, and public Document w
     can_use_ai: false,
     permissions: [],
     resources: [],
+    requires_password_change: false,
   });
   expect(JSON.stringify(body)).not.toContain('ECONNREFUSED');
 });

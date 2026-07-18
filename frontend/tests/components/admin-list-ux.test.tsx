@@ -109,14 +109,14 @@ function grantRowText(text: string) {
 test('admin list UX adversarially preserves filtering, deterministic sorting, states, row actions, and a11y across representative tabs', async () => {
   render(<AdminConsoleTabs />);
 
-  const modulesTab = await screen.findByRole('tab', { name: '모듈' });
-  const usersTab = screen.getByRole('tab', { name: '사용자' });
-  const rbacTab = screen.getByRole('tab', { name: 'RBAC' });
+  const contentTab = await screen.findByRole('tab', { name: '콘텐츠' });
+  const accountsTab = screen.getByRole('tab', { name: '계정' });
 
   expect(screen.getByRole('tablist', { name: '관리자 콘솔 탭' })).toBeInTheDocument();
-  expect(modulesTab).toHaveAttribute('aria-selected', 'true');
-  expect(usersTab).toHaveAttribute('aria-selected', 'false');
-  expect(screen.getByRole('tabpanel', { name: '모듈' })).toBeInTheDocument();
+  fireEvent.click(contentTab);
+  expect(contentTab).toHaveAttribute('aria-selected', 'true');
+  expect(accountsTab).toHaveAttribute('aria-selected', 'false');
+  expect(await screen.findByRole('tabpanel', { name: '콘텐츠' })).toBeInTheDocument();
 
   expectInDocumentOrder([screen.getByText('analytics'), screen.getByText('alpha'), screen.getByText('dashboard')]);
   fireEvent.change(screen.getByLabelText('모듈 정렬'), { target: { value: 'key-desc' } });
@@ -129,50 +129,48 @@ test('admin list UX adversarially preserves filtering, deterministic sorting, st
   fireEvent.change(screen.getByLabelText('모듈 검색'), { target: { value: 'no-module-match' } });
   expect(screen.getByText('검색 조건에 맞는 모듈이 없습니다.')).toBeInTheDocument();
 
-  fireEvent.click(usersTab);
-  expect(await screen.findByRole('tabpanel', { name: '사용자' })).toBeInTheDocument();
-  expect(usersTab).toHaveAttribute('aria-selected', 'true');
-  expect(modulesTab).toHaveAttribute('aria-selected', 'false');
-  expectInDocumentOrder([screen.getByText('alpha'), screen.getByText('analyst'), screen.getByText('operator')]);
-  fireEvent.change(screen.getByLabelText('사용자 정렬'), { target: { value: 'role-asc' } });
-  expectInDocumentOrder([screen.getByText('alpha'), screen.getByText('operator'), screen.getByText('analyst')]);
-  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: 'analyst' } });
-  expect(screen.getByText('analyst')).toBeInTheDocument();
-  expect(screen.queryByText('operator')).not.toBeInTheDocument();
-  expect(screen.getByText('결과 1 / 3건')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '비밀번호 재설정' })).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: 'no-user-match' } });
-  expect(screen.getByText('검색 조건에 맞는 사용자가 없습니다.')).toBeInTheDocument();
+  fireEvent.click(accountsTab);
+  expect(await screen.findByRole('tabpanel', { name: '계정' })).toBeInTheDocument();
+  expect(accountsTab).toHaveAttribute('aria-selected', 'true');
+  expect(contentTab).toHaveAttribute('aria-selected', 'false');
+  const usersSection = screen.getByText('사용자/RBAC').closest('section') as HTMLElement;
+  expectInDocumentOrder([within(usersSection).getByText('alpha'), within(usersSection).getByText('analyst'), within(usersSection).getByText('operator')]);
+  fireEvent.change(within(usersSection).getByLabelText('사용자 정렬'), { target: { value: 'role-asc' } });
+  expectInDocumentOrder([within(usersSection).getByText('alpha'), within(usersSection).getByText('operator'), within(usersSection).getByText('analyst')]);
+  fireEvent.change(within(usersSection).getByLabelText('사용자 검색'), { target: { value: 'analyst' } });
+  expect(within(usersSection).getByText('analyst')).toBeInTheDocument();
+  expect(within(usersSection).queryByText('operator')).not.toBeInTheDocument();
+  expect(within(usersSection).getByText('결과 1 / 3건')).toBeInTheDocument();
+  expect(within(usersSection).getByRole('button', { name: '비밀번호 재설정' })).toBeInTheDocument();
+  fireEvent.change(within(usersSection).getByLabelText('사용자 검색'), { target: { value: 'no-user-match' } });
+  expect(within(usersSection).getByText('검색 조건에 맞는 사용자가 없습니다.')).toBeInTheDocument();
 
-  fireEvent.click(rbacTab);
-  expect(await screen.findByRole('tabpanel', { name: 'RBAC' })).toBeInTheDocument();
-  expect(rbacTab).toHaveAttribute('aria-selected', 'true');
-  expect(usersTab).toHaveAttribute('aria-selected', 'false');
+  const rbacSection = screen.getByText('그룹/RBAC 권한').closest('section') as HTMLElement;
   expectInDocumentOrder([groupNameText('Auditors'), groupNameText('Operators'), screen.getAllByText('Operators').find((element) => element.tagName.toLowerCase() === 'strong' && element !== groupNameText('Operators')) as HTMLElement]);
-  fireEvent.change(screen.getByLabelText('그룹 정렬'), { target: { value: 'key-asc' } });
+  fireEvent.change(within(rbacSection).getByLabelText('그룹 정렬'), { target: { value: 'key-asc' } });
   expectInDocumentOrder([groupNameText('Operators'), groupNameText('Auditors'), screen.getAllByText('Operators').find((element) => element.tagName.toLowerCase() === 'strong' && element !== groupNameText('Operators')) as HTMLElement]);
-  fireEvent.change(screen.getByLabelText('그룹 검색'), { target: { value: 'audit' } });
+  fireEvent.change(within(rbacSection).getByLabelText('그룹 검색'), { target: { value: 'audit' } });
   expect(groupNameText('Auditors')).toBeInTheDocument();
   expect(screen.queryByText('Operations team')).not.toBeInTheDocument();
-  expect(screen.getByText('결과 1 / 3건')).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('그룹 검색'), { target: { value: 'no-group-match' } });
-  expect(screen.getByText('검색 조건에 맞는 그룹이 없습니다.')).toBeInTheDocument();
+  expect(within(rbacSection).getByText('결과 1 / 3건')).toBeInTheDocument();
+  fireEvent.change(within(rbacSection).getByLabelText('그룹 검색'), { target: { value: 'no-group-match' } });
+  expect(within(rbacSection).getByText('검색 조건에 맞는 그룹이 없습니다.')).toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('리소스 권한 정렬'), { target: { value: 'resource-asc' } });
+  fireEvent.change(within(rbacSection).getByLabelText('리소스 권한 정렬'), { target: { value: 'resource-asc' } });
   expectInDocumentOrder([
     grantRowText('group:2 → collection/alpha · collections.alpha.read'),
     grantRowText('group:2 → collection/zeta · collections.zeta.read'),
     grantRowText('user:3 → document/finance · documents.finance.read'),
   ]);
-  fireEvent.change(screen.getByLabelText('리소스 권한 검색'), { target: { value: 'finance' } });
+  fireEvent.change(within(rbacSection).getByLabelText('리소스 권한 검색'), { target: { value: 'finance' } });
   expect(grantRowText('user:3 → document/finance · documents.finance.read')).toBeInTheDocument();
   expect(screen.queryByText((_, element) => element?.textContent === 'group:2 → collection/alpha · collections.alpha.read')).not.toBeInTheDocument();
-  expect(screen.getByText('결과 1 / 3건')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('리소스 권한 검색'), { target: { value: 'no-grant-match' } });
-  expect(screen.getByText('검색 조건에 맞는 리소스 권한이 없습니다.')).toBeInTheDocument();
+  expect(within(rbacSection).getByText('결과 1 / 3건')).toBeInTheDocument();
+  expect(within(rbacSection).getByRole('button', { name: '삭제' })).toBeInTheDocument();
+  fireEvent.change(within(rbacSection).getByLabelText('리소스 권한 검색'), { target: { value: 'no-grant-match' } });
+  expect(within(rbacSection).getByText('검색 조건에 맞는 리소스 권한이 없습니다.')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: '모듈' }));
+  fireEvent.click(screen.getByRole('tab', { name: '콘텐츠' }));
   fireEvent.change(await screen.findByLabelText('new module key'), { target: { value: 'toast-module' } });
   fireEvent.change(screen.getByLabelText('new module title'), { target: { value: 'Toast Module' } });
   fireEvent.change(screen.getByLabelText('new module href'), { target: { value: '/toast' } });
@@ -184,53 +182,54 @@ test('admin list UX adversarially preserves filtering, deterministic sorting, st
 test('admin search section filters displayed results, keeps count/state, and sorts deterministically', async () => {
   render(<AdminConsoleTabs />);
 
-  fireEvent.click(await screen.findByRole('tab', { name: '검색' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('통합 검색 / AI 운영')).toBeInTheDocument();
-  expect(screen.getByText('결과 0 / 0건')).toBeInTheDocument();
+  const searchSection = screen.getByText('통합 검색 / AI 운영').closest('section') as HTMLElement;
+  expect(within(searchSection).getByText('결과 0 / 0건')).toBeInTheDocument();
   expect(screen.getByText('2글자 이상 입력하면 뉴스레터와 문서를 한 번에 검색합니다. NSA는 권한이 있을 때만 포함됩니다.')).toBeInTheDocument();
 
   fireEvent.change(screen.getByLabelText('통합 검색어'), { target: { value: 'manual' } });
   fireEvent.click(screen.getByRole('button', { name: '검색' }));
 
   await waitFor(() => expect(api.fetchUnifiedSearch).toHaveBeenCalledWith('manual', false));
-  expectInDocumentOrder([screen.getByText('Alpha Manual'), screen.getByText('Bravo Manual'), screen.getByText('Zulu Alert')]);
-  expect(screen.getByText('결과 3 / 3건')).toBeInTheDocument();
+  expectInDocumentOrder([within(searchSection).getByText('Alpha Manual'), within(searchSection).getByText('Bravo Manual'), within(searchSection).getByText('Zulu Alert')]);
+  expect(within(searchSection).getByText('결과 3 / 3건')).toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('결과 내 검색'), { target: { value: 'aircraft' } });
-  expect(screen.getByText('Alpha Manual')).toBeInTheDocument();
-  expect(screen.queryByText('Bravo Manual')).not.toBeInTheDocument();
-  expect(screen.getByText('결과 1 / 3건')).toBeInTheDocument();
+  fireEvent.change(within(searchSection).getByLabelText('결과 내 검색'), { target: { value: 'aircraft' } });
+  expect(within(searchSection).getByText('Alpha Manual')).toBeInTheDocument();
+  expect(within(searchSection).queryByText('Bravo Manual')).not.toBeInTheDocument();
+  expect(within(searchSection).getByText('결과 1 / 3건')).toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('결과 내 검색'), { target: { value: 'no-result-match' } });
-  expect(screen.getByText('결과 내 검색 조건에 맞는 통합 검색 결과가 없습니다.')).toBeInTheDocument();
+  fireEvent.change(within(searchSection).getByLabelText('결과 내 검색'), { target: { value: 'no-result-match' } });
+  expect(within(searchSection).getByText('결과 내 검색 조건에 맞는 통합 검색 결과가 없습니다.')).toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('결과 내 검색'), { target: { value: '' } });
-  fireEvent.change(screen.getByLabelText('검색 결과 정렬'), { target: { value: 'title-asc' } });
-  expectInDocumentOrder([screen.getByText('Alpha Manual'), screen.getByText('Bravo Manual'), screen.getByText('Zulu Alert')]);
+  fireEvent.change(within(searchSection).getByLabelText('결과 내 검색'), { target: { value: '' } });
+  fireEvent.change(within(searchSection).getByLabelText('검색 결과 정렬'), { target: { value: 'title-asc' } });
+  expectInDocumentOrder([within(searchSection).getByText('Alpha Manual'), within(searchSection).getByText('Bravo Manual'), within(searchSection).getByText('Zulu Alert')]);
 });
 
 test('admin tablist keyboard navigation uses roving tabindex and activates ArrowRight Home End targets', async () => {
   render(<AdminConsoleTabs />);
 
-  const modulesTab = await screen.findByRole('tab', { name: '모듈' });
-  const usersTab = screen.getByRole('tab', { name: '사용자' });
+  const overviewTab = await screen.findByRole('tab', { name: '개요' });
+  const accountsTab = screen.getByRole('tab', { name: '계정' });
   const auditTab = screen.getByRole('tab', { name: '감사' });
 
-  expect(modulesTab).toHaveAttribute('tabindex', '0');
-  expect(usersTab).toHaveAttribute('tabindex', '-1');
+  expect(overviewTab).toHaveAttribute('tabindex', '0');
+  expect(accountsTab).toHaveAttribute('tabindex', '-1');
 
-  fireEvent.keyDown(modulesTab, { key: 'ArrowRight' });
-  await waitFor(() => expect(usersTab).toHaveAttribute('aria-selected', 'true'));
-  expect(usersTab).toHaveAttribute('tabindex', '0');
-  expect(modulesTab).toHaveAttribute('tabindex', '-1');
+  fireEvent.keyDown(overviewTab, { key: 'ArrowRight' });
+  await waitFor(() => expect(accountsTab).toHaveAttribute('aria-selected', 'true'));
+  expect(accountsTab).toHaveAttribute('tabindex', '0');
+  expect(overviewTab).toHaveAttribute('tabindex', '-1');
 
-  fireEvent.keyDown(usersTab, { key: 'End' });
+  fireEvent.keyDown(accountsTab, { key: 'End' });
   await waitFor(() => expect(auditTab).toHaveAttribute('aria-selected', 'true'));
   expect(auditTab).toHaveAttribute('aria-current', 'page');
 
   fireEvent.keyDown(auditTab, { key: 'Home' });
-  await waitFor(() => expect(modulesTab).toHaveAttribute('aria-selected', 'true'));
-  expect(modulesTab).toHaveAttribute('tabindex', '0');
+  await waitFor(() => expect(overviewTab).toHaveAttribute('aria-selected', 'true'));
+  expect(overviewTab).toHaveAttribute('tabindex', '0');
 });
 
 
@@ -251,49 +250,50 @@ test('Users 섹션은 21명을 10개씩 페이지네이션하고 검색/정렬 �
   vi.mocked(api.fetchAdminUsers).mockResolvedValue(users as never);
 
   render(<AdminConsoleTabs />);
-  fireEvent.click(await screen.findByRole('tab', { name: '사용자' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('사용자/RBAC')).toBeInTheDocument();
+  const usersSection = screen.getByText('사용자/RBAC').closest('section') as HTMLElement;
 
-  expect(screen.getByText('페이지 1 / 3')).toBeInTheDocument();
-  expect(screen.getByText('user-01')).toBeInTheDocument();
-  expect(screen.getByText('user-10')).toBeInTheDocument();
-  expect(screen.queryByText('user-11')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled();
+  expect(within(usersSection).getByText('페이지 1 / 3')).toBeInTheDocument();
+  expect(within(usersSection).getByText('user-01')).toBeInTheDocument();
+  expect(within(usersSection).getByText('user-10')).toBeInTheDocument();
+  expect(within(usersSection).queryByText('user-11')).not.toBeInTheDocument();
+  expect(within(usersSection).getByRole('button', { name: '이전 페이지' })).toBeDisabled();
 
-  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
-  expect(await screen.findByText('페이지 2 / 3')).toBeInTheDocument();
-  expect(screen.getByText('user-11')).toBeInTheDocument();
-  expect(screen.getByText('user-20')).toBeInTheDocument();
-  expect(screen.queryByText('user-01')).not.toBeInTheDocument();
+  fireEvent.click(within(usersSection).getByRole('button', { name: '다음 페이지' }));
+  expect(await within(usersSection).findByText('페이지 2 / 3')).toBeInTheDocument();
+  expect(within(usersSection).getByText('user-11')).toBeInTheDocument();
+  expect(within(usersSection).getByText('user-20')).toBeInTheDocument();
+  expect(within(usersSection).queryByText('user-01')).not.toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
-  expect(await screen.findByText('페이지 3 / 3')).toBeInTheDocument();
-  expect(screen.getByText('user-21')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled();
+  fireEvent.click(within(usersSection).getByRole('button', { name: '다음 페이지' }));
+  expect(await within(usersSection).findByText('페이지 3 / 3')).toBeInTheDocument();
+  expect(within(usersSection).getByText('user-21')).toBeInTheDocument();
+  expect(within(usersSection).getByRole('button', { name: '다음 페이지' })).toBeDisabled();
 
-  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: 'user-2' } });
-  await waitFor(() => expect(screen.getByText('페이지 1 / 1')).toBeInTheDocument());
-  expect(screen.getByText('user-20')).toBeInTheDocument();
-  expect(screen.getByText('user-21')).toBeInTheDocument();
+  fireEvent.change(within(usersSection).getByLabelText('사용자 검색'), { target: { value: 'user-2' } });
+  await waitFor(() => expect(within(usersSection).getByText('페이지 1 / 1')).toBeInTheDocument());
+  expect(within(usersSection).getByText('user-20')).toBeInTheDocument();
+  expect(within(usersSection).getByText('user-21')).toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('사용자 검색'), { target: { value: '' } });
-  await waitFor(() => expect(screen.getByText('페이지 1 / 3')).toBeInTheDocument());
+  fireEvent.change(within(usersSection).getByLabelText('사용자 검색'), { target: { value: '' } });
+  await waitFor(() => expect(within(usersSection).getByText('페이지 1 / 3')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
-  await waitFor(() => expect(screen.getByText('페이지 2 / 3')).toBeInTheDocument());
-  fireEvent.change(screen.getByLabelText('사용자 정렬'), { target: { value: 'username-desc' } });
-  await waitFor(() => expect(screen.getByText('페이지 1 / 3')).toBeInTheDocument());
-  expect(screen.getByText('user-21')).toBeInTheDocument();
+  fireEvent.click(within(usersSection).getByRole('button', { name: '다음 페이지' }));
+  await waitFor(() => expect(within(usersSection).getByText('페이지 2 / 3')).toBeInTheDocument());
+  fireEvent.change(within(usersSection).getByLabelText('사용자 정렬'), { target: { value: 'username-desc' } });
+  await waitFor(() => expect(within(usersSection).getByText('페이지 1 / 3')).toBeInTheDocument());
+  expect(within(usersSection).getByText('user-21')).toBeInTheDocument();
 
-  expect(screen.getAllByText(/가입일/).length).toBeGreaterThan(0);
-  expect(screen.getAllByText(/마지막 로그인/).length).toBeGreaterThan(0);
+  expect(within(usersSection).getAllByText(/가입일/).length).toBeGreaterThan(0);
+  expect(within(usersSection).getAllByText(/마지막 로그인/).length).toBeGreaterThan(0);
 });
 
 test('Users 섹션은 데이터 없음(빈 목록)과 조회 실패(degraded)를 시각적으로 구분한다', async () => {
   vi.mocked(api.fetchAdminUsers).mockResolvedValue([] as never);
 
   render(<AdminConsoleTabs />);
-  fireEvent.click(await screen.findByRole('tab', { name: '사용자' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('등록된 사용자가 없습니다.')).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
@@ -305,6 +305,7 @@ test('모듈 카드는 게이트 필드(visibility/required_permission/resource_
   vi.mocked(api.updateServiceModule).mockRejectedValueOnce(new api.ApiError('요청 처리에 실패했습니다', 400) as never);
 
   render(<AdminConsoleTabs />);
+  fireEvent.click(await screen.findByRole('tab', { name: '콘텐츠' }));
   expect(await screen.findByText('대시보드 모듈 DB 관리')).toBeInTheDocument();
 
   expect(screen.getByText('admin.dashboard.view')).toBeInTheDocument();

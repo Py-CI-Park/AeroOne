@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/civil-aircraft-data-v1.8.schema.json",
+  "title": "Civil Aircraft Data v1.8",
+  "type": "object",
+  "required": [
+    "metadata",
+    "verificationGrades",
+    "sourceTierDefinitions",
+    "colorPolicy",
+    "aircraft",
+    "sources",
+    "localPdfArchive"
+  ],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": [
+        "version",
+        "releaseDate",
+        "aircraftCount",
+        "sourceCount"
+      ]
+    },
+    "verificationGrades": {
+      "type": "object"
+    },
+    "sourceTierDefinitions": {
+      "type": "object"
+    },
+    "colorPolicy": {
+      "type": "object"
+    },
+    "aircraft": {
+      "type": "array",
+      "minItems": 65,
+      "maxItems": 65,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "model",
+          "manufacturer",
+          "family",
+          "category",
+          "role",
+          "status",
+          "statusCode",
+          "verificationGrade",
+          "aliases",
+          "visual",
+          "comparisonBasis",
+          "fieldEvidence",
+          "dataQuality"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model": {
+            "type": "string"
+          },
+          "manufacturer": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "여객",
+              "화물"
+            ]
+          },
+          "verificationGrade": {
+            "enum": [
+              "A+",
+              "A",
+              "B+",
+              "B",
+              "C"
+            ]
+          },
+          "rangeNm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "mtowT": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "lengthM": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "spanM": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "heightM": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fieldEvidence": {
+            "type": "object"
+          },
+          "dataQuality": {
+            "type": "object",
+            "required": [
+              "completenessPct",
+              "traceabilityPct",
+              "hasScaleGeometry",
+              "hasPositionData",
+              "provisional"
+            ]
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 55,
+      "maxItems": 55,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "org",
+          "title",
+          "issued",
+          "type",
+          "tier",
+          "url",
+          "fields",
+          "applies",
+          "accessed",
+          "archiveStatus",
+          "localAttachments"
+        ],
+        "properties": {
+          "localAttachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "filename",
+                "local",
+                "pages",
+                "sizeBytes",
+                "sha256",
+                "integrity"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "local": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pages": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "integrity": {
+                  "enum": [
+                    "EXACT_MATCH"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "localPdfArchive": {
+      "type": "array",
+      "minItems": 25,
+      "maxItems": 25,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "local",
+          "sizeBytes",
+          "sha256",
+          "pages",
+          "verifiedDate",
+          "integrity"
+        ]
+      }
+    }
+  }
+}

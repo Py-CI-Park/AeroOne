@@ -6,7 +6,7 @@
 
 이미 발행된 HTML / PDF / Markdown 뉴스레터를 한 곳에서 보고, ZIP 하나로 인터넷이 차단된 PC에 동일하게 배포할 수 있는 modular monolith 입니다.
 
-![version](https://img.shields.io/badge/version-1.16.3-1f6feb)
+![version](https://img.shields.io/badge/version-1.17.0-1f6feb)
 ![status](https://img.shields.io/badge/status-immutable-release-success)
 ![python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![node](https://img.shields.io/badge/node-LTS-339933?logo=node.js&logoColor=white)
@@ -87,7 +87,7 @@
 ## 빠른 시작 — 온라인 Windows PC
 
 ```cmd
-:: 1) 초기 설치 (가상환경, 의존성, DB, 시드, frontend npm install)
+:: 1) 초기 설치 (가상환경, 의존성, DB, 시드, frontend npm ci)
 setup.bat
 
 :: 2) 백엔드/프런트 실행 + 브라우저 자동 오픈
@@ -283,7 +283,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 18437
 
 # 다른 터미널
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 

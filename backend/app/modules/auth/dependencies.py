@@ -122,7 +122,10 @@ def get_optional_user(
     try:
         user, _payload = _current_user_from_request(request, db, settings)
     except HTTPException as exc:
-        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        # 공개(optional-user) 엔드포인트는 인증 실패(401)뿐 아니라 비밀번호 변경 강제(403)
+        # 상태의 사용자도 익명으로 강등해 처리한다 — 로그인했지만 초기 비밀번호 미변경인
+        # 사용자가 대시보드 공개 모듈 목록까지 403 으로 못 보던 결함을 막는다.
+        if exc.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN):
             return None
         raise
     return user

@@ -26,6 +26,14 @@ _MAX_URL_LENGTH: Final = 2048
 _HOSTNAME_LABEL_RE: Final = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 
 
+def _app_version() -> str:
+    # 지연 임포트: 이 모듈은 앱 의존이 없는 하드닝된 전송 계층이라 최상단에서
+    # app.core.config 를 끌어오지 않는다. User-Agent 표기에만 릴리스 버전을 쓴다.
+    from app.core.config import settings
+
+    return settings.app_version
+
+
 @unique
 class EgressErrorCode(StrEnum):
     URL_INVALID = "url-invalid"
@@ -371,7 +379,8 @@ def send_json_request(
         "Host": host_header,
         "Accept": "application/json",
         "Connection": "close",
-        "User-Agent": "AeroOne-Compatible-Adapter/1.14.0",
+        # 릴리스 버전 단일 원천(settings.app_version)에서 파생 — 하드코딩 버전 드리프트 방지.
+        "User-Agent": f"AeroOne-Compatible-Adapter/{_app_version()}",
     }
     if data is not None:
         headers["Content-Type"] = "application/json"

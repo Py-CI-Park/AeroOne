@@ -9,6 +9,7 @@ vi.mock('@/lib/api', () => ({
   getServerApiBase: getServerApiBaseMock,
 }));
 
+import { POST as POST_CHAT_STREAM } from '@/app/api/frontend/ai/chat/stream/route';
 import { GET as GET_STATUS } from '@/app/api/frontend/ai/status/route';
 import { POST as POST_CHAT } from '@/app/api/frontend/ai/chat/route';
 
@@ -127,4 +128,53 @@ test('chat proxy falls back to configured backend with the same POST body', asyn
     }),
   );
   expect(response.status).toBe(200);
+});
+test('chat stream proxy forwards POST body to backend AI stream endpoint and relays SSE content-type', async () => {
+  const sseBody = 'event: delta\ndata: {"content":"hi"}\n\n';
+  const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(
+    new Response(sseBody, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+  );
+
+  const response = await POST_CHAT_STREAM(
+    createPostRequest({ messages: [{ role: 'user', content: 'hi' }], attachments: [] }),
+  );
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://127.0.0.1:18437/api/v1/ai/chat/stream',
+    expect.objectContaining({
+      method: 'POST',
+      cache: 'no-store',
+      body: '{"messages":[{"role":"user","content":"hi"}],"attachments":[]}',
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toBe('text/event-stream');
+  await expect(response.text()).resolves.toBe(sseBody);
+});
+
+test('chat stream proxy falls back to configured backend with the same POST body', async () => {
+  const fetchMock = vi
+    .spyOn(global, 'fetch')
+    .mockRejectedValueOnce(new Error('local backend unavailable'))
+    .mockResolvedValueOnce(
+      new Response('event: done\ndata: {"model":"m"}\n\n', {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    );
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  const response = await POST_CHAT_STREAM(createPostRequest({ messages: [{ role: 'user', content: 'hi' }] }));
+
+  expect(fetchMock).toHaveBeenNthCalledWith(
+    2,
+    'http://backend.test/api/v1/ai/chat/stream',
+    expect.objectContaining({
+      method: 'POST',
+      cache: 'no-store',
+      body: '{"messages":[{"role":"user","content":"hi"}]}',
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toBe('text/event-stream');
 });

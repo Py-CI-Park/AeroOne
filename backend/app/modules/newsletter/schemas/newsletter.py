@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.newsletter.models.newsletter import AssetType, SourceType
 
@@ -15,8 +15,7 @@ class CategoryResponse(BaseModel):
     sort_order: int = 0
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TagResponse(BaseModel):
@@ -26,8 +25,7 @@ class TagResponse(BaseModel):
     sort_order: int = 0
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NewsletterAssetResponse(BaseModel):

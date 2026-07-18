@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.newsletter.models.newsletter import Newsletter
+from app.modules.read_tracking.models.read_event import NewsletterReadEvent
 from app.modules.read_tracking.repositories.read_event_repository import ReadEventRepository
 
 def _is_loopback(client_ip: str) -> bool:
@@ -49,3 +50,27 @@ class ReadTrackingService:
 
     def purge(self, newsletter_id: int | None = None) -> int:
         return self.repo.purge(newsletter_id)
+
+    def recent_for_ip(self, client_ip: str, limit: int) -> list[dict]:
+        """호출 IP(=(newsletter_id, client_ip) 스코프)가 최근 열람한 뉴스레터 목록.
+
+        Newsletter 와 INNER JOIN + 공개 노출 조건(is_active, status='published')을
+        함께 강제한다 — 제품의 삭제는 soft-delete(archive, 행 존속)이므로 행 존재만
+        믿으면 보관/비활성 뉴스레터가 스트립에 노출된다. limit 은 대시보드 스트립
+        용도이므로 1..12 로 클램프(422 대신 조용히 보정 — 공개 무인증 엔드포인트라
+        엄격한 검증보다 견고성을 우선한다).
+        """
+        clamped_limit = max(1, min(12, limit))
+        stmt = (
+            select(Newsletter.slug, Newsletter.title, NewsletterReadEvent.last_seen_at)
+            .join(Newsletter, Newsletter.id == NewsletterReadEvent.newsletter_id)
+            .where(
+                NewsletterReadEvent.client_ip == client_ip,
+                Newsletter.is_active.is_(True),
+                Newsletter.status == 'published',
+            )
+            .order_by(NewsletterReadEvent.last_seen_at.desc())
+            .limit(clamped_limit)
+        )
+        rows = self.db.execute(stmt).all()
+        return [{'slug': slug, 'title': title, 'last_seen_at': last_seen_at} for slug, title, last_seen_at in rows]

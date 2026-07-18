@@ -20,24 +20,17 @@ import type {
 import { ProcessSteps, type ProcessStep } from '@/components/office-tools/process-steps';
 import { SamplePicker } from '@/components/office-tools/sample-picker';
 import { StepSection } from '@/components/office-tools/step-section';
-import { DataInput, type DataInputMode } from '@/components/office-tools/data-input';
 import { UsageGuide } from '@/components/office-tools/usage-guide';
+import { ChartComposer, ChartFollowUp } from '@/components/office-tools/chart-composer';
 import { useOfficeWorkspaceSelection } from '@/components/office-tools/workspace-context';
 
 const USAGE_WAYS = [
   { badge: '① 예제', title: '예제로 시작', detail: '아래 예제를 누르면 데이터가 채워지고 바로 차트가 생성됩니다.' },
-  { badge: '② 데이터', title: '파일 또는 정형 텍스트', detail: 'CSV·엑셀 파일을 올리거나, 표 형식(CSV) 텍스트를 직접 붙여넣습니다.' },
-  { badge: '③ 목적', title: '목적 문장(서술형)', detail: '"지역별 매출을 크기순으로 비교"처럼 원하는 바를 적으면 유형을 추천합니다.' },
+  { badge: '② 컴포저', title: '목적 문장 또는 데이터', detail: '위 입력창에 목적을 적거나 표 형식 데이터를 붙여넣고, 파일을 첨부해도 됩니다.' },
+  { badge: '③ 후속 명령', title: '결과 다듬기', detail: '결과가 나오면 "상위 5개만"처럼 한 줄로 이어서 다듬을 수 있습니다.' },
 ];
 
-const PROMPT_EXAMPLES = [
-  '지역별 매출을 크기순으로 비교',
-  '월별 추세를 선으로 보여줘',
-  '채널별 구성비를 파이로',
-  '광고비와 매출의 상관',
-];
-
-const CSV_PLACEHOLDER = 'region,sales\n서울,1240\n부산,860\n대구,540';
+const INSPECT_DEBOUNCE_MS = 400;
 
 // echarts 렌더는 SSR 비호환이라 미리보기를 클라이언트 전용 dynamic import 로 로드한다.
 const ChartPreview = dynamic(
@@ -46,7 +39,7 @@ const ChartPreview = dynamic(
 );
 
 const CHART_STEPS: ProcessStep[] = [
-  { label: '데이터 업로드', detail: '.csv·.xlsx·.json' },
+  { label: '데이터 입력', detail: '문장·붙여넣기·파일·드래그' },
   { label: '프로파일 점검', detail: '행·열·유형·결측 확인' },
   { label: 'AI / 규칙 스펙', detail: '허용된 ChartSpec 만 제안' },
   { label: 'pandas 집계', detail: '서버에서 실제 계산' },
@@ -94,15 +87,15 @@ type ChartGenerationInput = {
   chartType: ChartType | '';
   manualSpec?: ChartManualSpecInput;
   manualSpecJson?: string;
+  // 후속 명령 전용: 직전 성공 결과의 chart_spec. manualSpec 과 동시에 채우지 않는다(계약).
+  previousSpec?: Record<string, unknown>;
 };
 
 type SafeChartConfig = Pick<ChartManualSpecInput, 'type' | 'aggregation' | 'stacked' | 'sort' | 'limit' | 'orientation'>;
 
 export function ChartForm() {
   const workspaceSelection = useOfficeWorkspaceSelection();
-  const [inputMode, setInputMode] = React.useState<DataInputMode>('file');
   const [dataFile, setDataFile] = React.useState<File | null>(null);
-  const [dataText, setDataText] = React.useState('');
   const [prompt, setPrompt] = React.useState('');
   const [chartType, setChartType] = React.useState<ChartType | ''>('');
   const [aiAssist, setAiAssist] = React.useState(true);
@@ -112,6 +105,7 @@ export function ChartForm() {
   const [workspaceNotice, setWorkspaceNotice] = React.useState('');
   const [inspectBusy, setInspectBusy] = React.useState(false);
   const [generateBusy, setGenerateBusy] = React.useState(false);
+  const [optionsOpen, setOptionsOpen] = React.useState(false);
   const [advancedEnabled, setAdvancedEnabled] = React.useState(false);
   const [manualX, setManualX] = React.useState('');
   const [manualY, setManualY] = React.useState<string[]>([]);
@@ -127,16 +121,9 @@ export function ChartForm() {
   const inspectTokenRef = React.useRef(0);
   const generateTokenRef = React.useRef(0);
 
-  const hasData = inputMode === 'text' ? !!dataText.trim() : !!dataFile;
+  const hasData = !!dataFile;
   const busy = inspectBusy || generateBusy;
   const profiledColumns = profile ? uniqueProfileColumns(profile) : [];
-
-  function effectiveFile(): File | null {
-    if (inputMode === 'text') {
-      return dataText.trim() ? new File([dataText], 'data.csv', { type: 'text/csv' }) : null;
-    }
-    return dataFile;
-  }
 
   function resetManualSelections() {
     setAdvancedEnabled(false);
@@ -199,9 +186,8 @@ export function ChartForm() {
 
     abortInspect();
     abortGenerate();
-    setInputMode('file');
     setDataFile(null);
-    setDataText('');
+    setPrompt('');
     setProfile(null);
     setResult(null);
     setError('');
@@ -231,18 +217,27 @@ export function ChartForm() {
       }
       setChartType(config.type ?? '');
       setPendingDuplicateConfig(config);
+      setOptionsOpen(true);
       setWorkspaceNotice('원본 데이터는 복제되지 않습니다. 차트를 만들려면 원본 데이터를 다시 첨부하세요.');
     }
   }, [workspaceSelection?.sequence]);
 
+  // 데이터가 확정(첨부)되면 디바운스 후 자동으로 프로파일을 점검한다(기존 abort/token 패턴 재사용).
+  React.useEffect(() => {
+    if (!dataFile || generateControllerRef.current) return;
+    const timer = setTimeout(() => {
+      void handleInspect();
+    }, INSPECT_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataFile]);
+
   const engineNote = result ? (result.llm_used ? 'AI 제안 사용' : '규칙 기반') : undefined;
 
   function applySample(sample: OfficeSample) {
-    // 예제는 텍스트 모드로 채워, 사용자가 데이터 형식을 눈으로 확인하게 한다.
     clearForDataChange();
-    setInputMode('text');
-    setDataText(sample.content);
-    setDataFile(null);
+    const file = new File([sample.content], 'data.csv', { type: 'text/csv' });
+    setDataFile(file);
     const nextPrompt = typeof sample.hints.prompt === 'string' ? sample.hints.prompt : prompt;
     const nextType = isChartType(sample.hints.chart_type) ? sample.hints.chart_type : chartType;
     // 다계열(누적/그룹/다계열선) 예제는 완성된 ChartSpec 을 그대로 넘겨 결정적으로 렌더한다.
@@ -250,12 +245,11 @@ export function ChartForm() {
     setPrompt(nextPrompt);
     setChartType(nextType);
     // 예제는 채우기만 하지 않고 곧바로 생성까지 한다(원클릭 체험).
-    const file = new File([sample.content], 'data.csv', { type: 'text/csv' });
     runGenerate({ file, prompt: nextPrompt, aiAssist, chartType: nextType, manualSpecJson });
   }
 
   async function handleInspect() {
-    const file = effectiveFile();
+    const file = dataFile;
     if (!file || inspectControllerRef.current) return;
 
     const controller = new AbortController();
@@ -269,6 +263,7 @@ export function ChartForm() {
       setProfile(response);
       if (pendingDuplicateConfig) {
         setAdvancedEnabled(true);
+        setOptionsOpen(true);
         setManualAggregation(pendingDuplicateConfig.aggregation ?? 'none');
         setManualStacked(pendingDuplicateConfig.stacked ?? false);
         setManualSort(pendingDuplicateConfig.sort ?? 'none');
@@ -304,6 +299,7 @@ export function ChartForm() {
       chartType: input.chartType,
       ...(input.manualSpec ? { manualSpec: input.manualSpec } : {}),
       ...(input.manualSpecJson ? { manualSpecJson: input.manualSpecJson } : {}),
+      ...(input.previousSpec ? { previousSpec: input.previousSpec } : {}),
     };
     try {
       const response = await generateChart(payload, getCsrfCookie(), controller.signal);
@@ -311,7 +307,8 @@ export function ChartForm() {
       setResult(response);
     } catch (err) {
       if (generateTokenRef.current !== token || generateControllerRef.current !== controller || isAbortError(err)) return;
-      setResult(null);
+      // 후속 명령(refine) 실패는 직전 결과를 보존한다 — 실패 1회로 다듬기 루프가 끊기지 않게.
+      if (!input.previousSpec) setResult(null);
       setError(err instanceof Error ? err.message : '차트 생성에 실패했습니다.');
     } finally {
       if (generateTokenRef.current === token && generateControllerRef.current === controller) {
@@ -323,7 +320,7 @@ export function ChartForm() {
 
   function buildManualSpec(): ChartManualSpecInput | null {
     if (!profile) {
-      setError('고급 설정을 사용하려면 먼저 데이터를 미리보기로 점검하세요.');
+      setError('고급 설정을 사용하려면 먼저 데이터를 첨부해 프로파일을 확보하세요.');
       return null;
     }
 
@@ -377,15 +374,27 @@ export function ChartForm() {
     };
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handleGenerateClick() {
     if (advancedEnabled) {
       const manualSpec = buildManualSpec();
       if (!manualSpec) return;
-      runGenerate({ file: effectiveFile(), prompt, aiAssist, chartType, manualSpec });
+      runGenerate({ file: dataFile, prompt, aiAssist, chartType, manualSpec });
       return;
     }
-    runGenerate({ file: effectiveFile(), prompt, aiAssist, chartType });
+    runGenerate({ file: dataFile, prompt, aiAssist, chartType });
+  }
+
+  function handleFollowUp(followUpPrompt: string) {
+    if (!dataFile) {
+      setError('후속 명령을 실행하려면 원본 데이터를 다시 첨부하세요.');
+      return;
+    }
+    if (!result || !isJsonRecord(result.chart_spec)) {
+      setError('직전 결과를 확인할 수 없어 후속 명령을 실행할 수 없습니다.');
+      return;
+    }
+    // 우선순위 계약: manualSpec > previousSpec+prompt > 신규 생성. 후속 명령은 manualSpec 을 보내지 않는다.
+    runGenerate({ file: dataFile, prompt: followUpPrompt, aiAssist, chartType, previousSpec: result.chart_spec });
   }
 
   function handleManualX(next: string) {
@@ -414,260 +423,220 @@ export function ChartForm() {
   return (
     <div className="flex flex-col gap-6">
       <UsageGuide
-        intro="데이터를 올리면 목적에 맞는 차트로 시각화합니다. 세 가지 방법 중 하나로 시작하세요."
+        intro="목적 문장을 적거나 표 데이터를 붙여넣으면 목적에 맞는 차트로 시각화합니다."
         ways={USAGE_WAYS}
         output="결과는 실서비스급 ECharts 로 그려지고 option·집계 CSV·zip 으로 내려받을 수 있습니다."
       />
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-label="차트 생성 폼">
-        <StepSection n={1} title="데이터 입력" hint="예제(클릭 시 바로 생성)·파일·직접 입력" done={!!result}>
+      <div className="flex flex-col gap-4" aria-label="차트 생성 폼">
+        <StepSection n={1} title="데이터 입력" hint="예제(클릭 시 바로 생성)·컴포저로 시작" done={!!result}>
           <SamplePicker tool="chart" onPick={applySample} disabled={busy} />
-          <DataInput
-            mode={inputMode}
-            onModeChange={(next) => {
-              clearForDataChange(true);
-              setInputMode(next);
-            }}
-            fileLabel="데이터 파일 (.csv / .xlsx / .json)"
-            accept=".csv,.xlsx,.xlsm,.json,text/csv,application/json"
+          <ChartComposer
             file={dataFile}
             onFileChange={(next) => {
               setDataFile(next);
               clearForDataChange(true);
             }}
-            text={dataText}
-            onTextChange={(next) => {
-              setDataText(next);
-              clearForDataChange(true);
+            promptText={prompt}
+            onPromptChange={(next) => {
+              setPrompt(next);
+              clearForOptionChange();
             }}
-            textPlaceholder={CSV_PLACEHOLDER}
-            textHint="CSV·표 형식으로 직접 붙여넣습니다(첫 줄은 열 이름)."
+            profile={profile}
+            inspectBusy={inspectBusy}
+            busy={generateBusy}
+            onSubmit={handleGenerateClick}
+            submitDisabled={!hasData}
           />
         </StepSection>
 
-        <StepSection n={2} title="목적과 유형" hint="어떻게 보여줄지 정합니다" done={!!result}>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-ink-1">목적 문장 (선택)</span>
-            <input
-              type="text"
-              value={prompt}
-              onChange={(event) => {
-                clearForOptionChange();
-                setPrompt(event.target.value);
-              }}
-              maxLength={300}
-              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-              placeholder="예: 지역별 매출을 크기순으로 비교"
-            />
-            <span className="flex flex-wrap gap-1.5 pt-1">
-              <span className="text-xs text-ink-3">예시</span>
-              {PROMPT_EXAMPLES.map((example) => (
-                <button
-                  key={example}
-                  type="button"
-                  onClick={() => {
-                    clearForOptionChange();
-                    setPrompt(example);
-                  }}
-                  className="rounded-full border border-ink-3/30 px-2.5 py-0.5 text-xs text-ink-2 transition hover:border-accent/50 hover:bg-accent-soft"
-                >
-                  {example}
-                </button>
-              ))}
-            </span>
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-ink-1">차트 유형</span>
-            <select
-              value={chartType}
-              onChange={(event) => {
-                clearForOptionChange();
-                setChartType(event.target.value as ChartType | '');
-              }}
-              className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-            >
-              {CHART_TYPES.map((item) => (
-                <option key={item.value || 'auto'} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex items-center gap-2 text-sm text-ink-1">
-            <input
-              type="checkbox"
-              checked={aiAssist}
-              onChange={(event) => {
-                clearForOptionChange();
-                setAiAssist(event.target.checked);
-              }}
-            />
-            <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 추천)</span>
-          </label>
-        </StepSection>
-
-        <StepSection n={3} title="생성" hint="차트를 만들고 산출물을 내려받습니다" done={!!result}>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleInspect}
-              disabled={inspectBusy || !hasData}
-              className="rounded-md border border-ink-3/40 px-4 py-2 text-sm font-medium text-ink-1 hover:bg-ink-3/10 disabled:opacity-50"
-            >
-              {inspectBusy ? '점검 중…' : '데이터 미리보기'}
-            </button>
-            <button
-              type="submit"
-              disabled={generateBusy || !hasData}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on hover:bg-accent-hover disabled:opacity-50"
-            >
-              {generateBusy ? '처리 중…' : '차트 생성'}
-            </button>
-          </div>
-          {profile ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-ink-3/20 bg-surface-sunken/40 px-4 py-3" data-testid="chart-advanced-controls">
-              <label className="flex items-center gap-2 text-sm font-medium text-ink-1">
-                <input
-                  type="checkbox"
-                  checked={advancedEnabled}
+        <div className="rounded-lg border border-ink-3/20">
+          <button
+            type="button"
+            onClick={() => setOptionsOpen((open) => !open)}
+            className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium text-ink-1"
+            aria-expanded={optionsOpen}
+            aria-controls="chart-options-panel"
+          >
+            <span>옵션</span>
+            <span className="text-xs text-ink-3">{optionsOpen ? '접기' : '펼치기'}</span>
+          </button>
+          {optionsOpen ? (
+            <div id="chart-options-panel" className="flex flex-col gap-4 border-t border-ink-3/20 px-4 py-4">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-ink-1">차트 유형</span>
+                <select
+                  value={chartType}
                   onChange={(event) => {
                     clearForOptionChange();
-                    setAdvancedEnabled(event.target.checked);
+                    setChartType(event.target.value as ChartType | '');
+                  }}
+                  className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                >
+                  {CHART_TYPES.map((item) => (
+                    <option key={item.value || 'auto'} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-ink-1">
+                <input
+                  type="checkbox"
+                  checked={aiAssist}
+                  onChange={(event) => {
+                    clearForOptionChange();
+                    setAiAssist(event.target.checked);
                   }}
                 />
-                고급 차트 설정 사용
+                <span>AI 보조 (활성 LLM 연결이 없으면 규칙 기반으로 추천)</span>
               </label>
-              {advancedEnabled ? (
-                <>
-                  <p className="text-xs text-ink-3">프로파일에서 확인한 열만 선택합니다. 최종 유효성 검사는 서버가 수행합니다.</p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-ink-2">X 축 열</span>
-                      <select
-                        value={manualX}
-                        onChange={(event) => handleManualX(event.target.value)}
-                        className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-                      >
-                        <option value="">선택하세요</option>
-                        {profiledColumns.map((column) => (
-                          <option key={column.name} value={column.name} disabled={manualY.includes(column.name) || manualGroup === column.name}>
-                            {column.name} ({column.numeric ? '숫자' : column.datetime ? '날짜' : '범주'})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-ink-2">그룹 열 (선택)</span>
-                      <select
-                        value={manualGroup}
-                        onChange={(event) => handleManualGroup(event.target.value)}
-                        className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-                      >
-                        <option value="">사용 안 함</option>
-                        {profiledColumns.map((column) => (
-                          <option key={column.name} value={column.name} disabled={manualX === column.name || manualY.includes(column.name)}>
-                            {column.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <fieldset className="flex flex-col gap-1 text-sm">
-                    <legend className="text-ink-2">Y 축 열 (하나 이상 선택)</legend>
-                    <div className="flex flex-wrap gap-x-4 gap-y-2">
-                      {profiledColumns.map((column) => (
-                        <label key={column.name} className="flex items-center gap-2 text-ink-1">
-                          <input
-                            type="checkbox"
-                            aria-label={`Y 축 ${column.name}`}
-                            checked={manualY.includes(column.name)}
-                            disabled={manualX === column.name || manualGroup === column.name}
-                            onChange={(event) => handleManualY(column.name, event.target.checked)}
-                          />
-                          {column.name}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-ink-2">집계</span>
-                      <select
-                        value={manualAggregation}
-                        onChange={(event) => {
-                          clearForOptionChange();
-                          setManualAggregation(event.target.value as ChartAggregation);
-                        }}
-                        className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-                      >
-                        {CHART_AGGREGATIONS.map((item) => (
-                          <option key={item.value} value={item.value}>{item.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-ink-2">정렬</span>
-                      <select
-                        value={manualSort}
-                        onChange={(event) => {
-                          clearForOptionChange();
-                          setManualSort(event.target.value as ChartSortMode);
-                        }}
-                        className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-                      >
-                        {CHART_SORT_MODES.map((item) => (
-                          <option key={item.value} value={item.value}>{item.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-ink-2">표시 행 수</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={manualLimit}
-                        onChange={(event) => {
-                          clearForOptionChange();
-                          setManualLimit(event.target.value);
-                        }}
-                        className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-ink-2">방향</span>
-                      <select
-                        value={manualOrientation}
-                        onChange={(event) => {
-                          clearForOptionChange();
-                          setManualOrientation(event.target.value as ChartOrientation);
-                        }}
-                        className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
-                      >
-                        {CHART_ORIENTATIONS.map((item) => (
-                          <option key={item.value} value={item.value}>{item.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <label className="flex items-center gap-2 text-sm text-ink-1">
+
+              {profile ? (
+                <div className="flex flex-col gap-3 rounded-lg border border-ink-3/20 bg-surface-sunken/40 px-4 py-3" data-testid="chart-advanced-controls">
+                  <label className="flex items-center gap-2 text-sm font-medium text-ink-1">
                     <input
                       type="checkbox"
-                      checked={manualStacked}
+                      checked={advancedEnabled}
                       onChange={(event) => {
                         clearForOptionChange();
-                        setManualStacked(event.target.checked);
+                        setAdvancedEnabled(event.target.checked);
                       }}
                     />
-                    누적 표시
+                    고급 차트 설정 사용
                   </label>
-                </>
+                  {advancedEnabled ? (
+                    <>
+                      <p className="text-xs text-ink-3">프로파일에서 확인한 열만 선택합니다. 최종 유효성 검사는 서버가 수행합니다.</p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="text-ink-2">X 축 열</span>
+                          <select
+                            value={manualX}
+                            onChange={(event) => handleManualX(event.target.value)}
+                            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                          >
+                            <option value="">선택하세요</option>
+                            {profiledColumns.map((column) => (
+                              <option key={column.name} value={column.name} disabled={manualY.includes(column.name) || manualGroup === column.name}>
+                                {column.name} ({column.numeric ? '숫자' : column.datetime ? '날짜' : '범주'})
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="text-ink-2">그룹 열 (선택)</span>
+                          <select
+                            value={manualGroup}
+                            onChange={(event) => handleManualGroup(event.target.value)}
+                            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                          >
+                            <option value="">사용 안 함</option>
+                            {profiledColumns.map((column) => (
+                              <option key={column.name} value={column.name} disabled={manualX === column.name || manualY.includes(column.name)}>
+                                {column.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <fieldset className="flex flex-col gap-1 text-sm">
+                        <legend className="text-ink-2">Y 축 열 (하나 이상 선택)</legend>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2">
+                          {profiledColumns.map((column) => (
+                            <label key={column.name} className="flex items-center gap-2 text-ink-1">
+                              <input
+                                type="checkbox"
+                                aria-label={`Y 축 ${column.name}`}
+                                checked={manualY.includes(column.name)}
+                                disabled={manualX === column.name || manualGroup === column.name}
+                                onChange={(event) => handleManualY(column.name, event.target.checked)}
+                              />
+                              {column.name}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="text-ink-2">집계</span>
+                          <select
+                            value={manualAggregation}
+                            onChange={(event) => {
+                              clearForOptionChange();
+                              setManualAggregation(event.target.value as ChartAggregation);
+                            }}
+                            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                          >
+                            {CHART_AGGREGATIONS.map((item) => (
+                              <option key={item.value} value={item.value}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="text-ink-2">정렬</span>
+                          <select
+                            value={manualSort}
+                            onChange={(event) => {
+                              clearForOptionChange();
+                              setManualSort(event.target.value as ChartSortMode);
+                            }}
+                            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                          >
+                            {CHART_SORT_MODES.map((item) => (
+                              <option key={item.value} value={item.value}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="text-ink-2">표시 행 수</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={manualLimit}
+                            onChange={(event) => {
+                              clearForOptionChange();
+                              setManualLimit(event.target.value);
+                            }}
+                            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                          />
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="text-ink-2">방향</span>
+                          <select
+                            value={manualOrientation}
+                            onChange={(event) => {
+                              clearForOptionChange();
+                              setManualOrientation(event.target.value as ChartOrientation);
+                            }}
+                            className="rounded-md border border-ink-3/40 bg-transparent px-3 py-2 text-ink-1"
+                          >
+                            {CHART_ORIENTATIONS.map((item) => (
+                              <option key={item.value} value={item.value}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm text-ink-1">
+                        <input
+                          type="checkbox"
+                          checked={manualStacked}
+                          onChange={(event) => {
+                            clearForOptionChange();
+                            setManualStacked(event.target.checked);
+                          }}
+                        />
+                        누적 표시
+                      </label>
+                    </>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : null}
-        </StepSection>
-      </form>
+        </div>
+      </div>
 
       <ProcessSteps steps={CHART_STEPS} done={!!result} engineNote={engineNote} />
 
@@ -678,41 +647,18 @@ export function ChartForm() {
         </p>
       ) : null}
 
-      {profile ? <DataProfile profile={profile} /> : null}
-      {result ? <ChartResult result={result} /> : null}
+      {result ? (
+        <>
+          <ChartResult result={result} />
+          <ChartFollowUp
+            onSubmit={handleFollowUp}
+            busy={generateBusy}
+            disabled={!dataFile}
+            disabledHint="다시 연 결과입니다 — 원본 데이터를 다시 첨부하면 새로 생성할 수 있습니다."
+          />
+        </>
+      ) : null}
     </div>
-  );
-}
-
-function DataProfile({ profile }: { profile: ChartInspectResponse }) {
-  return (
-    <section className="flex flex-col gap-2 text-sm" data-testid="chart-profile">
-      <p className="text-ink-1">
-        행 {profile.row_count.toLocaleString()}개 · 열 {profile.column_count}개
-      </p>
-      <div className="overflow-x-auto rounded-md border border-ink-3/30">
-        <table className="min-w-full text-left text-xs">
-          <thead className="bg-ink-3/5 text-ink-3">
-            <tr>
-              <th className="px-3 py-2">열</th>
-              <th className="px-3 py-2">유형</th>
-              <th className="px-3 py-2">결측</th>
-              <th className="px-3 py-2">고유값</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profile.columns.map((column) => (
-              <tr key={column.name} className="border-t border-ink-3/20 text-ink-1">
-                <td className="px-3 py-1.5 font-medium">{column.name}</td>
-                <td className="px-3 py-1.5">{column.numeric ? '숫자' : column.datetime ? '날짜' : '범주'}</td>
-                <td className="px-3 py-1.5">{column.null}</td>
-                <td className="px-3 py-1.5">{column.unique}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
   );
 }
 

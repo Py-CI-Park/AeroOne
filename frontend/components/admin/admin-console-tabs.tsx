@@ -77,16 +77,12 @@ import type {
   Tag,
   UnifiedSearchResult,
 } from '@/lib/types';
-import { AdminModulesSection } from './sections/admin-modules-section';
-import { AdminUsersSection } from './sections/admin-users-section';
-import { AdminRbacSection } from './sections/admin-rbac-section';
-import { AdminSessionsSection } from './sections/admin-sessions-section';
-import { AdminSystemSection } from './sections/admin-system-section';
-import { AdminTaxonomySection } from './sections/admin-taxonomy-section';
-import { AdminSearchSection } from './sections/admin-search-section';
-import { AdminBackupsSection } from './sections/admin-backups-section';
-import { AdminAuditSection } from './sections/admin-audit-section';
-import { AdminOverviewSection } from './sections/admin-overview-section';
+import { OverviewGroup } from './sections/groups/overview-group';
+import { AccountsGroup } from './sections/groups/accounts-group';
+import { ContentGroup } from './sections/groups/content-group';
+import { SystemGroup } from './sections/groups/system-group';
+import { AiGroup } from './sections/groups/ai-group';
+import { AuditGroup } from './sections/groups/audit-group';
 import { ConfirmProvider, useConfirm } from './widgets/confirm-dialog';
 import { ToastStack, type AdminToast } from './widgets/toast-stack';
 
@@ -184,7 +180,9 @@ export function tagToDraft(tag: Tag): TaxonomyDraft {
 
 type AdminConsoleContextValue = {
   state: PanelState;
-  refresh: (keys?: RefreshKey[]) => Promise<void>;
+  // refresh 는 이 사이클에 오류가 없었는지(true=성공)를 반환한다. 대부분의 소비자는 결과를
+  // 무시하지만, lazy 그룹 로더는 실패 그룹을 캐시에서 롤백하는 데 사용한다.
+  refresh: (keys?: RefreshKey[]) => Promise<boolean>;
   moduleDrafts: Record<number, ModuleDraft>;
   setModuleDrafts: React.Dispatch<React.SetStateAction<Record<number, ModuleDraft>>>;
   userDrafts: Record<number, UserDraft>;
@@ -259,20 +257,68 @@ export function useAdminConsoleData() {
 }
 
 const tabs = [
-  { key: 'modules', label: '모듈' },
-  { key: 'users', label: '사용자' },
-  { key: 'rbac', label: 'RBAC' },
-  { key: 'sessions', label: '세션' },
+  { key: 'overview', label: '개요' },
+  { key: 'accounts', label: '계정' },
+  { key: 'content', label: '콘텐츠' },
   { key: 'system', label: '시스템' },
-  { key: 'taxonomy', label: '분류' },
-  { key: 'search', label: '검색' },
-  { key: 'backups', label: '백업' },
+  { key: 'ai', label: 'AI' },
   { key: 'audit', label: '감사' },
 ] as const;
 
-type TabKey = (typeof tabs)[number]['key'];
+export type TabKey = (typeof tabs)[number]['key'];
 type RefreshKey = 'overview' | 'users' | 'connectedUsers' | 'permissions' | 'groups' | 'rbacMatrix' | 'resourceGrants' | 'audits' | 'modules' | 'health' | 'configHealth' | 'backups' | 'categories' | 'tags' | 'ai' | 'aiProvider' | 'llmConnections';
 const allRefreshKeys: RefreshKey[] = ['overview', 'users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants', 'audits', 'modules', 'health', 'configHealth', 'backups', 'categories', 'tags', 'ai', 'aiProvider', 'llmConnections'];
+
+// 그룹(신규 6탭) 진입 시 lazy fetch 할 refreshKey 집합. 그룹당 1회만 fetch 하고 캐시한다
+// (명시적 새로고침 버튼은 현행대로 allRefreshKeys 전체를 다시 불러온다).
+const groupRefreshKeys: Record<TabKey, RefreshKey[]> = {
+  overview: ['overview'],
+  accounts: ['users', 'connectedUsers', 'permissions', 'groups', 'rbacMatrix', 'resourceGrants'],
+  content: ['modules', 'categories', 'tags'],
+  system: ['health', 'configHealth', 'backups'],
+  ai: ['ai', 'aiProvider', 'llmConnections'],
+  audit: ['audits'],
+};
+
+// 구 9평면탭 → 신규 6그룹 하위호환 매핑. 신규 그룹키는 그대로 통과시킨다.
+const legacyTabToGroup: Record<string, TabKey> = {
+  modules: 'content',
+  users: 'accounts',
+  rbac: 'accounts',
+  sessions: 'accounts',
+  system: 'system',
+  taxonomy: 'content',
+  search: 'content',
+  backups: 'system',
+  audit: 'audit',
+  overview: 'overview',
+  accounts: 'accounts',
+  content: 'content',
+  ai: 'ai',
+};
+
+function isTabKey(value: string | null | undefined): value is TabKey {
+  return tabs.some((tab) => tab.key === value);
+}
+
+function resolveTabFromParam(value: string | null): TabKey {
+  if (!value) return 'overview';
+  if (isTabKey(value)) return value;
+  return legacyTabToGroup[value] ?? 'overview';
+}
+
+function readTabFromLocation(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('tab');
+}
+
+function writeCanonicalTabToLocation(nextTab: TabKey) {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('tab') === nextTab) return;
+  url.searchParams.set('tab', nextTab);
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
 
 export function AdminConsoleTabs() {
   return (
@@ -285,7 +331,8 @@ export function AdminConsoleTabs() {
 
 function AdminConsoleTabsContent() {
   const confirm = useConfirm();
-  const [activeTab, setActiveTab] = useState<TabKey>('modules');
+  const [activeTab, setActiveTab] = useState<TabKey>(() => resolveTabFromParam(readTabFromLocation()));
+  const loadedGroupsRef = useRef<Set<TabKey>>(new Set());
   const [state, setState] = useState<PanelState>(initialState);
   const [moduleDrafts, setModuleDrafts] = useState<Record<number, ModuleDraft>>({});
   const [userDrafts, setUserDrafts] = useState<Record<number, UserDraft>>({});
@@ -385,12 +432,31 @@ function AdminConsoleTabsContent() {
       if (next.users) setUserDrafts(Object.fromEntries(next.users.map((user) => [user.id, userToDraft(user)])));
       if (next.categories) setCategoryDrafts(Object.fromEntries(next.categories.map((category) => [category.id, categoryToDraft(category)])));
       if (next.tags) setTagDrafts(Object.fromEntries(next.tags.map((tag) => [tag.id, tagToDraft(tag)])));
+      // 이 refresh 사이클에서 오류가 없었는지 반환한다 — lazy 그룹 로더가 실패한 그룹을
+      // 캐시에서 롤백해 재진입 시 재시도할 수 있게 한다.
+      return errors.length === 0 && !connectedUsersError;
     } finally {
       setState((current) => ({ ...current, busy: current.busy === 'refresh' || current.busy === 'initial-load' ? undefined : current.busy }));
     }
   }
 
-  useEffect(() => { void refresh(); }, []);
+  async function ensureGroupLoaded(tab: TabKey) {
+    if (loadedGroupsRef.current.has(tab)) return;
+    // 진입 즉시 캐시에 넣어 in-flight 중복 fetch(빠른 재진입/strict-mode 이중 호출)를 막고,
+    // 실패하면 캐시에서 제거해 재진입 시 재시도가 되게 한다.
+    loadedGroupsRef.current.add(tab);
+    const ok = await refresh(groupRefreshKeys[tab]);
+    if (!ok) loadedGroupsRef.current.delete(tab);
+  }
+
+  // 그룹 전환마다: (1) 아직 로드하지 않은 그룹이면 해당 그룹의 refreshKeys 만 lazy fetch
+  // 하고(그룹당 1회 캐시), (2) ?tab= 을 현재 그룹으로 갱신한다. 마운트 시에도 실행되어
+  // 기본 그룹(overview)만 최초 fetch 한다(과거의 17종 일괄 refresh() 를 대체).
+  useEffect(() => {
+    writeCanonicalTabToLocation(activeTab);
+    void ensureGroupLoaded(activeTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   async function runBusy(label: string, refreshKeys: RefreshKey[], action: () => Promise<string | void>) {
     setState((current) => ({ ...current, busy: label, error: undefined }));
@@ -654,7 +720,8 @@ function AdminConsoleTabsContent() {
 
     function handleNumberShortcut(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (!/^[1-9]$/.test(event.key)) return;
+      // 6그룹이므로 1~6만 유효하다(7~9 등은 무시). tabs[idx] 부재 시 아래에서도 no-op.
+      if (!/^[1-6]$/.test(event.key)) return;
       if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) return;
       const tab = tabs[Number(event.key) - 1];
       if (!tab) return;
@@ -689,20 +756,16 @@ function AdminConsoleTabsContent() {
         <details className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
           <summary className="cursor-pointer font-semibold text-slate-900">콘솔 사용 도움말</summary>
           <ul className="mt-3 grid gap-1 md:grid-cols-2">
-            <li><span className="font-semibold">모듈</span>: 대시보드 모듈 노출과 정렬을 관리합니다.</li>
-            <li><span className="font-semibold">사용자</span>: 계정 상태와 직접 권한을 점검합니다.</li>
-            <li><span className="font-semibold">RBAC</span>: 그룹, 멤버십, 리소스 권한을 조정합니다.</li>
-            <li><span className="font-semibold">세션</span>: 접속자와 로그인 활동을 확인합니다.</li>
-            <li><span className="font-semibold">시스템</span>: DB, 자산, AI 상태와 비밀번호를 점검합니다.</li>
-            <li><span className="font-semibold">분류</span>: 카테고리와 태그 기준을 관리합니다.</li>
-            <li><span className="font-semibold">검색</span>: 통합 검색과 AI 운영 결과를 확인합니다.</li>
-            <li><span className="font-semibold">백업</span>: 백업 생성, 검증, 복원 점검을 실행합니다.</li>
+            <li><span className="font-semibold">개요</span>: 전체 운영 지표 요약과 각 그룹 바로가기를 제공합니다.</li>
+            <li><span className="font-semibold">계정</span>: 사용자, RBAC(그룹/권한), 세션·접속자를 관리합니다.</li>
+            <li><span className="font-semibold">콘텐츠</span>: 대시보드 모듈, 분류(카테고리/태그), 통합 검색을 관리합니다.</li>
+            <li><span className="font-semibold">시스템</span>: DB/자산 상태, 백업 생성·검증·복원 점검, 비밀번호를 관리합니다.</li>
+            <li><span className="font-semibold">AI</span>: AI 운영 상태, 제공자 설정, LLM 연결을 관리합니다.</li>
             <li><span className="font-semibold">감사</span>: 운영 이벤트와 CSV 내보내기를 확인합니다.</li>
           </ul>
-          <p className="mt-3 text-xs text-slate-500">입력 필드가 아닌 곳에서는 숫자 키 1~9로 탭을 바로 전환할 수 있습니다.</p>
+          <p className="mt-3 text-xs text-slate-500">입력 필드가 아닌 곳에서는 숫자 키 1~6로 탭을 바로 전환할 수 있습니다.</p>
         </details>
         <ToastStack toasts={state.toasts} onDismiss={dismissToast} />
-        <AdminOverviewSection />
         {state.busy === 'initial-load' ? null : (
           <>
         <nav className="flex flex-wrap gap-2" aria-label="관리자 콘솔 탭" role="tablist">
@@ -728,15 +791,12 @@ function AdminConsoleTabsContent() {
           })}
         </nav>
         <div id={`admin-panel-${activeTab}`} role="tabpanel" aria-labelledby={`admin-tab-${activeTab}`}>
-          {activeTab === 'modules' ? <AdminModulesSection /> : null}
-          {activeTab === 'users' ? <AdminUsersSection /> : null}
-          {activeTab === 'rbac' ? <AdminRbacSection /> : null}
-          {activeTab === 'sessions' ? <AdminSessionsSection /> : null}
-          {activeTab === 'system' ? <AdminSystemSection /> : null}
-          {activeTab === 'taxonomy' ? <AdminTaxonomySection /> : null}
-          {activeTab === 'search' ? <AdminSearchSection /> : null}
-          {activeTab === 'backups' ? <AdminBackupsSection /> : null}
-          {activeTab === 'audit' ? <AdminAuditSection /> : null}
+          {activeTab === 'overview' ? <OverviewGroup onNavigate={activateTab} /> : null}
+          {activeTab === 'accounts' ? <AccountsGroup /> : null}
+          {activeTab === 'content' ? <ContentGroup /> : null}
+          {activeTab === 'system' ? <SystemGroup /> : null}
+          {activeTab === 'ai' ? <AiGroup /> : null}
+          {activeTab === 'audit' ? <AuditGroup /> : null}
         </div>
           </>
         )}

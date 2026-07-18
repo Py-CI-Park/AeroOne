@@ -114,22 +114,31 @@ function renderWorkspace(mode: 'reopen' | 'duplicate', job = chartJob()) {
   );
 }
 
+async function openOptions(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^옵션/ }));
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 afterEach(() => {
   vi.clearAllMocks();
 });
 
-test('inspect shows the data profile table', async () => {
+test('auto-inspects attached data and renders column chips', async () => {
   inspectChartDataMock.mockResolvedValue(PROFILE);
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
 
-  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1));
-  const profile = await screen.findByTestId('chart-profile');
-  expect(profile).toHaveTextContent('행 4개');
-  expect(profile).toHaveTextContent('매출');
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  const chips = await screen.findByTestId('chart-column-chips');
+  expect(chips).toHaveTextContent('매출');
+  expect(chips).toHaveTextContent('숫자');
+  expect(chips).toHaveTextContent('지역');
+  expect(chips).toHaveTextContent('범주');
 });
 
 test('generate calls generateChart and renders the preview + warning', async () => {
@@ -137,7 +146,7 @@ test('generate calls generateChart and renders the preview + warning', async () 
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
   await user.type(screen.getByPlaceholderText(/지역별 매출/), '지역별 매출 비교');
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
 
@@ -157,12 +166,13 @@ test('shows an error message when generation fails', async () => {
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('생성 실패');
   expect(screen.queryByTestId('chart-preview-stub')).not.toBeInTheDocument();
 });
+
 test('uses result.llm_used as the sole provenance signal', async () => {
   generateChartMock.mockResolvedValue({
     ...RESULT,
@@ -172,33 +182,33 @@ test('uses result.llm_used as the sole provenance signal', async () => {
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
 
   await waitFor(() => expect(screen.getByTestId('process-steps')).toHaveTextContent('엔진: AI 제안 사용'));
 });
 
-test('invalidates an inspect request after data changes and ignores its late result', async () => {
+test('invalidates an auto-inspect request after data changes and ignores its late result', async () => {
   const first = deferred<ChartInspectResponse>();
   const second = deferred<ChartInspectResponse>();
   inspectChartDataMock.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
-  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1));
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
   const firstSignal = inspectChartDataMock.mock.calls[0][2] as AbortSignal;
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), new File(['region,revenue\n서울,99\n'], 'replacement.csv', { type: 'text/csv' }));
+  await user.upload(screen.getByLabelText('데이터 파일'), new File(['region,revenue\n서울,99\n'], 'replacement.csv', { type: 'text/csv' }));
   expect(firstSignal.aborted).toBe(true);
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
-  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(2), { timeout: 2000 });
 
   second.resolve({ ...PROFILE, row_count: 8 });
-  expect(await screen.findByTestId('chart-profile')).toHaveTextContent('행 8개');
+  await waitFor(() => expect(screen.getByTestId('chart-column-chips')).toBeInTheDocument());
   first.resolve({ ...PROFILE, row_count: 1 });
-  await waitFor(() => expect(screen.getByTestId('chart-profile')).toHaveTextContent('행 8개'));
+  await wait(50);
+  // 늦게 도착한 첫 요청의 결과로 대체되지 않는다 — 실패 없이 두 번째 결과만 유효하다.
+  expect(screen.getByTestId('chart-column-chips')).toBeInTheDocument();
 });
 
 test('invalidates a generate request after options change and ignores its late result', async () => {
@@ -208,7 +218,7 @@ test('invalidates a generate request after options change and ignores its late r
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
   await waitFor(() => expect(generateChartMock).toHaveBeenCalledTimes(1));
   const firstSignal = generateChartMock.mock.calls[0][2] as AbortSignal;
@@ -229,12 +239,11 @@ test('suppresses AbortError without replacing the current UI with an error', asy
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
 
-  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  expect(screen.queryByTestId('chart-profile')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('chart-column-chips')).not.toBeInTheDocument();
 });
 
 test('aborts both independent request lanes when the chart form unmounts', async () => {
@@ -245,10 +254,9 @@ test('aborts both independent request lanes when the chart form unmounts', async
   const user = userEvent.setup();
   const { unmount } = render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
-  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(generateChartMock).toHaveBeenCalledTimes(1));
 
   const inspectSignal = inspectChartDataMock.mock.calls[0][2] as AbortSignal;
@@ -265,10 +273,11 @@ test('submits grouped, stacked multi-y advanced configuration through typed manu
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  await screen.findByTestId('chart-column-chips');
+  await openOptions(user);
   await user.selectOptions(screen.getByLabelText('차트 유형'), 'bar');
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
-  await screen.findByTestId('chart-profile');
   await user.click(screen.getByLabelText('고급 차트 설정 사용'));
   await user.selectOptions(screen.getByLabelText('X 축 열'), 'region');
   await user.selectOptions(screen.getByLabelText('그룹 열 (선택)'), 'channel');
@@ -303,9 +312,10 @@ test('blocks advanced generation with invalid required selections before fetchin
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
-  await screen.findByTestId('chart-profile');
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  await screen.findByTestId('chart-column-chips');
+  await openOptions(user);
   await user.click(screen.getByLabelText('고급 차트 설정 사용'));
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
 
@@ -325,21 +335,22 @@ test('resets profile, result, and advanced selections when data changes', async 
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
-  await screen.findByTestId('chart-profile');
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  await screen.findByTestId('chart-column-chips');
+  await openOptions(user);
   await user.click(screen.getByLabelText('고급 차트 설정 사용'));
   await user.selectOptions(screen.getByLabelText('X 축 열'), 'region');
   await user.click(screen.getByLabelText('Y 축 revenue'));
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
   await screen.findByTestId('chart-result');
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), new File(['region,revenue\n부산,88\n'], 'replacement.csv', { type: 'text/csv' }));
-  expect(screen.queryByTestId('chart-profile')).not.toBeInTheDocument();
+  await user.upload(screen.getByLabelText('데이터 파일'), new File(['region,revenue\n부산,88\n'], 'replacement.csv', { type: 'text/csv' }));
+  expect(screen.queryByTestId('chart-column-chips')).not.toBeInTheDocument();
   expect(screen.queryByTestId('chart-result')).not.toBeInTheDocument();
 
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
-  await screen.findByTestId('chart-profile');
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(2), { timeout: 2000 });
+  await screen.findByTestId('chart-column-chips');
   await user.click(screen.getByLabelText('고급 차트 설정 사용'));
   expect(screen.getByLabelText('X 축 열')).toHaveValue('');
   expect(screen.getByLabelText('Y 축 revenue')).not.toBeChecked();
@@ -363,14 +374,14 @@ test('duplicates only safe chart settings and requires source data to be attache
   expect(await screen.findByRole('status')).toHaveTextContent('원본 데이터는 복제되지 않습니다');
   expect(screen.getByLabelText('차트 유형')).toHaveValue('line');
   expect(screen.getByRole('button', { name: '차트 생성' })).toBeDisabled();
-  expect(screen.queryByTestId('chart-profile')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('chart-column-chips')).not.toBeInTheDocument();
   expect(screen.queryByTestId('chart-result')).not.toBeInTheDocument();
   expect(generateChartMock).not.toHaveBeenCalled();
   expect(inspectChartDataMock).not.toHaveBeenCalled();
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
-  await user.click(screen.getByRole('button', { name: '데이터 미리보기' }));
-  await screen.findByTestId('chart-profile');
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await waitFor(() => expect(inspectChartDataMock).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  await screen.findByTestId('chart-column-chips');
   expect(screen.getByLabelText('고급 차트 설정 사용')).toBeChecked();
   expect(screen.getByLabelText('집계')).toHaveValue('mean');
   expect(screen.getByLabelText('표시 행 수')).toHaveValue(12);
@@ -392,7 +403,7 @@ test('renders only valid returned artifact and bundle paths through the office p
   const user = userEvent.setup();
   render(<ChartForm />);
 
-  await user.upload(screen.getByLabelText(/데이터 파일/), pickFile());
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
   await user.click(screen.getByRole('button', { name: '차트 생성' }));
 
   expect(await screen.findByRole('link', { name: 'ECharts option(JSON)' })).toHaveAttribute(
@@ -407,4 +418,68 @@ test('renders only valid returned artifact and bundle paths through the office p
   expect(screen.queryByRole('link', { name: 'traversal' })).not.toBeInTheDocument();
   expect(getOfficeArtifactProxyPathMock).toHaveBeenCalledWith(validOption);
   expect(getOfficeArtifactProxyPathMock).toHaveBeenCalledWith(validBundle);
+});
+
+test('follow-up command reuses the previous result as previousSpec with the same attached data file', async () => {
+  const file = pickFile();
+  generateChartMock
+    .mockResolvedValueOnce(RESULT)
+    .mockResolvedValueOnce({ ...RESULT, title: '상위 3개만 반영' });
+  const user = userEvent.setup();
+  render(<ChartForm />);
+
+  await user.upload(screen.getByLabelText('데이터 파일'), file);
+  await user.click(screen.getByRole('button', { name: '차트 생성' }));
+  await screen.findByTestId('chart-result');
+
+  const followUpInput = screen.getByPlaceholderText('예: 상위 5개만, 가로 막대로');
+  await user.type(followUpInput, '상위 3개만{Enter}');
+
+  await waitFor(() => expect(generateChartMock).toHaveBeenCalledTimes(2));
+  const [followUpPayload] = generateChartMock.mock.calls[1];
+  expect(followUpPayload.previousSpec).toEqual(RESULT.chart_spec);
+  expect(followUpPayload.prompt).toBe('상위 3개만');
+  expect(followUpPayload.dataFile).toBe(file);
+  expect(followUpPayload.manualSpec).toBeUndefined();
+
+  expect(await screen.findByTestId('chart-preview-stub')).toHaveAttribute('data-title', '상위 3개만 반영');
+});
+
+test('follow-up example chip sends immediately with previousSpec', async () => {
+  generateChartMock
+    .mockResolvedValueOnce(RESULT)
+    .mockResolvedValueOnce({ ...RESULT, title: '가로 막대 결과' });
+  const user = userEvent.setup();
+  render(<ChartForm />);
+
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await user.click(screen.getByRole('button', { name: '차트 생성' }));
+  await screen.findByTestId('chart-result');
+
+  await user.click(screen.getByRole('button', { name: '가로 막대로' }));
+
+  await waitFor(() => expect(generateChartMock).toHaveBeenCalledTimes(2));
+  const [followUpPayload] = generateChartMock.mock.calls[1];
+  expect(followUpPayload.prompt).toBe('가로 막대로');
+  expect(followUpPayload.previousSpec).toEqual(RESULT.chart_spec);
+});
+
+test('a failed follow-up command keeps the previous result and follow-up input visible', async () => {
+  generateChartMock
+    .mockResolvedValueOnce(RESULT)
+    .mockRejectedValueOnce(new Error('히스토그램에는 정확히 하나의 숫자 y 열이 필요합니다'));
+  const user = userEvent.setup();
+  render(<ChartForm />);
+
+  await user.upload(screen.getByLabelText('데이터 파일'), pickFile());
+  await user.click(screen.getByRole('button', { name: '차트 생성' }));
+  await screen.findByTestId('chart-result');
+
+  const followUpInput = screen.getByPlaceholderText('예: 상위 5개만, 가로 막대로');
+  await user.type(followUpInput, '히스토그램으로{Enter}');
+
+  // 실패해도 다듬기 루프가 끊기지 않는다 — 직전 결과와 후속 입력이 남고 오류만 표시된다.
+  expect(await screen.findByRole('alert')).toHaveTextContent('히스토그램에는 정확히 하나의 숫자 y 열이 필요합니다');
+  expect(screen.getByTestId('chart-result')).toBeInTheDocument();
+  expect(screen.getByTestId('chart-follow-up')).toBeInTheDocument();
 });

@@ -104,7 +104,7 @@ test('groupPermissionsByCategory is deterministic and pins unknown permissions t
 
 test('resource grant permission select exposes only collection-safe raw keys inside AdminConsoleTabs', async () => {
   render(<AdminConsoleTabs />);
-  fireEvent.click(await screen.findByRole('tab', { name: 'RBAC' }));
+  fireEvent.click(await screen.findByRole('tab', { name: '계정' }));
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
 
   const permissionSelect = screen.getByLabelText('grant permission key');

@@ -8,7 +8,7 @@ import { Badge, useAdminConsoleData } from '../admin-console-tabs';
 
 const inputClass = 'rounded-md border border-slate-300 px-2 py-1 text-sm';
 
-// 시스템 탭 안의 "AI 연결" 카드. OpenAI 호환 엔드포인트(base_url + api_key)를 등록하고
+// AI 탭 안의 "AI 연결" 카드. OpenAI 호환 엔드포인트(base_url + api_key)를 등록하고
 // 검증(verify)으로 모델 목록을 불러와 기본 모델을 저장한다. 키는 password 입력·목록 마스킹만 노출한다.
 export function AdminLlmConnectionsCard() {
   const { state, llmForm, setLlmForm, addLlmConnection } = useAdminConsoleData();

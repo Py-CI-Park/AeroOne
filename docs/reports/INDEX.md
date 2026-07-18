@@ -230,6 +230,22 @@
 - 코드: `backend/app/modules/{office_tools,leantime}/`, `frontend/components/office-tools/`, `scripts/leantime/`, `packaging/leantime/`, `docs/runbook/leantime-{codeploy,oidc-ldap}.md`
 - 회귀 방지: backend 775 passed(integration 202·unit core 128·Office 337·Leantime 71·batch 37, 0 failed), frontend Vitest 430 passed(82 파일), `tsc --noEmit`, `next build`, alembic head `20260714_0016`, 스토리별 architect CLEAR/APPROVE 및 executor QA red-team 통과.
 
+### 단계 30 — 1.16.3 전수 검사 + Leantime 스택 실기동 결함 3중 수정 (1.16.4/1.17.0 준비)
+
+- 파일: [`v1-16-3-full-audit-2026-07-16.md`](v1-16-3-full-audit-2026-07-16.md) (14개 섹션 100점 평가, 종합 80), [`v1-17-0-improvement-plan-2026-07-16.md`](v1-17-0-improvement-plan-2026-07-16.md) (P0/P1/P2 개선 계획)
+- 무엇: Leantime 스택 배치의 파스 사망(`(skip)` 비이스케이프)·delayed expansion 의 관리자 비밀번호 `!` 훼손·`LEAN_APP_URL=localhost` LAN 파손을 본 PC 실기동으로 재현·수정·E2E 검증(setup→start→로그인→dashboard 200)하고, 릴리스된 1.16.3 이 backend 28 failed(발급 계정 전체 접근 정책 미반영 스테일 테스트) 상태였음을 발견해 전량 수리했으며, 전 모듈 전수 검사로 사용자 체감 축(대화형 차트 컴포저, AI 스트리밍, 상태 배지)과 릴리스 전 전체 게이트 의무화를 차기 사이클 최우선으로 확정했다.
+- 코드: `scripts/leantime/stack/{setup,start}-leantime-stack.bat`, `frontend/app/leantime/page.tsx`, `docs/runbook/closed-network-usage.md`, `backend/tests/{unit,integration}/` 정책 정합화 5파일 (commit `678440a` 외)
+- 회귀 방지: `test_windows_batch_scripts.py` leantime 6건 신규(총 14건) + leantime adapter 발급 계정 기본 접근 1건, backend 전체 **1,179 passed / 0 failed**(unit 834 + integration 345), frontend Vitest 540 passed(88 파일), `tsc --noEmit` 통과.
+- 후속: 폐쇄망 실 PC 재검증 후 `1.16.4` hotfix 로 새 스택 ZIP(`…20260716-212615.zip`, sha256 `2667088d94f1…`) 게시 — 게시된 1.16.3 스택 asset 은 깨진 판(immutable, 교체 불가).
+
+### 단계 32 — 1.16.3 개선 계획 완주 (단일 1.17.0 릴리스, ultragoal 9목표)
+
+- 파일: [`phase-32-v1-17-0-ultragoal.md`](phase-32-v1-17-0-ultragoal.md)
+- 무엇: 1.16.3 전수 검사 개선 계획의 P0~P2 를 durable multi-goal 9목표로 분해해 완주 — npm ci 드리프트 방지, 대화형 차트 컴포저, AeroAI SSE 스트리밍·첨부, 런처 배지·최근 열람, 문서 수정일·트리 상태·이슈 내비, 경고 부채 0, Civil v1.8(실루엣 상호작용·내보내기·프리셋·지연 로딩), 관리자 콘솔 6그룹 IA + lazy fetch(개요 진입 17→1), 릴리스 성능 예산 게이트 승격. `1.17.0-dev` 브랜치 한 곳에 누적된 결과물이라 실제 게시는 **단일 1.17.0**(1.16.3 → 1.17.0, minor) 로 통합했다. 각 목표 2-pass architect CLEAR/APPROVE + executor QA red-team 통과.
+- 코드: `scripts/qa/release_budget_gate.mjs`, `backend/app/modules/reports/civil_aircraft_dashboard/`(v1.8), `frontend/components/admin/`(6그룹), `frontend/components/{ai,office-tools,dashboard,documents,newsletter}/`, `docs/runbook/release-performance-budget.md`, 커밋 `8d5dadb`~`1303ce1`·`6821e53` 외.
+- 회귀 방지: backend 전체 **1,283 passed / 0 failed**(unit 917 + integration 366, 경고 0), frontend Vitest **625 passed / 97 files**(act 경고 0), `tsc --noEmit`·`next build` 통과, 성능 예산 게이트 3/3 pass(`artifacts/qa/release-budget/1.17.0.json`).
+- 후속: 게시(main 병합·tag `1.17.0`·Release·ZIP)·폐쇄망 실 PC 재검증은 운영자 승인 액션. 1.16.4 hotfix 는 코드 완료·게시 대기.
+
 ---
 
 ## 보고서가 다루지 않는 자리

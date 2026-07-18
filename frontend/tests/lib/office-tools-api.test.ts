@@ -173,6 +173,17 @@ test('generateChart rejects conflicting manual spec inputs before fetching', asy
   ).rejects.toThrow('Provide either manualSpec or manualSpecJson, not both');
   expect(fetchMock).not.toHaveBeenCalled();
 });
+test('generateChart serializes previousSpec as previous_spec_json for follow-up commands', async () => {
+  fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ job_id: 'x' }) });
+  const file = new File(['region,revenue\nSeoul,120\n'], 'data.csv', { type: 'text/csv' });
+  const previousSpec = { type: 'bar', x: 'region', y: ['revenue'] };
+
+  await generateChart({ dataFile: file, prompt: '상위 5개만', previousSpec }, 'token');
+
+  const form = fetchMock.mock.calls[0][1].body as FormData;
+  expect(form.get('previous_spec_json')).toBe(JSON.stringify(previousSpec));
+  expect(form.has('manual_spec_json')).toBe(false);
+});
 
 test('fetchOfficeSamples GETs the samples list from the office-tools proxy', async () => {
   const samples = [

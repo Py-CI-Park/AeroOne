@@ -105,7 +105,7 @@ def test_admin_role_has_all_admin_permissions(session: Session) -> None:
     for key in MUTATION_PERMISSIONS + ['admin.users.read', 'collections.nsa.read', 'admin.resource_grants.manage']:
         assert has_permission(session, admin, key) is True
 
-def test_leantime_permissions_admin_default_not_user_default(session: Session) -> None:
+def test_leantime_permissions_split_between_admin_and_issued_user(session: Session) -> None:
     leantime_keys = {'admin.leantime.read', 'admin.leantime.manage', 'leantime.read'}
     assert leantime_keys.issubset(ADMIN_PERMISSIONS)
 
@@ -113,14 +113,23 @@ def test_leantime_permissions_admin_default_not_user_default(session: Session) -
     for key in leantime_keys:
         assert has_permission(session, admin, key) is True
 
-    assert leantime_keys.isdisjoint(permissions_for_role('user'))
+    # 1.16.3 발급 계정 전체 접근: 읽기용 leantime.read 는 user 역할 기본값이지만,
+    # 연결 관리(admin.leantime.*)는 여전히 관리자 전용이다.
+    user_defaults = permissions_for_role('user')
+    assert 'leantime.read' in user_defaults
+    assert {'admin.leantime.read', 'admin.leantime.manage'}.isdisjoint(user_defaults)
+    assert permissions_for_role('pending') == set()
 
-def test_office_permissions_are_admin_only(session: Session) -> None:
+
+def test_office_use_is_issued_user_default_but_management_stays_admin_only(session: Session) -> None:
     admin = _user(session, role='admin')
     plain = _user(session)
-    for key in ('office.use', 'admin.office.manage'):
-        assert has_permission(session, admin, key) is True
-        assert has_permission(session, plain, key) is False
+    # 1.16.3 발급 계정 전체 접근: office.use 는 발급 계정(user 역할) 기본 권한이다.
+    assert has_permission(session, admin, 'office.use') is True
+    assert has_permission(session, plain, 'office.use') is True
+    # 관리 권한은 여전히 관리자/명시 부여 전용.
+    assert has_permission(session, admin, 'admin.office.manage') is True
+    assert has_permission(session, plain, 'admin.office.manage') is False
 
 
 def test_can_read_collection_matrix(session: Session) -> None:

@@ -5,7 +5,7 @@ import { AdminConsoleTabs } from '@/components/admin/admin-console-tabs';
 import * as api from '@/lib/api';
 
 // admin-console-tabs 의 refresh() 가 호출하는 모든 fetcher 를 모킹한다.
-// 시스템 탭의 "AI 연결" 카드가 소비하는 fetchLlmConnections + CRUD/verify 도 함께 모킹한다.
+// AI 탭의 "AI 연결" 카드가 소비하는 fetchLlmConnections + CRUD/verify 도 함께 모킹한다.
 vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return {
@@ -85,7 +85,7 @@ beforeEach(() => {
 
 async function openSystemTab() {
   render(<AdminConsoleTabs />);
-  fireEvent.click(await screen.findByRole('tab', { name: '시스템' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'AI' }));
   await screen.findByText('AI 연결');
 }
 

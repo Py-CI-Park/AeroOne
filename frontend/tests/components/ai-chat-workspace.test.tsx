@@ -1,18 +1,20 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
+
+import { mockStreamResolves } from './ai-stream-test-utils';
 
 const {
   fetchAiStatusMock,
   fetchCollectionSearchMock,
   listAiConversationsMock,
-  sendAiChatMock,
+  streamAiChatMock,
 } = vi.hoisted(() => ({
   fetchAiStatusMock: vi.fn(),
   fetchCollectionSearchMock: vi.fn(),
   listAiConversationsMock: vi.fn(),
-  sendAiChatMock: vi.fn(),
+  streamAiChatMock: vi.fn(),
 }));
 
 vi.mock('@/lib/api', async () => {
@@ -21,7 +23,7 @@ vi.mock('@/lib/api', async () => {
     ...actual,
     fetchAiStatus: fetchAiStatusMock,
     fetchCollectionSearch: fetchCollectionSearchMock,
-    sendAiChat: sendAiChatMock,
+    streamAiChat: streamAiChatMock,
     listAiConversations: listAiConversationsMock,
   };
 });
@@ -38,7 +40,7 @@ beforeEach(() => {
   });
   fetchCollectionSearchMock.mockResolvedValue({ results: [], degraded: false, collections: ['document', 'civil'] });
   listAiConversationsMock.mockResolvedValue({ conversations: [] });
-  sendAiChatMock.mockResolvedValue({
+  mockStreamResolves(streamAiChatMock, {
     model: 'gemma4:12b',
     message: { role: 'assistant', content: 'AI 답변' },
     citations: [],
@@ -49,13 +51,19 @@ afterEach(() => {
   vi.restoreAllMocks();
   fetchAiStatusMock.mockReset();
   fetchCollectionSearchMock.mockReset();
-  sendAiChatMock.mockReset();
+  streamAiChatMock.mockReset();
   listAiConversationsMock.mockReset();
 });
 
 test('shows Ollama model status and sends chat with waiting indicator', async () => {
-  let resolveChat: (value: unknown) => void = () => {};
-  sendAiChatMock.mockReturnValue(new Promise((resolve) => { resolveChat = resolve; }));
+  let capturedHandlers: { onDelta?: (c: string) => void; onDone?: (p: unknown) => void } = {};
+  let resolveStream: () => void = () => {};
+  streamAiChatMock.mockImplementation((_payload: unknown, _signal: AbortSignal | undefined, handlers: typeof capturedHandlers) => {
+    capturedHandlers = handlers;
+    return new Promise<void>((resolve) => {
+      resolveStream = resolve;
+    });
+  });
 
   render(<AiChatWorkspace />);
 
@@ -66,12 +74,16 @@ test('shows Ollama model status and sends chat with waiting indicator', async ()
   expect(screen.getByTestId('ai-pending')).toHaveTextContent('AeroAI 응답 생성 중');
   expect(screen.getByRole('button', { name: '응답 대기 중' })).toBeDisabled();
 
-  resolveChat({ model: 'gemma4:12b', message: { role: 'assistant', content: '반갑습니다' }, citations: [] });
+  act(() => {
+    capturedHandlers.onDelta?.('반갑습니다');
+    capturedHandlers.onDone?.({ model: 'gemma4:12b', conversation_id: null, persisted: false });
+    resolveStream();
+  });
   expect(await screen.findByText('반갑습니다')).toBeInTheDocument();
 });
 
 test('renders assistant markdown safely without changing raw copy source', async () => {
-  sendAiChatMock.mockResolvedValue({
+  mockStreamResolves(streamAiChatMock, {
     model: 'gemma4:12b',
     message: {
       role: 'assistant',
@@ -194,7 +206,7 @@ test('chat with document context shows citation links', async () => {
   render(<AiChatWorkspace />);
 
   fireEvent.click(screen.getByLabelText('문서 검색 결과를 답변 근거로 사용(document/civil)'));
-  sendAiChatMock.mockResolvedValue({
+  mockStreamResolves(streamAiChatMock, {
     model: 'gemma4:12b',
     message: { role: 'assistant', content: '근거 기반 답변' },
     citations: [
@@ -213,6 +225,28 @@ test('chat with document context shows citation links', async () => {
   fireEvent.click(screen.getByRole('button', { name: '보내기' }));
 
   const citation = await screen.findByRole('link', { name: /civil · catalog/ });
-  await waitFor(() => expect(sendAiChatMock).toHaveBeenCalledWith(expect.objectContaining({ use_search: true, collections: ['document', 'civil'] }), expect.anything()));
+  await waitFor(() =>
+    expect(streamAiChatMock).toHaveBeenCalledWith(
+      expect.objectContaining({ use_search: true, collections: ['document', 'civil'] }),
+      expect.anything(),
+      expect.anything(),
+    ),
+  );
   expect(citation).toHaveAttribute('href', '/reports/civil-aircraft?path=catalog.html');
+});
+
+
+test('done with persist_error keeps the answer and shows a save-failure warning', async () => {
+  streamAiChatMock.mockImplementation((_payload: unknown, _signal: AbortSignal | undefined, handlers: { onDelta?: (c: string) => void; onDone?: (p: unknown) => void }) => {
+    handlers.onDelta?.('답변 본문');
+    handlers.onDone?.({ model: 'gemma4:12b', conversation_id: null, persisted: false, persist_error: 'PersistFailed' });
+    return Promise.resolve();
+  });
+  render(<AiChatWorkspace />);
+  fireEvent.change(screen.getByTestId('ai-chat-input'), { target: { value: '질문' } });
+  fireEvent.click(screen.getByRole('button', { name: '보내기' }));
+
+  // 답변은 유지되고 저장 실패 경고만 뜬다.
+  expect(await screen.findByText('답변 본문')).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent('대화 저장에 실패했습니다');
 });

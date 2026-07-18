@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 import ActivityPage from '@/app/activity/page';
 
@@ -35,6 +35,8 @@ afterEach(() => {
 
 test('renders the AppShell with the 내 활동 title and mounts the activity workspace', async () => {
   render(await ActivityPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(screen.getByTestId('app-shell')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: '내 활동' })).toBeInTheDocument();

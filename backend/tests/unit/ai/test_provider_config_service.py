@@ -450,3 +450,26 @@ def test_failpoint_before_commit_rolls_back_test_candidate_without_half_written_
     assert row.compatible_state == 'unverified'  # never flipped to verified
     assert row.compatible_test_proof_ref is None
     assert row.config_version == 2  # still just the write_candidate bump, not test's
+
+
+def test_write_request_repr_never_exposes_api_key() -> None:
+    # Field(repr=False) 를 __repr_args__ 재정의로 바꾼 뒤에도(경고 제거) repr/str 어디에도
+    # api_key 가 노출되지 않는 보안 계약을 회귀로 고정한다.
+    from app.modules.admin.schemas import AiProviderCompatibleRotateRequest, AiProviderCompatibleWriteRequest
+
+    secret = 'sk-REPR-EXPOSURE-CANARY'
+    for cls in (AiProviderCompatibleWriteRequest, AiProviderCompatibleRotateRequest):
+        request = cls(
+            canonical_url='http://127.0.0.1:11434/v1',
+            display_url='http://127.0.0.1:11434/v1',
+            model='m',
+            generation='g',
+            api_key=secret,
+            expected_config_version=1,
+        )
+        assert secret not in repr(request)
+        assert secret not in str(request)
+        # 직렬화(model_dump)에는 남아 있어야 한다 — 저장 경로가 소비.
+        assert request.api_key == secret
+        assert request.model_dump()['api_key'] == secret
+        assert secret in request.model_dump_json()

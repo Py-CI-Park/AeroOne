@@ -68,6 +68,7 @@ export interface AuthResponse {
     role: string;
     email?: string | null;
     is_active: boolean;
+    requires_password_change?: boolean;
   };
   csrf_token: string;
 }
@@ -88,6 +89,7 @@ export interface ClientSession {
   can_use_ai: boolean;
   permissions: string[];
   resources: ClientSessionResourceGrant[];
+  requires_password_change?: boolean;
 }
 
 export interface AuthActivityIdentity {
@@ -482,11 +484,23 @@ export interface ReadEventsResponse {
   loopback_only: boolean;
 }
 
+export interface RecentReadItem {
+  slug: string;
+  title: string;
+  last_seen_at: string;
+}
+
+export interface RecentReadsResponse {
+  items: RecentReadItem[];
+}
+
 export interface DocumentListItem {
   // _database/document 기준 상대 경로(.html), 표시 이름(stem), 부모 폴더("" = 루트).
   path: string;
   name: string;
   folder: string;
+  // 파일 mtime 로컬 날짜(YYYY-MM-DD). 구버전 응답/stat 실패 시 비어 있을 수 있다.
+  modified_at?: string;
 }
 
 export interface CollectionSearchResult {
@@ -508,6 +522,11 @@ export interface CollectionSearchResponse {
 
 export interface AiChatMessage {
   role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiAttachment {
+  name: string;
   content: string;
 }
 
@@ -626,6 +645,18 @@ export interface LeantimeHealth {
   latency_ms: number | null;
   detail: string;
   app_identified: boolean;
+}
+
+
+// 외부 런처(Open Notebook/OpenWebUI) 동거 스택의 실시간 감지 결과. 신원 마커는 요구하지
+// 않는다 — HTTP 응답만 오면 status='ready'.
+export interface LauncherHealth {
+  status: 'ready' | 'starting' | 'absent' | 'error';
+  port: number;
+  probe_target: string;
+  checked_at: string;
+  latency_ms: number | null;
+  detail: string;
 }
 
 

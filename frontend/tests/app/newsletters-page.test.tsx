@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 
 import NewslettersPage from '@/app/newsletters/page';
 import type { NewsletterCalendarEntry, NewsletterDetail, NewsletterItem } from '@/lib/types';
@@ -137,6 +137,8 @@ afterEach(() => {
 
 test('defaults to the latest issue, renders its HTML directly, with an expanded calendar and existing categories', async () => {
   render(await NewslettersPage({ searchParams: Promise.resolve({}) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(fetchLatestNewsletterMock).toHaveBeenCalled();
   expect(screen.getByRole('heading', { name: 'Newsletter' })).toBeInTheDocument();
@@ -167,6 +169,8 @@ test('loads the requested issue when a slug is provided', async () => {
   fetchNewsletterDetailMock.mockResolvedValue(supply);
 
   render(await NewslettersPage({ searchParams: Promise.resolve({ slug: 'supply-chain' }) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   expect(fetchNewsletterDetailMock).toHaveBeenCalledWith('supply-chain');
   expect(fetchLatestNewsletterMock).not.toHaveBeenCalled();
@@ -179,6 +183,8 @@ test('query theme overrides cookie and env defaults', async () => {
   vi.stubEnv('NEWSLETTERS_THEME', 'dark');
 
   render(await NewslettersPage({ searchParams: Promise.resolve({ theme: 'light' }) }));
+  // AccountMenu 세션 fetch 마이크로태스크를 act 로 플러시("not wrapped in act" 경고 제거).
+  await act(async () => {});
 
   // 테마는 <html> 에 부착 — 페이지가 해석한 theme 은 자식(달력)으로 전달돼 확인.
   expect(screen.getByTestId('newsletter-date-calendar')).toHaveAttribute('data-theme', 'light');

@@ -25,7 +25,7 @@ setup.bat / setup_offline.bat 가 본 모듈의 종료 코드를 보고 alembic 
 
 사용 예 (배치 안에서)
 ---------------------
-    python scripts/ensure_db_state.py data/aeroone.db
+    python scripts/ensure_db_state.py ../_database/db/aeroone.db
     set "MIGRATION_MODE=%ERRORLEVEL%"
     if "%MIGRATION_MODE%"=="3" (alembic stamp head) else (alembic upgrade head)
 
@@ -48,7 +48,7 @@ def main() -> int:
     """sqlite 파일을 열어 위 docstring 의 0 / 2 / 3 종료 코드를 반환한다.
 
     인자: argv[1] 에 SQLite 데이터베이스 파일 경로를 받는다. 부모 디렉토리
-    가 없으면 자동으로 생성한다 (setup 첫 실행 시 backend/data/ 가 없을
+    가 없으면 자동으로 생성한다 (setup 첫 실행 시 _database/db/ 가 없을
     수 있다).
 
     반환:

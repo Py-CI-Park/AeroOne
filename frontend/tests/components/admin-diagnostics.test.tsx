@@ -112,12 +112,12 @@ test('admin home console lists config-health roots', async () => {
   expect(within(section).getByText('D:/storage/markdown/newsletters')).toBeInTheDocument();
   expect(within(section).getByText('exists false · readable false')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: '세션' }));
+  fireEvent.click(screen.getByRole('tab', { name: '계정' }));
   expect(await screen.findByText('접속자/세션')).toBeInTheDocument();
   expect(screen.getByText('익명 읽음 추적')).toBeInTheDocument();
   expect(screen.getByText('IP/뉴스레터 집계 행 2개')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: 'RBAC' }));
+  fireEvent.click(screen.getByRole('tab', { name: '계정' }));
   expect(await screen.findByText('RBAC 매트릭스 / 리소스 권한')).toBeInTheDocument();
   expect(screen.getAllByText(/operator/).length).toBeGreaterThan(0);
   expect(screen.getAllByText('collections.nsa.read').length).toBeGreaterThan(0);

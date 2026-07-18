@@ -3,10 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
 
+import { mockStreamResolves } from './ai-stream-test-utils';
+
 const mocks = vi.hoisted(() => ({
   fetchAiStatus: vi.fn(),
   fetchCollectionSearch: vi.fn(),
-  sendAiChat: vi.fn(),
+  streamAiChat: vi.fn(),
   listAiConversations: vi.fn(),
   getAiConversation: vi.fn(),
   deleteAiConversation: vi.fn(),
@@ -32,7 +34,7 @@ beforeEach(() => {
     enabled: true, base_url: '', model: 'gemma4:12b', reachable: true, model_available: true, status: 'ok', detail: null,
   });
   mocks.fetchCollectionSearch.mockResolvedValue({ results: [], degraded: false, collections: ['document', 'civil'] });
-  mocks.sendAiChat.mockResolvedValue({ model: 'gemma4:12b', message: { role: 'assistant', content: 'AI 답변' }, citations: [] });
+  mockStreamResolves(mocks.streamAiChat, { model: 'gemma4:12b', message: { role: 'assistant', content: 'AI 답변' }, citations: [] });
   mocks.listAiConversations.mockResolvedValue({ conversations: [SUMMARY] });
   mocks.getAiConversation.mockResolvedValue({
     ...SUMMARY,
