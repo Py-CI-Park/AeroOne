@@ -510,11 +510,15 @@ export async function logout() {
 
 
 export async function fetchPublicServiceModules(cookieHeader?: string) {
+  // 대시보드 SSR 진입점. 백엔드가 느리거나 불통일 때(예: 잘못된 SERVER_API_BASE_URL,
+  // 느린 DNS 실패) 첫 화면이 무한정 블록되지 않도록 2.5s 방어 타임아웃을 건다. 초과 시
+  // 호출부(loadModules)가 catch 해 내장 fallback 모듈로 즉시 degrade 한다.
+  const headers = cookieHeader ? { cookie: cookieHeader } : undefined;
   return loggedServerFetchJson<ServiceModule[]>({
     label: 'service-modules.public',
     baseUrl: getServerApiBase(),
     path: '/api/v1/admin/service-modules/public',
-    init: cookieHeader ? { headers: { cookie: cookieHeader } } : undefined,
+    init: { headers, signal: AbortSignal.timeout(2500) },
   });
 }
 
