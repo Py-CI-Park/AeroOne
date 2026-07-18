@@ -29,7 +29,7 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 12, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 110, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-  { id: 13, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 안내·열기 페이지.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 13, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 구동 중이면 새 탭에서 바로 열리고, 미구동이면 설치·기동 안내가 뜹니다.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
 ];
 
 const SECTION_ORDER = ['Newsletter', 'Document', 'AI', 'Development', 'ETC'];
@@ -120,6 +120,7 @@ export default async function HomePage({
                       href={module.href}
                       badge={module.badge}
                       active={module.is_enabled}
+                      external={module.key === 'leantime'}
                     />
                   ),
                 )}

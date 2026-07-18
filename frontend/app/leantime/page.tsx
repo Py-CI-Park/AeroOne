@@ -17,7 +17,7 @@ type SearchParams = {
 const SETUP_STEPS = [
   { n: 1, label: '스택 반입·설치', detail: 'AeroOne-Leantime-Stack-*.zip 을 AeroOne 형제 폴더(예: D:\\AeroOne-Leantime-Stack)에 풀고 setup-leantime-stack.bat 을 한 번 실행합니다(포터블 PHP+MariaDB, 무설치).' },
   { n: 2, label: '기동', detail: 'start-leantime-stack.bat 으로 기동합니다. scripts/run_all.bat 이 형제 폴더 스택을 자동 감지해 함께 띄울 수도 있습니다.' },
-  { n: 3, label: '열기', detail: '아래 버튼으로 새 탭에서 Leantime 을 엽니다(설치·기동된 경우에만 표시됩니다).' },
+  { n: 3, label: '열기', detail: '이 화면은 대시보드에서 새 탭으로 열리며, Leantime 이 구동 중이면 이 탭이 곧바로 Leantime 으로 이동합니다. 미구동이면 이 안내가 남아 설치·기동을 돕습니다.' },
 ];
 
 export default async function LeantimePage({
@@ -37,11 +37,11 @@ export default async function LeantimePage({
           </span>
           <p className="text-sm leading-relaxed text-ink-2">
             Leantime 은 프로젝트·업무 관리 오픈소스 앱입니다. AeroOne 에 <strong>흡수하지 않고</strong> 별도 프로세스(포터블 PHP·MariaDB)로
-            나란히 설치·운영하며, 대시보드는 <strong>링크로만</strong> 연결합니다. 그래서 설치·기동이 안 된 상태에서는 화면이 열리지 않습니다.
+            나란히 설치·운영하며, 대시보드는 <strong>링크로만</strong> 연결합니다. 구동 중이면 이 화면은 자동으로 새 탭에서 Leantime 으로 넘어가고, 설치·기동이 안 된 경우에만 아래 안내가 표시됩니다.
           </p>
         </div>
 
-        <LeantimeStatus />
+        <LeantimeStatus autoOpen />
 
         <LeantimeDashboard />
 

@@ -15,7 +15,7 @@ type Phase = 'checking' | 'ready' | 'unhealthy' | 'starting' | 'absent' | 'error
  * 응답 이상 / 미설치·미구동 / 확인 실패)를 배지로 구분해 보여 준다. 'ready' 일 때만 '열기'를
  * 활성화해, 아직 뜨지 않은 화면으로 이동하는 혼란을 없앤다. '다시 확인' 으로 재조회할 수 있다.
  */
-export function LeantimeStatus() {
+export function LeantimeStatus({ autoOpen = false }: { autoOpen?: boolean } = {}) {
   const [phase, setPhase] = React.useState<Phase>('checking');
   const [health, setHealth] = React.useState<LeantimeHealth | null>(null);
 
@@ -32,9 +32,22 @@ export function LeantimeStatus() {
       });
   }, []);
 
+  const autoOpenedRef = React.useRef(false);
+
   React.useEffect(() => {
     check();
   }, [check]);
+
+  // autoOpen 모드: 구동 중(ready)이 확인되면 이 탭(대시보드 카드가 새 탭으로 연 탭)을
+  // 그대로 Leantime 으로 이동시킨다. 그러면 AeroOne 은 원래 탭에 남고 Leantime 은 새 탭에서
+  // 바로 열린다. 미구동/응답이상 등에서는 이동하지 않고 아래 안내를 그대로 보여 준다.
+  React.useEffect(() => {
+    if (!autoOpen || phase !== 'ready' || autoOpenedRef.current) return;
+    if (typeof window === 'undefined') return;
+    autoOpenedRef.current = true;
+    const targetPort = health?.port ?? 8081;
+    window.location.replace(`${window.location.protocol}//${window.location.hostname}:${targetPort}`);
+  }, [autoOpen, phase, health]);
 
   const port = health?.port ?? 8081;
   const target = health?.probe_target ?? '127.0.0.1:8081';
