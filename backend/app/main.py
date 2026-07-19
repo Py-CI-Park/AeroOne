@@ -34,6 +34,7 @@ from app.modules.leantime.api import router as leantime_router
 from app.modules.leantime.admin_api import router as leantime_admin_router
 from app.modules.leantime.read_api import router as leantime_read_router
 from app.modules.launchers.api import router as launchers_router
+from app.modules.aero_work.api import router as aero_work_router
 from app.modules.office_tools.core.job_store import OfficeJobStore
 from app.modules.office_tools.upload_limits import (
     CHART_MULTIPART_LIMITS,
@@ -161,6 +162,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(leantime_read_router, prefix='/api/v1/leantime')
     # 외부 앱 런처(Open Notebook/OpenWebUI) 헬스 배지 — loopback 전용 TCP+HTTP 프로브.
     app.include_router(launchers_router, prefix='/api/v1/launchers')
+    # Aero Work 지식폴더 — 로그인 필수. 지정 폴더 in-place 색인 + Ollama 임베딩 벡터 검색(폐쇄망 순도).
+    app.include_router(aero_work_router, prefix='/api/v1/aero-work')
     return app
 
 

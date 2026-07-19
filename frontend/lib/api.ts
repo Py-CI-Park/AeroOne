@@ -1150,3 +1150,62 @@ export async function fetchLeantimeCalendar(start: string, end: string): Promise
     { method: 'GET' },
   );
 }
+
+// ---- Aero Work 지식폴더 (P2) ----
+export type KnowledgeFolder = {
+  id: number;
+  name: string;
+  path: string;
+  status: string;
+  status_detail: string;
+  file_count: number;
+  chunk_count: number;
+  last_indexed_at: string | null;
+};
+
+export type KnowledgeSearchHit = {
+  folder_id: number;
+  folder_name: string;
+  rel_path: string;
+  chunk_index: number;
+  content: string;
+  score: number;
+};
+
+export type KnowledgeSearchResponse = {
+  hits: KnowledgeSearchHit[];
+  model: string;
+};
+
+export async function fetchKnowledgeFolders() {
+  return browserFetch<{ folders: KnowledgeFolder[] }>('/api/frontend/aero-work/knowledge/folders', { method: 'GET' });
+}
+
+export async function registerKnowledgeFolder(payload: { name: string; path: string }, csrfToken: string) {
+  return browserFetch<KnowledgeFolder>('/api/frontend/aero-work/knowledge/folders', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function reindexKnowledgeFolder(folderId: number, csrfToken: string) {
+  return browserFetch<KnowledgeFolder>(`/api/frontend/aero-work/knowledge/folders/${folderId}/reindex`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteKnowledgeFolder(folderId: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/knowledge/folders/${folderId}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function searchKnowledge(payload: { query: string; folder_id?: number | null; top_k?: number }) {
+  return browserFetch<KnowledgeSearchResponse>('/api/frontend/aero-work/knowledge/search', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
