@@ -78,7 +78,7 @@ export function AeroWorkShell() {
 
         {view === 'home' ? (
           <div className="mt-6 space-y-6">
-            <HomeBriefing onOpenSchedule={() => setView('schedule')} onOpenKnowledge={() => setView('knowledge')} />
+            <HomeBriefing onOpenSchedule={() => setView('schedule')} onOpenKnowledge={() => setView('knowledge')} onOpenChat={() => setView('chat')} />
             <div className="grid gap-4 md:grid-cols-2">
             {NAV.filter((item) => item.key !== 'home').map((item) => (
               <button

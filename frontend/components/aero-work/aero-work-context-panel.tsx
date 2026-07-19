@@ -7,9 +7,11 @@ import {
   fetchAeroWorkEvents,
   fetchAiStatus,
   fetchKnowledgeFolders,
+  fetchSavedAeroWorkDocuments,
   type AeroWorkActivity,
   type AeroWorkEvent,
   type KnowledgeFolder,
+  type SavedAeroWorkDocument,
 } from '@/lib/api';
 import type { AiStatusResponse } from '@/lib/types';
 
@@ -33,6 +35,7 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
   const [activities, setActivities] = useState<AeroWorkActivity[]>([]);
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [ai, setAi] = useState<AiStatusResponse | null>(null);
+  const [pendingDocs, setPendingDocs] = useState<SavedAeroWorkDocument[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -40,11 +43,12 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 19);
       const end = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 19);
-      const [eventsResult, activityResult, foldersResult, statusResult] = await Promise.all([
+      const [eventsResult, activityResult, foldersResult, statusResult, savedResult] = await Promise.all([
         fetchAeroWorkEvents({ start, end }).catch(() => ({ events: [] as AeroWorkEvent[] })),
         fetchAeroWorkActivity(6).catch(() => ({ activities: [] as AeroWorkActivity[] })),
         fetchKnowledgeFolders().catch(() => ({ folders: [] as KnowledgeFolder[] })),
         fetchAiStatus().catch(() => null),
+        fetchSavedAeroWorkDocuments().catch(() => ({ documents: [] as SavedAeroWorkDocument[] })),
       ]);
       if (!alive) {
         return;
@@ -53,6 +57,7 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
       setActivities(activityResult.activities);
       setFolders(foldersResult.folders);
       setAi(statusResult);
+      setPendingDocs(savedResult.documents.filter((doc) => doc.status !== 'approved'));
     })();
     return () => {
       alive = false;
@@ -72,6 +77,18 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
           {ai ? <span className="ml-auto truncate font-mono text-[10px] text-ink-3">{ai.model}</span> : null}
         </div>
       </div>
+
+      {pendingDocs.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => onNavigate('document')}
+          className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-left"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">대기 중인 승인</p>
+          <p className="mt-1 text-xs text-amber-700">문서 최종 저장 {pendingDocs.length}건이 승인을 기다림</p>
+          <p className="mt-0.5 truncate text-[11px] text-amber-700/80">{pendingDocs[0].title}{pendingDocs.length > 1 ? ` 외 ${pendingDocs.length - 1}건` : ''}</p>
+        </button>
+      ) : null}
 
       <button
         type="button"
