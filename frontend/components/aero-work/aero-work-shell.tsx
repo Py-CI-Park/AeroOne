@@ -6,6 +6,7 @@ import { KnowledgePanel } from '@/components/aero-work/knowledge-panel';
 import { SchedulePanel } from '@/components/aero-work/schedule-panel';
 import { HomeBriefing } from '@/components/aero-work/home-briefing';
 import { ActivityLogPanel } from '@/components/aero-work/activity-log-panel';
+import { SettingsPanel } from '@/components/aero-work/settings-panel';
 
 // Aero Work — gongmuwon(공무원) 워크스페이스의 AeroOne 네이티브 재구현 (P0 스캐폴딩).
 // gongmuwon 과 동일한 6메뉴 IA(업무대화·일정·문서작성·내 지식폴더·실행기록·환경설정) + 홈
@@ -30,7 +31,7 @@ const NAV: NavItem[] = [
   { key: 'document', icon: '📝', label: '문서작성', summary: '지시 → 구조 검토 → 미리보기 그대로 HWPX(한글) 생성. 시행문·1p·풀버전·이메일·임의형식.', reuse: 'Office Studio 파이프라인 + HWPX(OWPML) 생성기', phase: 'P3' },
   { key: 'knowledge', icon: '📚', label: '내 지식폴더', summary: '지정 폴더를 그 자리에서 색인 → 키워드·근거 벡터 검색, 증분 동기화(추가·수정·이동·삭제).', reuse: 'Ollama nomic-embed 임베딩 + 코사인 벡터 검색', phase: '구현됨(P2)' },
   { key: 'log', icon: '🧾', label: '실행기록', summary: '워크스페이스에서 실행한 작업(지식 색인·검색, 일정 변경)을 최신순 타임라인으로 투명하게.', reuse: '전용 실행기록 로그(신규)', phase: '구현됨(P4)' },
-  { key: 'settings', icon: '⚙️', label: '환경설정', summary: 'LLM 프로필(로컬·외부) 전환, 튜토리얼 다시 보기, 시작 시 변경 감지.', reuse: '관리자 AI provider·테마·매뉴얼', phase: 'P4' },
+  { key: 'settings', icon: '⚙️', label: '환경설정', summary: '업무대화·지식폴더가 쓰는 로컬 AI 연결 상태 확인, 전체 사용법 다시 보기.', reuse: '관리자 AI provider·사용법 매뉴얼', phase: '구현됨(P4)' },
 ];
 
 export function AeroWorkShell() {
@@ -97,6 +98,8 @@ export function AeroWorkShell() {
           <SchedulePanel />
         ) : view === 'log' ? (
           <ActivityLogPanel />
+        ) : view === 'settings' ? (
+          <SettingsPanel />
         ) : (
           <div className="mt-6 rounded-xl border border-dashed border-line-subtle bg-surface-base p-6">
             <p className="text-sm font-semibold text-ink-1">준비 중 ({active.phase})</p>

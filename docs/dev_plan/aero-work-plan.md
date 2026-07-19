@@ -54,7 +54,7 @@
 - **P1** ✅ 구현됨(`818aef0`): 업무대화 — AeroAI(`AiChatWorkspace`) 재사용. 세션 중심 이어가기 링크는 후속.
 - **P2** ✅ 구현됨(`59939a4`): 지식폴더 — 신규 `app/modules/aero_work`(폴더/파일/청크 3층 + 마이그레이션 `20260719_0020`), in-place 스캔 + Ollama `nomic-embed-text` 임베딩(urllib, AeroAI 경로 재사용) + 순수 Python 코사인 검색 + 시그니처(mtime+size) 증분 동기화. `KnowledgePanel`(등록·재색인·삭제·검색) + BFF 프록시. 검증: 단위 6건 + 마이그레이션 up/down + **실 Ollama 한국어 의미검색 E2E 3/3 정답**. 업무 위키 자동 구성, PDF/DOCX/HWPX 본문 추출, 백그라운드 색인, 세분 `aerowork.*` 권한·카드는 후속.
 - **P3**: 문서작성 — HWPX 생성(시행문/1p 우선) + 미리보기→HWPX. 임의형식은 후속.
-- **P4**: (거의 완료) **일정 ✅** — 이벤트 CRUD + 기간 겹침(마이그레이션 `20260719_0021` + `ScheduleService` + `SchedulePanel`). **홈 브리핑 ✅** — 일정+지식 요약(`HomeBriefing`). **실행기록 ✅** — 워크스페이스 행위(지식 색인/검색·일정 변경 등)를 각 라우트가 자동 기록(마이그레이션 `20260719_0022` + `AeroWorkActivity` + `record_activity` 훅 + `ActivityLogPanel` 타임라인, 소유자 스코프). 검증: 일정 단위 5+통합 5, 실행기록 단위 4+통합 3. **알림(폐쇄망 in-app 배지)만 후속**.
+- **P4**: (완료, 알림 제외) **일정 ✅** — 이벤트 CRUD + 기간 겹침(`20260719_0021` + `ScheduleService` + `SchedulePanel`). **홈 브리핑 ✅** — 일정+지식 요약(`HomeBriefing`). **실행기록 ✅** — 워크스페이스 행위를 각 라우트가 자동 기록(`20260719_0022` + `AeroWorkActivity` + `record_activity` 훅 + `ActivityLogPanel`, 소유자 스코프). **환경설정 ✅** — 로컬 AI 연결 상태 라이브 확인(`fetchAiStatus` 재사용) + 전체 사용법(`HelpManualButton` 재사용), 프런트 전용. 검증: 일정 단위 5+통합 5, 실행기록 단위 4+통합 3, tsc 0. **알림(폐쇄망 in-app 배지)만 후속**.
 - **P5**: 통합 UX·성능 예산·문서·회귀 테스트 + 각 단계 phase 보고서(minor/major 는 phase 보고서 필수, AGENTS §9.6).
 
 ## 5. 위험과 선결 조건
