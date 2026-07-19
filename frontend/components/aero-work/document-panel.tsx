@@ -10,6 +10,7 @@ import {
   fetchSavedAeroWorkDocuments,
   generateAeroWorkHwpx,
   saveAeroWorkDocumentRequest,
+  streamAeroWorkCompose,
   type SavedAeroWorkDocument,
 } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
@@ -132,17 +133,45 @@ export function DocumentPanel() {
                   setError('지시(개요)를 본문 칸에 먼저 적으세요. AI가 개조식 내용으로 확장합니다.');
                   return;
                 }
+                const instruction = body;
                 setComposing(true);
                 setError(null);
                 setDone(null);
+                setBody('');
+                let fallbackPending: Promise<void> | undefined;
                 try {
-                  const result = await composeAeroWorkDocument(
-                    { title: title.trim(), instruction: body, format },
+                  await streamAeroWorkCompose(
+                    { title: title.trim(), instruction, format },
                     getCsrfCookie(),
+                    {
+                      onDelta: (chunk) => setBody((prev) => prev + chunk),
+                      onDone: (paragraphs) => {
+                        setBody(paragraphs.join('\n'));
+                        setDone(`AI가 ${paragraphs.length}문장으로 확장했음. 검토·수정 후 HWPX로 내려받으세요.`);
+                      },
+                      onError: () => {
+                        // 스트리밍 실패 시 기존 비스트리밍 composeAeroWorkDocument 로 폴백한다.
+                        fallbackPending = (async () => {
+                          try {
+                            const result = await composeAeroWorkDocument(
+                              { title: title.trim(), instruction, format },
+                              getCsrfCookie(),
+                            );
+                            setBody(result.paragraphs.join('\n'));
+                            setDone(`AI가 ${result.paragraphs.length}문장으로 확장했음. 검토·수정 후 HWPX로 내려받으세요.`);
+                          } catch {
+                            setBody(instruction);
+                            setError('AI 내용 생성 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
+                          }
+                        })();
+                      },
+                    },
                   );
-                  setBody(result.paragraphs.join('\n'));
-                  setDone(`AI가 ${result.paragraphs.length}문장으로 확장했음. 검토·수정 후 HWPX로 내려받으세요.`);
+                  if (fallbackPending) {
+                    await fallbackPending;
+                  }
                 } catch {
+                  setBody(instruction);
                   setError('AI 내용 생성 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
                 } finally {
                   setComposing(false);

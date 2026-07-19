@@ -31,6 +31,29 @@ _SYNTHESIS_SYSTEM = (
 )
 
 
+def build_synthesis_messages(query: str, hits: list[dict]) -> list[AiChatMessage]:
+    """근거 조각을 ``[근거 N]`` 표기로 조립해 합성용 메시지를 만든다.
+
+    ``default_synthesize`` 와 스트리밍 경로(``streaming.stream_answer``)가 동일한 조립을
+    공유한다(계약 동등성 — 스트리밍/비스트리밍이 같은 근거 표기를 낸다).
+    """
+
+    parts: list[str] = []
+    budget = _SYNTHESIS_CONTEXT_BUDGET
+    for index, hit in enumerate(hits[:5], 1):
+        piece = f'[근거 {index}] {hit.get("folder_name")}/{hit.get("rel_path")}\n{hit.get("content", "")}'
+        if len(piece) > budget:
+            piece = piece[:budget]
+        parts.append(piece)
+        budget -= len(piece)
+        if budget <= 0:
+            break
+    return [
+        AiChatMessage(role='system', content=_SYNTHESIS_SYSTEM),
+        AiChatMessage(role='user', content=f'질문: {query}\n\n' + '\n\n'.join(parts)),
+    ]
+
+
 def default_synthesize(
     settings: Settings, query: str, hits: list[dict], db: Session | None = None, force_local: bool = False
 ) -> str:
@@ -43,20 +66,7 @@ def default_synthesize(
 
     if not settings.ai_features_enabled or not hits:
         return ''
-    parts: list[str] = []
-    budget = _SYNTHESIS_CONTEXT_BUDGET
-    for index, hit in enumerate(hits[:5], 1):
-        piece = f'[근거 {index}] {hit.get("folder_name")}/{hit.get("rel_path")}\n{hit.get("content", "")}'
-        if len(piece) > budget:
-            piece = piece[:budget]
-        parts.append(piece)
-        budget -= len(piece)
-        if budget <= 0:
-            break
-    messages = [
-        AiChatMessage(role='system', content=_SYNTHESIS_SYSTEM),
-        AiChatMessage(role='user', content=f'질문: {query}\n\n' + '\n\n'.join(parts)),
-    ]
+    messages = build_synthesis_messages(query, hits)
     try:
         if db is not None and not force_local:
             service = AiChatService(settings, db, ProviderConfigService(db, settings))

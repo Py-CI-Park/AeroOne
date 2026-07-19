@@ -62,6 +62,23 @@ def parse_lines(answer: str) -> list[str]:
     return lines[:12]
 
 
+def build_compose_messages(fmt: str, title: str, instruction: str) -> list[AiChatMessage]:
+    """양식 지침을 포함한 내용 생성용 메시지를 조립한다.
+
+    ``compose_content`` 와 스트리밍 경로(``streaming.stream_compose``)가 동일한 조립을
+    공유한다(계약 동등성).
+    """
+
+    guide = _FORMAT_GUIDE.get(fmt, _FORMAT_GUIDE['freeform'])
+    return [
+        AiChatMessage(role='system', content=_SYSTEM),
+        AiChatMessage(
+            role='user',
+            content=f'문서 제목: {title or "무제"}\n양식 지침: {guide}\n\n지시:\n{instruction[:6000]}',
+        ),
+    ]
+
+
 def compose_content(
     settings: Settings,
     db: Session,
@@ -79,14 +96,7 @@ def compose_content(
     instruction = (instruction or '').strip()
     if not instruction:
         raise ComposeUnavailable('지시(개요)를 입력해야 합니다.')
-    guide = _FORMAT_GUIDE.get(fmt, _FORMAT_GUIDE['freeform'])
-    messages = [
-        AiChatMessage(role='system', content=_SYSTEM),
-        AiChatMessage(
-            role='user',
-            content=f'문서 제목: {title or "무제"}\n양식 지침: {guide}\n\n지시:\n{instruction[:6000]}',
-        ),
-    ]
+    messages = build_compose_messages(fmt, title, instruction)
     caller = chat if chat is not None else (_local_chat if force_local else _default_chat)
     try:
         answer = caller(settings, db, messages)
