@@ -66,7 +66,7 @@ def _register_and_index(csrf_client, kb_dir: Path) -> int:
     created = csrf_client.post('/api/v1/aero-work/knowledge/folders', json={'name': '규정', 'path': str(kb_dir)})
     assert created.status_code == 201, created.text
     folder_id = created.json()['id']
-    reindex = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex')
+    reindex = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex?inline=true')
     assert reindex.status_code == 200, reindex.text
     return folder_id
 

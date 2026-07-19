@@ -70,6 +70,8 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
 
   const aiMeta = ai ? AI_STATUS_META[ai.status] : null;
   const chunkTotal = folders.reduce((sum, folder) => sum + folder.chunk_count, 0);
+  // 30초 폴링으로 이미 받아 둔 folders 응답에서 파생 — 추가 요청 없이 indexing 진행 상황을 보여준다.
+  const indexingCount = folders.filter((folder) => folder.status === 'indexing').length;
 
   return (
     <aside className="space-y-3 text-sm">
@@ -120,7 +122,10 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
         className="w-full rounded-xl border border-line-subtle bg-surface-raised p-3 text-left"
       >
         <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">지식 색인</p>
-        <p className="mt-1 text-xs text-ink-2">{folders.length}개 폴더 · {chunkTotal.toLocaleString()}개 청크</p>
+        <p className="mt-1 text-xs text-ink-2">
+          {folders.length}개 폴더 · {chunkTotal.toLocaleString()}개 청크
+          {indexingCount > 0 ? <span className="ml-1 text-amber-600">색인 중 {indexingCount}/{folders.length}</span> : null}
+        </p>
       </button>
 
       <button

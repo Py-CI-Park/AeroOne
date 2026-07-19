@@ -1157,7 +1157,7 @@ export type KnowledgeFolder = {
   name: string;
   path: string;
   status: string;
-  status_detail: string;
+  status_detail?: string | null;
   file_count: number;
   chunk_count: number;
   last_indexed_at: string | null;
@@ -1190,11 +1190,23 @@ export async function registerKnowledgeFolder(payload: { name: string; path: str
   });
 }
 
-export async function reindexKnowledgeFolder(folderId: number, csrfToken: string) {
-  return browserFetch<KnowledgeFolder>(`/api/frontend/aero-work/knowledge/folders/${folderId}/reindex`, {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': csrfToken },
-  });
+export type KnowledgeReindexResponse = { status: string };
+
+// 재색인은 즉시 완료가 아니라 백그라운드 스레드로 넘어가며 202 {status:"indexing"} 을 받는다.
+// 이미 진행 중이면 409 를 받는데, 일반 안전 메시지 대신 사용자에게 구분되는 한국어 문구로
+// 재정의해 UI 가 재시도 안내를 다르게 보여줄 수 있게 한다.
+export async function reindexKnowledgeFolder(folderId: number, csrfToken: string): Promise<KnowledgeReindexResponse> {
+  try {
+    return await browserFetch<KnowledgeReindexResponse>(`/api/frontend/aero-work/knowledge/folders/${folderId}/reindex`, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      throw new ApiError('이미 색인 진행 중입니다', 409);
+    }
+    throw err;
+  }
 }
 
 export async function deleteKnowledgeFolder(folderId: number, csrfToken: string) {
