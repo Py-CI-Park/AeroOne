@@ -39,7 +39,7 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    const load = async () => {
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 19);
       const end = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 19);
@@ -58,9 +58,13 @@ export function AeroWorkContextPanel({ onNavigate }: { onNavigate: (view: string
       setFolders(foldersResult.folders);
       setAi(statusResult);
       setPendingDocs(savedResult.documents.filter((doc) => doc.status !== 'approved'));
-    })();
+    };
+    void load();
+    // 항상 마운트된 패널이라 30초 폴링으로 최근 작업·일정·승인 대기를 신선하게 유지한다(실사 발견).
+    const timer = setInterval(() => void load(), 30000);
     return () => {
       alive = false;
+      clearInterval(timer);
     };
   }, []);
 
