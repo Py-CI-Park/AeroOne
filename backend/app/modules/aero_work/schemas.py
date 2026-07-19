@@ -262,6 +262,8 @@ class TaxonomyCategoryInput(BaseModel):
 class TaxonomyProposeResponse(BaseModel):
     candidates: list[TaxonomyCategoryInput]
     model: str
+    reason: str = 'ok'
+    truncated: bool = False
 
 
 class TaxonomyApplyRequest(BaseModel):

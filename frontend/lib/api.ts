@@ -1276,11 +1276,14 @@ export type TaxonomyProposeInput = {
 };
 
 export async function proposeTaxonomy(input: TaxonomyProposeInput, csrfToken: string) {
-  return browserFetch<{ candidates: TaxonomyCandidate[]; model: string }>('/api/frontend/aero-work/taxonomy/propose', {
-    method: 'POST',
-    body: JSON.stringify(input),
-    headers: { 'X-CSRF-Token': csrfToken },
-  });
+  return browserFetch<{ candidates: TaxonomyCandidate[]; model: string; reason: string; truncated: boolean }>(
+    '/api/frontend/aero-work/taxonomy/propose',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+  );
 }
 
 export async function applyTaxonomy(categories: TaxonomyCandidate[], csrfToken: string) {

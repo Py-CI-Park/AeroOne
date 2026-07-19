@@ -48,6 +48,7 @@ export function KnowledgeWiki() {
   const [summarizing, setSummarizing] = useState<number | null>(null);
   const [summaries, setSummaries] = useState<Record<number, string>>({});
   const [showWizard, setShowWizard] = useState(false);
+  const [taxonomyError, setTaxonomyError] = useState<string | null>(null);
 
   const summarize = async (fileId: number) => {
     setSummarizing(fileId);
@@ -71,11 +72,12 @@ export function KnowledgeWiki() {
   }, []);
 
   const removeCategory = async (categoryId: number) => {
+    setTaxonomyError(null);
     try {
       await deleteTaxonomyCategory(categoryId, getCsrfCookie());
       await loadTaxonomy();
     } catch {
-      // 삭제 실패는 조용히 무시 — 목록이 그대로 유지되어 사용자가 재시도할 수 있음.
+      setTaxonomyError('분류 삭제 실패 — 다시 시도할 것.');
     }
   };
 
@@ -108,10 +110,14 @@ export function KnowledgeWiki() {
     });
   };
 
-  // 분류에 배정된 파일(대표 기준)은 '미분류' 가족 목록에서 제외한다 — 분류체계 마법사가
-  // 적용한 트리와 기존 버전 가족 목록이 같은 파일을 중복 노출하지 않도록 한다.
+  // 분류에 배정된 파일은 '미분류' 가족 목록에서 제외한다 — 분류체계 마법사가 적용한 트리와
+  // 기존 버전 가족 목록이 같은 파일을 중복 노출하지 않도록 한다. 대표(공식본)뿐 아니라 판본
+  // 이력(family.items) 어느 하나라도 분류에 배정돼 있으면 가족 전체를 미분류 목록에서 뺀다
+  // (비대표 판본만 분류된 경우에도 같은 가족이 위/아래 두 군데에 중복 노출되지 않게).
   const classifiedFileIds = new Set(categories.flatMap((category) => category.files.map((file) => file.id)));
-  const unclassifiedFamilies = families.filter((family) => !classifiedFileIds.has(family.representative.id));
+  const unclassifiedFamilies = families.filter(
+    (family) => !family.items.some((item) => classifiedFileIds.has(item.id)),
+  );
 
   const handleApplied = () => {
     setShowWizard(false);
@@ -162,6 +168,9 @@ export function KnowledgeWiki() {
               분류 재구성
             </button>
           </div>
+          {taxonomyError ? (
+            <p className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-500">{taxonomyError}</p>
+          ) : null}
           <ul className="space-y-1">
             {categories.map((category) => (
               <li key={category.id} className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-2">
@@ -180,9 +189,16 @@ export function KnowledgeWiki() {
                 {category.files.length > 0 ? (
                   <ul className="mt-1 space-y-0.5 border-t border-line-subtle pt-1">
                     {category.files.map((file) => (
-                      <li key={file.id} className="flex gap-2 pl-2 text-[11px] text-ink-2">
-                        <span className="font-mono">{file.rel_path}</span>
-                        <span className="text-ink-3">{file.folder_name}</span>
+                      <li key={file.id} className="pl-2 text-[11px] text-ink-2">
+                        <div className="flex gap-2">
+                          <span className="font-mono">{file.rel_path}</span>
+                          <span className="text-ink-3">{file.folder_name}</span>
+                        </div>
+                        {file.summary ? (
+                          <p className="mt-0.5 rounded bg-accent-soft/50 px-2 py-0.5 leading-relaxed text-ink-2">
+                            {file.summary}
+                          </p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

@@ -212,7 +212,11 @@ class AeroWorkTaskCategory(Base):
 
 
 class AeroWorkTaskCategoryFile(Base):
-    """업무 분류 ↔ 색인 파일 매핑(복합 PK) — 분류·파일 어느 쪽이 삭제돼도 CASCADE 로 정리."""
+    """업무 분류 ↔ 색인 파일 매핑(복합 PK) — 분류·파일 어느 쪽이 삭제돼도 CASCADE 로 정리.
+
+    ``file_id`` 는 복합 PK의 후행 컬럼이라 "이 파일이 속한 분류" 단독 조회에 선두 인덱스를
+    못 쓴다 — 별도 단독 인덱스를 둔다(마이그레이션 0030).
+    """
 
     __tablename__ = 'aero_work_task_category_files'
 
@@ -220,7 +224,7 @@ class AeroWorkTaskCategoryFile(Base):
         ForeignKey('aero_work_task_categories.id', ondelete='CASCADE'), primary_key=True
     )
     file_id: Mapped[int] = mapped_column(
-        ForeignKey('aero_work_knowledge_files.id', ondelete='CASCADE'), primary_key=True
+        ForeignKey('aero_work_knowledge_files.id', ondelete='CASCADE'), primary_key=True, index=True
     )
 
     category: Mapped['AeroWorkTaskCategory'] = relationship(back_populates='files')

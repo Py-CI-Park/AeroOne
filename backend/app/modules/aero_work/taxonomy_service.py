@@ -14,7 +14,7 @@ import logging
 import re
 from collections.abc import Callable
 
-from sqlalchemy import select
+from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -64,13 +64,19 @@ def _local_chat(settings: Settings, db: Session, messages: list[AiChatMessage]) 
     return OllamaClient(settings).chat(messages), settings.ollama_default_model
 
 
-def _indexed_files(db: Session) -> list[dict]:
+def _indexed_files(db: Session) -> tuple[list[dict], bool]:
+    """색인 파일(최대 ``_MAX_INDEXED_FILES``건)과, 총량이 상한을 넘어 잘렸는지 여부를 반환한다."""
+
     rows = db.execute(
         select(KnowledgeFile.id, KnowledgeFile.rel_path, KnowledgeFile.summary)
         .order_by(KnowledgeFile.id)
-        .limit(_MAX_INDEXED_FILES)
+        .limit(_MAX_INDEXED_FILES + 1)
     ).all()
-    return [{'id': row.id, 'rel_path': row.rel_path, 'summary': row.summary} for row in rows]
+    truncated = len(rows) > _MAX_INDEXED_FILES
+    files = [
+        {'id': row.id, 'rel_path': row.rel_path, 'summary': row.summary} for row in rows[:_MAX_INDEXED_FILES]
+    ]
+    return files, truncated
 
 
 def build_propose_messages(
@@ -97,18 +103,44 @@ def build_propose_messages(
     ]
 
 
-def _parse_candidates(raw_answer: str, valid_file_ids: set[int]) -> list[dict]:
-    """LLM 응답을 후보 JSON 배열로 파싱한다. 형식이 어긋나면 빈 후보를 반환한다(경고 로그)."""
+def _extract_bracket_span(text: str) -> str | None:
+    """1차 JSON 파싱이 실패했을 때, 첫 ``[`` ~ 마지막 ``]`` 구간만 잘라 재시도 재료로 준다.
+
+    LLM 이 배열 앞뒤에 군더더기 설명을 덧붙이는 경우(예: '다음과 같습니다: [...] 이상입니다.')를
+    구제한다. 대괄호가 없거나 순서가 뒤집혀 있으면 ``None`` 을 반환해 상위에서 포기한다.
+    """
+
+    start = text.find('[')
+    end = text.rfind(']')
+    if start == -1 or end == -1 or end <= start:
+        return None
+    return text[start : end + 1]
+
+
+def _parse_candidates(raw_answer: str, valid_file_ids: set[int]) -> tuple[list[dict], bool]:
+    """LLM 응답을 후보 JSON 배열로 파싱한다. 반환값은 (후보 목록, 파싱 성공 여부).
+
+    1차 파싱이 실패하면 첫 '[' ~ 마지막 ']' 구간만 잘라 2차로 재시도한다(설명 문구가 배열
+    앞뒤에 섞여 나오는 LLM 응답을 구제). 그래도 실패하거나 배열이 아니면 (빈 후보, False) 를
+    반환해 호출측이 'parse_error' 사유를 알 수 있게 한다.
+    """
 
     text = _strip_fence(raw_answer)
     try:
         data = json.loads(text)
     except (ValueError, TypeError):
-        logger.warning('taxonomy propose: LLM 응답 JSON 파싱 실패 — 빈 후보로 대체합니다.')
-        return []
+        extracted = _extract_bracket_span(text)
+        if extracted is None:
+            logger.warning('taxonomy propose: LLM 응답 JSON 파싱 실패 — 빈 후보로 대체합니다.')
+            return [], False
+        try:
+            data = json.loads(extracted)
+        except (ValueError, TypeError):
+            logger.warning('taxonomy propose: LLM 응답 2차 추출 파싱도 실패 — 빈 후보로 대체합니다.')
+            return [], False
     if not isinstance(data, list):
         logger.warning('taxonomy propose: LLM 응답이 JSON 배열이 아닙니다 — 빈 후보로 대체합니다.')
-        return []
+        return [], False
     candidates: list[dict] = []
     for item in data:
         if not isinstance(item, dict):
@@ -122,7 +154,7 @@ def _parse_candidates(raw_answer: str, valid_file_ids: set[int]) -> list[dict]:
         # 실재 색인 file id 로만 필터한다 — LLM 이 지어낸/삭제된 id 는 조용히 버린다.
         file_ids = [fid for fid in raw_ids if isinstance(fid, int) and fid in valid_file_ids]
         candidates.append({'name': name, 'description': description, 'file_ids': file_ids})
-    return candidates
+    return candidates, True
 
 
 def propose_categories(
@@ -134,39 +166,53 @@ def propose_categories(
     department: str,
     duties: str,
     chat: ChatCaller | None = None,
-) -> tuple[list[dict], str]:
-    """색인 파일을 근거로 업무 분류 후보를 만든다. 실패해도 예외 없이 (빈 후보, '') 를 반환한다.
+) -> tuple[list[dict], str, str, bool]:
+    """색인 파일을 근거로 업무 분류 후보를 만든다. 실패해도 예외 없이 빈 후보를 반환한다.
 
-    마법사 ②검토 화면은 후보가 비어도 사용자가 수동으로 채울 수 있어야 하므로, LLM 호출/파싱
-    실패를 사용자에게 500 으로 노출하지 않고 빈 후보 + 경고 로그로 완화한다.
+    반환값은 (후보 목록, 모델명, reason, truncated). ``reason`` 은 'ok'|'ai_disabled'|
+    'llm_error'|'parse_error' 중 하나로, 마법사 ②검토 화면이 실패 원인별로 구분된 안내를
+    보이고 수동 후보 추가로 계속 진행할 수 있게 한다. ``truncated`` 는 색인 파일이 상한
+    (``_MAX_INDEXED_FILES``)을 넘어 일부만 근거로 쓰였는지 여부다.
     """
 
-    files = _indexed_files(db)
+    files, truncated = _indexed_files(db)
     valid_file_ids = {file_row['id'] for file_row in files}
     if not settings.ai_features_enabled:
         logger.warning('taxonomy propose: AI 기능이 비활성화되어 있습니다 — 빈 후보를 반환합니다.')
-        return [], ''
+        return [], '', 'ai_disabled', truncated
     messages = build_propose_messages(organization, department, duties, files)
     caller = chat if chat is not None else (_local_chat if get_llm_mode(db, user_id) == 'local' else _default_chat)
     try:
         answer, model = caller(settings, db, messages)
     except OllamaError as exc:
         logger.warning('taxonomy propose: LLM 호출 실패(%s) — 빈 후보를 반환합니다.', exc)
-        return [], ''
+        return [], '', 'llm_error', truncated
     except Exception as exc:  # noqa: BLE001 — provider 계열 오류 전부 완화(치명 아님)
         logger.warning('taxonomy propose: LLM 호출 예외(%s) — 빈 후보를 반환합니다.', exc)
-        return [], ''
-    return _parse_candidates(answer, valid_file_ids), model
+        return [], '', 'llm_error', truncated
+    candidates, parsed_ok = _parse_candidates(answer, valid_file_ids)
+    reason = 'ok' if parsed_ok else 'parse_error'
+    return candidates, model, reason, truncated
 
 
 def apply_categories(db: Session, user_id: int, categories: list[dict]) -> int:
-    """사용자의 기존 업무 분류를 전량 교체한다(멱등 — 몇 번을 다시 적용해도 결과가 같다)."""
+    """사용자의 기존 업무 분류를 전량 교체한다(멱등 — 몇 번을 다시 적용해도 결과가 같다).
 
-    existing = db.execute(
-        select(AeroWorkTaskCategory).where(AeroWorkTaskCategory.user_id == user_id)
-    ).scalars().all()
-    for row in existing:
-        db.delete(row)
+    기존 분류는 ORM delete-orphan/DB CASCADE 어느 쪽에도 기대지 않고 매핑(``…_files``)을
+    먼저 bulk delete 한 뒤 분류 본체를 bulk delete 한다 — SQLite 는 연결별 PRAGMA
+    foreign_keys 설정이 꺼져 있으면 CASCADE 가 조용히 무시되므로, 순서를 코드로 못박는다.
+    """
+
+    existing_ids = [
+        cid for (cid,) in db.execute(
+            select(AeroWorkTaskCategory.id).where(AeroWorkTaskCategory.user_id == user_id)
+        ).all()
+    ]
+    if existing_ids:
+        db.execute(
+            sa_delete(AeroWorkTaskCategoryFile).where(AeroWorkTaskCategoryFile.category_id.in_(existing_ids))
+        )
+        db.execute(sa_delete(AeroWorkTaskCategory).where(AeroWorkTaskCategory.id.in_(existing_ids)))
     db.flush()
 
     valid_file_ids = {fid for (fid,) in db.execute(select(KnowledgeFile.id)).all()}
@@ -194,36 +240,42 @@ def apply_categories(db: Session, user_id: int, categories: list[dict]) -> int:
 
 
 def list_categories(db: Session, user_id: int) -> list[dict]:
-    """사용자 업무 분류를 순서대로, 각 분류에 딸린 파일(경로/폴더명/요약)과 함께 반환한다."""
+    """사용자 업무 분류를 순서대로, 각 분류에 딸린 파일(경로/폴더명/요약)과 함께 반환한다.
+
+    분류마다 파일 조회 쿼리를 따로 날리지 않고, 매핑+파일+폴더를 한 번의 IN 조인으로 가져와
+    메모리에서 category_id 별로 그룹핑한다(N+1 회피).
+    """
 
     categories = db.execute(
         select(AeroWorkTaskCategory)
         .where(AeroWorkTaskCategory.user_id == user_id)
         .order_by(AeroWorkTaskCategory.sort_order, AeroWorkTaskCategory.id)
     ).scalars().all()
-    result: list[dict] = []
-    for category in categories:
-        file_rows = db.execute(
-            select(KnowledgeFile, KnowledgeFolder.name)
-            .join(AeroWorkTaskCategoryFile, AeroWorkTaskCategoryFile.file_id == KnowledgeFile.id)
-            .join(KnowledgeFolder, KnowledgeFolder.id == KnowledgeFile.folder_id)
-            .where(AeroWorkTaskCategoryFile.category_id == category.id)
-            .order_by(KnowledgeFile.rel_path)
-        ).all()
-        files = [
+    if not categories:
+        return []
+    category_ids = [category.id for category in categories]
+    file_rows = db.execute(
+        select(AeroWorkTaskCategoryFile.category_id, KnowledgeFile, KnowledgeFolder.name)
+        .join(KnowledgeFile, AeroWorkTaskCategoryFile.file_id == KnowledgeFile.id)
+        .join(KnowledgeFolder, KnowledgeFolder.id == KnowledgeFile.folder_id)
+        .where(AeroWorkTaskCategoryFile.category_id.in_(category_ids))
+        .order_by(KnowledgeFile.rel_path)
+    ).all()
+    files_by_category: dict[int, list[dict]] = {}
+    for category_id, file_row, folder_name in file_rows:
+        files_by_category.setdefault(category_id, []).append(
             {'id': file_row.id, 'rel_path': file_row.rel_path, 'folder_name': folder_name, 'summary': file_row.summary}
-            for file_row, folder_name in file_rows
-        ]
-        result.append(
-            {
-                'id': category.id,
-                'name': category.name,
-                'description': category.description,
-                'sort_order': category.sort_order,
-                'files': files,
-            }
         )
-    return result
+    return [
+        {
+            'id': category.id,
+            'name': category.name,
+            'description': category.description,
+            'sort_order': category.sort_order,
+            'files': files_by_category.get(category.id, []),
+        }
+        for category in categories
+    ]
 
 
 def delete_category(db: Session, user_id: int, category_id: int) -> bool:

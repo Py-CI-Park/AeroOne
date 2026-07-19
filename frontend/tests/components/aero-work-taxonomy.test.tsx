@@ -110,7 +110,17 @@ describe('KnowledgeWiki — 업무 분류 섹션', () => {
             chunk_count: 3,
             is_latest: true,
           },
-          items: [],
+          items: [
+            {
+              id: 1,
+              summary: '',
+              folder_id: 1,
+              folder_name: '공무 샘플 지식',
+              rel_path: '2026-예산편성-지침.md',
+              chunk_count: 3,
+              is_latest: true,
+            },
+          ],
           has_versions: false,
         },
         {
@@ -124,7 +134,17 @@ describe('KnowledgeWiki — 업무 분류 섹션', () => {
             chunk_count: 2,
             is_latest: true,
           },
-          items: [],
+          items: [
+            {
+              id: 2,
+              summary: '',
+              folder_id: 1,
+              folder_name: '공무 샘플 지식',
+              rel_path: '2026-출장정산-양식.md',
+              chunk_count: 2,
+              is_latest: true,
+            },
+          ],
           has_versions: false,
         },
       ],
@@ -141,5 +161,110 @@ describe('KnowledgeWiki — 업무 분류 섹션', () => {
     expect(category).toHaveTextContent('2026-예산편성-지침.md');
     expect(category).not.toHaveTextContent('2026-출장정산-양식.md');
     expect(screen.getByText('2026-출장정산-양식.md')).toBeInTheDocument();
+  });
+
+  test('비대표 판본이 분류에 배정되면 대표 문서도 미분류 목록에서 함께 빠진다(M2 중복 제거 확장)', async () => {
+    fetchTaxonomyMock.mockResolvedValueOnce({
+      categories: [
+        {
+          id: 11,
+          name: '출장업무',
+          description: '',
+          sort_order: 0,
+          // 비대표 판본(v1, id=102)만 분류에 배정됨 — 대표(id=101)는 분류 files 에 없다.
+          files: [{ id: 102, rel_path: '2025-출장규정-v1.md', folder_name: '규정', summary: '' }],
+        },
+      ],
+    });
+    fetchKnowledgeWikiMock.mockResolvedValueOnce({
+      families: [
+        {
+          base: 'doc-c',
+          representative: {
+            id: 101,
+            summary: '',
+            folder_id: 1,
+            folder_name: '규정',
+            rel_path: '2025-출장규정-v2.md',
+            chunk_count: 2,
+            is_latest: true,
+          },
+          items: [
+            {
+              id: 101,
+              summary: '',
+              folder_id: 1,
+              folder_name: '규정',
+              rel_path: '2025-출장규정-v2.md',
+              chunk_count: 2,
+              is_latest: true,
+            },
+            {
+              id: 102,
+              summary: '',
+              folder_id: 1,
+              folder_name: '규정',
+              rel_path: '2025-출장규정-v1.md',
+              chunk_count: 1,
+              is_latest: false,
+            },
+          ],
+          has_versions: true,
+        },
+      ],
+    });
+
+    render(<KnowledgeWiki />);
+
+    expect(await screen.findByText('업무 분류')).toBeInTheDocument();
+    // 대표(v2)도 판본 이력(v1)이 분류에 배정된 이상 미분류 목록에 중복 노출되지 않는다.
+    expect(screen.queryByText('2025-출장규정-v2.md')).not.toBeInTheDocument();
+    expect(screen.queryByText('색인된 문서가 없음. 폴더를 등록·색인하면 여기에 정리됨.')).not.toBeInTheDocument();
+    expect(screen.getByText('미분류 문서가 없음.')).toBeInTheDocument();
+  });
+
+  test('분류 카드의 파일 항목에 요약이 있으면 1줄 표시한다(M2)', async () => {
+    fetchTaxonomyMock.mockResolvedValueOnce({
+      categories: [
+        {
+          id: 12,
+          name: '예산업무',
+          description: '',
+          sort_order: 0,
+          files: [
+            {
+              id: 201,
+              rel_path: '2026-예산편성-지침.md',
+              folder_name: '공무 샘플 지식',
+              summary: '예산 편성 기준과 집행 절차 요약',
+            },
+          ],
+        },
+      ],
+    });
+    fetchKnowledgeWikiMock.mockResolvedValueOnce({ families: [] });
+
+    render(<KnowledgeWiki />);
+
+    expect(await screen.findByText('예산업무')).toBeInTheDocument();
+    expect(screen.getByText('예산 편성 기준과 집행 절차 요약')).toBeInTheDocument();
+  });
+
+  test('분류 삭제 실패 시 인라인 오류 문구를 보인다(L5)', async () => {
+    const { deleteTaxonomyCategory } = await import('@/lib/api');
+    (deleteTaxonomyCategory as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('boom'));
+    fetchTaxonomyMock.mockResolvedValueOnce({
+      categories: [
+        { id: 13, name: '예산업무', description: '', sort_order: 0, files: [] },
+      ],
+    });
+    fetchKnowledgeWikiMock.mockResolvedValueOnce({ families: [] });
+
+    render(<KnowledgeWiki />);
+
+    expect(await screen.findByText('예산업무')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '분류 삭제' }));
+
+    expect(await screen.findByText('분류 삭제 실패 — 다시 시도할 것.')).toBeInTheDocument();
   });
 });

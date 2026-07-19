@@ -53,9 +53,9 @@ def _index_kb(csrf_client, kb_dir: Path) -> list[int]:
     return sorted(family['representative']['id'] for family in wiki['families'])
 
 
-def _stub_propose(candidates: list[dict], model: str = 'stub-model'):
+def _stub_propose(candidates: list[dict], model: str = 'stub-model', reason: str = 'ok', truncated: bool = False):
     def _fake(db, settings, user_id, *, organization, department, duties):
-        return candidates, model
+        return candidates, model, reason, truncated
 
     return _fake
 
@@ -95,6 +95,8 @@ def test_propose_apply_get_delete_round_trip(
     assert propose.status_code == 200, propose.text
     body = propose.json()
     assert body['model'] == 'stub-model'
+    assert body['reason'] == 'ok'
+    assert body['truncated'] is False
     assert [c['name'] for c in body['candidates']] == ['예산업무', '출장업무']
 
     apply_resp = csrf_client.post('/api/v1/aero-work/taxonomy/apply', json={'categories': body['candidates']})
@@ -143,3 +145,33 @@ def test_propose_rejects_blank_duties(csrf_client) -> None:
         json={'organization': '국방부', 'department': '예산과', 'duties': ''},
     )
     assert resp.status_code == 422
+
+
+def test_propose_reports_non_ok_reason_when_ai_disabled(
+    csrf_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """M1: reason 필드는 'ok' 아닌 구체 사유(예: ai_disabled)를 그대로 노출한다."""
+
+    monkeypatch.setattr(aero_api, 'propose_categories', _stub_propose([], model='', reason='ai_disabled'))
+    resp = csrf_client.post(
+        '/api/v1/aero-work/taxonomy/propose',
+        json={'organization': '국방부', 'department': '예산과', 'duties': '예산 편성'},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body['reason'] == 'ai_disabled'
+    assert body['candidates'] == []
+
+
+def test_propose_reports_truncated_when_indexed_files_exceed_cap(
+    csrf_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """L3: 색인 파일이 200건 상한을 넘으면 truncated=True 를 그대로 노출한다."""
+
+    monkeypatch.setattr(aero_api, 'propose_categories', _stub_propose([], truncated=True))
+    resp = csrf_client.post(
+        '/api/v1/aero-work/taxonomy/propose',
+        json={'organization': '국방부', 'department': '예산과', 'duties': '예산 편성'},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()['truncated'] is True

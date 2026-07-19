@@ -21,6 +21,13 @@ type Step = 1 | 2 | 3;
 // TaxonomyCandidate 에 selected 플래그를 얹은 파생 타입을 쓴다.
 type EditableCandidate = TaxonomyCandidate & { selected: boolean };
 
+// propose reason 별 안내 문구 — 'ok' 는 정상이라 배너를 띄우지 않는다.
+const REASON_MESSAGES: Record<string, string> = {
+  ai_disabled: 'AI 기능이 비활성화되어 있어 후보를 만들지 못함 — 아래에서 수동으로 분류를 추가할 것.',
+  llm_error: 'LLM 호출에 실패해 후보를 만들지 못함 — 로컬 AI(또는 연결) 상태를 확인하거나 수동으로 분류를 추가할 것.',
+  parse_error: 'LLM 응답 형식이 올바르지 않아 후보를 만들지 못함 — 수동으로 분류를 추가할 것.',
+};
+
 interface TaxonomyWizardProps {
   onApplied?: () => void;
   onCancel?: () => void;
@@ -31,6 +38,8 @@ export function TaxonomyWizard({ onApplied, onCancel }: TaxonomyWizardProps) {
   const [input, setInput] = useState<TaxonomyProposeInput>({ organization: '', department: '', duties: '' });
   const [candidates, setCandidates] = useState<EditableCandidate[]>([]);
   const [model, setModel] = useState<string | null>(null);
+  const [reason, setReason] = useState<string | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +57,18 @@ export function TaxonomyWizard({ onApplied, onCancel }: TaxonomyWizardProps) {
       const result = await proposeTaxonomy(input, getCsrfCookie());
       setCandidates(result.candidates.map((candidate) => ({ ...candidate, selected: true })));
       setModel(result.model);
+      setReason(result.reason ?? null);
+      setTruncated(Boolean(result.truncated));
       setStep(2);
     } catch {
       setError('분류 후보 생성에 실패함 — 로컬 AI(또는 연결) 상태를 확인할 것.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const addManualCandidate = () => {
+    setCandidates((prev) => [...prev, { name: '', description: '', file_ids: [], selected: true }]);
   };
 
   const toggleSelected = (index: number) => {
@@ -73,6 +88,10 @@ export function TaxonomyWizard({ onApplied, onCancel }: TaxonomyWizardProps) {
   const handleApply = async () => {
     if (selectedCandidates.length === 0) {
       setError('적용할 분류를 최소 1개 선택할 것.');
+      return;
+    }
+    if (selectedCandidates.some((candidate) => !candidate.name.trim())) {
+      setError('선택한 분류의 이름을 모두 입력할 것.');
       return;
     }
     setApplying(true);
@@ -151,8 +170,16 @@ export function TaxonomyWizard({ onApplied, onCancel }: TaxonomyWizardProps) {
       {step === 2 ? (
         <div className="mt-3 space-y-2">
           {model ? <p className="text-[11px] text-ink-3">모델: {model}</p> : null}
+          {reason && reason !== 'ok' ? (
+            <p className="rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs text-amber-600">
+              {REASON_MESSAGES[reason] ?? '분류 후보 생성에 실패함 — 수동으로 분류를 추가할 것.'}
+            </p>
+          ) : null}
+          {truncated ? (
+            <p className="text-[11px] text-ink-3">색인된 파일이 200건을 초과해 일부만 근거로 사용됨.</p>
+          ) : null}
           {candidates.length === 0 ? (
-            <p className="text-sm text-ink-3">생성된 분류 후보가 없음.</p>
+            <p className="text-sm text-ink-3">생성된 분류 후보가 없음. 수동으로 추가해 진행할 것.</p>
           ) : (
             <ul className="space-y-2">
               {candidates.map((candidate, index) => (
@@ -183,6 +210,13 @@ export function TaxonomyWizard({ onApplied, onCancel }: TaxonomyWizardProps) {
               ))}
             </ul>
           )}
+          <button
+            type="button"
+            onClick={addManualCandidate}
+            className="rounded-lg border border-dashed border-line-subtle px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-surface-sunken"
+          >
+            + 수동 후보 추가
+          </button>
           <div className="flex gap-2">
             <button
               type="button"

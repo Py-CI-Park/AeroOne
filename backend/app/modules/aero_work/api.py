@@ -699,7 +699,7 @@ def propose_taxonomy(
     """① 니즈 파악 입력 → ② 색인 파일 근거로 LLM 업무 분류 후보 생성(사용자 검토용)."""
 
     owner = _require_user(user)
-    candidates, model = propose_categories(
+    candidates, model, reason, truncated = propose_categories(
         db,
         settings,
         owner.id,
@@ -710,7 +710,10 @@ def propose_taxonomy(
     record_activity(db, owner.id, 'taxonomy.propose', f'업무 분류 후보 생성 — {len(candidates)}건')
     db.commit()
     return TaxonomyProposeResponse(
-        candidates=[TaxonomyCategoryInput(**candidate) for candidate in candidates], model=model
+        candidates=[TaxonomyCategoryInput(**candidate) for candidate in candidates],
+        model=model,
+        reason=reason,
+        truncated=truncated,
     )
 
 
