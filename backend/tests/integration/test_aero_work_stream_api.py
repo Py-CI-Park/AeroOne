@@ -77,7 +77,9 @@ def _fake_stream_answer(settings, db, query, hits, *, force_local=False, chat_st
     yield ('done', '보안서약 안내입니다.')
 
 
-def _fake_stream_compose(settings, db, *, fmt, title, instruction, force_local=False, chat_stream=None):
+def _fake_stream_compose(
+    settings, db, *, fmt, title, instruction, previous_paragraphs=None, force_local=False, chat_stream=None
+):
     yield ('delta', '- 목표를 설정함\n')
     yield ('delta', '후속 조치를 수립함')
     yield ('done', ['목표를 설정함', '후속 조치를 수립함'])
@@ -172,7 +174,9 @@ def test_compose_stream_frame_order_delta_then_done(csrf_client, monkeypatch: py
 
 
 def test_compose_stream_error_frame_when_stream_fails(csrf_client, monkeypatch: pytest.MonkeyPatch) -> None:
-    def failing_stream_compose(settings, db, *, fmt, title, instruction, force_local=False, chat_stream=None):
+    def failing_stream_compose(
+        settings, db, *, fmt, title, instruction, previous_paragraphs=None, force_local=False, chat_stream=None
+    ):
         yield ('error', 'LLM 이 빈 내용을 반환했습니다. 지시를 더 구체적으로 적어 보세요.')
 
     monkeypatch.setattr(aero_api, 'stream_compose', failing_stream_compose)

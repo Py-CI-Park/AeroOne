@@ -62,20 +62,34 @@ def parse_lines(answer: str) -> list[str]:
     return lines[:12]
 
 
-def build_compose_messages(fmt: str, title: str, instruction: str) -> list[AiChatMessage]:
+def build_compose_messages(
+    fmt: str, title: str, instruction: str, previous_paragraphs: list[str] | None = None
+) -> list[AiChatMessage]:
     """양식 지침을 포함한 내용 생성용 메시지를 조립한다.
+
+    ``previous_paragraphs`` 가 주어지면(미리보기 '수정 지시' 재생성 루프) 이전 본문을 함께
+    프롬프트에 넣고 ``instruction`` 을 최초 지시가 아닌 "수정 지시"로 취급한다 — 요청 계약은
+    그대로(``instruction``/``previous_paragraphs`` 둘 다 optional), 프롬프트 조립만 갈린다.
 
     ``compose_content`` 와 스트리밍 경로(``streaming.stream_compose``)가 동일한 조립을
     공유한다(계약 동등성).
     """
 
     guide = _FORMAT_GUIDE.get(fmt, _FORMAT_GUIDE['freeform'])
+    previous = [line.strip() for line in (previous_paragraphs or []) if (line or '').strip()]
+    if previous:
+        previous_block = '\n'.join(f'- {line}' for line in previous)
+        user_content = (
+            f'문서 제목: {title or "무제"}\n양식 지침: {guide}\n\n'
+            f'이전 본문:\n{previous_block[:6000]}\n\n'
+            f'수정 지시:\n{instruction[:2000]}\n\n'
+            '위 수정 지시를 반영해 이전 본문 전체를 다시 써라(반영되지 않은 문장은 그대로 유지).'
+        )
+    else:
+        user_content = f'문서 제목: {title or "무제"}\n양식 지침: {guide}\n\n지시:\n{instruction[:6000]}'
     return [
         AiChatMessage(role='system', content=_SYSTEM),
-        AiChatMessage(
-            role='user',
-            content=f'문서 제목: {title or "무제"}\n양식 지침: {guide}\n\n지시:\n{instruction[:6000]}',
-        ),
+        AiChatMessage(role='user', content=user_content),
     ]
 
 
@@ -86,6 +100,7 @@ def compose_content(
     fmt: str,
     title: str,
     instruction: str,
+    previous_paragraphs: list[str] | None = None,
     chat: Callable[[Settings, Session, list[AiChatMessage]], str] | None = None,
     force_local: bool = False,
 ) -> list[str]:
@@ -96,7 +111,7 @@ def compose_content(
     instruction = (instruction or '').strip()
     if not instruction:
         raise ComposeUnavailable('지시(개요)를 입력해야 합니다.')
-    messages = build_compose_messages(fmt, title, instruction)
+    messages = build_compose_messages(fmt, title, instruction, previous_paragraphs)
     caller = chat if chat is not None else (_local_chat if force_local else _default_chat)
     try:
         answer = caller(settings, db, messages)

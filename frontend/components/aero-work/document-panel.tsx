@@ -9,6 +9,7 @@ import {
   downloadSavedAeroWorkDocument,
   fetchSavedAeroWorkDocuments,
   generateAeroWorkHwpx,
+  previewAeroWorkDocument,
   saveAeroWorkDocumentRequest,
   streamAeroWorkCompose,
   type SavedAeroWorkDocument,
@@ -18,6 +19,14 @@ import { getCsrfCookie } from '@/lib/cookies';
 // Aero Work P3 문서작성 — 제목 + 본문(한 줄=한 문단)을 즉시 미리보고 HWPX(한글, OWPML) 로
 // 내려받는다. OWPML 구조 유효성은 백엔드 테스트로 보장하지만, 한컴 오피스 실제 서식/호환은
 // 실기(한컴 설치 PC) 확인이 필요한 실험적 기능이라 화면에 명시한다. 임의형식 슬롯 채움은 후속.
+//
+// G005 종이(양식) 미리보기 — 서버가 gongmuwon §5.3 양식 5종 위계를 반영해 만든
+// self-contained HTML 조각(previewAeroWorkDocument)만 A4 비율 종이 프레임 안에
+// dangerouslySetInnerHTML 로 렌더한다. 사용자 입력을 프런트에서 직접 HTML 로 주입하는 것은
+// 금지 — 서버가 텍스트를 escape 해 만든 HTML 만 신뢰한다. 실제 문서 소프트웨어 수준의
+// WASM(한글/오피스 엔진) 정밀 렌더는 범위 밖이며 후속 작업으로 남긴다.
+
+const PREVIEW_DEBOUNCE_MS = 500;
 
 export function DocumentPanel() {
   const [title, setTitle] = useState('');
@@ -26,6 +35,13 @@ export function DocumentPanel() {
   const [busy, setBusy] = useState(false);
   const [composing, setComposing] = useState(false);
   const [savedDocs, setSavedDocs] = useState<SavedAeroWorkDocument[]>([]);
+
+  const [paperPreviewOn, setPaperPreviewOn] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [instruction, setInstruction] = useState('');
+  const [revising, setRevising] = useState(false);
 
   const loadSaved = async () => {
     try {
@@ -47,6 +63,31 @@ export function DocumentPanel() {
     () => body.split('\n').map((line) => line.trim()).filter(Boolean),
     [body],
   );
+
+  // 종이 미리보기가 켜져 있는 동안 제목/본문/양식 변경을 500ms 디바운스로 반영한다.
+  useEffect(() => {
+    if (!paperPreviewOn) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      void (async () => {
+        setPreviewLoading(true);
+        setPreviewError(null);
+        try {
+          const result = await previewAeroWorkDocument(
+            { format_id: format, title: title.trim() || '무제', paragraphs },
+            getCsrfCookie(),
+          );
+          setPreviewHtml(result.html);
+        } catch {
+          setPreviewError('미리보기 생성 실패.');
+        } finally {
+          setPreviewLoading(false);
+        }
+      })();
+    }, PREVIEW_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [paperPreviewOn, title, format, paragraphs]);
 
   const handleGenerate = async (event: FormEvent) => {
     event.preventDefault();
@@ -71,6 +112,57 @@ export function DocumentPanel() {
       setError('HWPX 생성 실패. 로그인 상태를 확인할 것.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleRevise = async () => {
+    if (!instruction.trim()) {
+      setError('수정 지시를 입력하세요.');
+      return;
+    }
+    setRevising(true);
+    setError(null);
+    setDone(null);
+    const currentInstruction = instruction.trim();
+    const previousParagraphs = paragraphs;
+    let fallbackPending: Promise<void> | undefined;
+    try {
+      await streamAeroWorkCompose(
+        { title: title.trim(), instruction: currentInstruction, format, previous_paragraphs: previousParagraphs },
+        getCsrfCookie(),
+        {
+          onDelta: () => {
+            // 수정 지시 재생성은 완료본만 반영한다(부분 델타로 본문을 덮어쓰지 않음).
+          },
+          onDone: (revised) => {
+            setBody(revised.join('\n'));
+            setInstruction('');
+            setDone(`AI가 지시를 반영해 ${revised.length}문장으로 재생성했음.`);
+          },
+          onError: () => {
+            fallbackPending = (async () => {
+              try {
+                const result = await composeAeroWorkDocument(
+                  { title: title.trim(), instruction: currentInstruction, format, previous_paragraphs: previousParagraphs },
+                  getCsrfCookie(),
+                );
+                setBody(result.paragraphs.join('\n'));
+                setInstruction('');
+                setDone(`AI가 지시를 반영해 ${result.paragraphs.length}문장으로 재생성했음.`);
+              } catch {
+                setError('수정 지시 반영 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
+              }
+            })();
+          },
+        },
+      );
+      if (fallbackPending) {
+        await fallbackPending;
+      }
+    } catch {
+      setError('수정 지시 반영 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
+    } finally {
+      setRevising(false);
     }
   };
 
@@ -134,7 +226,7 @@ export function DocumentPanel() {
                   setError('지시(개요)를 본문 칸에 먼저 적으세요. AI가 개조식 내용으로 확장합니다.');
                   return;
                 }
-                const instruction = body;
+                const genInstruction = body;
                 setComposing(true);
                 setError(null);
                 setDone(null);
@@ -142,26 +234,26 @@ export function DocumentPanel() {
                 let fallbackPending: Promise<void> | undefined;
                 try {
                   await streamAeroWorkCompose(
-                    { title: title.trim(), instruction, format },
+                    { title: title.trim(), instruction: genInstruction, format },
                     getCsrfCookie(),
                     {
                       onDelta: (chunk) => setBody((prev) => prev + chunk),
-                      onDone: (paragraphs) => {
-                        setBody(paragraphs.join('\n'));
-                        setDone(`AI가 ${paragraphs.length}문장으로 확장했음. 검토·수정 후 HWPX로 내려받으세요.`);
+                      onDone: (composedParagraphs) => {
+                        setBody(composedParagraphs.join('\n'));
+                        setDone(`AI가 ${composedParagraphs.length}문장으로 확장했음. 검토·수정 후 HWPX로 내려받으세요.`);
                       },
                       onError: () => {
                         // 스트리밍 실패 시 기존 비스트리밍 composeAeroWorkDocument 로 폴백한다.
                         fallbackPending = (async () => {
                           try {
                             const result = await composeAeroWorkDocument(
-                              { title: title.trim(), instruction, format },
+                              { title: title.trim(), instruction: genInstruction, format },
                               getCsrfCookie(),
                             );
                             setBody(result.paragraphs.join('\n'));
                             setDone(`AI가 ${result.paragraphs.length}문장으로 확장했음. 검토·수정 후 HWPX로 내려받으세요.`);
                           } catch {
-                            setBody(instruction);
+                            setBody(genInstruction);
                             setError('AI 내용 생성 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
                           }
                         })();
@@ -172,7 +264,7 @@ export function DocumentPanel() {
                     await fallbackPending;
                   }
                 } catch {
-                  setBody(instruction);
+                  setBody(genInstruction);
                   setError('AI 내용 생성 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
                 } finally {
                   setComposing(false);
@@ -189,19 +281,69 @@ export function DocumentPanel() {
       </div>
 
       <div className="rounded-xl border border-line-subtle bg-surface-base p-4">
-        <p className="text-sm font-semibold text-ink-1">미리보기</p>
-        <div className="mt-2 rounded-lg border border-line-subtle bg-surface-raised px-4 py-3">
-          <h3 className="text-base font-semibold text-ink-1">{title.trim() || '무제'}</h3>
-          {paragraphs.length === 0 ? (
-            <p className="mt-2 text-sm text-ink-3">본문을 입력하면 여기에 문단으로 표시됩니다.</p>
-          ) : (
-            <div className="mt-2 space-y-2">
-              {paragraphs.map((paragraph, index) => (
-                <p key={index} className="text-sm leading-relaxed text-ink-1">{paragraph}</p>
-              ))}
-            </div>
-          )}
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink-1">미리보기</p>
+          <label className="flex items-center gap-2 text-xs font-medium text-ink-2">
+            <input
+              type="checkbox"
+              checked={paperPreviewOn}
+              onChange={(event) => setPaperPreviewOn(event.target.checked)}
+            />
+            종이 미리보기
+          </label>
         </div>
+
+        {paperPreviewOn ? (
+          <div className="mt-2">
+            {previewError ? (
+              <p className="mb-2 text-xs text-rose-600">{previewError}</p>
+            ) : null}
+            {previewLoading ? <p className="mb-2 text-xs text-ink-3">미리보기 생성 중…</p> : null}
+            {/* A4 비율(210:297) 종이 프레임 — 회색 배경 위 흰 종이 + 그림자. HTML 은 서버가
+                생성한 self-contained 조각만 신뢰하며, dangerouslySetInnerHTML 에 사용자 텍스트를
+                직접 넣지 않는다(previewAeroWorkDocument 응답만 사용). WASM 정밀 렌더는 후속. */}
+            <div className="rounded-lg bg-surface-sunken p-4">
+              <div
+                className="mx-auto aspect-[210/297] w-full max-w-[420px] overflow-auto bg-white p-6 text-black shadow-lg"
+                data-testid="paper-preview"
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
+            </div>
+
+            <div className="mt-3 rounded-lg border border-line-subtle bg-surface-raised p-3">
+              <p className="text-xs font-semibold text-ink-2">수정 지시</p>
+              <textarea
+                value={instruction}
+                onChange={(event) => setInstruction(event.target.value)}
+                placeholder="예: 3번째 문단을 더 구체적으로 수정해줘"
+                rows={2}
+                className="mt-1 w-full rounded-lg border border-line-subtle bg-surface-base px-3 py-2 text-sm text-ink-1"
+              />
+              <button
+                type="button"
+                onClick={() => void handleRevise()}
+                disabled={revising || !instruction.trim()}
+                className="mt-2 rounded-lg border border-accent bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent disabled:opacity-50"
+              >
+                {revising ? '반영 중…' : '지시 반영 재생성'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2 rounded-lg border border-line-subtle bg-surface-raised px-4 py-3">
+            <h3 className="text-base font-semibold text-ink-1">{title.trim() || '무제'}</h3>
+            {paragraphs.length === 0 ? (
+              <p className="mt-2 text-sm text-ink-3">본문을 입력하면 여기에 문단으로 표시됩니다.</p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {paragraphs.map((paragraph, index) => (
+                  <p key={index} className="text-sm leading-relaxed text-ink-1">{paragraph}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-line-subtle bg-surface-base p-4">

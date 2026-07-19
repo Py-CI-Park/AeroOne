@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.modules.aero_work.models import KnowledgeFolder
 
@@ -203,10 +203,38 @@ class DocumentComposeRequest(BaseModel):
     title: str = Field(default='', max_length=300)
     instruction: str = Field(min_length=1, max_length=10000)
     format: str = Field(default='onepage', max_length=20)
+    previous_paragraphs: list[str] = Field(default_factory=list, max_length=100)
 
 
 class DocumentComposeResponse(BaseModel):
     paragraphs: list[str]
+
+
+class PreviewRequest(BaseModel):
+    format_id: str = Field(min_length=1, max_length=20)
+    title: str = Field(default='', max_length=200)
+    paragraphs: list[str] = Field(default_factory=list, max_length=100)
+
+    @field_validator('format_id')
+    @classmethod
+    def _known_format(cls, value: str) -> str:
+        from app.modules.aero_work.document_formats import FORMATS
+
+        if value not in FORMATS:
+            raise ValueError(f'지원하지 않는 양식입니다: {value}')
+        return value
+
+    @field_validator('paragraphs')
+    @classmethod
+    def _paragraph_lengths(cls, value: list[str]) -> list[str]:
+        for paragraph in value:
+            if len(paragraph) > 10000:
+                raise ValueError('문단이 너무 깁니다(최대 10000자).')
+        return value
+
+
+class PreviewResponse(BaseModel):
+    html: str
 
 
 class PrefResponse(BaseModel):

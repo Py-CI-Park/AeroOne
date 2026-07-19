@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import Settings
-from app.modules.aero_work.document_composer import ComposeUnavailable, compose_content, parse_lines
+from app.modules.aero_work.document_composer import (
+    ComposeUnavailable,
+    build_compose_messages,
+    compose_content,
+    parse_lines,
+)
 
 
 def _settings(**overrides) -> Settings:
@@ -54,3 +59,36 @@ def test_compose_wraps_chat_failure() -> None:
 
     with pytest.raises(ComposeUnavailable):
         compose_content(_settings(), None, fmt='onepage', title='t', instruction='지시', chat=boom)
+
+
+def test_build_compose_messages_without_previous_paragraphs_uses_initial_instruction_wording() -> None:
+    messages = build_compose_messages('onepage', '절감 방안', '청사 에너지 절감')
+    assert '지시:' in messages[1].content
+    assert '이전 본문' not in messages[1].content
+
+
+def test_build_compose_messages_with_previous_paragraphs_includes_previous_body_and_revision_instruction() -> None:
+    messages = build_compose_messages(
+        'onepage', '절감 방안', '목표를 15%로 올려줘', previous_paragraphs=['목표를 10%로 설정함', '조명 교체를 추진함']
+    )
+    user_content = messages[1].content
+    assert '이전 본문' in user_content
+    assert '목표를 10%로 설정함' in user_content and '조명 교체를 추진함' in user_content
+    assert '수정 지시' in user_content
+    assert '목표를 15%로 올려줘' in user_content
+
+
+def test_compose_content_passes_previous_paragraphs_into_prompt() -> None:
+    captured: dict = {}
+
+    def fake_chat(settings, db, messages):
+        captured['user'] = messages[1].content
+        return '목표를 15%로 상향함'
+
+    lines = compose_content(
+        _settings(), None, fmt='onepage', title='절감 방안', instruction='목표를 15%로 올려줘',
+        previous_paragraphs=['목표를 10%로 설정함'], chat=fake_chat,
+    )
+    assert lines == ['목표를 15%로 상향함']
+    assert '목표를 10%로 설정함' in captured['user']
+    assert '목표를 15%로 올려줘' in captured['user']
