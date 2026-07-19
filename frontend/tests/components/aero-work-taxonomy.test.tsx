@@ -7,13 +7,22 @@ import { KnowledgeWiki } from '@/components/aero-work/knowledge-wiki';
 // G003 분류체계 마법사(gongmuwon §6.6) — 니즈 파악→LLM 분류 검토→적용 3단계와
 // 지식위키의 업무 분류 섹션(분류 카드/미분류 목록 분리)을 잠근다.
 
-const proposeTaxonomyMock = vi.fn(async () => ({
-  candidates: [
-    { name: '예산 편성', description: '연간 예산 편성 관련 문서', file_ids: [1, 2] },
-    { name: '출장 정산', description: '출장비 정산 관련 문서', file_ids: [3] },
-  ],
-  model: 'test-model',
-}));
+const proposeTaxonomyMock = vi.fn(
+  async (): Promise<{
+    candidates: { name: string; description: string; file_ids: number[] }[];
+    model: string;
+    reason?: string;
+    truncated?: boolean;
+  }> => ({
+    candidates: [
+      { name: '예산 편성', description: '연간 예산 편성 관련 문서', file_ids: [1, 2] },
+      { name: '출장 정산', description: '출장비 정산 관련 문서', file_ids: [3] },
+    ],
+    model: 'test-model',
+    reason: 'ok',
+    truncated: false,
+  }),
+);
 const applyTaxonomyMock = vi.fn(async () => ({ applied: 1 }));
 const fetchTaxonomyMock = vi.fn(async () => ({ categories: [] as unknown[] }));
 const fetchKnowledgeWikiMock = vi.fn(async () => ({ families: [] as unknown[] }));
@@ -73,6 +82,49 @@ describe('TaxonomyWizard — 3단계 진행', () => {
     fireEvent.click(screen.getByRole('button', { name: 'LLM 분류 생성' }));
     expect(screen.getByText('기관·부서·담당업무를 모두 입력할 것.')).toBeInTheDocument();
     expect(proposeTaxonomyMock).not.toHaveBeenCalled();
+  });
+
+  test('reason 이 llm_error 면 배너를 보이고, 수동 후보 추가로 적용까지 진행된다 (M1)', async () => {
+    proposeTaxonomyMock.mockResolvedValueOnce({ candidates: [], model: '', reason: 'llm_error', truncated: false });
+    render(<TaxonomyWizard />);
+
+    fireEvent.change(screen.getByPlaceholderText('기관 (예: OO시청)'), { target: { value: 'OO시청' } });
+    fireEvent.change(screen.getByPlaceholderText('부서 (예: 총무과)'), { target: { value: '총무과' } });
+    fireEvent.change(screen.getByPlaceholderText(/담당업무/), { target: { value: '예산 편성' } });
+    fireEvent.click(screen.getByRole('button', { name: 'LLM 분류 생성' }));
+
+    // 실패 사유 배너 노출(무증상 실패 금지)
+    expect(await screen.findByText(/LLM 호출에 실패해 후보를 만들지 못함/)).toBeInTheDocument();
+
+    // 수동 후보 추가 → 이름 입력 → 적용 (이름 입력은 placeholder 없이 렌더되므로 카드 내 첫 텍스트 입력을 직접 조회)
+    fireEvent.click(screen.getByRole('button', { name: '+ 수동 후보 추가' }));
+    const nameInput = document.querySelector('li input:not([type="checkbox"])') as HTMLInputElement;
+    expect(nameInput).not.toBeNull();
+    fireEvent.change(nameInput, { target: { value: '수기 분류' } });
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+
+    await waitFor(() => expect(applyTaxonomyMock).toHaveBeenCalled());
+    const applied = (applyTaxonomyMock.mock.calls as unknown as unknown[][])[0][0] as Array<{ name: string; file_ids: number[] }>;
+    expect(applied).toHaveLength(1);
+    expect(applied[0].name).toBe('수기 분류');
+    expect(applied[0].file_ids).toEqual([]);
+  });
+
+  test('truncated 응답이면 일부 근거 안내 문구를 보인다 (L3)', async () => {
+    proposeTaxonomyMock.mockResolvedValueOnce({
+      candidates: [{ name: '예산 편성', description: '', file_ids: [1] }],
+      model: 'test-model',
+      reason: 'ok',
+      truncated: true,
+    });
+    render(<TaxonomyWizard />);
+
+    fireEvent.change(screen.getByPlaceholderText('기관 (예: OO시청)'), { target: { value: 'OO시청' } });
+    fireEvent.change(screen.getByPlaceholderText('부서 (예: 총무과)'), { target: { value: '총무과' } });
+    fireEvent.change(screen.getByPlaceholderText(/담당업무/), { target: { value: '예산 편성' } });
+    fireEvent.click(screen.getByRole('button', { name: 'LLM 분류 생성' }));
+
+    expect(await screen.findByText(/색인된 파일이 200건을 초과해 일부만 근거로 사용됨/)).toBeInTheDocument();
   });
 });
 
