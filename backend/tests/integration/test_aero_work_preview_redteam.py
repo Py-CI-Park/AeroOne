@@ -313,6 +313,8 @@ def test_compose_previous_paragraphs_xss_and_overlong_block_are_truncated_safely
     previous_section = user_content.split('수정 지시:')[0]
     assert len(previous_section) < 6400  # 6000자 절단 + 블록 마커/라벨/개행 여유
     assert paragraph not in user_content  # 문단 전체(9040자)는 절단으로 살아남지 못한다
+    # P3 잔여 해소 — 절단된 요청은 응답 truncated 필드로 신호돼야 한다(로직 드리프트 방지).
+    assert response.json()['truncated'] is True
 
 
 # ---- (7) 외부 URL 부재 — 폐쇄망 순도 ----
