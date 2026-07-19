@@ -151,3 +151,41 @@ def test_reindex_conflict_only_for_same_folder(csrf_client, monkeypatch: pytest.
 def test_reindex_missing_folder_returns_404(csrf_client) -> None:
     resp = csrf_client.post('/api/v1/aero-work/knowledge/folders/999999/reindex')
     assert resp.status_code == 404
+
+def test_startup_sweep_resets_stale_indexing_folders(csrf_client, app, tmp_path: Path) -> None:
+    """기동 스윕(H2) — 이전 프로세스가 남긴 좀비 'indexing' 폴더를 error 로 되돌린다.
+
+    재리뷰 P3 반영: reset_stale_indexing_folders 를 직접 호출해 상태 전환과 사유 문구,
+    정상(ready) 폴더 불간섭을 함께 잠근다.
+    """
+
+    root = tmp_path / 'kb-stale'
+    root.mkdir()
+    (root / 'doc.md').write_text('예산편성 내용', encoding='utf-8')
+    created = csrf_client.post(
+        '/api/v1/aero-work/knowledge/folders', json={'name': 'kb-stale', 'path': str(root)}
+    )
+    assert created.status_code == 201, created.text
+    folder_id = created.json()['id']
+
+    from app.modules.aero_work.models import KnowledgeFolder
+
+    # 이전 프로세스가 죽으며 남긴 좀비 상태를 시드한다(인메모리 가드는 비어 있음).
+    with app.state.db.session() as session:
+        folder = session.get(KnowledgeFolder, folder_id)
+        folder.status = 'indexing'
+        folder.status_detail = '3/9 파일'
+        session.commit()
+
+    with app.state.db.session() as session:
+        swept = aero_api.reset_stale_indexing_folders(session)
+    assert swept == 1
+
+    with app.state.db.session() as session:
+        folder = session.get(KnowledgeFolder, folder_id)
+        assert folder.status == 'error'
+        assert folder.status_detail == '서버 재시작으로 중단됨'
+
+    # 이미 터미널 상태인 폴더는 스윕이 건드리지 않는다.
+    with app.state.db.session() as session:
+        assert aero_api.reset_stale_indexing_folders(session) == 0
