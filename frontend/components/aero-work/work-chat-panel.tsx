@@ -122,11 +122,40 @@ export function WorkChatPanel() {
             ),
           );
         };
-        void streamAeroWorkAnswer({ query: text }, getCsrfCookie(), {
+        const setResultHits = (hits: OrchestrateResult['hits']) => {
+          setLog((prev) =>
+            prev.map((entry) =>
+              entry.id === entryId
+                ? {
+                    ...entry,
+                    results: entry.results.map((r, i) => (i === resultIndex ? { ...r, hits } : r)),
+                  }
+                : entry,
+            ),
+          );
+        };
+        const retryWithOrchestrate = () => {
+          // M1: 스트림 실패 시 비스트리밍 orchestrateAeroWork(synthesize:true) 로 재요청해
+          // 그 지식 답변만 추출해 반영한다. 재요청은 세션에 새 대화 메시지를 추가하는
+          // 부작용이 있다(세션 중복 기록을 피하는 전용 유틸은 없음 — 단순성을 우선해 허용).
+          // 재요청마저 실패하면 답변 없이 근거(hits)만 유지한다.
+          void orchestrateAeroWork(text, getCsrfCookie(), response.session_id, { synthesize: true })
+            .then((fallback) => {
+              const knowledgeResult = fallback.results.find((r) => r.kind === 'knowledge');
+              setResultAnswer(() => knowledgeResult?.answer || undefined);
+            })
+            .catch(() => setResultAnswer(() => undefined));
+        };
+        // 지식 답변 스트림 호출 자체(네트워크 예외 등)도 try/catch 로 감싸 실패 시 동일하게
+        // 비스트리밍 재요청으로 폴백한다(onError 콜백은 SSE error 프레임 수신 시에만 불린다).
+        streamAeroWorkAnswer({ query: text, top_k: 5 }, getCsrfCookie(), {
+          // top_k 를 오케스트레이션과 동일하게 고정하고, 스트림이 되돌려주는 hits 로 엔트리의
+          // 근거를 교체해 번호-근거(각주)가 실제 스트리밍 답변과 항상 일치하도록 한다.
+          onHits: (hits) => setResultHits(hits),
           onDelta: (chunk) => setResultAnswer((previous) => (previous ?? '') + chunk),
           onDone: (answer) => setResultAnswer(() => answer),
-          onError: () => setResultAnswer(() => undefined),
-        });
+          onError: retryWithOrchestrate,
+        }).catch(retryWithOrchestrate);
       });
     } catch {
       setError('처리 실패. 로그인 상태를 확인할 것.');
