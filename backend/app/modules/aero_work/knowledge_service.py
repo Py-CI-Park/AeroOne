@@ -280,10 +280,12 @@ class KnowledgeService:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
         items = [
             {
+                'id': file_row.id,
                 'folder_id': folder.id,
                 'folder_name': folder.name,
                 'rel_path': file_row.rel_path,
                 'chunk_count': file_row.chunk_count,
+                'summary': file_row.summary,
             }
             for file_row, folder in self.db.execute(stmt).all()
         ]

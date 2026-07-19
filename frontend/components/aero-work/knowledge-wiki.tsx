@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { fetchKnowledgeWiki, type WikiFamily } from '@/lib/api';
+import { fetchKnowledgeWiki, summarizeKnowledgeFile, type WikiFamily } from '@/lib/api';
+import { getCsrfCookie } from '@/lib/cookies';
 
 // Aero Work F5 지식 위키(버전 가족) — 색인된 문서를 같은 문서의 대표(공식본) + 판본 이력으로
 // 묶어 보여준다(gongmuwon 업무 허브 백본, §6.5). 분류체계 마법사·주제 페이지는 후속.
@@ -11,6 +12,21 @@ export function KnowledgeWiki() {
   const [families, setFamilies] = useState<WikiFamily[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [keyword, setKeyword] = useState('');
+  const [summarizing, setSummarizing] = useState<number | null>(null);
+  const [summaries, setSummaries] = useState<Record<number, string>>({});
+
+  const summarize = async (fileId: number) => {
+    setSummarizing(fileId);
+    try {
+      const result = await summarizeKnowledgeFile(fileId, getCsrfCookie());
+      setSummaries((prev) => ({ ...prev, [fileId]: result.summary }));
+    } catch {
+      setSummaries((prev) => ({ ...prev, [fileId]: '요약 실패 — 로컬 AI(또는 연결) 상태를 확인할 것.' }));
+    } finally {
+      setSummarizing(null);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,8 +77,24 @@ export function KnowledgeWiki() {
       ) : families.length === 0 ? (
         <p className="mt-2 text-sm text-ink-3">색인된 문서가 없음. 폴더를 등록·색인하면 여기에 정리됨.</p>
       ) : (
+        <>
+        <input
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          placeholder="키워드 입력 즉시 목차 강조·필터 (예: 예산)"
+          className="mt-2 w-full rounded-lg border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs text-ink-1"
+        />
         <ul className="mt-2 space-y-1">
-          {families.map((family) => (
+          {families
+            .filter((family) => {
+              const term = keyword.trim().toLowerCase();
+              if (!term) return true;
+              return (
+                family.representative.rel_path.toLowerCase().includes(term) ||
+                (summaries[family.representative.id] ?? family.representative.summary).toLowerCase().includes(term)
+              );
+            })
+            .map((family) => (
             <li key={family.base} className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-2">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="font-mono text-ink-1">{family.representative.rel_path}</span>
@@ -70,6 +102,14 @@ export function KnowledgeWiki() {
                   <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">대표</span>
                 ) : null}
                 <span className="text-ink-3">{family.representative.folder_name} · 청크 {family.representative.chunk_count}</span>
+                <button
+                  type="button"
+                  disabled={summarizing === family.representative.id}
+                  onClick={() => void summarize(family.representative.id)}
+                  className="rounded px-2 py-0.5 text-[11px] text-accent hover:bg-accent-soft disabled:opacity-50"
+                >
+                  {summarizing === family.representative.id ? '요약 중…' : '요약'}
+                </button>
                 {family.has_versions ? (
                   <button
                     type="button"
@@ -80,6 +120,11 @@ export function KnowledgeWiki() {
                   </button>
                 ) : null}
               </div>
+              {(summaries[family.representative.id] ?? family.representative.summary) ? (
+                <p className="mt-1 rounded bg-accent-soft/50 px-2 py-1 text-[11px] leading-relaxed text-ink-2">
+                  {summaries[family.representative.id] ?? family.representative.summary}
+                </p>
+              ) : null}
               {family.has_versions && expanded.has(family.base) ? (
                 <ul className="mt-1 space-y-0.5 border-t border-line-subtle pt-1">
                   {family.items.slice(1).map((item) => (
@@ -93,6 +138,7 @@ export function KnowledgeWiki() {
             </li>
           ))}
         </ul>
+        </>
       )}
     </div>
   );
