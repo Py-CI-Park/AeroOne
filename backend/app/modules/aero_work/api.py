@@ -201,8 +201,9 @@ def answer_stream(
     except EmbeddingUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     mark_latest(hits)
-    record_activity(db, owner.id, 'knowledge.search', f'지식 검색 "{payload.query}" — {len(hits)}건')
-    db.commit()
+    # 이 스트림은 orchestrate 경유 시 OrchestratorService 가 이미 'knowledge.search' 실행기록을
+    # 남기므로(Q1/M2 리뷰), 여기서 다시 record_activity 를 호출하면 동일 검색에 대해 활동
+    # 로그가 중복 기록된다 — 이 엔드포인트에서는 기록을 생략한다(orchestrate 가 유일한 기록 경로).
     force_local = get_llm_mode(db, owner.id) == 'local'
 
     def event_stream() -> Generator[str, None, None]:

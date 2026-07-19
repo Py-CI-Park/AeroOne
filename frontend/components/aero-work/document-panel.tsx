@@ -115,6 +115,7 @@ export function DocumentPanel() {
           onChange={(event) => setBody(event.target.value)}
           placeholder="본문을 입력하세요. 한 줄이 한 문단이 됩니다."
           rows={10}
+          readOnly={composing}
           className="mt-2 w-full rounded-lg border border-line-subtle bg-surface-raised px-3 py-2 text-sm leading-relaxed text-ink-1"
         />
         <div className="mt-3 flex items-center gap-2">

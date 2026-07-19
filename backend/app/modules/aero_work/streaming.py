@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Generator
 
 from sqlalchemy.orm import Session
@@ -22,6 +23,12 @@ from app.modules.aero_work.orchestrator_service import build_synthesis_messages
 from app.modules.ai.provider_config_service import ProviderConfigService
 from app.modules.ai.schemas import AiChatMessage
 from app.modules.ai.service import AiChatService, OllamaClient, OllamaError
+
+logger = logging.getLogger(__name__)
+
+# 사용자에게 노출하는 error 프레임 문구 — 원문 예외 메시지(프로바이더 상세·연결 정보 등)를
+# 그대로 클라이언트에 흘려보내지 않기 위해 고정 문구로 치환한다. 원문은 로그로만 남긴다.
+_SAFE_ERROR_MESSAGE = 'AI 응답 생성에 실패했습니다. 잠시 후 다시 시도하세요.'
 
 StreamEvent = tuple[str, object]
 ChatStreamFn = Callable[[Settings, Session, list[AiChatMessage]], Generator[str, None, None]]
@@ -55,10 +62,10 @@ def _stream_chunks(
     db: Session,
     messages: list[AiChatMessage],
     caller: ChatStreamFn,
-) -> Generator[StreamEvent, None, str] | None:
+) -> Generator[StreamEvent, None, str | None]:
     """``caller`` 가 내는 원문 청크를 ``('delta', 청크)`` 로 순서대로 방출하고, 완료 시
-    이어붙인 전체 텍스트를 반환한다(``yield from`` 소비용). 실패 시 ``('error', 메시지)`` 를
-    방출한 뒤 ``None`` 을 반환한다."""
+    이어붙인 전체 텍스트를 반환한다(``yield from`` 소비용). 실패 시 ``('error', 사용자-안전 문구)`` 를
+    방출한 뒤 ``None`` 을 반환한다 — 원문 예외 메시지는 클라이언트로 보내지 않고 로그로만 남긴다."""
 
     collected: list[str] = []
     try:
@@ -68,10 +75,12 @@ def _stream_chunks(
             collected.append(chunk)
             yield ('delta', chunk)
     except OllamaError as exc:
-        yield ('error', str(exc))
+        logger.warning('AI 스트림 chat_stream 실패(OllamaError): %s', exc)
+        yield ('error', _SAFE_ERROR_MESSAGE)
         return None
     except Exception as exc:  # noqa: BLE001 — 스트림 중 예외는 전파 금지, error 프레임으로 종료
-        yield ('error', str(exc))
+        logger.exception('AI 스트림 chat_stream 중 예상치 못한 예외')
+        yield ('error', _SAFE_ERROR_MESSAGE)
         return None
     return ''.join(collected)
 

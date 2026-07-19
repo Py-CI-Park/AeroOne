@@ -43,7 +43,7 @@ class FolderListResponse(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(min_length=1)
+    query: str = Field(min_length=1, max_length=2000)
     folder_id: int | None = None
     top_k: int = Field(default=8, ge=1, le=30)
 

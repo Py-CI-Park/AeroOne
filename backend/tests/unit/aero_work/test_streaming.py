@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.core.config import Settings
+from app.modules.ai.service import AiChatService
 from app.modules.aero_work.streaming import stream_answer, stream_compose
 
 
@@ -53,7 +56,8 @@ def test_stream_answer_chat_stream_error_yields_error_and_stops() -> None:
 
     events = list(stream_answer(_settings(), None, '질문', _HITS, chat_stream=failing))
     assert events[0] == ('delta', '일부 ')
-    assert events[1][0] == 'error' and 'LLM 다운' in events[1][1]
+    # L1: 원문 예외 메시지('LLM 다운')는 로그로만 남고, 클라이언트에는 사용자-안전 고정 문구만 노출된다.
+    assert events[1] == ('error', 'AI 응답 생성에 실패했습니다. 잠시 후 다시 시도하세요.')
     assert len(events) == 2  # error 이후 done 은 나오지 않는다
 
 
@@ -100,4 +104,27 @@ def test_stream_compose_chat_stream_error_yields_error() -> None:
     events = list(
         stream_compose(_settings(), None, fmt='onepage', title='t', instruction='지시', chat_stream=failing)
     )
-    assert events == [('error', '연결 실패')]
+    # L1: 원문 예외 메시지('연결 실패')는 로그로만 남고, 클라이언트에는 사용자-안전 고정 문구만 노출된다.
+    assert events == [('error', 'AI 응답 생성에 실패했습니다. 잠시 후 다시 시도하세요.')]
+
+
+def test_default_chat_stream_forwards_only_delta_and_calls_ai_chat_service_with_expected_args(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """L4: chat_stream 미주입(기본) 경로는 ``AiChatService.chat_stream`` 을 ``(messages, [], False, 0)``
+    인자로 호출하고, ``'citations'``/``'final'`` 등은 걸러 ``'delta'`` kind 만 순수 텍스트로 전달해야 한다."""
+
+    captured: dict = {}
+
+    def fake_chat_stream(self, messages, roots, use_search, limit, **kwargs):
+        captured['args'] = (messages, roots, use_search, limit)
+        yield ('citations', [])
+        yield ('delta', '안')
+        yield ('delta', '녕')
+        yield ('final', '안녕')
+
+    monkeypatch.setattr(AiChatService, 'chat_stream', fake_chat_stream)
+
+    events = list(stream_answer(_settings(), None, '질문', _HITS))
+    assert events == [('delta', '안'), ('delta', '녕'), ('done', '안녕')]
+    assert captured['args'][1:] == ([], False, 0)

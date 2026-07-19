@@ -28,10 +28,20 @@ export async function POST(request: NextRequest) {
       status: upstreamResponse.status,
       headers: {
         'content-type': upstreamResponse.headers.get('content-type') ?? 'application/json',
+        'cache-control': 'no-store',
       },
     });
-    const setCookie = upstreamResponse.headers.get('set-cookie');
-    if (setCookie) response.headers.append('set-cookie', setCookie);
+    // 다중 Set-Cookie 를 모두 보존한다(getSetCookie() 미지원 런타임은 단일 헤더로 폴백) —
+    // 기존 AeroAI 스트림(proxyToAiBackend/relaySetCookie) 관례를 그대로 따른다.
+    const setCookies =
+      typeof upstreamResponse.headers.getSetCookie === 'function'
+        ? upstreamResponse.headers.getSetCookie()
+        : upstreamResponse.headers.get('set-cookie')
+          ? [upstreamResponse.headers.get('set-cookie') as string]
+          : [];
+    for (const setCookie of setCookies) {
+      response.headers.append('set-cookie', setCookie);
+    }
     return response;
   } catch (error) {
     console.error('[FRONTEND][AERO-WORK] Failed POST /api/v1/aero-work/knowledge/answer/stream', error);
