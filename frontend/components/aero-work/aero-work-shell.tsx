@@ -30,7 +30,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { key: 'home', icon: '🏠', label: '홈 · 오늘의 브리핑', summary: '오늘 일정·이어서 하기·지식 요약·이용 팁을 한 화면에.', reuse: '대시보드·최근 열람 스트립', phase: 'P4' },
-  { key: 'chat', icon: '💬', label: '업무대화', summary: '대화 한 줄을 일정·문서·지식·도움말로 라우팅(멀티인텐트). 아래에서 로컬 AI 자유 대화도 이어감.', reuse: '오케스트레이터(F1) + AeroAI 자유 대화', phase: '구현됨(F1)' },
+  { key: 'chat', icon: '💬', label: '업무대화', summary: '대화 한 줄을 일정·문서·지식·도움말로 라우팅(멀티인텐트). 자유 대화 모드로 로컬 AI 와 이어서 대화.', reuse: '오케스트레이터(F1) + AeroAI 자유 대화', phase: '구현됨(F1)' },
   { key: 'schedule', icon: '📅', label: '일정', summary: '개인 캘린더 — 일정 추가·수정·삭제, 다가오는 일정 아젠다. 알림·세션 연결은 후속.', reuse: '신규(대시보드 Schedule 자리 승격)', phase: '구현됨(P4)' },
   { key: 'document', icon: '📝', label: '문서작성', summary: '제목·본문을 미리보고 HWPX(한글, OWPML)로 내려받음. 서식 템플릿·양식 슬롯은 후속(실험적).', reuse: 'HWPX(OWPML) 생성기(신규)', phase: '구현됨(P3)' },
   { key: 'knowledge', icon: '📚', label: '내 지식폴더', summary: '지정 폴더를 그 자리에서 색인 → 키워드·근거 벡터 검색, 증분 동기화(추가·수정·이동·삭제).', reuse: 'Ollama nomic-embed 임베딩 + 코사인 벡터 검색', phase: '구현됨(P2)' },
@@ -40,6 +40,7 @@ const NAV: NavItem[] = [
 
 export function AeroWorkShell() {
   const [view, setView] = useState<ViewKey>('home');
+  const [chatMode, setChatMode] = useState<'work' | 'free'>('work');
   const active = NAV.find((item) => item.key === view) ?? NAV[0];
 
   return (
@@ -95,12 +96,25 @@ export function AeroWorkShell() {
             </div>
           </div>
         ) : view === 'chat' ? (
-          <div className="mt-4 space-y-6">
-            <WorkChatPanel />
-            <div className="border-t border-line-subtle pt-4">
-              <p className="mb-2 text-sm font-semibold text-ink-1">자유 대화 (로컬 AI)</p>
-              <AiChatWorkspace />
+          <div className="mt-4 space-y-4">
+            <div className="flex gap-1">
+              {[
+                ['work', '업무 명령 (일정·문서·지식)'],
+                ['free', '자유 대화 (로컬 AI)'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setChatMode(value as 'work' | 'free')}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    chatMode === value ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2 hover:bg-accent-soft'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+            {chatMode === 'work' ? <WorkChatPanel /> : <AiChatWorkspace />}
           </div>
         ) : view === 'knowledge' ? (
           <KnowledgePanel />
