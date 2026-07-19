@@ -39,6 +39,8 @@ export function KnowledgePanel() {
   const [scope, setScope] = useState<string>('all');
   const [mode, setMode] = useState<'semantic' | 'keyword'>('semantic');
   const [hits, setHits] = useState<KnowledgeSearchHit[] | null>(null);
+  // 표시 중인 결과가 어떤 모드로 검색됐는지 고정 — 모드 토글만으로 라벨이 바뀌는 오표기 방지
+  const [hitsMode, setHitsMode] = useState<'semantic' | 'keyword'>('semantic');
   const [searchModel, setSearchModel] = useState<string>('');
   const [searching, setSearching] = useState(false);
 
@@ -113,6 +115,7 @@ export function KnowledgePanel() {
       const request = { query: query.trim(), folder_id: scope === 'all' ? null : Number(scope), top_k: 8 };
       const response = mode === 'keyword' ? await keywordSearchKnowledge(request) : await searchKnowledge(request);
       setHits(response.hits);
+      setHitsMode(mode);
       setSearchModel(response.model);
     } catch {
       setError('검색 실패. 색인된 폴더가 있는지, Ollama 가 켜져 있는지 확인할 것.');
@@ -261,7 +264,9 @@ export function KnowledgePanel() {
                     <div className="flex items-center gap-2 text-xs text-ink-3">
                       <span className="font-medium text-ink-2">{hit.folder_name}</span>
                       <span className="font-mono break-all">{hit.rel_path}</span>
-                      <span className="ml-auto rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">유사도 {hit.score.toFixed(3)}</span>
+                      <span className="ml-auto rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                        {hitsMode === 'keyword' ? `일치 ${Math.round(hit.score)}회` : `유사도 ${hit.score.toFixed(3)}`}
+                      </span>
                     </div>
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink-1">{hit.content}</p>
                   </li>
