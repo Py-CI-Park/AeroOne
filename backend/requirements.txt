@@ -18,3 +18,8 @@ pandas==2.2.3
 numpy==2.2.6
 # xlsx/xlsm input support (optional). Without it, xlsx uploads return 422.
 openpyxl==3.1.5
+# Aero Work 지식폴더 본문 추출 (F4). PDF=pypdf(순수 파이썬), DOCX=python-docx(lxml 의존).
+# HWPX 는 OWPML(zip+xml)이라 네이티브(zipfile+xml)로 추출해 별도 wheel 을 늘리지 않는다.
+# pip download 가 lxml 등 공유 의존을 패키지당 단일 wheel 로 dedup 하므로 오프라인 ZIP 중복 없음.
+pypdf==5.1.0
+python-docx==1.1.2

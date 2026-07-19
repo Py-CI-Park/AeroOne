@@ -182,3 +182,21 @@ def test_chunk_text_and_cosine_units() -> None:
     assert cosine_similarity([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
     assert cosine_similarity([], [1.0]) == 0.0
     assert cosine_similarity([1.0], [1.0, 2.0]) == 0.0
+
+
+def test_keyword_search(session: Session, tmp_path: Path) -> None:
+    root = _seed_folder(tmp_path)  # fruit.md(apple apple banana cherry) · ops.txt(meeting schedule report)
+    service = KnowledgeService(session, FakeEmbedder())
+    folder = service.register_folder('kb', str(root))
+    session.commit()
+    service.reindex(folder.id)
+    session.commit()
+
+    apple = service.keyword_search('apple')
+    assert apple and apple[0]['rel_path'] == 'fruit.md'
+
+    both = service.keyword_search('meeting report')  # 두 키워드 모두 ops.txt 에
+    assert both and both[0]['rel_path'] == 'ops.txt'
+
+    assert service.keyword_search('없는키워드zzz') == []
+    assert service.keyword_search('   ') == []

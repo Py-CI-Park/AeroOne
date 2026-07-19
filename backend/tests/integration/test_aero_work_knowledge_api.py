@@ -93,3 +93,18 @@ def test_register_rejects_missing_path(csrf_client, tmp_path: Path) -> None:
         json={'name': 'x', 'path': str(tmp_path / 'does-not-exist')},
     )
     assert resp.status_code == 400
+
+
+def test_keyword_search_flow(csrf_client, fake_embedder, kb_dir: Path) -> None:
+    created = csrf_client.post(
+        '/api/v1/aero-work/knowledge/folders', json={'name': '규정', 'path': str(kb_dir)}
+    )
+    folder_id = created.json()['id']
+    csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex')
+
+    resp = csrf_client.post('/api/v1/aero-work/knowledge/keyword-search', json={'query': 'usb'})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body['model'] == 'keyword'
+    assert body['hits']
+    assert body['hits'][0]['rel_path'] == 'security.md'

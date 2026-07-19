@@ -18,7 +18,7 @@ from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaE
 from app.modules.aero_work.models import KnowledgeChunk, KnowledgeFile, KnowledgeFolder
 from app.modules.aero_work.text_extract import extract_text, is_supported
 
-MAX_INDEX_BYTES = 2 * 1024 * 1024  # 파일당 2MB 상한(초대형 파일 방어)
+MAX_INDEX_BYTES = 20 * 1024 * 1024  # 파일당 20MB 상한(PDF/DOCX 등 오피스 문서 대응)
 CHUNK_SIZE = 900
 CHUNK_OVERLAP = 150
 
@@ -230,6 +230,39 @@ class KnowledgeService:
                     'chunk_index': chunk.chunk_index,
                     'content': chunk.content,
                     'score': round(score, 4),
+                }
+            )
+        hits.sort(key=lambda item: item['score'], reverse=True)
+        return hits[:top_k]
+
+    # ---- 키워드 검색 (LIKE, 임베딩 불필요) ----
+    def keyword_search(self, query: str, *, folder_id: int | None = None, top_k: int = 20) -> list[dict]:
+        """공백으로 나눈 키워드가 모두 포함된 청크를 찾는다(대소문자 무시). 임베딩/Ollama 불필요."""
+
+        terms = [term for term in (query or '').split() if term]
+        if not terms:
+            return []
+        stmt = (
+            select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
+            .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
+            .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+        )
+        if folder_id is not None:
+            stmt = stmt.where(KnowledgeFolder.id == folder_id)
+        for term in terms:
+            stmt = stmt.where(func.lower(KnowledgeChunk.content).like(f'%{term.lower()}%'))
+        hits: list[dict] = []
+        for chunk, file_row, folder in self.db.execute(stmt).all():
+            lowered = chunk.content.lower()
+            score = sum(lowered.count(term.lower()) for term in terms)
+            hits.append(
+                {
+                    'folder_id': folder.id,
+                    'folder_name': folder.name,
+                    'rel_path': file_row.rel_path,
+                    'chunk_index': chunk.chunk_index,
+                    'content': chunk.content,
+                    'score': float(score),
                 }
             )
         hits.sort(key=lambda item: item['score'], reverse=True)

@@ -1211,6 +1211,13 @@ export async function searchKnowledge(payload: { query: string; folder_id?: numb
   });
 }
 
+export async function keywordSearchKnowledge(payload: { query: string; folder_id?: number | null; top_k?: number }) {
+  return browserFetch<KnowledgeSearchResponse>('/api/frontend/aero-work/knowledge/keyword-search', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // ---- Aero Work 일정 (P4) ----
 export type AeroWorkEvent = {
   id: number;

@@ -157,6 +157,21 @@ def search_knowledge(
     return result
 
 
+@router.post('/knowledge/keyword-search', response_model=SearchResponse)
+def keyword_search(
+    payload: SearchRequest,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> SearchResponse:
+    owner = _require_user(user)
+    service = _service(db, settings)
+    hits = service.keyword_search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
+    record_activity(db, owner.id, 'knowledge.search', f'키워드 검색 "{payload.query}" — {len(hits)}건')
+    db.commit()
+    return SearchResponse(hits=[SearchHit(**hit) for hit in hits], model='keyword')
+
+
 # ---- 일정(Schedule) ----
 @router.get('/schedule/events', response_model=EventListResponse)
 def list_events(

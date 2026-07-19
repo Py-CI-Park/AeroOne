@@ -7,6 +7,7 @@ import {
   fetchKnowledgeFolders,
   registerKnowledgeFolder,
   reindexKnowledgeFolder,
+  keywordSearchKnowledge,
   searchKnowledge,
   type KnowledgeFolder,
   type KnowledgeSearchHit,
@@ -35,6 +36,7 @@ export function KnowledgePanel() {
   const [form, setForm] = useState({ name: '', path: '' });
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<string>('all');
+  const [mode, setMode] = useState<'semantic' | 'keyword'>('semantic');
   const [hits, setHits] = useState<KnowledgeSearchHit[] | null>(null);
   const [searchModel, setSearchModel] = useState<string>('');
   const [searching, setSearching] = useState(false);
@@ -107,11 +109,8 @@ export function KnowledgePanel() {
     setSearching(true);
     setError(null);
     try {
-      const response = await searchKnowledge({
-        query: query.trim(),
-        folder_id: scope === 'all' ? null : Number(scope),
-        top_k: 8,
-      });
+      const request = { query: query.trim(), folder_id: scope === 'all' ? null : Number(scope), top_k: 8 };
+      const response = mode === 'keyword' ? await keywordSearchKnowledge(request) : await searchKnowledge(request);
       setHits(response.hits);
       setSearchModel(response.model);
     } catch {
@@ -206,7 +205,24 @@ export function KnowledgePanel() {
       {/* 검색 */}
       <form onSubmit={handleSearch} className="rounded-xl border border-line-subtle bg-surface-base p-4">
         <p className="text-sm font-semibold text-ink-1">지식 검색</p>
-        <p className="mt-1 text-xs text-ink-3">질문·키워드로 색인된 근거 청크를 벡터 유사도 순으로 찾음.</p>
+        <p className="mt-1 text-xs text-ink-3">의미 검색은 벡터 유사도(질문 뜻), 키워드 검색은 단어 포함(즉시·Ollama 불필요)으로 근거를 찾음.</p>
+        <div className="mt-2 flex gap-1">
+          {[
+            ['semantic', '의미 검색'],
+            ['keyword', '키워드 검색'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value as 'semantic' | 'keyword')}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                mode === value ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2 hover:bg-accent-soft'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <select
             value={scope}
