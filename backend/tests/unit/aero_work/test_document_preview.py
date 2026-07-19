@@ -17,12 +17,16 @@ def test_official_has_letterhead_receiver_and_approval_line() -> None:
     assert '담당' in html and '검토' in html and '결재' in html  # 결재선
 
 
-def test_onepage_centers_title_and_uses_numbered_hierarchy() -> None:
+def test_onepage_centers_title_and_uses_summary_and_bullet_hierarchy() -> None:
+    """M2: onepage 위계는 ``document_formats.format_document('onepage')`` 결과(□/◦)를
+    그대로 재사용한다 — 이전의 1./가. 별도 번호 위계는 제거되었다."""
+
     html = render_preview_html('onepage', '보고', ['핵심 요약', '세부 항목 하나', '세부 항목 둘'])
     assert '<h1' in html and 'text-align:center' in html
-    assert '1. 핵심 요약' in html
-    assert '가. 세부 항목 하나' in html
-    assert '나. 세부 항목 둘' in html
+    assert '□ 요약: 핵심 요약' in html
+    assert '□ 세부 내용' in html
+    assert '◦ 세부 항목 하나' in html
+    assert '◦ 세부 항목 둘' in html
 
 
 def test_full_report_uses_roman_chapter_headers() -> None:
@@ -65,3 +69,11 @@ def test_no_external_resources_or_script_tags() -> None:
 def test_unknown_format_raises() -> None:
     with pytest.raises(UnknownFormat):
         render_preview_html('bogus', 't', ['x'])
+
+
+def test_all_formats_render_without_exception_when_paragraphs_empty() -> None:
+    """L5: 빈 본문(초기 화면·전체 삭제 후) 이 5양식 어디서도 예외 없이 렌더되어야 한다."""
+
+    for format_id in ('onepage', 'official', 'full', 'email', 'freeform'):
+        html = render_preview_html(format_id, '빈 문서', [])
+        assert isinstance(html, str) and html

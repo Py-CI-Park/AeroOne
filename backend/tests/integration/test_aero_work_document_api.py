@@ -69,7 +69,9 @@ def test_preview_requires_csrf(client) -> None:
     assert resp.status_code == 403
 
 
-def test_preview_official_renders_hierarchy_and_records_activity(csrf_client) -> None:
+def test_preview_official_renders_hierarchy_and_does_not_record_activity(csrf_client) -> None:
+    """L3: preview 는 디바운스 재요청이 빈번해 실행기록을 남기지 않는다."""
+
     resp = csrf_client.post(
         '/api/v1/aero-work/document/preview',
         json={'format_id': 'official', 'title': '협조 요청', 'paragraphs': ['자료 제출 협조', '기한 엄수']},
@@ -81,8 +83,7 @@ def test_preview_official_renders_hierarchy_and_records_activity(csrf_client) ->
     assert '끝.' in html
 
     activities = csrf_client.get('/api/v1/aero-work/activity').json()['activities']
-    assert activities[0]['kind'] == 'document.preview'
-    assert '협조 요청' in activities[0]['summary']
+    assert activities == []
 
 
 def test_preview_escapes_script_injection(csrf_client) -> None:
@@ -130,8 +131,41 @@ def test_compose_with_previous_paragraphs_regenerates_via_revision_instruction(
         },
     )
     assert resp.status_code == 200, resp.text
-    assert resp.json() == {'paragraphs': ['목표를 15%로 상향함']}
+    assert resp.json() == {'paragraphs': ['목표를 15%로 상향함'], 'truncated': False}
     assert '이전 본문' in captured['user']
     assert '목표를 10%로 설정함' in captured['user'] and '조명 교체를 추진함' in captured['user']
     assert '수정 지시' in captured['user']
     assert '목표를 15%로 올려줘' in captured['user']
+
+
+def test_compose_stream_with_previous_paragraphs_passes_through_to_prompt_builder(
+    csrf_client, monkeypatch
+) -> None:
+    """L5: 스트리밍 경로(``/document/compose/stream``)도 비스트리밍과 동일하게
+    ``previous_paragraphs`` 를 프롬프트 조립(``build_compose_messages``)까지 관통시킨다."""
+
+    from app.modules.ai.schemas import AiChatMessage
+
+    captured: dict = {}
+
+    def fake_build_compose_messages(fmt, title, instruction, previous_paragraphs=None):
+        captured['previous_paragraphs'] = previous_paragraphs
+        return [AiChatMessage(role='system', content='sys'), AiChatMessage(role='user', content='user')]
+
+    def fake_default_chat_stream(settings, db, messages):
+        yield '재생성 결과'
+
+    monkeypatch.setattr('app.modules.aero_work.streaming.build_compose_messages', fake_build_compose_messages)
+    monkeypatch.setattr('app.modules.aero_work.streaming._default_chat_stream', fake_default_chat_stream)
+
+    resp = csrf_client.post(
+        '/api/v1/aero-work/document/compose/stream',
+        json={
+            'title': '절감 방안',
+            'instruction': '목표를 15%로 올려줘',
+            'format': 'onepage',
+            'previous_paragraphs': ['목표를 10%로 설정함'],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert captured['previous_paragraphs'] == ['목표를 10%로 설정함']

@@ -21,7 +21,7 @@ from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.activity_service import ActivityService, record_activity
-from app.modules.aero_work.document_composer import ComposeUnavailable, compose_content
+from app.modules.aero_work.document_composer import ComposeUnavailable, compose_content, compose_truncated
 from app.modules.aero_work.document_preview import render_preview_html
 from app.modules.aero_work.document_formats import FORMAT_LABELS, format_document
 from app.modules.aero_work.hwpx_generator import build_hwpx_document
@@ -663,7 +663,8 @@ def compose_document(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     record_activity(db, owner.id, 'document.compose', f'문서 내용 생성 "{title}" — {len(paragraphs)}문장')
     db.commit()
-    return DocumentComposeResponse(paragraphs=paragraphs)
+    truncated = compose_truncated(payload.instruction, payload.previous_paragraphs)
+    return DocumentComposeResponse(paragraphs=paragraphs, truncated=truncated)
 
 
 @router.post('/document/compose/stream', dependencies=[Depends(require_csrf)])
@@ -703,16 +704,17 @@ def compose_document_stream(
 @router.post('/document/preview', response_model=PreviewResponse, dependencies=[Depends(require_csrf)])
 def preview_document(
     payload: PreviewRequest,
-    db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ) -> PreviewResponse:
-    """양식(종이) 미리보기 — gongmuwon §5.3. 사용자 텍스트는 전부 이스케이프해 텍스트로만 삽입."""
+    """양식(종이) 미리보기 — gongmuwon §5.3. 사용자 텍스트는 전부 이스케이프해 텍스트로만 삽입.
 
-    owner = _require_user(user)
+    디바운스 재요청이 빈번한 엔드포인트라 실행기록(record_activity)은 남기지 않는다(L3) —
+    활동 로그 범람 방지. 문서 생성/저장 등 실제 산출물이 남는 동작만 기록한다.
+    """
+
+    _require_user(user)
     title = (payload.title or '').strip() or '무제'
     html = render_preview_html(payload.format_id, title, payload.paragraphs)
-    record_activity(db, owner.id, 'document.preview', f'문서 미리보기 "{title}" — {FORMAT_LABELS.get(payload.format_id, payload.format_id)}')
-    db.commit()
     return PreviewResponse(html=html)
 
 
