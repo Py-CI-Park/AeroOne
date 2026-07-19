@@ -224,16 +224,35 @@ function Invoke-GitArchiveAllowList {
         [Parameter(Mandatory = $true)] [string[]]$SelectedPaths,
         [Parameter(Mandatory = $true)] [string]$StageRoot
     )
+    # allow-list 를 git archive 의 pathspec 인자로 넘기면 선택 파일 수가 늘수록
+    # Windows 명령 길이 한계(약 32K)를 넘겨 'filename or extension is too long' 으로
+    # 실패한다(653개에서 실측 재현). 전체 트리를 1회 아카이브한 뒤 allow-list 항목만
+    # 스테이지로 복사하는 방식으로 바꾼다 — 선택 집합 의미는 동일하고(미선택 파일은
+    # 스테이지에 존재하지 않음), 목록에 있는데 트리에 없는 파일은 그대로 fail-closed.
     $archiveZip = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "$([System.IO.Path]::GetRandomFileName()).zip")
+    $expandRoot = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
     try {
         Push-Location $RepoRoot
         try {
-            & git archive --format=zip -o $archiveZip $Commit -- @SelectedPaths
+            & git archive --format=zip -o $archiveZip $Commit
             if ($LASTEXITCODE -ne 0) { throw 'git-archive-failed' }
         } finally { Pop-Location }
-        Expand-Archive -LiteralPath $archiveZip -DestinationPath $StageRoot -Force
+        Expand-Archive -LiteralPath $archiveZip -DestinationPath $expandRoot -Force
+        foreach ($relPath in $SelectedPaths) {
+            $src = Join-Path $expandRoot $relPath
+            if (-not (Test-Path -LiteralPath $src -PathType Leaf)) {
+                throw "offline-package-build-policy-violation:git-archive-missing-path:$relPath"
+            }
+            $dst = Join-Path $StageRoot $relPath
+            $dstDir = Split-Path -Parent $dst
+            if ($dstDir -and -not (Test-Path -LiteralPath $dstDir)) {
+                New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
+            }
+            Copy-Item -LiteralPath $src -Destination $dst -Force
+        }
     } finally {
         if (Test-Path -LiteralPath $archiveZip) { Remove-Item -LiteralPath $archiveZip -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $expandRoot) { Remove-Item -LiteralPath $expandRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
 
