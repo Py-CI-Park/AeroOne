@@ -8,7 +8,7 @@ import { getCsrfCookie } from '@/lib/cookies';
 // Aero Work F5 지식 위키(버전 가족) — 색인된 문서를 같은 문서의 대표(공식본) + 판본 이력으로
 // 묶어 보여준다(gongmuwon 업무 허브 백본, §6.5). 분류체계 마법사·주제 페이지는 후속.
 // 키워드 일치 구간을 <mark> 로 감싸 즉시 강조 — 입력 placeholder 의 '목차 강조' 약속을 실제로 이행한다.
-function highlightMatches(text: string, term: string): ReactNode {
+export function highlightMatches(text: string, term: string): ReactNode {
   const t = term.trim().toLowerCase();
   if (!t) return text;
   const lower = text.toLowerCase();

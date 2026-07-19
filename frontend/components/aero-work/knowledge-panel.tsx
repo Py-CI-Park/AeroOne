@@ -120,6 +120,8 @@ export function KnowledgePanel() {
     } catch {
       setError('검색 실패. 색인된 폴더가 있는지, Ollama 가 켜져 있는지 확인할 것.');
       setHits([]);
+      // 이전 검색의 모델 캡션이 빈 결과 아래 잔존하지 않도록 초기화
+      setSearchModel('');
     } finally {
       setSearching(false);
     }
@@ -273,7 +275,11 @@ export function KnowledgePanel() {
                 ))}
               </ul>
             )}
-            {searchModel ? <p className="mt-2 text-[11px] text-ink-3">임베딩 모델: {searchModel}</p> : null}
+            {hitsMode === 'keyword' ? (
+              <p className="mt-2 text-[11px] text-ink-3">검색 방식: 키워드(즉시)</p>
+            ) : searchModel ? (
+              <p className="mt-2 text-[11px] text-ink-3">임베딩 모델: {searchModel}</p>
+            ) : null}
           </div>
         ) : null}
       </form>
