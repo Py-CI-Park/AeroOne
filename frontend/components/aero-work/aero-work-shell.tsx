@@ -9,6 +9,8 @@ import { ActivityLogPanel } from '@/components/aero-work/activity-log-panel';
 import { SettingsPanel } from '@/components/aero-work/settings-panel';
 import { DocumentPanel } from '@/components/aero-work/document-panel';
 import { WorkChatPanel } from '@/components/aero-work/work-chat-panel';
+import { AeroWorkContextPanel } from '@/components/aero-work/aero-work-context-panel';
+import { AeroWorkOnboarding } from '@/components/aero-work/aero-work-onboarding';
 
 // Aero Work — gongmuwon(공무원) 워크스페이스의 AeroOne 네이티브 재구현 (P0 스캐폴딩).
 // gongmuwon 과 동일한 6메뉴 IA(업무대화·일정·문서작성·내 지식폴더·실행기록·환경설정) + 홈
@@ -41,7 +43,9 @@ export function AeroWorkShell() {
   const active = NAV.find((item) => item.key === view) ?? NAV[0];
 
   return (
-    <div className="flex min-h-[calc(100vh-9rem)] gap-4">
+    <div className="space-y-4">
+      <AeroWorkOnboarding onNavigate={(next) => setView(next as ViewKey)} />
+      <div className="flex min-h-[calc(100vh-9rem)] gap-4">
       <nav aria-label="Aero Work 메뉴" className="flex w-56 shrink-0 flex-col gap-1 rounded-2xl border border-line-subtle bg-surface-raised p-3">
         <div className="mb-2 px-2">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Aero Work</p>
@@ -117,6 +121,10 @@ export function AeroWorkShell() {
           </div>
         )}
       </section>
+        <div className="hidden w-72 shrink-0 xl:block">
+          <AeroWorkContextPanel onNavigate={(next) => setView(next as ViewKey)} />
+        </div>
+      </div>
     </div>
   );
 }
