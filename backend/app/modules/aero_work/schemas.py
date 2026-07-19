@@ -167,6 +167,8 @@ class OrchestrateResponse(BaseModel):
 
 
 class WikiFile(BaseModel):
+    id: int = 0
+    summary: str = ''
     folder_id: int
     folder_name: str
     rel_path: str
@@ -238,3 +240,7 @@ class ChatSessionResponse(BaseModel):
 
 class ChatSessionListResponse(BaseModel):
     sessions: list[ChatSessionResponse]
+
+
+class FileSummaryResponse(BaseModel):
+    summary: str

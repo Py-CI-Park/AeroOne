@@ -23,6 +23,7 @@ from app.modules.aero_work.hwpx_generator import build_hwpx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
 from app.modules.aero_work.prefs_service import get_llm_mode, set_llm_mode
+from app.modules.aero_work.knowledge_summary import SummaryUnavailable, summarize_file
 from app.modules.aero_work.orchestrator_service import OrchestratorService
 from app.modules.aero_work.schemas import (
     ActivityListResponse,
@@ -37,6 +38,7 @@ from app.modules.aero_work.schemas import (
     SavedDocumentListResponse,
     SavedDocumentResponse,
     ActivityResponse,
+    FileSummaryResponse,
     EventCreateRequest,
     EventListResponse,
     EventResponse,
@@ -570,3 +572,24 @@ def delete_saved_document(
     record_activity(db, owner.id, 'document.discard', f'최종 저장 요청 폐기 "{title}"')
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post('/knowledge/files/{file_id}/summarize', response_model=FileSummaryResponse, dependencies=[Depends(require_csrf)])
+def summarize_knowledge_file(
+    file_id: int,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> FileSummaryResponse:
+    """지식 파일 LLM 요약(문서 카드) — provider·사용자 프로필 경유, 결과는 저장."""
+
+    owner = _require_user(user)
+    try:
+        summary = summarize_file(
+            settings, db, file_id, force_local=get_llm_mode(db, owner.id) == 'local'
+        )
+    except SummaryUnavailable as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    record_activity(db, owner.id, 'knowledge.summarize', f'문서 요약 생성 (file #{file_id})')
+    db.commit()
+    return FileSummaryResponse(summary=summary)

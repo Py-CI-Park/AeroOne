@@ -53,6 +53,7 @@ class KnowledgeFile(Base):
     )
     rel_path: Mapped[str] = mapped_column(Text, nullable=False)
     signature: Mapped[str] = mapped_column(String(80), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, server_default='')
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default='0')
     indexed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -1219,6 +1219,8 @@ export async function keywordSearchKnowledge(payload: { query: string; folder_id
 }
 
 export type WikiFile = {
+  id: number;
+  summary: string;
   folder_id: number;
   folder_name: string;
   rel_path: string;
@@ -1236,6 +1238,13 @@ export type WikiFamily = {
 export async function fetchKnowledgeWiki(folderId?: number | null) {
   const qs = folderId ? `?folder_id=${folderId}` : '';
   return browserFetch<{ families: WikiFamily[] }>(`/api/frontend/aero-work/knowledge/wiki${qs}`, { method: 'GET' });
+}
+
+export async function summarizeKnowledgeFile(fileId: number, csrfToken: string) {
+  return browserFetch<{ summary: string }>(`/api/frontend/aero-work/knowledge/files/${fileId}/summarize`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
 }
 
 // ---- Aero Work 일정 (P4) ----
