@@ -185,6 +185,24 @@ def test_knowledge_fallback_schedule_category_with_date_in_utterance_never_creat
     assert results[0]['routed_by'] == 'llm'
 
 
+def test_search_verb_guard_keeps_knowledge_despite_llm_misclassification(session: Session) -> None:
+    """M1 가드 회귀 고정 — 검색 동사('찾아줘') 발화는 LLM 이 document 로 오분류해도
+    정상 지식 검색을 대체하지 않고 knowledge/rule 을 유지한다(재리뷰 P3 반영)."""
+
+    orchestrator = OrchestratorService(
+        session,
+        _settings(),
+        user_id=1,
+        embedder=FakeEmbedder(),
+        synthesizer=lambda s, q, h: '',
+        llm_classify=lambda u: 'document',
+    )
+    results = orchestrator.run('예산 근거 찾아줘', now=NOW)
+
+    assert results[0]['kind'] == 'knowledge'
+    assert results[0]['routed_by'] == 'rule'
+
+
 # ---- 첨부 텍스트가 지식 인텐트 합성 프롬프트에 방어 블록으로 포함되는지 ----
 
 
