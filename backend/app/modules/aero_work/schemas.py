@@ -104,3 +104,25 @@ class EventResponse(BaseModel):
 
 class EventListResponse(BaseModel):
     events: list[EventResponse]
+
+
+class ActivityResponse(BaseModel):
+    id: int
+    kind: str
+    summary: str
+    detail: str
+    created_at: datetime
+
+    @classmethod
+    def from_model(cls, activity) -> 'ActivityResponse':
+        return cls(
+            id=activity.id,
+            kind=activity.kind,
+            summary=activity.summary,
+            detail=activity.detail,
+            created_at=activity.created_at,
+        )
+
+
+class ActivityListResponse(BaseModel):
+    activities: list[ActivityResponse]

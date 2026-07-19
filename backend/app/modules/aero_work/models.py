@@ -103,3 +103,21 @@ class AeroWorkEvent(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class AeroWorkActivity(Base):
+    """Aero Work 실행기록 1건 — 사용자가 워크스페이스에서 한 행위(입력·결과 요약)를 투명하게 남긴다.
+
+    kind 는 'knowledge.reindex' 처럼 도메인.동작 형식이며, summary/detail 은 쉬운 우리말이다.
+    """
+
+    __tablename__ = 'aero_work_activities'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    summary: Mapped[str] = mapped_column(String(400), nullable=False)
+    detail: Mapped[str] = mapped_column(Text, nullable=False, server_default='')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
+    )

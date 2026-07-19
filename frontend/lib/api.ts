@@ -1260,3 +1260,19 @@ export async function deleteAeroWorkEvent(id: number, csrfToken: string) {
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
+
+// ---- Aero Work 실행기록 (P4) ----
+export type AeroWorkActivity = {
+  id: number;
+  kind: string;
+  summary: string;
+  detail: string;
+  created_at: string;
+};
+
+export async function fetchAeroWorkActivity(limit = 50) {
+  return browserFetch<{ activities: AeroWorkActivity[] }>(
+    `/api/frontend/aero-work/activity?limit=${limit}`,
+    { method: 'GET' },
+  );
+}

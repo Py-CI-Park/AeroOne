@@ -14,9 +14,12 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
+from app.modules.aero_work.activity_service import ActivityService, record_activity
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
 from app.modules.aero_work.schemas import (
+    ActivityListResponse,
+    ActivityResponse,
     EventCreateRequest,
     EventListResponse,
     EventResponse,
@@ -67,12 +70,13 @@ def register_folder(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> FolderResponse:
-    _require_user(user)
+    owner = _require_user(user)
     service = _service(db, settings)
     try:
         folder = service.register_folder(payload.name, payload.path)
     except KnowledgeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    record_activity(db, owner.id, 'knowledge.register', f'지식폴더 "{folder.name}" 등록', folder.path)
     db.commit()
     return FolderResponse.from_model(folder)
 
@@ -88,7 +92,7 @@ def reindex_folder(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> FolderResponse:
-    _require_user(user)
+    owner = _require_user(user)
     service = _service(db, settings)
     try:
         folder = service.reindex(folder_id)
@@ -97,6 +101,7 @@ def reindex_folder(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except KnowledgeError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    record_activity(db, owner.id, 'knowledge.reindex', f'"{folder.name}" 색인 완료', folder.status_detail)
     db.commit()
     return FolderResponse.from_model(folder)
 
@@ -112,10 +117,14 @@ def delete_folder(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> Response:
-    _require_user(user)
+    owner = _require_user(user)
     service = _service(db, settings)
-    if not service.delete_folder(folder_id):
+    folder = service.get_folder(folder_id)
+    if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
+    folder_name = folder.name
+    service.delete_folder(folder_id)
+    record_activity(db, owner.id, 'knowledge.delete', f'지식폴더 "{folder_name}" 삭제')
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -127,13 +136,16 @@ def search_knowledge(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> SearchResponse:
-    _require_user(user)
+    owner = _require_user(user)
     service = _service(db, settings)
     try:
         hits = service.search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
     except EmbeddingUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    return SearchResponse(hits=[SearchHit(**hit) for hit in hits], model=service.embedder.model)
+    result = SearchResponse(hits=[SearchHit(**hit) for hit in hits], model=service.embedder.model)
+    record_activity(db, owner.id, 'knowledge.search', f'지식 검색 "{payload.query}" — {len(hits)}건')
+    db.commit()
+    return result
 
 
 # ---- 일정(Schedule) ----
@@ -175,6 +187,7 @@ def create_event(
         )
     except ScheduleError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    record_activity(db, owner.id, 'schedule.create', f'일정 추가 "{event.title}"')
     db.commit()
     return EventResponse.from_model(event)
 
@@ -198,6 +211,7 @@ def update_event(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='일정을 찾을 수 없습니다.')
+    record_activity(db, owner.id, 'schedule.update', f'일정 수정 "{event.title}"')
     db.commit()
     return EventResponse.from_model(event)
 
@@ -214,7 +228,24 @@ def delete_event(
 ) -> Response:
     owner = _require_user(user)
     service = ScheduleService(db)
-    if not service.delete_event(owner.id, event_id):
+    event = service.get_event(owner.id, event_id)
+    if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='일정을 찾을 수 없습니다.')
+    event_title = event.title
+    service.delete_event(owner.id, event_id)
+    record_activity(db, owner.id, 'schedule.delete', f'일정 삭제 "{event_title}"')
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---- 실행기록(Activity) ----
+@router.get('/activity', response_model=ActivityListResponse)
+def list_activity(
+    limit: int = Query(default=50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> ActivityListResponse:
+    owner = _require_user(user)
+    service = ActivityService(db)
+    activities = service.list_activities(owner.id, limit=limit)
+    return ActivityListResponse(activities=[ActivityResponse.from_model(item) for item in activities])
