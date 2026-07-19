@@ -1,6 +1,6 @@
 # Aero Work — gongmuwon 기능의 AeroOne 네이티브 재구현 계획 (다음 버전)
 
-- 상태: **계획(plan)·검토 단계 · 구현 미착수** — 1.17.0 릴리스(태그·ZIP·GitHub Release) **게시 이후 새 브랜치**에서 착수
+- 상태: **P0~P2 구현됨(`aero-work-dev` 브랜치, 1.17.0 태그 기준 분기)** · P3~P5 미착수 — 1.17.x 릴리스는 게시 완료(§4 참고). 상세 진행은 §4 단계 계획.
 - 대체 관계: 본 문서는 [`gongmuwon-integration-review.md`](gongmuwon-integration-review.md) 의 "외부 앱 내장" 권고를 **대체**한다. 운영자 결정에 따라 방향이 **"외부 gongmuwon 연동" → "AeroOne 안에 네이티브 재구현(Aero Work)"** 으로 바뀌었다.
 - 목표: gongmuwon(공무원)의 전 기능을, **더 개선된 React 시스템**으로 AeroOne 안에 `Aero Work` 라는 이름의 워크스페이스 모듈로 구현한다.
 - 전제: AI 는 **폐쇄망 Ollama + OpenAI 호환 API 키가 이미 AeroOne 에 있음** → gongmuwon 의 6.3GB **AI 팩은 반입/번들하지 않는다**. AeroOne 의 기존 AI provider(Ollama·OpenAI 호환, DPAPI 보호 키, egress 정책)를 그대로 재사용한다.
@@ -50,9 +50,9 @@
 ## 4. 단계 계획 (1.17.0 게시 이후 새 브랜치)
 
 - **선행 게이트**: 1.17.0 을 main 병합·tag·GitHub Release·ZIP 게시로 **먼저 마감**(AGENTS §9). 그 후 `<차기버전>-dev` 브랜치 분기. 범위상 신모듈 다수라 **minor 이상(1.18.0) 또는 major(2.0.0)** 로 판단.
-- **P0**: 스캐폴딩 — `/aero-work` 셸 + `app/modules/aero_work` + 권한/카드 + 세션 모델.
-- **P1**: 업무대화(AeroAI 재사용 + 세션 중심 워크플로·이어가기 링크).
-- **P2**: 지식폴더(in-place 색인 + Ollama 임베딩 + 벡터 검색 + 증분 동기화). 위키는 검색 위에 얹는 2차.
+- **P0** ✅ 구현됨(`e68e3b7`, aero-work-dev): 스캐폴딩 — `/aero-work` 셸 + 6메뉴 IA + 홈 브리핑.
+- **P1** ✅ 구현됨(`818aef0`): 업무대화 — AeroAI(`AiChatWorkspace`) 재사용. 세션 중심 이어가기 링크는 후속.
+- **P2** ✅ 구현됨(`59939a4`): 지식폴더 — 신규 `app/modules/aero_work`(폴더/파일/청크 3층 + 마이그레이션 `20260719_0020`), in-place 스캔 + Ollama `nomic-embed-text` 임베딩(urllib, AeroAI 경로 재사용) + 순수 Python 코사인 검색 + 시그니처(mtime+size) 증분 동기화. `KnowledgePanel`(등록·재색인·삭제·검색) + BFF 프록시. 검증: 단위 6건 + 마이그레이션 up/down + **실 Ollama 한국어 의미검색 E2E 3/3 정답**. 업무 위키 자동 구성, PDF/DOCX/HWPX 본문 추출, 백그라운드 색인, 세분 `aerowork.*` 권한·카드는 후속.
 - **P3**: 문서작성 — HWPX 생성(시행문/1p 우선) + 미리보기→HWPX. 임의형식은 후속.
 - **P4**: 일정/알림, 실행기록 뷰, 홈 브리핑.
 - **P5**: 통합 UX·성능 예산·문서·회귀 테스트 + 각 단계 phase 보고서(minor/major 는 phase 보고서 필수, AGENTS §9.6).
