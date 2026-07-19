@@ -6,12 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.modules.aero_work.attachments import (
-    ATTACHMENT_MAX_COUNT,
-    ATTACHMENT_MAX_TOTAL_CHARS,
-    AeroWorkAttachment,
-    extract_attachment_text,
-)
+from app.modules.aero_work.attachments import ATTACHMENT_MAX_COUNT, AeroWorkAttachment
 from app.modules.aero_work.models import KnowledgeFolder
 
 
@@ -149,16 +144,12 @@ class OrchestrateRequest(BaseModel):
     utterance: str = Field(min_length=1, max_length=2000)
     session_id: int | None = None
     synthesize: bool = True
-    # G006: AeroAI 첨부 계약(허용 확장자·개수/총량 상한) 재사용 — 후방호환을 위해 optional·기본 빈 리스트.
+    # G006: AeroAI 첨부 계약(허용 확장자·개수 상한) 재사용 — 후방호환을 위해 optional·기본 빈 리스트.
+    # M2: 총 글자수(추출 후) 검증은 여기서 하지 않는다 — pydantic validator 에서 무거운 바이너리
+    # 추출을 반복하면 서비스 단계 추출과 이중 추출이 된다. 개별 첨부 크기/형식은 AeroWorkAttachment
+    # 자체 필드 제약(name 확장자, data/text max_length, base64 원문 800KB 상한)이 막고, 여러 첨부의
+    # 합계 노출량은 B4 프롬프트 절단(attachments.ATTACHMENT_BLOCK_MAX_CHARS)이 실사용 시점에 막는다.
     attachments: list[AeroWorkAttachment] = Field(default_factory=list, max_length=ATTACHMENT_MAX_COUNT)
-
-    @field_validator('attachments')
-    @classmethod
-    def _check_attachment_total_chars(cls, value: list[AeroWorkAttachment]) -> list[AeroWorkAttachment]:
-        total = sum(len(extract_attachment_text(a)) for a in value)
-        if total > ATTACHMENT_MAX_TOTAL_CHARS:
-            raise ValueError(f'첨부 내용이 총 {ATTACHMENT_MAX_TOTAL_CHARS}자를 초과합니다.')
-        return value
 
 
 class DocumentIntent(BaseModel):

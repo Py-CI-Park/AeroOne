@@ -30,6 +30,12 @@ const EXAMPLES = [
 
 type LogEntry = { id: number; utterance: string; results: OrchestrateResult[]; routedBy?: 'rule' | 'llm' };
 
+// B3: routed_by 는 응답 최상위가 아니라 결과 항목(OrchestrateResult)마다 온다 — 하나라도
+// 'llm' 이면 배지를 표시한다(회귀 고정: work-chat-panel/히스토리 로드가 동일 매핑을 쓴다).
+function hasLlmRoutedResult(results: OrchestrateResult[]): boolean {
+  return results.some((result) => result.routed_by === 'llm');
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -65,7 +71,14 @@ export function WorkChatPanel() {
   const loadHistory = async (sessionId: number) => {
     try {
       const history = await fetchAeroWorkChatHistory(50, sessionId);
-      setLog(history.items.map((item) => ({ id: item.id, utterance: item.utterance, results: item.results })));
+      setLog(
+        history.items.map((item) => ({
+          id: item.id,
+          utterance: item.utterance,
+          results: item.results,
+          routedBy: hasLlmRoutedResult(item.results) ? 'llm' : undefined,
+        })),
+      );
     } catch {
       setLog([]);
     }
@@ -106,20 +119,33 @@ export function WorkChatPanel() {
       setError(attachmentError);
       return;
     }
+    // B2: 첨부가 있으면 SSE 스트림 경로 대신 orchestrateAeroWork(synthesize:true, attachments
+    // 동반) 비스트리밍 경로로 분기한다 — 스트리밍은 첨부를 지원하지 않는 계약이다(첨부 없이
+    // 조립된 지식 합성 프롬프트만 스트리밍할 수 있다). 첨부가 없으면 기존 스트림 경로를 그대로 쓴다.
+    const pendingAttachments = attachments;
+    const hasAttachments = pendingAttachments.length > 0;
     setBusy(true);
     setError(null);
     try {
       const response = await orchestrateAeroWork(text, getCsrfCookie(), activeSession, {
-        synthesize: false,
-        attachments: attachments.length > 0 ? attachments : undefined,
+        synthesize: hasAttachments,
+        attachments: hasAttachments ? pendingAttachments : undefined,
       });
       setActiveSession(response.session_id);
       const entryId = Date.now();
-      setLog((prev) => [{ id: entryId, utterance: text, results: response.results, routedBy: response.routed_by }, ...prev]);
+      setLog((prev) => [
+        { id: entryId, utterance: text, results: response.results, routedBy: hasLlmRoutedResult(response.results) ? 'llm' : undefined },
+        ...prev,
+      ]);
       setUtterance('');
       setAttachments([]);
       setFileError('');
       void loadSessions();
+
+      if (hasAttachments) {
+        // 첨부 요청은 synthesize:true 로 이미 완성된 답변을 받았다 — 스트리밍/재시도가 불필요하다.
+        return;
+      }
 
       response.results.forEach((result, resultIndex) => {
         if (result.kind !== 'knowledge' || result.hits.length === 0) {
@@ -151,10 +177,14 @@ export function WorkChatPanel() {
         };
         const retryWithOrchestrate = () => {
           // M1: 스트림 실패 시 비스트리밍 orchestrateAeroWork(synthesize:true) 로 재요청해
-          // 그 지식 답변만 추출해 반영한다. 재요청은 세션에 새 대화 메시지를 추가하는
-          // 부작용이 있다(세션 중복 기록을 피하는 전용 유틸은 없음 — 단순성을 우선해 허용).
-          // 재요청마저 실패하면 답변 없이 근거(hits)만 유지한다.
-          void orchestrateAeroWork(text, getCsrfCookie(), response.session_id, { synthesize: true })
+          // 그 지식 답변만 추출해 반영한다(B2: 원 요청의 첨부가 있었다면 재시도에도 동일하게
+          // 동반한다). 재요청은 세션에 새 대화 메시지를 추가하는 부작용이 있다(세션 중복 기록을
+          // 피하는 전용 유틸은 없음 — 단순성을 우선해 허용). 재요청마저 실패하면 답변 없이
+          // 근거(hits)만 유지한다.
+          void orchestrateAeroWork(text, getCsrfCookie(), response.session_id, {
+            synthesize: true,
+            attachments: hasAttachments ? pendingAttachments : undefined,
+          })
             .then((fallback) => {
               const knowledgeResult = fallback.results.find((r) => r.kind === 'knowledge');
               setResultAnswer(() => knowledgeResult?.answer || undefined);

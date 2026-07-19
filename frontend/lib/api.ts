@@ -1410,8 +1410,10 @@ export type OrchestrateResult = {
   document: { format: string; title: string; content: string } | null;
   feature: string | null;
   answer?: string;
+  // G006: 규칙 확정('rule') vs knowledge 폴백에서 LLM 2차 분류가 개입('llm') — 결과 항목별로
+  // 온다(B3). 응답 최상위에는 이 필드가 없다(백엔드 계약 — results[i].routed_by 만 읽는다).
+  routed_by?: 'rule' | 'llm' | null;
 };
-
 export async function orchestrateAeroWork(
   utterance: string,
   csrfToken: string,
@@ -1423,9 +1425,11 @@ export async function orchestrateAeroWork(
     body.synthesize = options.synthesize;
   }
   if (options?.attachments !== undefined) {
-    body.attachments = options.attachments;
+    // B1: 백엔드 첨부 계약은 {name, text} 다 — 프런트 첨부(AiAttachment)는 {name, content} 이므로
+    // 여기서 매핑한다(base64 data 레인은 API 전용, 프런트는 항상 text 로만 보낸다 — M3).
+    body.attachments = options.attachments.map((attachment) => ({ name: attachment.name, text: attachment.content }));
   }
-  return browserFetch<{ utterance: string; session_id: number | null; results: OrchestrateResult[]; routed_by?: 'rule' | 'llm' }>('/api/frontend/aero-work/orchestrate', {
+  return browserFetch<{ utterance: string; session_id: number | null; results: OrchestrateResult[] }>('/api/frontend/aero-work/orchestrate', {
     method: 'POST',
     body: JSON.stringify(body),
     headers: { 'X-CSRF-Token': csrfToken },
