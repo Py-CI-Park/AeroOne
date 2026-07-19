@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -27,6 +28,8 @@ CHUNK_SIZE = 900
 CHUNK_OVERLAP = 150
 FTS_TABLE = 'aero_work_chunk_fts'  # 0031 — trigram(폴백 unicode61) FTS5 가상 테이블
 PROGRESS_EVERY = 5  # 재색인 진행률(status_detail) 갱신 주기(파일 수 기준)
+
+logger = logging.getLogger(__name__)
 
 
 def _fts_available(db: Session) -> bool:
@@ -332,7 +335,9 @@ class KnowledgeService:
             try:
                 return self._keyword_search_fts(terms, folder_id=folder_id, top_k=top_k)
             except Exception:  # noqa: BLE001 — FTS 조회 실패는 항상 LIKE 폴백으로 흡수
-                pass
+                # 폴백 자체는 안전하지만 실패 증거를 남겨야 운영 중 FTS 손상(파일 손상,
+                # sqlite 빌드 교체 등)을 조기에 발견할 수 있다 — 재리뷰 P3 반영.
+                logger.warning('FTS 키워드 검색 실패 — LIKE 폴백으로 전환함', exc_info=True)
         return self._keyword_search_like(terms, folder_id=folder_id, top_k=top_k)
 
     def _keyword_search_fts(
