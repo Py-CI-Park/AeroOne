@@ -1,7 +1,8 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { ClipboardEvent, FormEvent, useEffect, useRef, useState } from 'react';
 
+import { dedupeAttachmentsByName, isAllowedAttachmentName, readAttachmentFiles, validateAttachments } from '@/components/ai/ai-attachments';
 import {
   deleteAeroWorkChatSession,
   fetchAeroWorkChatHistory,
@@ -13,6 +14,7 @@ import {
   type OrchestrateResult,
 } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
+import type { AiAttachment } from '@/lib/types';
 
 // Aero Work F1 업무대화 오케스트레이션 — 대화 한 줄을 일정/문서/지식/도움말로 라우팅한다.
 // gongmuwon 정체성인 "대화에서 시작해 실무로 이어지는" 흐름의 프런트. 자유 LLM 대화는
@@ -26,7 +28,7 @@ const EXAMPLES = [
   '내일 오후 2시 워크숍 등록하고 그 내용으로 보고서 작성해줘',
 ];
 
-type LogEntry = { id: number; utterance: string; results: OrchestrateResult[] };
+type LogEntry = { id: number; utterance: string; results: OrchestrateResult[]; routedBy?: 'rule' | 'llm' };
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -46,6 +48,9 @@ export function WorkChatPanel() {
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<AeroWorkChatSession[]>([]);
   const [activeSession, setActiveSession] = useState<number | null>(null);
+  const [attachments, setAttachments] = useState<AiAttachment[]>([]);
+  const [fileError, setFileError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadSessions = async () => {
     try {
@@ -96,14 +101,24 @@ export function WorkChatPanel() {
     if (!text) {
       return;
     }
+    const attachmentError = validateAttachments(attachments);
+    if (attachmentError) {
+      setError(attachmentError);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const response = await orchestrateAeroWork(text, getCsrfCookie(), activeSession, { synthesize: false });
+      const response = await orchestrateAeroWork(text, getCsrfCookie(), activeSession, {
+        synthesize: false,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
       setActiveSession(response.session_id);
       const entryId = Date.now();
-      setLog((prev) => [{ id: entryId, utterance: text, results: response.results }, ...prev]);
+      setLog((prev) => [{ id: entryId, utterance: text, results: response.results, routedBy: response.routed_by }, ...prev]);
       setUtterance('');
+      setAttachments([]);
+      setFileError('');
       void loadSessions();
 
       response.results.forEach((result, resultIndex) => {
@@ -168,6 +183,31 @@ export function WorkChatPanel() {
     event.preventDefault();
     void submit(utterance);
   };
+  const addFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const accepted = list.filter((file) => isAllowedAttachmentName(file.name));
+    const rejected = list.filter((file) => !isAllowedAttachmentName(file.name));
+    setFileError(rejected.length > 0 ? `${rejected.map((file) => file.name).join(', ')}: .md/.txt/.csv 파일만 첨부할 수 있습니다.` : '');
+    if (accepted.length === 0) return;
+    try {
+      const read = await readAttachmentFiles(accepted);
+      setAttachments((prev) => dedupeAttachmentsByName([...prev, ...read]));
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : '파일을 읽지 못했습니다.');
+    }
+  };
+
+  const removeAttachment = (name: string) => {
+    setAttachments((prev) => prev.filter((attachment) => attachment.name !== name));
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const files = Array.from(event.clipboardData?.files ?? []);
+    if (files.length === 0) return;
+    event.preventDefault();
+    void addFiles(files);
+  };
 
   const handleDownload = async (doc: { format: string; title: string; content: string }) => {
     setError(null);
@@ -222,8 +262,31 @@ export function WorkChatPanel() {
           <input
             value={utterance}
             onChange={(event) => setUtterance(event.target.value)}
+            onPaste={handlePaste}
             placeholder="예: 내일 오전 10시 회의 등록하고 그 내용으로 보고서 작성해줘"
             className="flex-1 rounded-lg border border-line-subtle bg-surface-raised px-3 py-2 text-sm text-ink-1"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="파일 첨부"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line-subtle px-2.5 py-2 text-xs font-medium text-ink-2 hover:bg-surface-sunken"
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-3.5 w-3.5" aria-hidden>
+              <path d="M13.5 5.5 7.2 11.8a2.2 2.2 0 0 0 3.1 3.1l6-6a3.8 3.8 0 0 0-5.4-5.4l-6 6a5.4 5.4 0 0 0 7.6 7.6l5.2-5.2" />
+            </svg>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".md,.txt,.csv,text/markdown,text/plain,text/csv"
+            className="hidden"
+            aria-label="첨부 파일 선택"
+            onChange={(event) => {
+              if (event.target.files?.length) void addFiles(event.target.files);
+              event.target.value = '';
+            }}
           />
           <button
             type="submit"
@@ -233,6 +296,32 @@ export function WorkChatPanel() {
             {busy ? '처리 중…' : '보내기'}
           </button>
         </div>
+        {attachments.length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {attachments.map((attachment) => (
+              <span
+                key={attachment.name}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line-subtle bg-surface-elevated px-2.5 py-1 text-xs text-ink-2"
+              >
+                {attachment.name}
+                <button
+                  type="button"
+                  aria-label={`첨부 제거: ${attachment.name}`}
+                  onClick={() => removeAttachment(attachment.name)}
+                  className="text-ink-3 hover:text-danger"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <p className="mt-1 text-xs text-ink-3">
+          .md/.txt/.csv 파일을 첨부하거나 붙여넣으세요(최대 5개, 합계 200,000자 이하).
+        </p>
+        {fileError ? (
+          <p role="alert" className="mt-1 rounded bg-warn-soft px-2 py-1 text-xs text-warn">{fileError}</p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-1">
           <span className="text-xs text-ink-3">이렇게 말해보세요:</span>
           {EXAMPLES.map((example) => (
@@ -257,6 +346,11 @@ export function WorkChatPanel() {
           {log.map((entry) => (
             <li key={entry.id} className="space-y-2">
               <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-tr-sm bg-accent px-3 py-2 text-sm text-accent-on">{entry.utterance}</p>
+              {entry.routedBy === 'llm' ? (
+                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                  AI 보조 분류
+                </span>
+              ) : null}
               {entry.results.map((result, index) => (
                 <div key={index} className="max-w-[92%] rounded-2xl rounded-tl-sm border border-line-subtle bg-surface-base px-3 py-2">
                   <p className="text-sm text-ink-1">{result.summary}</p>

@@ -1416,13 +1416,16 @@ export async function orchestrateAeroWork(
   utterance: string,
   csrfToken: string,
   sessionId?: number | null,
-  options?: { synthesize?: boolean },
+  options?: { synthesize?: boolean; attachments?: AiAttachment[] },
 ) {
   const body: Record<string, unknown> = { utterance, session_id: sessionId ?? null };
   if (options?.synthesize !== undefined) {
     body.synthesize = options.synthesize;
   }
-  return browserFetch<{ utterance: string; session_id: number | null; results: OrchestrateResult[] }>('/api/frontend/aero-work/orchestrate', {
+  if (options?.attachments !== undefined) {
+    body.attachments = options.attachments;
+  }
+  return browserFetch<{ utterance: string; session_id: number | null; results: OrchestrateResult[]; routed_by?: 'rule' | 'llm' }>('/api/frontend/aero-work/orchestrate', {
     method: 'POST',
     body: JSON.stringify(body),
     headers: { 'X-CSRF-Token': csrfToken },

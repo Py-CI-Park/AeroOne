@@ -539,7 +539,7 @@ def orchestrate(
         if not payload.synthesize
         else OrchestratorService(db, settings, owner.id)
     )
-    raw_results = service.run(payload.utterance)
+    raw_results = service.run(payload.utterance, attachments=payload.attachments)
     results = [
         OrchestrateResult(
             kind=item['kind'],
@@ -549,6 +549,7 @@ def orchestrate(
             document=DocumentIntent(**item['document']) if item.get('document') else None,
             feature=item.get('feature'),
             answer=item.get('answer', ''),
+            routed_by=item.get('routed_by'),
         )
         for item in raw_results
     ]
