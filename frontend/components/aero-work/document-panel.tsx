@@ -1,8 +1,17 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
-import { composeAeroWorkDocument, generateAeroWorkHwpx } from '@/lib/api';
+import {
+  approveAeroWorkDocument,
+  composeAeroWorkDocument,
+  deleteSavedAeroWorkDocument,
+  downloadSavedAeroWorkDocument,
+  fetchSavedAeroWorkDocuments,
+  generateAeroWorkHwpx,
+  saveAeroWorkDocumentRequest,
+  type SavedAeroWorkDocument,
+} from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 
 // Aero Work P3 문서작성 — 제목 + 본문(한 줄=한 문단)을 즉시 미리보고 HWPX(한글, OWPML) 로
@@ -15,6 +24,21 @@ export function DocumentPanel() {
   const [format, setFormat] = useState('onepage');
   const [busy, setBusy] = useState(false);
   const [composing, setComposing] = useState(false);
+  const [savedDocs, setSavedDocs] = useState<SavedAeroWorkDocument[]>([]);
+
+  const loadSaved = async () => {
+    try {
+      const data = await fetchSavedAeroWorkDocuments();
+      setSavedDocs(data.documents);
+    } catch {
+      setSavedDocs([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -148,6 +172,85 @@ export function DocumentPanel() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-line-subtle bg-surface-base p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-ink-1">최종 저장 (승인형)</p>
+            <p className="mt-0.5 text-xs text-ink-3">되돌리기 어려운 최종 저장은 승인 대기를 거친 뒤 HWPX 로 내려받습니다.</p>
+          </div>
+          <button
+            type="button"
+            disabled={busy || composing || (!title.trim() && !body.trim())}
+            onClick={() => {
+              void (async () => {
+                setError(null);
+                try {
+                  await saveAeroWorkDocumentRequest({ title: title.trim(), body, format }, getCsrfCookie());
+                  setDone('최종 저장을 요청했음 — 아래 목록에서 승인 후 내려받으세요.');
+                  await loadSaved();
+                } catch {
+                  setError('최종 저장 요청 실패.');
+                }
+              })();
+            }}
+            className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink-1 hover:bg-surface-sunken disabled:opacity-50"
+          >
+            최종 저장 요청
+          </button>
+        </div>
+        {savedDocs.length === 0 ? (
+          <p className="mt-2 text-xs text-ink-3">저장 요청한 문서가 없음.</p>
+        ) : (
+          <ul className="mt-2 space-y-1">
+            {savedDocs.map((doc) => (
+              <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs">
+                <span className="truncate font-medium text-ink-1">{doc.title}</span>
+                <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${doc.status === 'approved' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-amber-500/15 text-amber-600'}`}>
+                  {doc.status === 'approved' ? '승인됨' : '승인 대기'}
+                </span>
+                <div className="ml-auto flex gap-1">
+                  {doc.status !== 'approved' ? (
+                    <button
+                      type="button"
+                      onClick={() => { void approveAeroWorkDocument(doc.id, getCsrfCookie()).then(loadSaved).catch(() => setError('승인 실패.')); }}
+                      className="rounded px-2 py-0.5 text-[11px] text-accent hover:bg-accent-soft"
+                    >
+                      승인
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void downloadSavedAeroWorkDocument(doc.id)
+                          .then((blob) => {
+                            const url = URL.createObjectURL(blob);
+                            const anchor = document.createElement('a');
+                            anchor.href = url;
+                            anchor.download = `${doc.title}.hwpx`;
+                            anchor.click();
+                            URL.revokeObjectURL(url);
+                          })
+                          .catch(() => setError('다운로드 실패.'));
+                      }}
+                      className="rounded px-2 py-0.5 text-[11px] text-accent hover:bg-accent-soft"
+                    >
+                      HWPX
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { void deleteSavedAeroWorkDocument(doc.id, getCsrfCookie()).then(loadSaved).catch(() => setError('삭제 실패.')); }}
+                    className="rounded px-2 py-0.5 text-[11px] text-rose-600 hover:bg-rose-500/10"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <p className="text-xs leading-relaxed text-ink-3">

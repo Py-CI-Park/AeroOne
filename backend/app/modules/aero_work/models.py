@@ -148,3 +148,22 @@ class AeroWorkUserPref(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class AeroWorkDocument(Base):
+    """문서 최종 저장 요청 1건 — 승인형 정책(pending → approved 후에만 HWPX 다운로드)."""
+
+    __tablename__ = 'aero_work_documents'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    format: Mapped[str] = mapped_column(String(20), nullable=False, server_default='onepage')
+    body: Mapped[str] = mapped_column(Text, nullable=False, server_default='')
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default='pending')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

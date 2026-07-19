@@ -32,6 +32,8 @@ from app.modules.aero_work.schemas import (
     DocumentComposeResponse,
     PrefResponse,
     PrefUpdateRequest,
+    SavedDocumentListResponse,
+    SavedDocumentResponse,
     ActivityResponse,
     EventCreateRequest,
     EventListResponse,
@@ -423,3 +425,92 @@ def update_prefs(
     record_activity(db, owner.id, 'settings.llm_mode', f'LLM 프로필 전환 — {"로컬 강제" if mode == "local" else "관리자 선택 따름"}')
     db.commit()
     return PrefResponse(llm_mode=mode)
+
+
+# ---- 문서 최종 저장(승인형 정책) ----
+@router.post('/document/save-request', response_model=SavedDocumentResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_csrf)])
+def request_document_save(
+    payload: DocumentRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> SavedDocumentResponse:
+    owner = _require_user(user)
+    title = (payload.title or '').strip() or '무제'
+    doc = aero_work_models.AeroWorkDocument(
+        user_id=owner.id, title=title, format=payload.format, body=payload.body, status='pending'
+    )
+    db.add(doc)
+    db.flush()
+    record_activity(db, owner.id, 'document.save_request', f'최종 저장 요청 "{title}" — 승인 대기')
+    db.commit()
+    return SavedDocumentResponse.from_model(doc)
+
+
+@router.get('/document/saved', response_model=SavedDocumentListResponse)
+def list_saved_documents(
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> SavedDocumentListResponse:
+    owner = _require_user(user)
+    rows = (
+        db.query(aero_work_models.AeroWorkDocument)
+        .filter(aero_work_models.AeroWorkDocument.user_id == owner.id)
+        .order_by(aero_work_models.AeroWorkDocument.created_at.desc(), aero_work_models.AeroWorkDocument.id.desc())
+        .limit(50)
+        .all()
+    )
+    return SavedDocumentListResponse(documents=[SavedDocumentResponse.from_model(row) for row in rows])
+
+
+def _owned_document(db: Session, owner: User, document_id: int) -> 'aero_work_models.AeroWorkDocument':
+    doc = db.get(aero_work_models.AeroWorkDocument, document_id)
+    if doc is None or doc.user_id != owner.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='문서를 찾을 수 없습니다.')
+    return doc
+
+
+@router.post('/document/saved/{document_id}/approve', response_model=SavedDocumentResponse, dependencies=[Depends(require_csrf)])
+def approve_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> SavedDocumentResponse:
+    owner = _require_user(user)
+    doc = _owned_document(db, owner, document_id)
+    doc.status = 'approved'
+    record_activity(db, owner.id, 'document.approve', f'최종 저장 승인 "{doc.title}"')
+    db.commit()
+    return SavedDocumentResponse.from_model(doc)
+
+
+@router.get('/document/saved/{document_id}/download')
+def download_saved_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    doc = _owned_document(db, owner, document_id)
+    if doc.status != 'approved':
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='승인 대기 중입니다. 승인 후 내려받을 수 있습니다.')
+    paragraphs = format_document(doc.format, doc.title, doc.body)
+    data = build_hwpx_document(doc.title, paragraphs)
+    record_activity(db, owner.id, 'document.generate', f'HWPX {FORMAT_LABELS.get(doc.format, "문서")} 생성 "{doc.title}" (승인본)')
+    db.commit()
+    disposition = f"attachment; filename=\"document.hwpx\"; filename*=UTF-8''{quote(doc.title)}.hwpx"
+    return Response(content=data, media_type='application/hwp+zip', headers={'Content-Disposition': disposition})
+
+
+@router.delete('/document/saved/{document_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)])
+def delete_saved_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    doc = _owned_document(db, owner, document_id)
+    title = doc.title
+    db.delete(doc)
+    record_activity(db, owner.id, 'document.discard', f'최종 저장 요청 폐기 "{title}"')
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
