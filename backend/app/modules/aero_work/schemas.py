@@ -192,3 +192,13 @@ class ChatHistoryItem(BaseModel):
 
 class ChatHistoryResponse(BaseModel):
     items: list[ChatHistoryItem]
+
+
+class DocumentComposeRequest(BaseModel):
+    title: str = Field(default='', max_length=300)
+    instruction: str = Field(min_length=1, max_length=10000)
+    format: str = Field(default='onepage', max_length=20)
+
+
+class DocumentComposeResponse(BaseModel):
+    paragraphs: list[str]

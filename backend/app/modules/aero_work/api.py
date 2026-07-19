@@ -17,6 +17,7 @@ from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.activity_service import ActivityService, record_activity
+from app.modules.aero_work.document_composer import ComposeUnavailable, compose_content
 from app.modules.aero_work.document_formats import FORMAT_LABELS, format_document
 from app.modules.aero_work.hwpx_generator import build_hwpx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
@@ -26,6 +27,8 @@ from app.modules.aero_work.schemas import (
     ActivityListResponse,
     ChatHistoryItem,
     ChatHistoryResponse,
+    DocumentComposeRequest,
+    DocumentComposeResponse,
     ActivityResponse,
     EventCreateRequest,
     EventListResponse,
@@ -371,3 +374,25 @@ def chat_history(
             results = []
         items.append(ChatHistoryItem(id=row.id, utterance=row.utterance, results=results, created_at=row.created_at))
     return ChatHistoryResponse(items=items)
+
+
+@router.post('/document/compose', response_model=DocumentComposeResponse, dependencies=[Depends(require_csrf)])
+def compose_document(
+    payload: DocumentComposeRequest,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> DocumentComposeResponse:
+    """지시 → LLM 개조식 내용 생성(gongmuwon '구조 생성 → 검토'). provider 시스템 경유."""
+
+    owner = _require_user(user)
+    title = (payload.title or '').strip() or '무제'
+    try:
+        paragraphs = compose_content(
+            settings, db, fmt=payload.format, title=title, instruction=payload.instruction
+        )
+    except ComposeUnavailable as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    record_activity(db, owner.id, 'document.compose', f'문서 내용 생성 "{title}" — {len(paragraphs)}문장')
+    db.commit()
+    return DocumentComposeResponse(paragraphs=paragraphs)

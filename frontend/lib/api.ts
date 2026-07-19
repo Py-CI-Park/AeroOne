@@ -1347,3 +1347,14 @@ export async function fetchAeroWorkChatHistory(limit = 20) {
     { method: 'GET' },
   );
 }
+
+export async function composeAeroWorkDocument(
+  payload: { title: string; instruction: string; format: string },
+  csrfToken: string,
+) {
+  return browserFetch<{ paragraphs: string[] }>('/api/frontend/aero-work/document/compose', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
