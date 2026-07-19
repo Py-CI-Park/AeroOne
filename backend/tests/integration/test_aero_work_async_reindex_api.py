@@ -143,6 +143,9 @@ def test_reindex_conflict_only_for_same_folder(csrf_client, monkeypatch: pytest.
     assert reindex_b.json()['status'] == 'ready'
 
     embedder_a.resume_event.set()
+    # L4: 백그라운드 스레드가 가드를 해제할 때까지 기다린다 — 기다리지 않으면 스레드가
+    # 다음 테스트의 fixture teardown(세션/엔진 정리)과 경합해 간헐적으로 깨질 수 있다.
+    _wait_until(lambda: True if folder_a not in aero_api._REINDEXING_FOLDER_IDS else None)
 
 
 def test_reindex_missing_folder_returns_404(csrf_client) -> None:

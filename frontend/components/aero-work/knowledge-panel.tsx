@@ -120,6 +120,7 @@ export function KnowledgePanel() {
       await load();
     } catch {
       setError('폴더 삭제 실패.');
+    } finally {
       setBusyId(null);
     }
   };

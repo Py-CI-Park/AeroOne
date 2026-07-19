@@ -34,6 +34,7 @@ from app.modules.leantime.api import router as leantime_router
 from app.modules.leantime.admin_api import router as leantime_admin_router
 from app.modules.leantime.read_api import router as leantime_read_router
 from app.modules.launchers.api import router as launchers_router
+from app.modules.aero_work import api as aero_work_api
 from app.modules.aero_work.api import router as aero_work_router
 from app.modules.office_tools.core.job_store import OfficeJobStore
 from app.modules.office_tools.upload_limits import (
@@ -55,6 +56,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         preflight_configured_admin(database, settings)
+        # H2: 이전 프로세스가 재색인 도중(status='indexing') 죽었으면 좀비 상태로 남는다 —
+        # 인메모리 가드는 재시작으로 항상 비어 시작해 아무도 이어받지 않으므로 error 로
+        # 리셋해 UI 가 영원히 '색인 중'에 멈추지 않게 한다(예외 안전 — 실패해도 기동은 계속).
+        with database.session() as sweep_session:
+            aero_work_api.reset_stale_indexing_folders(sweep_session)
         yield
 
     app = FastAPI(title=settings.app_name, lifespan=lifespan)

@@ -50,10 +50,16 @@ def _fts_available(db: Session) -> bool:
 
 
 def _fts_index_chunk(db: Session, chunk_id: int, content: str, rel_path: str) -> None:
-    """청크 upsert 시 FTS 색인에 반영한다(부분일치는 소문자 정규화된 본문으로 매칭)."""
+    """청크 upsert 시 FTS 색인에 반영한다(부분일치는 소문자 정규화된 본문으로 매칭).
+
+    delete-then-insert 로 처리한다 — FTS5 가상 테이블은 rowid 에 대한 UPSERT 문법이
+    없고, 같은 chunk_id 로 다시 색인을 걸 가능성(예: 향후 in-place 갱신 경로)에도
+    ``UNIQUE constraint`` 위반 없이 항상 최신 본문으로 덮어써야 한다.
+    """
 
     if not _fts_available(db):
         return
+    db.execute(sql_text(f'DELETE FROM {FTS_TABLE} WHERE rowid = :id'), {'id': chunk_id})
     db.execute(
         sql_text(f'INSERT INTO {FTS_TABLE}(rowid, content, rel_path) VALUES (:id, :content, :rel_path)'),
         {'id': chunk_id, 'content': content.lower(), 'rel_path': rel_path},
@@ -332,23 +338,23 @@ class KnowledgeService:
     def _keyword_search_fts(
         self, terms: list[str], *, folder_id: int | None, top_k: int
     ) -> list[dict]:
+        """FTS rowid 를 한 번 조회해 Python 리스트로 옮긴 뒤 다시 ``IN``으로 넣는 대신,
+        ``chunk.id IN (SELECT rowid FROM fts WHERE ...)`` 상관 서브쿼리 한 문장으로
+        묶는다 — 왕복 1회 감소 + rowid 리스트 크기에 따른 파라미터 폭증을 피한다.
+        """
+
         conditions = ' AND '.join(f'content LIKE :t{i}' for i in range(len(terms)))
         params: dict[str, str] = {f't{i}': f'%{term.lower()}%' for i, term in enumerate(terms)}
-        rows = self.db.execute(
-            sql_text(f'SELECT rowid AS chunk_id FROM {FTS_TABLE} WHERE {conditions}'), params
-        ).all()
-        chunk_ids = [row.chunk_id for row in rows]
-        if not chunk_ids:
-            return []
+        fts_rowids = sql_text(f'SELECT rowid FROM {FTS_TABLE} WHERE {conditions}')
         stmt = (
             select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
             .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
             .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
-            .where(KnowledgeChunk.id.in_(chunk_ids))
+            .where(KnowledgeChunk.id.in_(fts_rowids))
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
-        return self._build_keyword_hits(stmt, terms, top_k)
+        return self._build_keyword_hits(stmt, terms, top_k, params=params)
 
     def _keyword_search_like(
         self, terms: list[str], *, folder_id: int | None, top_k: int
@@ -360,13 +366,22 @@ class KnowledgeService:
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
+        # L2: 폴백(LIKE) 정규화 동등성 범위 — func.lower()/str.lower() 는 한국어(완성형 음절에는
+        # 대소문자 개념이 없어 항등) 와 ASCII 영문에서는 FTS 경로(_fts_index_chunk 의
+        # content.lower())와 결과가 항상 동일하다. 다만 일부 비ASCII 문자(예: 터키어 'İ/i',
+        # 독일어 'ß' 등 케이스 폴딩이 언어별로 다른 문자)는 sqlite3 내장 lower() 와 Python
+        # str.lower() 가 다르게 접을 수 있어 이 경계에서만 두 경로의 대소문자 무시 결과가
+        # 갈릴 수 있다 — 폐쇄망 사용자 문서가 한국어/영문 위주라 실무 영향은 없다고 판단.
         for term in terms:
             stmt = stmt.where(func.lower(KnowledgeChunk.content).like(f'%{term.lower()}%'))
         return self._build_keyword_hits(stmt, terms, top_k)
 
-    def _build_keyword_hits(self, stmt, terms: list[str], top_k: int) -> list[dict]:
+    def _build_keyword_hits(
+        self, stmt, terms: list[str], top_k: int, *, params: dict[str, str] | None = None
+    ) -> list[dict]:
         hits: list[dict] = []
-        for chunk, file_row, folder in self.db.execute(stmt).all():
+        rows = self.db.execute(stmt, params).all() if params else self.db.execute(stmt).all()
+        for chunk, file_row, folder in rows:
             lowered = chunk.content.lower()
             score = sum(lowered.count(term.lower()) for term in terms)
             hits.append(

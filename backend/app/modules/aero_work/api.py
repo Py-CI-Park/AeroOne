@@ -7,6 +7,7 @@ service_modules 카드 노출은 후속(P0/P5) 범위이며, 여기서는 인증
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from collections.abc import Generator
 from datetime import datetime
@@ -74,6 +75,7 @@ from app.db.session import get_session_factory
 from app.modules.auth.dependencies import get_db, get_optional_user, get_settings, require_csrf
 from app.modules.auth.models import User
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -82,8 +84,13 @@ def _service(db: Session, settings: Settings) -> KnowledgeService:
 
 
 # ---- 비동기 재색인(G004) ----
-# 폴더별 진행 중 가드 — 인메모리 set+lock(프로세스 단일 인스턴스 전제, 기존 서비스 배치와
-# 동일 가정). 이미 진행 중인 폴더에 재색인을 걸면 409 로 즉시 거절한다.
+# 폴더별 진행 중 가드 — 인메모리 set+lock. 프로세스 단일 인스턴스(uvicorn worker 1개)라는
+# 전제 위에서만 안전하다 — 멀티 워커/프로세스로 확장하면 이 in-process set 은 워커마다
+# 따로 생겨 서로를 보지 못해 가드가 무력화된다(같은 폴더를 워커 A/B 가 동시에 재색인).
+# 후속으로 다중 워커를 지원하려면 이 가드를 DB CAS(예: folder.status 컬럼에 대해
+# ``UPDATE ... SET status='indexing' WHERE id=:id AND status != 'indexing'`` 후
+# rowcount 확인)로 승격해야 한다 — 지금은 배포가 단일 워커 고정이라 범위 밖(L6).
+# 이미 진행 중인 폴더에 재색인을 걸면 409 로 즉시 거절한다.
 _REINDEXING_FOLDER_IDS: set[int] = set()
 _REINDEXING_LOCK = threading.Lock()
 
@@ -99,6 +106,36 @@ def _try_claim_reindex(folder_id: int) -> bool:
 def _release_reindex(folder_id: int) -> None:
     with _REINDEXING_LOCK:
         _REINDEXING_FOLDER_IDS.discard(folder_id)
+
+
+def _is_reindexing(folder_id: int) -> bool:
+    with _REINDEXING_LOCK:
+        return folder_id in _REINDEXING_FOLDER_IDS
+
+
+def reset_stale_indexing_folders(db: Session) -> int:
+    """기동 스윅(H2) — 이전 프로세스가 'indexing' 도중 죽어서 남긴 폴더를 error 로 되돌린다.
+
+    인메모리 가드(``_REINDEXING_FOLDER_IDS``)는 프로세스 재시작으로 항상 비어 시작하므로,
+    DB 에만 'indexing' 으로 남은 폴더는 실제로는 아무도 진행하지 않는 좀비 상태다 — 그대로
+    두면 UI 가 영원히 '색인 중'으로 멈춘다. 예외가 나도 앱 기동 자체를 막지 않도록 안전하게
+    흡수한다.
+    """
+
+    from app.modules.aero_work.models import KnowledgeFolder as _KnowledgeFolder
+
+    try:
+        stale = db.query(_KnowledgeFolder).filter(_KnowledgeFolder.status == 'indexing').all()
+        for folder in stale:
+            folder.status = 'error'
+            folder.status_detail = '서버 재시작으로 중단됨'
+        if stale:
+            db.commit()
+        return len(stale)
+    except Exception:  # noqa: BLE001 — 기동 스윅 실패는 로그만 남기고 서버 부팅을 막지 않는다
+        logger.exception('기동 시 잔존 indexing 폴더 리셋 실패')
+        db.rollback()
+        return 0
 
 
 def _run_background_reindex(folder_id: int, settings: Settings, owner_id: int) -> None:
@@ -119,6 +156,18 @@ def _run_background_reindex(folder_id: int, settings: Settings, owner_id: int) -
             folder = service.reindex(folder_id, progress_cb=_on_progress)
         except (EmbeddingUnavailable, KnowledgeError):
             db.commit()  # 서비스가 이미 status='error' + 사유를 status_detail 에 남겼다
+            return
+        except Exception:
+            # H2: 예상 못한 예외(예: FK 위반 — 재색인 도중 폴더가 삭제된 경우)로 재색인이
+            # 죽어도 폴더가 'indexing' 에 영원히 멈추지 않도록 error 상태로 남긴다. 세션이
+            # 실패한 flush 로 오염됐을 수 있어 먼저 rollback 한 뒤 별도 커밋으로 상태만 남긴다.
+            logger.exception('지식폴더 %s 백그라운드 재색인 중 처리되지 않은 예외', folder_id)
+            db.rollback()
+            folder = service.get_folder(folder_id)
+            if folder is not None:
+                folder.status = 'error'
+                folder.status_detail = '재색인 중 예기치 않은 오류가 발생했습니다.'
+                db.commit()
             return
         record_activity(db, owner_id, 'knowledge.reindex', f'"{folder.name}" 색인 완료', folder.status_detail)
         db.commit()
@@ -197,6 +246,8 @@ def reindex_folder(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
 
     if inline:
+        if not _try_claim_reindex(folder_id):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='이미 색인이 진행 중입니다.')
         try:
             folder = service.reindex(folder_id)
         except EmbeddingUnavailable as exc:
@@ -204,6 +255,8 @@ def reindex_folder(
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
         except KnowledgeError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        finally:
+            _release_reindex(folder_id)
         record_activity(db, owner.id, 'knowledge.reindex', f'"{folder.name}" 색인 완료', folder.status_detail)
         db.commit()
         return JSONResponse(
@@ -214,14 +267,20 @@ def reindex_folder(
     if not _try_claim_reindex(folder_id):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='이미 색인이 진행 중입니다.')
 
-    folder.status = 'indexing'
-    folder.status_detail = '색인을 준비하는 중'
-    db.commit()
+    try:
+        folder.status = 'indexing'
+        folder.status_detail = '색인을 준비하는 중'
+        db.commit()
 
-    thread = threading.Thread(
-        target=_run_background_reindex, args=(folder_id, settings, owner.id), daemon=True
-    )
-    thread.start()
+        thread = threading.Thread(
+            target=_run_background_reindex, args=(folder_id, settings, owner.id), daemon=True
+        )
+        thread.start()
+    except Exception:
+        # M2: claim 이후 commit/thread 기동 중 실패하면 가드를 점유한 채로 남기지 않는다 —
+        # 그러지 않으면 클라이언트가 영구히 409 만 받고 재시도할 방법이 없어진다.
+        _release_reindex(folder_id)
+        raise
     return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={'status': 'indexing'})
 
 
@@ -241,6 +300,11 @@ def delete_folder(
     folder = service.get_folder(folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
+    if _is_reindexing(folder_id):
+        # M1: 재색인 스레드가 같은 세션의 폴더/파일/청크 행을 flush 하는 도중 삭제하면
+        # FK 위반으로 백그라운드 스레드가 조용히 죽는다(레드팀 관측) — 가드가 점유 중이면
+        # 삭제 자체를 409 로 거절해 그 경쟁을 원천 차단한다.
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='재색인이 진행 중이라 삭제할 수 없습니다.')
     folder_name = folder.name
     service.delete_folder(folder_id)
     record_activity(db, owner.id, 'knowledge.delete', f'지식폴더 "{folder_name}" 삭제')
