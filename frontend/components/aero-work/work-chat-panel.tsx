@@ -177,13 +177,13 @@ export function WorkChatPanel() {
         };
         const retryWithOrchestrate = () => {
           // M1: 스트림 실패 시 비스트리밍 orchestrateAeroWork(synthesize:true) 로 재요청해
-          // 그 지식 답변만 추출해 반영한다(B2: 원 요청의 첨부가 있었다면 재시도에도 동일하게
-          // 동반한다). 재요청은 세션에 새 대화 메시지를 추가하는 부작용이 있다(세션 중복 기록을
+          // 그 지식 답변만 추출해 반영한다. 첨부 경로(B2)는 스트리밍 전에 이미 비스트리밍으로
+          // early return 하므로 이 폴백에는 도달하지 않는다 — 첨부 재전송이 불필요하다.
+          // 재요청은 세션에 새 대화 메시지를 추가하는 부작용이 있다(세션 중복 기록을
           // 피하는 전용 유틸은 없음 — 단순성을 우선해 허용). 재요청마저 실패하면 답변 없이
           // 근거(hits)만 유지한다.
           void orchestrateAeroWork(text, getCsrfCookie(), response.session_id, {
             synthesize: true,
-            attachments: hasAttachments ? pendingAttachments : undefined,
           })
             .then((fallback) => {
               const knowledgeResult = fallback.results.find((r) => r.kind === 'knowledge');
