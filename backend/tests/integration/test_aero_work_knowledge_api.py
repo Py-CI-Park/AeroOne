@@ -68,7 +68,7 @@ def test_register_reindex_search_delete_flow(csrf_client, fake_embedder, kb_dir:
     assert listing.status_code == 200
     assert any(item['id'] == folder_id for item in listing.json()['folders'])
 
-    reindex = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex')
+    reindex = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex?inline=true')
     assert reindex.status_code == 200, reindex.text
     indexed = reindex.json()
     assert indexed['status'] == 'ready'
@@ -100,7 +100,7 @@ def test_keyword_search_flow(csrf_client, fake_embedder, kb_dir: Path) -> None:
         '/api/v1/aero-work/knowledge/folders', json={'name': '규정', 'path': str(kb_dir)}
     )
     folder_id = created.json()['id']
-    csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex')
+    csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex?inline=true')
 
     resp = csrf_client.post('/api/v1/aero-work/knowledge/keyword-search', json={'query': 'usb'})
     assert resp.status_code == 200, resp.text
@@ -120,7 +120,7 @@ def test_wiki_groups_version_families(csrf_client, fake_embedder, tmp_path: Path
         '/api/v1/aero-work/knowledge/folders', json={'name': '규정', 'path': str(root)}
     )
     folder_id = created.json()['id']
-    csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex')
+    csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex?inline=true')
 
     resp = csrf_client.get('/api/v1/aero-work/knowledge/wiki')
     assert resp.status_code == 200, resp.text

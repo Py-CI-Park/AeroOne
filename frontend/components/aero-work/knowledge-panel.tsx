@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 
 import {
+  ApiError,
   deleteKnowledgeFolder,
   fetchKnowledgeFolders,
   registerKnowledgeFolder,
@@ -61,6 +62,16 @@ export function KnowledgePanel() {
     void load();
   }, [load]);
 
+  // 색인 중인 폴더가 있는 동안에만 3초 폴링으로 진행률(status_detail)을 갱신한다.
+  // 완료/오류로 전환되면 다음 load() 결과에 indexing 폴더가 없어져 자동으로 폴링이 멈춘다.
+  useEffect(() => {
+    if (!folders.some((folder) => folder.status === 'indexing')) {
+      return undefined;
+    }
+    const timer = setInterval(() => void load(), 3000);
+    return () => clearInterval(timer);
+  }, [folders, load]);
+
   const handleRegister = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.path.trim()) {
@@ -82,12 +93,21 @@ export function KnowledgePanel() {
   const handleReindex = async (folder: KnowledgeFolder) => {
     setBusyId(folder.id);
     setError(null);
+    let reindexError: string | null = null;
     try {
       await reindexKnowledgeFolder(folder.id, getCsrfCookie());
-    } catch {
-      setError('색인 실패. Ollama 임베딩 서버(nomic-embed-text) 기동 상태를 확인할 것.');
+    } catch (err) {
+      reindexError =
+        err instanceof ApiError && err.status === 409
+          ? '이미 색인이 진행 중임. 완료될 때까지 기다릴 것.'
+          : '색인 실패. Ollama 임베딩 서버(nomic-embed-text) 기동 상태를 확인할 것.';
     } finally {
+      // load() 는 성공 시 error 를 null 로 되돌리므로, 방금 설정한 안내 문구가
+      // 그 재조회에 덮여 사라지지 않도록 load() 완료 뒤에 다시 적용한다.
       await load();
+      if (reindexError) {
+        setError(reindexError);
+      }
       setBusyId(null);
     }
   };
@@ -187,10 +207,10 @@ export function KnowledgePanel() {
                     <button
                       type="button"
                       onClick={() => void handleReindex(folder)}
-                      disabled={busy}
+                      disabled={busy || folder.status === 'indexing'}
                       className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink-1 hover:bg-surface-sunken disabled:opacity-50"
                     >
-                      {busy ? '색인 중…' : '재색인'}
+                      {busy || folder.status === 'indexing' ? '색인 중…' : '재색인'}
                     </button>
                     <button
                       type="button"

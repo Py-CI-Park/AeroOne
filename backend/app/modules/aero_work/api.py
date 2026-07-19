@@ -7,12 +7,13 @@ service_modules 카드 노출은 후속(P0/P5) 범위이며, 여기서는 인증
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Generator
 from datetime import datetime
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -69,6 +70,7 @@ from app.modules.aero_work.schemas import (
     TaxonomyProposeResponse,
     TaxonomyResponse,
 )
+from app.db.session import get_session_factory
 from app.modules.auth.dependencies import get_db, get_optional_user, get_settings, require_csrf
 from app.modules.auth.models import User
 
@@ -77,6 +79,52 @@ router = APIRouter()
 
 def _service(db: Session, settings: Settings) -> KnowledgeService:
     return KnowledgeService(db, OllamaEmbedder(settings))
+
+
+# ---- 비동기 재색인(G004) ----
+# 폴더별 진행 중 가드 — 인메모리 set+lock(프로세스 단일 인스턴스 전제, 기존 서비스 배치와
+# 동일 가정). 이미 진행 중인 폴더에 재색인을 걸면 409 로 즉시 거절한다.
+_REINDEXING_FOLDER_IDS: set[int] = set()
+_REINDEXING_LOCK = threading.Lock()
+
+
+def _try_claim_reindex(folder_id: int) -> bool:
+    with _REINDEXING_LOCK:
+        if folder_id in _REINDEXING_FOLDER_IDS:
+            return False
+        _REINDEXING_FOLDER_IDS.add(folder_id)
+        return True
+
+
+def _release_reindex(folder_id: int) -> None:
+    with _REINDEXING_LOCK:
+        _REINDEXING_FOLDER_IDS.discard(folder_id)
+
+
+def _run_background_reindex(folder_id: int, settings: Settings, owner_id: int) -> None:
+    """백그라운드 스레드에서 새 세션으로 재색인한다 — 진행률을 status_detail 에 주기 반영."""
+
+    db = get_session_factory()()
+    try:
+        service = KnowledgeService(db, OllamaEmbedder(settings))
+
+        def _on_progress(done: int, total: int) -> None:
+            folder = service.get_folder(folder_id)
+            if folder is None:
+                return
+            folder.status_detail = f'{done}/{total} 파일'
+            db.commit()
+
+        try:
+            folder = service.reindex(folder_id, progress_cb=_on_progress)
+        except (EmbeddingUnavailable, KnowledgeError):
+            db.commit()  # 서비스가 이미 status='error' + 사유를 status_detail 에 남겼다
+            return
+        record_activity(db, owner_id, 'knowledge.reindex', f'"{folder.name}" 색인 완료', folder.status_detail)
+        db.commit()
+    finally:
+        db.close()
+        _release_reindex(folder_id)
 
 
 def _require_user(user: User | None) -> User:
@@ -125,27 +173,56 @@ def register_folder(
 
 @router.post(
     '/knowledge/folders/{folder_id}/reindex',
-    response_model=FolderResponse,
     dependencies=[Depends(require_csrf)],
 )
 def reindex_folder(
     folder_id: int,
+    inline: bool = Query(
+        default=False,
+        description='테스트/결정성 전용 — True 면 예전처럼 동기 실행 후 완료된 FolderResponse 를 200 으로 돌려준다.',
+    ),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
-) -> FolderResponse:
+) -> Response:
+    """재색인을 건다 — 기본은 202 즉시 반환 + 백그라운드 스레드, ``inline=true`` 는 동기 실행(테스트용).
+
+    같은 폴더에 이미 진행 중인 재색인이 있으면 409 를 돌려준다(인메모리 set+lock 가드).
+    """
+
     owner = _require_user(user)
     service = _service(db, settings)
-    try:
-        folder = service.reindex(folder_id)
-    except EmbeddingUnavailable as exc:
-        db.commit()  # status='error' 상태를 저장한 뒤 안내
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    except KnowledgeError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    record_activity(db, owner.id, 'knowledge.reindex', f'"{folder.name}" 색인 완료', folder.status_detail)
+    folder = service.get_folder(folder_id)
+    if folder is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
+
+    if inline:
+        try:
+            folder = service.reindex(folder_id)
+        except EmbeddingUnavailable as exc:
+            db.commit()  # status='error' 상태를 저장한 뒤 안내
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        except KnowledgeError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        record_activity(db, owner.id, 'knowledge.reindex', f'"{folder.name}" 색인 완료', folder.status_detail)
+        db.commit()
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=FolderResponse.from_model(folder).model_dump(mode='json'),
+        )
+
+    if not _try_claim_reindex(folder_id):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='이미 색인이 진행 중입니다.')
+
+    folder.status = 'indexing'
+    folder.status_detail = '색인을 준비하는 중'
     db.commit()
-    return FolderResponse.from_model(folder)
+
+    thread = threading.Thread(
+        target=_run_background_reindex, args=(folder_id, settings, owner.id), daemon=True
+    )
+    thread.start()
+    return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={'status': 'indexing'})
 
 
 @router.delete(
