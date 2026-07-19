@@ -12,6 +12,7 @@ import {
 import { getCsrfCookie } from '@/lib/cookies';
 import { ReminderBanner } from '@/components/aero-work/reminder-banner';
 import { ScheduleMonth } from '@/components/aero-work/schedule-month';
+import { ScheduleWeek } from '@/components/aero-work/schedule-week';
 
 // Aero Work P4 일정 — 사용자별 개인 캘린더(아젠다 뷰 + 생성/수정/삭제). 향후 홈 브리핑이
 // 이 데이터를 소비한다. 시각은 datetime-local(로컬 naive)로 주고받으며 백엔드가 정규화한다.
@@ -48,7 +49,7 @@ export function SchedulePanel() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<EventForm>(EMPTY_FORM);
-  const [calendarView, setCalendarView] = useState<'agenda' | 'month'>('agenda');
+  const [calendarView, setCalendarView] = useState<'agenda' | 'month' | 'week' | 'day'>('agenda');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -235,16 +236,20 @@ export function SchedulePanel() {
 
       <div>
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-ink-1">{calendarView === 'month' ? '월 캘린더' : '다가오는 일정'}</p>
+          <p className="text-sm font-semibold text-ink-1">
+            {calendarView === 'month' ? '월 캘린더' : calendarView === 'week' ? '주 (시간축)' : calendarView === 'day' ? '일 (시간축)' : '다가오는 일정'}
+          </p>
           <div className="flex gap-1">
             {[
               ['agenda', '아젠다'],
               ['month', '월'],
+              ['week', '주'],
+              ['day', '일'],
             ].map(([value, label]) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setCalendarView(value as 'agenda' | 'month')}
+                onClick={() => setCalendarView(value as 'agenda' | 'month' | 'week' | 'day')}
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
                   calendarView === value ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2 hover:bg-accent-soft'
                 }`}
@@ -257,6 +262,10 @@ export function SchedulePanel() {
         {calendarView === 'month' ? (
           <div className="mt-2">
             <ScheduleMonth events={events} onSelectEvent={startEdit} />
+          </div>
+        ) : calendarView === 'week' || calendarView === 'day' ? (
+          <div className="mt-2">
+            <ScheduleWeek key={calendarView} events={events} days={calendarView === 'week' ? 7 : 1} onSelectEvent={startEdit} />
           </div>
         ) : loading ? (
           <p className="mt-2 text-sm text-ink-3">불러오는 중…</p>
