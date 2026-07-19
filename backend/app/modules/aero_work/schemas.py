@@ -60,3 +60,47 @@ class SearchHit(BaseModel):
 class SearchResponse(BaseModel):
     hits: list[SearchHit]
     model: str
+
+
+class EventCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    starts_at: datetime
+    ends_at: datetime | None = None
+    all_day: bool = False
+    location: str = Field(default='', max_length=300)
+    notes: str = ''
+
+
+class EventUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=300)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    all_day: bool | None = None
+    location: str | None = Field(default=None, max_length=300)
+    notes: str | None = None
+
+
+class EventResponse(BaseModel):
+    id: int
+    title: str
+    starts_at: datetime
+    ends_at: datetime | None
+    all_day: bool
+    location: str
+    notes: str
+
+    @classmethod
+    def from_model(cls, event) -> 'EventResponse':
+        return cls(
+            id=event.id,
+            title=event.title,
+            starts_at=event.starts_at,
+            ends_at=event.ends_at,
+            all_day=event.all_day,
+            location=event.location,
+            notes=event.notes,
+        )
+
+
+class EventListResponse(BaseModel):
+    events: list[EventResponse]

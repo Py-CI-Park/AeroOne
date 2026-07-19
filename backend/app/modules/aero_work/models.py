@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -78,3 +78,28 @@ class KnowledgeChunk(Base):
     embedding: Mapped[str] = mapped_column(Text, nullable=False)
 
     file: Mapped['KnowledgeFile'] = relationship(back_populates='chunks')
+
+
+class AeroWorkEvent(Base):
+    """Aero Work 개인 일정 이벤트 — 사용자별 캘린더 항목(월/주/일 조회는 기간 필터로).
+
+    시각은 클라이언트가 준 값을 저장하며, 저장 전 서비스에서 naive(UTC 기준)로 정규화한다
+    (SQLite 는 timezone 을 보존하지 못해 aware/naive 혼용 시 비교 오류가 나기 때문).
+    """
+
+    __tablename__ = 'aero_work_events'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
+    location: Mapped[str] = mapped_column(String(300), nullable=False, server_default='')
+    notes: Mapped[str] = mapped_column(Text, nullable=False, server_default='')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

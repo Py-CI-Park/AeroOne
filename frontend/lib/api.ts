@@ -1209,3 +1209,54 @@ export async function searchKnowledge(payload: { query: string; folder_id?: numb
     body: JSON.stringify(payload),
   });
 }
+
+// ---- Aero Work 일정 (P4) ----
+export type AeroWorkEvent = {
+  id: number;
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  all_day: boolean;
+  location: string;
+  notes: string;
+};
+
+export type AeroWorkEventInput = {
+  title: string;
+  starts_at: string;
+  ends_at?: string | null;
+  all_day?: boolean;
+  location?: string;
+  notes?: string;
+};
+
+export async function fetchAeroWorkEvents(range?: { start?: string; end?: string }) {
+  const params = new URLSearchParams();
+  if (range?.start) params.set('start', range.start);
+  if (range?.end) params.set('end', range.end);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return browserFetch<{ events: AeroWorkEvent[] }>(`/api/frontend/aero-work/schedule/events${qs}`, { method: 'GET' });
+}
+
+export async function createAeroWorkEvent(payload: AeroWorkEventInput, csrfToken: string) {
+  return browserFetch<AeroWorkEvent>('/api/frontend/aero-work/schedule/events', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateAeroWorkEvent(id: number, payload: Partial<AeroWorkEventInput>, csrfToken: string) {
+  return browserFetch<AeroWorkEvent>(`/api/frontend/aero-work/schedule/events/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteAeroWorkEvent(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/schedule/events/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}

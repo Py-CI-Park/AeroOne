@@ -54,7 +54,7 @@
 - **P1** ✅ 구현됨(`818aef0`): 업무대화 — AeroAI(`AiChatWorkspace`) 재사용. 세션 중심 이어가기 링크는 후속.
 - **P2** ✅ 구현됨(`59939a4`): 지식폴더 — 신규 `app/modules/aero_work`(폴더/파일/청크 3층 + 마이그레이션 `20260719_0020`), in-place 스캔 + Ollama `nomic-embed-text` 임베딩(urllib, AeroAI 경로 재사용) + 순수 Python 코사인 검색 + 시그니처(mtime+size) 증분 동기화. `KnowledgePanel`(등록·재색인·삭제·검색) + BFF 프록시. 검증: 단위 6건 + 마이그레이션 up/down + **실 Ollama 한국어 의미검색 E2E 3/3 정답**. 업무 위키 자동 구성, PDF/DOCX/HWPX 본문 추출, 백그라운드 색인, 세분 `aerowork.*` 권한·카드는 후속.
 - **P3**: 문서작성 — HWPX 생성(시행문/1p 우선) + 미리보기→HWPX. 임의형식은 후속.
-- **P4**: 일정/알림, 실행기록 뷰, 홈 브리핑.
+- **P4**: (부분 구현) **일정 ✅ 구현됨** — 사용자별 이벤트 CRUD + 기간 겹침 조회(`app/modules/aero_work` 이벤트 모델 + 마이그레이션 `20260719_0021` + `ScheduleService` + REST + `SchedulePanel` 아젠다 UI, 소유자 스코프·CSRF, 단위 5 + 통합 5). **알림·실행기록 뷰·홈 브리핑은 미착수**.
 - **P5**: 통합 UX·성능 예산·문서·회귀 테스트 + 각 단계 phase 보고서(minor/major 는 phase 보고서 필수, AGENTS §9.6).
 
 ## 5. 위험과 선결 조건

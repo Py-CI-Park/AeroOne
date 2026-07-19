@@ -6,14 +6,21 @@ service_modules 카드 노출은 후속(P0/P5) 범위이며, 여기서는 인증
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
+from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
 from app.modules.aero_work.schemas import (
+    EventCreateRequest,
+    EventListResponse,
+    EventResponse,
+    EventUpdateRequest,
     FolderListResponse,
     FolderRegisterRequest,
     FolderResponse,
@@ -127,3 +134,87 @@ def search_knowledge(
     except EmbeddingUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return SearchResponse(hits=[SearchHit(**hit) for hit in hits], model=service.embedder.model)
+
+
+# ---- 일정(Schedule) ----
+@router.get('/schedule/events', response_model=EventListResponse)
+def list_events(
+    start: datetime | None = Query(default=None),
+    end: datetime | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> EventListResponse:
+    owner = _require_user(user)
+    service = ScheduleService(db)
+    events = service.list_events(owner.id, start=start, end=end)
+    return EventListResponse(events=[EventResponse.from_model(event) for event in events])
+
+
+@router.post(
+    '/schedule/events',
+    response_model=EventResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_csrf)],
+)
+def create_event(
+    payload: EventCreateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> EventResponse:
+    owner = _require_user(user)
+    service = ScheduleService(db)
+    try:
+        event = service.create_event(
+            owner.id,
+            title=payload.title,
+            starts_at=payload.starts_at,
+            ends_at=payload.ends_at,
+            all_day=payload.all_day,
+            location=payload.location,
+            notes=payload.notes,
+        )
+    except ScheduleError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    db.commit()
+    return EventResponse.from_model(event)
+
+
+@router.patch(
+    '/schedule/events/{event_id}',
+    response_model=EventResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def update_event(
+    event_id: int,
+    payload: EventUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> EventResponse:
+    owner = _require_user(user)
+    service = ScheduleService(db)
+    try:
+        event = service.update_event(owner.id, event_id, payload.model_dump(exclude_unset=True))
+    except ScheduleError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if event is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='일정을 찾을 수 없습니다.')
+    db.commit()
+    return EventResponse.from_model(event)
+
+
+@router.delete(
+    '/schedule/events/{event_id}',
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_csrf)],
+)
+def delete_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    service = ScheduleService(db)
+    if not service.delete_event(owner.id, event_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='일정을 찾을 수 없습니다.')
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

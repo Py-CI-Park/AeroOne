@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
   return relayFrontendRequest(request, AERO_WORK_ALLOWLIST);
 }
 
+export async function PATCH(request: NextRequest) {
+  return relayFrontendRequest(request, AERO_WORK_ALLOWLIST);
+}
+
 export async function DELETE(request: NextRequest) {
   return relayFrontendRequest(request, AERO_WORK_ALLOWLIST);
 }
