@@ -1,12 +1,35 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { fetchKnowledgeWiki, summarizeKnowledgeFile, type WikiFamily } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 
 // Aero Work F5 지식 위키(버전 가족) — 색인된 문서를 같은 문서의 대표(공식본) + 판본 이력으로
 // 묶어 보여준다(gongmuwon 업무 허브 백본, §6.5). 분류체계 마법사·주제 페이지는 후속.
+// 키워드 일치 구간을 <mark> 로 감싸 즉시 강조 — 입력 placeholder 의 '목차 강조' 약속을 실제로 이행한다.
+function highlightMatches(text: string, term: string): ReactNode {
+  const t = term.trim().toLowerCase();
+  if (!t) return text;
+  const lower = text.toLowerCase();
+  const parts: ReactNode[] = [];
+  let from = 0;
+  let idx = lower.indexOf(t);
+  let key = 0;
+  while (idx >= 0) {
+    if (idx > from) parts.push(text.slice(from, idx));
+    parts.push(
+      <mark key={key++} className="rounded bg-amber-300/60 px-0.5 text-inherit">
+        {text.slice(idx, idx + t.length)}
+      </mark>,
+    );
+    from = idx + t.length;
+    idx = lower.indexOf(t, from);
+  }
+  if (parts.length === 0) return text;
+  parts.push(text.slice(from));
+  return parts;
+}
 
 export function KnowledgeWiki() {
   const [families, setFamilies] = useState<WikiFamily[]>([]);
@@ -97,7 +120,7 @@ export function KnowledgeWiki() {
             .map((family) => (
             <li key={family.base} className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-2">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-mono text-ink-1">{family.representative.rel_path}</span>
+                <span className="font-mono text-ink-1">{highlightMatches(family.representative.rel_path, keyword)}</span>
                 {family.has_versions ? (
                   <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">대표</span>
                 ) : null}
@@ -122,7 +145,7 @@ export function KnowledgeWiki() {
               </div>
               {(summaries[family.representative.id] ?? family.representative.summary) ? (
                 <p className="mt-1 rounded bg-accent-soft/50 px-2 py-1 text-[11px] leading-relaxed text-ink-2">
-                  {summaries[family.representative.id] ?? family.representative.summary}
+                  {highlightMatches(summaries[family.representative.id] ?? family.representative.summary, keyword)}
                 </p>
               ) : null}
               {family.has_versions && expanded.has(family.base) ? (
