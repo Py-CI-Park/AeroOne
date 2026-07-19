@@ -66,7 +66,7 @@ export function WorkChatPanel() {
   const handleDownload = async (doc: { format: string; title: string; content: string }) => {
     setError(null);
     try {
-      const blob = await generateAeroWorkHwpx({ title: doc.title, body: doc.content }, getCsrfCookie());
+      const blob = await generateAeroWorkHwpx({ title: doc.title, body: doc.content, format: doc.format }, getCsrfCookie());
       downloadBlob(blob, `${doc.title || '무제'}.hwpx`);
     } catch {
       setError('HWPX 생성 실패.');

@@ -132,6 +132,7 @@ class ActivityListResponse(BaseModel):
 class DocumentRequest(BaseModel):
     title: str = Field(default='', max_length=300)
     body: str = Field(default='', max_length=100000)
+    format: str = Field(default='onepage', max_length=20)
 
 
 class OrchestrateRequest(BaseModel):

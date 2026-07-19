@@ -237,10 +237,10 @@ def _paragraph(text: str, *, first: bool = False) -> str:
     )
 
 
-def _section_xml(title: str, paragraphs: list[str]) -> str:
-    body_paras = [title] + [p for p in paragraphs if p.strip()]
+def _section_xml(paragraphs: list[str]) -> str:
+    body_paras = [p for p in paragraphs if p.strip()]
     if not body_paras:
-        body_paras = [title or '']
+        body_paras = ['']
     rendered = ''.join(
         _paragraph(text, first=(index == 0)) for index, text in enumerate(body_paras)
     )
@@ -261,15 +261,7 @@ def split_paragraphs(body: str) -> list[str]:
     return [line for line in lines if line]
 
 
-def build_hwpx(title: str, body: str) -> bytes:
-    """제목 + 본문을 최소 OWPML .hwpx(ZIP 바이트)로 조립한다.
-
-    mimetype 은 반드시 첫 엔트리이며 무압축(stored)이어야 한다(OCF 규약).
-    """
-
-    title = (title or '무제').strip() or '무제'
-    paragraphs = split_paragraphs(body)
-
+def _assemble(meta_title: str, paragraphs: list[str]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
         # OCF: mimetype 는 첫 엔트리 + 무압축.
@@ -279,10 +271,31 @@ def build_hwpx(title: str, body: str) -> bytes:
 
         archive.writestr('version.xml', _version_xml())
         archive.writestr('settings.xml', _settings_xml())
-        archive.writestr('Contents/content.hpf', _content_hpf(title))
+        archive.writestr('Contents/content.hpf', _content_hpf(meta_title))
         archive.writestr('Contents/header.xml', _header_xml())
-        archive.writestr('Contents/section0.xml', _section_xml(title, paragraphs))
+        archive.writestr('Contents/section0.xml', _section_xml(paragraphs))
         archive.writestr('META-INF/container.xml', _container_xml())
         archive.writestr('META-INF/manifest.xml', _manifest_xml())
 
     return buffer.getvalue()
+
+
+def build_hwpx(title: str, body: str) -> bytes:
+    """제목 + 본문을 최소 OWPML .hwpx(ZIP 바이트)로 조립한다.
+
+    제목이 첫 문단(머리)로 들어가고 본문 문단이 뒤따른다. mimetype 은 첫 엔트리 + 무압축(OCF).
+    """
+
+    title = (title or '무제').strip() or '무제'
+    return _assemble(title, [title, *split_paragraphs(body)])
+
+
+def build_hwpx_document(title: str, paragraphs: list[str]) -> bytes:
+    """이미 양식별로 구조화된 문단 리스트를 그대로 .hwpx 로 조립한다(첫 문단이 머리).
+
+    ``title`` 은 패키지 메타데이터/파일명용이며, 본문은 ``paragraphs`` 가 진실 원천이다.
+    """
+
+    title = (title or '무제').strip() or '무제'
+    cleaned = [p for p in paragraphs if p and p.strip()]
+    return _assemble(title, cleaned or [title])

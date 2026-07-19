@@ -16,7 +16,8 @@ from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.activity_service import ActivityService, record_activity
-from app.modules.aero_work.hwpx_generator import build_hwpx
+from app.modules.aero_work.document_formats import FORMAT_LABELS, format_document
+from app.modules.aero_work.hwpx_generator import build_hwpx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
 from app.modules.aero_work.orchestrator_service import OrchestratorService
@@ -268,8 +269,10 @@ def generate_hwpx(
 ) -> Response:
     owner = _require_user(user)
     title = (payload.title or '').strip() or '무제'
-    data = build_hwpx(title, payload.body)
-    record_activity(db, owner.id, 'document.generate', f'HWPX 문서 생성 "{title}"')
+    paragraphs = format_document(payload.format, title, payload.body)
+    data = build_hwpx_document(title, paragraphs)
+    label = FORMAT_LABELS.get(payload.format, '문서')
+    record_activity(db, owner.id, 'document.generate', f'HWPX {label} 생성 "{title}"')
     db.commit()
     disposition = f"attachment; filename=\"document.hwpx\"; filename*=UTF-8''{quote(title)}.hwpx"
     return Response(

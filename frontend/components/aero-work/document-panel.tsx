@@ -12,6 +12,7 @@ import { getCsrfCookie } from '@/lib/cookies';
 export function DocumentPanel() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [format, setFormat] = useState('onepage');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export function DocumentPanel() {
     setError(null);
     setDone(null);
     try {
-      const blob = await generateAeroWorkHwpx({ title: title.trim(), body }, getCsrfCookie());
+      const blob = await generateAeroWorkHwpx({ title: title.trim(), body, format }, getCsrfCookie());
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -57,6 +58,26 @@ export function DocumentPanel() {
       ) : null}
 
       <div className="rounded-xl border border-line-subtle bg-surface-base p-4">
+        <div className="mb-2 flex flex-wrap gap-1">
+          {[
+            ['onepage', '1페이지'],
+            ['official', '시행문'],
+            ['full', '풀버전'],
+            ['email', '이메일'],
+            ['freeform', '임의형식'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFormat(value)}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                format === value ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2 hover:bg-accent-soft'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}

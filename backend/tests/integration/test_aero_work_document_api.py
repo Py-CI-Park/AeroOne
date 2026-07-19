@@ -34,3 +34,16 @@ def test_document_generates_valid_hwpx_and_records(csrf_client) -> None:
     activities = csrf_client.get('/api/v1/aero-work/activity').json()['activities']
     assert activities[0]['kind'] == 'document.generate'
     assert '출장 결과 보고' in activities[0]['summary']
+
+
+def test_official_format_applies_hierarchy(csrf_client) -> None:
+    resp = csrf_client.post(
+        '/api/v1/aero-work/document/hwpx',
+        json={'title': '협조 요청', 'body': '자료 제출 협조\n기한 엄수', 'format': 'official'},
+    )
+    assert resp.status_code == 200, resp.text
+    section = zipfile.ZipFile(io.BytesIO(resp.content)).read('Contents/section0.xml').decode('utf-8')
+    assert '수신' in section
+    assert '제목' in section
+    assert '1. 자료 제출 협조' in section
+    assert '끝.' in section
