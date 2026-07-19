@@ -20,7 +20,8 @@ from app.modules.aero_work.schedule_service import ScheduleService
 from app.modules.aero_work.schemas import EventResponse
 from app.modules.aero_work.version_ranker import mark_latest
 from app.modules.ai.schemas import AiChatMessage
-from app.modules.ai.service import OllamaClient, OllamaError
+from app.modules.ai.provider_config_service import ProviderConfigService
+from app.modules.ai.service import AiChatService, OllamaClient, OllamaError
 
 _SYNTHESIS_CONTEXT_BUDGET = 8000
 _SYNTHESIS_SYSTEM = (
@@ -29,8 +30,13 @@ _SYNTHESIS_SYSTEM = (
 )
 
 
-def default_synthesize(settings: Settings, query: str, hits: list[dict]) -> str:
-    """검색 근거를 로컬 LLM 으로 요약해 출처 표기가 붙은 답변을 만든다(실패 시 빈 문자열)."""
+def default_synthesize(settings: Settings, query: str, hits: list[dict], db: Session | None = None) -> str:
+    """검색 근거를 LLM 으로 요약해 출처 표기가 붙은 답변을 만든다(실패 시 빈 문자열).
+
+    AeroOne provider 시스템을 따른다: ``db`` 가 있으면 AiChatService + ProviderConfigService 로
+    관리자가 선택한 provider(로컬 Ollama 또는 **OpenAI 호환 연결**)로 디스패치하고, 없을 때만
+    env Ollama 로 폴백한다(AeroAI 채팅과 동일한 계약).
+    """
 
     if not settings.ai_features_enabled or not hits:
         return ''
@@ -49,6 +55,10 @@ def default_synthesize(settings: Settings, query: str, hits: list[dict]) -> str:
         AiChatMessage(role='user', content=f'질문: {query}\n\n' + '\n\n'.join(parts)),
     ]
     try:
+        if db is not None:
+            service = AiChatService(settings, db, ProviderConfigService(db, settings))
+            answer, _ = service.chat(messages, [], False, 0)
+            return answer.strip()
         return OllamaClient(settings).chat(messages).strip()
     except OllamaError:
         return ''
@@ -84,7 +94,11 @@ class OrchestratorService:
         self.settings = settings
         self.user_id = user_id
         self.embedder = embedder if embedder is not None else OllamaEmbedder(settings)
-        self.synthesizer = synthesizer if synthesizer is not None else default_synthesize
+        self.synthesizer = (
+            synthesizer
+            if synthesizer is not None
+            else (lambda s, q, h: default_synthesize(s, q, h, db=db))
+        )
 
     def run(self, utterance: str, *, now: datetime | None = None) -> list[dict]:
         now = now or datetime.now()
