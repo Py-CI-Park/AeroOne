@@ -18,6 +18,43 @@ from app.modules.aero_work.intent_router import Intent, classify
 from app.modules.aero_work.knowledge_service import KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleService
 from app.modules.aero_work.schemas import EventResponse
+from app.modules.aero_work.version_ranker import mark_latest
+from app.modules.ai.schemas import AiChatMessage
+from app.modules.ai.service import OllamaClient, OllamaError
+
+_SYNTHESIS_CONTEXT_BUDGET = 8000
+_SYNTHESIS_SYSTEM = (
+    '너는 폐쇄망 업무 비서다. 아래 [근거]만 사용해 한국어로 간결히 답하고, 관련 문장 끝에 '
+    '[근거 N] 으로 출처를 표기하라. 근거에 없는 내용은 지어내지 말고 "근거를 찾지 못했습니다"라고 답하라.'
+)
+
+
+def default_synthesize(settings: Settings, query: str, hits: list[dict]) -> str:
+    """검색 근거를 로컬 LLM 으로 요약해 출처 표기가 붙은 답변을 만든다(실패 시 빈 문자열)."""
+
+    if not settings.ai_features_enabled or not hits:
+        return ''
+    parts: list[str] = []
+    budget = _SYNTHESIS_CONTEXT_BUDGET
+    for index, hit in enumerate(hits[:5], 1):
+        piece = f'[근거 {index}] {hit.get("folder_name")}/{hit.get("rel_path")}\n{hit.get("content", "")}'
+        if len(piece) > budget:
+            piece = piece[:budget]
+        parts.append(piece)
+        budget -= len(piece)
+        if budget <= 0:
+            break
+    messages = [
+        AiChatMessage(role='system', content=_SYNTHESIS_SYSTEM),
+        AiChatMessage(role='user', content=f'질문: {query}\n\n' + '\n\n'.join(parts)),
+    ]
+    try:
+        return OllamaClient(settings).chat(messages).strip()
+    except OllamaError:
+        return ''
+    except Exception:  # noqa: BLE001 — 합성 실패는 답변 없이 근거만 제공(치명 아님)
+        return ''
+
 
 HELP_TEXTS = {
     '문서작성': '문서작성 탭에서 제목·본문을 적어 HWPX 로 내려받거나, 대화에서 "…보고서로 작성해줘"라고 말하면 됩니다.',
@@ -34,10 +71,20 @@ def _format_when(value: datetime, has_time: bool) -> str:
 
 
 class OrchestratorService:
-    def __init__(self, db: Session, settings: Settings, user_id: int) -> None:
+    def __init__(
+        self,
+        db: Session,
+        settings: Settings,
+        user_id: int,
+        *,
+        embedder: OllamaEmbedder | None = None,
+        synthesizer=None,
+    ) -> None:
         self.db = db
         self.settings = settings
         self.user_id = user_id
+        self.embedder = embedder if embedder is not None else OllamaEmbedder(settings)
+        self.synthesizer = synthesizer if synthesizer is not None else default_synthesize
 
     def run(self, utterance: str, *, now: datetime | None = None) -> list[dict]:
         now = now or datetime.now()
@@ -107,15 +154,27 @@ class OrchestratorService:
 
     def _knowledge(self, intent: Intent, now: datetime) -> dict:
         query = intent.slots.get('query', intent.raw)
-        service = KnowledgeService(self.db, OllamaEmbedder(self.settings))
+        service = KnowledgeService(self.db, self.embedder)
         try:
             hits = service.search(query, top_k=5)
         except EmbeddingUnavailable:
-            return {'kind': 'knowledge', 'summary': '지식 검색을 쓰려면 로컬 Ollama 임베딩 서버가 필요합니다.', 'hits': []}
+            return {
+                'kind': 'knowledge',
+                'summary': '지식 검색을 쓰려면 로컬 Ollama 임베딩 서버가 필요합니다.',
+                'hits': [],
+                'answer': '',
+            }
+        mark_latest(hits)
         record_activity(self.db, self.user_id, 'knowledge.search', f'지식 검색 "{query}" — {len(hits)}건')
+        answer = ''
+        if hits:
+            try:
+                answer = self.synthesizer(self.settings, query, hits)
+            except Exception:  # noqa: BLE001 — 합성 실패는 근거만 제공
+                answer = ''
         summary = (
             f'지식폴더에서 근거 {len(hits)}건을 찾았습니다.'
             if hits
             else '지식폴더에서 근거를 찾지 못했습니다. 폴더 등록·색인을 확인하세요.'
         )
-        return {'kind': 'knowledge', 'summary': summary, 'hits': hits}
+        return {'kind': 'knowledge', 'summary': summary, 'hits': hits, 'answer': answer}

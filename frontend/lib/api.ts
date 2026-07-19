@@ -1170,6 +1170,7 @@ export type KnowledgeSearchHit = {
   chunk_index: number;
   content: string;
   score: number;
+  is_latest?: boolean;
 };
 
 export type KnowledgeSearchResponse = {
@@ -1300,6 +1301,7 @@ export type OrchestrateResult = {
   hits: KnowledgeSearchHit[];
   document: { format: string; title: string; content: string } | null;
   feature: string | null;
+  answer?: string;
 };
 
 export async function orchestrateAeroWork(utterance: string, csrfToken: string) {

@@ -299,6 +299,7 @@ def orchestrate(
             hits=[SearchHit(**hit) for hit in item.get('hits', [])],
             document=DocumentIntent(**item['document']) if item.get('document') else None,
             feature=item.get('feature'),
+            answer=item.get('answer', ''),
         )
         for item in raw_results
     ]

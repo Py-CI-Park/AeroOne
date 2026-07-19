@@ -136,6 +136,10 @@ export function WorkChatPanel() {
                     </ul>
                   ) : null}
 
+                  {result.answer ? (
+                    <p className="mt-2 whitespace-pre-wrap rounded-lg bg-accent-soft px-3 py-2 text-sm leading-relaxed text-ink-1">{result.answer}</p>
+                  ) : null}
+
                   {result.hits.length > 0 ? (
                     <ul className="mt-2 space-y-1">
                       {result.hits.map((hit, hitIndex) => (
@@ -143,6 +147,7 @@ export function WorkChatPanel() {
                           <div className="flex items-center gap-2 text-[11px] text-ink-3">
                             <span className="font-medium text-ink-2">{hit.folder_name}</span>
                             <span className="font-mono">{hit.rel_path}</span>
+                            {hit.is_latest ? <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">최신본</span> : null}
                             <span className="ml-auto text-accent">유사도 {hit.score.toFixed(3)}</span>
                           </div>
                           <p className="mt-0.5 line-clamp-2 text-xs text-ink-1">{hit.content}</p>

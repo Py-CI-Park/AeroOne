@@ -55,6 +55,7 @@ class SearchHit(BaseModel):
     chunk_index: int
     content: str
     score: float
+    is_latest: bool = False
 
 
 class SearchResponse(BaseModel):
@@ -150,6 +151,7 @@ class OrchestrateResult(BaseModel):
     hits: list[SearchHit] = Field(default_factory=list)
     document: DocumentIntent | None = None
     feature: str | None = None
+    answer: str = ''
 
 
 class OrchestrateResponse(BaseModel):
