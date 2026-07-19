@@ -6,6 +6,7 @@ service_modules 카드 노출은 후속(P0/P5) 범위이며, 여기서는 인증
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from urllib.parse import quote
 
@@ -23,6 +24,8 @@ from app.modules.aero_work.schedule_service import ScheduleError, ScheduleServic
 from app.modules.aero_work.orchestrator_service import OrchestratorService
 from app.modules.aero_work.schemas import (
     ActivityListResponse,
+    ChatHistoryItem,
+    ChatHistoryResponse,
     ActivityResponse,
     EventCreateRequest,
     EventListResponse,
@@ -322,7 +325,6 @@ def orchestrate(
     owner = _require_user(user)
     service = OrchestratorService(db, settings, owner.id)
     raw_results = service.run(payload.utterance)
-    db.commit()
     results = [
         OrchestrateResult(
             kind=item['kind'],
@@ -335,4 +337,37 @@ def orchestrate(
         )
         for item in raw_results
     ]
+    # 업무대화 영속화 — 새로고침해도 세션 흐름이 남는다(소유자 스코프).
+    db.add(
+        aero_work_models.AeroWorkChatMessage(
+            user_id=owner.id,
+            utterance=payload.utterance,
+            results_json=json.dumps([r.model_dump(mode='json') for r in results], ensure_ascii=False),
+        )
+    )
+    db.commit()
     return OrchestrateResponse(utterance=payload.utterance, results=results)
+
+
+@router.get('/chat/history', response_model=ChatHistoryResponse)
+def chat_history(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> ChatHistoryResponse:
+    owner = _require_user(user)
+    rows = (
+        db.query(aero_work_models.AeroWorkChatMessage)
+        .filter(aero_work_models.AeroWorkChatMessage.user_id == owner.id)
+        .order_by(aero_work_models.AeroWorkChatMessage.created_at.desc(), aero_work_models.AeroWorkChatMessage.id.desc())
+        .limit(limit)
+        .all()
+    )
+    items = []
+    for row in rows:
+        try:
+            results = [OrchestrateResult(**item) for item in json.loads(row.results_json)]
+        except (ValueError, TypeError):
+            results = []
+        items.append(ChatHistoryItem(id=row.id, utterance=row.utterance, results=results, created_at=row.created_at))
+    return ChatHistoryResponse(items=items)

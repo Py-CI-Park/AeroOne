@@ -122,3 +122,17 @@ class AeroWorkActivity(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
     )
+
+
+class AeroWorkChatMessage(Base):
+    """업무대화(오케스트레이션) 교환 1건 — 발화 + 실행 결과(JSON)를 소유자 스코프로 영속화."""
+
+    __tablename__ = 'aero_work_chat_messages'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    utterance: Mapped[str] = mapped_column(Text, nullable=False)
+    results_json: Mapped[str] = mapped_column(Text, nullable=False, server_default='[]')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
+    )

@@ -57,3 +57,14 @@ def test_knowledge_intent_returns_gracefully(csrf_client) -> None:
     results = _orchestrate(csrf_client, '예산 편성 근거 찾아줘')
     assert results[0]['kind'] == 'knowledge'
     assert results[0]['summary']
+
+
+def test_chat_history_persists_exchanges(csrf_client, client) -> None:
+    _orchestrate(csrf_client, '내일 오전 9시 히스토리 회의 등록해줘')
+
+    history = csrf_client.get('/api/v1/aero-work/chat/history')
+    assert history.status_code == 200, history.text
+    items = history.json()['items']
+    assert items and items[0]['utterance'] == '내일 오전 9시 히스토리 회의 등록해줘'
+    assert items[0]['results'][0]['kind'] == 'schedule.create'
+    assert items[0]['results'][0]['events'][0]['title'].startswith('히스토리')

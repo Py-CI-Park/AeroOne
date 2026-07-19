@@ -181,3 +181,14 @@ class WikiFamily(BaseModel):
 
 class WikiResponse(BaseModel):
     families: list[WikiFamily]
+
+
+class ChatHistoryItem(BaseModel):
+    id: int
+    utterance: str
+    results: list[OrchestrateResult]
+    created_at: datetime
+
+
+class ChatHistoryResponse(BaseModel):
+    items: list[ChatHistoryItem]

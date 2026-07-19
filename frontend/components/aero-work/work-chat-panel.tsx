@@ -1,8 +1,9 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import {
+  fetchAeroWorkChatHistory,
   generateAeroWorkHwpx,
   orchestrateAeroWork,
   type OrchestrateResult,
@@ -40,6 +41,22 @@ export function WorkChatPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const history = await fetchAeroWorkChatHistory(20);
+        if (alive && history.items.length > 0) {
+          setLog(history.items.map((item) => ({ id: item.id, utterance: item.utterance, results: item.results })));
+        }
+      } catch {
+        // 히스토리 로드는 best-effort — 실패해도 새 대화는 가능.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
   const submit = async (value: string) => {
     const text = value.trim();
     if (!text) {

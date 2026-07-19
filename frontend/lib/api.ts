@@ -1340,3 +1340,10 @@ export async function orchestrateAeroWork(utterance: string, csrfToken: string) 
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
+
+export async function fetchAeroWorkChatHistory(limit = 20) {
+  return browserFetch<{ items: { id: number; utterance: string; results: OrchestrateResult[]; created_at: string }[] }>(
+    `/api/frontend/aero-work/chat/history?limit=${limit}`,
+    { method: 'GET' },
+  );
+}
