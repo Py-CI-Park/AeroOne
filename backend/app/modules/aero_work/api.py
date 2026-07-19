@@ -7,6 +7,7 @@ service_modules 카드 노출은 후속(P0/P5) 범위이며, 여기서는 인증
 from __future__ import annotations
 
 from datetime import datetime
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.activity_service import ActivityService, record_activity
+from app.modules.aero_work.hwpx_generator import build_hwpx
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
 from app.modules.aero_work.schemas import (
@@ -23,6 +25,7 @@ from app.modules.aero_work.schemas import (
     EventCreateRequest,
     EventListResponse,
     EventResponse,
+    DocumentRequest,
     EventUpdateRequest,
     FolderListResponse,
     FolderRegisterRequest,
@@ -249,3 +252,23 @@ def list_activity(
     service = ActivityService(db)
     activities = service.list_activities(owner.id, limit=limit)
     return ActivityListResponse(activities=[ActivityResponse.from_model(item) for item in activities])
+
+
+# ---- 문서작성(HWPX) ----
+@router.post('/document/hwpx', dependencies=[Depends(require_csrf)])
+def generate_hwpx(
+    payload: DocumentRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    title = (payload.title or '').strip() or '무제'
+    data = build_hwpx(title, payload.body)
+    record_activity(db, owner.id, 'document.generate', f'HWPX 문서 생성 "{title}"')
+    db.commit()
+    disposition = f"attachment; filename=\"document.hwpx\"; filename*=UTF-8''{quote(title)}.hwpx"
+    return Response(
+        content=data,
+        media_type='application/hwp+zip',
+        headers={'Content-Disposition': disposition},
+    )

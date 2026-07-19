@@ -1,6 +1,6 @@
 # Aero Work — gongmuwon 기능의 AeroOne 네이티브 재구현 계획 (다음 버전)
 
-- 상태: **P0~P2 구현됨(`aero-work-dev` 브랜치, 1.17.0 태그 기준 분기)** · P3~P5 미착수 — 1.17.x 릴리스는 게시 완료(§4 참고). 상세 진행은 §4 단계 계획.
+- 상태: **P0~P4 구현 완료 + P3 기본 구현(`aero-work-dev` 브랜치, 1.17.0 태그 기준 분기)** — 7메뉴(홈 브리핑·업무대화·일정·문서작성·지식폴더·실행기록·환경설정) 모두 기능 동작. 잔여: 알림(폐쇄망 in-app 배지)·HWPX 서식 템플릿·P5(통합/성능/phase 보고서/릴리스 스코프 결정). 1.17.x 릴리스는 게시 완료. 상세는 §4.
 - 대체 관계: 본 문서는 [`gongmuwon-integration-review.md`](gongmuwon-integration-review.md) 의 "외부 앱 내장" 권고를 **대체**한다. 운영자 결정에 따라 방향이 **"외부 gongmuwon 연동" → "AeroOne 안에 네이티브 재구현(Aero Work)"** 으로 바뀌었다.
 - 목표: gongmuwon(공무원)의 전 기능을, **더 개선된 React 시스템**으로 AeroOne 안에 `Aero Work` 라는 이름의 워크스페이스 모듈로 구현한다.
 - 전제: AI 는 **폐쇄망 Ollama + OpenAI 호환 API 키가 이미 AeroOne 에 있음** → gongmuwon 의 6.3GB **AI 팩은 반입/번들하지 않는다**. AeroOne 의 기존 AI provider(Ollama·OpenAI 호환, DPAPI 보호 키, egress 정책)를 그대로 재사용한다.
@@ -53,7 +53,7 @@
 - **P0** ✅ 구현됨(`e68e3b7`, aero-work-dev): 스캐폴딩 — `/aero-work` 셸 + 6메뉴 IA + 홈 브리핑.
 - **P1** ✅ 구현됨(`818aef0`): 업무대화 — AeroAI(`AiChatWorkspace`) 재사용. 세션 중심 이어가기 링크는 후속.
 - **P2** ✅ 구현됨(`59939a4`): 지식폴더 — 신규 `app/modules/aero_work`(폴더/파일/청크 3층 + 마이그레이션 `20260719_0020`), in-place 스캔 + Ollama `nomic-embed-text` 임베딩(urllib, AeroAI 경로 재사용) + 순수 Python 코사인 검색 + 시그니처(mtime+size) 증분 동기화. `KnowledgePanel`(등록·재색인·삭제·검색) + BFF 프록시. 검증: 단위 6건 + 마이그레이션 up/down + **실 Ollama 한국어 의미검색 E2E 3/3 정답**. 업무 위키 자동 구성, PDF/DOCX/HWPX 본문 추출, 백그라운드 색인, 세분 `aerowork.*` 권한·카드는 후속.
-- **P3**: 문서작성 — HWPX 생성(시행문/1p 우선) + 미리보기→HWPX. 임의형식은 후속.
+- **P3** ✅ (기본 구현): 문서작성 — 제목·본문(한 줄=한 문단)을 미리보고 **HWPX(한글, OWPML)로 생성·다운로드**. `hwpx_generator`(mimetype stored 선두 + version/settings/header/section0/content.hpf + META-INF 를 ZIP+XML 로 직접 조립, 외부 의존 0) + REST(CSRF, `document.generate` 기록) + `DocumentPanel`(미리보기 + 다운로드). 검증: 구조 유효성 단위 6(유효 ZIP·mimetype·필수 파트·XML well-formed·본문 주입·이스케이프) + 통합 3(익명 401·CSRF 403·다운로드+기록). **한컴 실기 렌더 호환은 한컴 설치 PC에서 확인 필요(실험적)** — 본 환경엔 한컴 없음. 시행문/1p 서식 템플릿·양식 슬롯 채움·임의형식은 후속.
 - **P4**: (완료, 알림 제외) **일정 ✅** — 이벤트 CRUD + 기간 겹침(`20260719_0021` + `ScheduleService` + `SchedulePanel`). **홈 브리핑 ✅** — 일정+지식 요약(`HomeBriefing`). **실행기록 ✅** — 워크스페이스 행위를 각 라우트가 자동 기록(`20260719_0022` + `AeroWorkActivity` + `record_activity` 훅 + `ActivityLogPanel`, 소유자 스코프). **환경설정 ✅** — 로컬 AI 연결 상태 라이브 확인(`fetchAiStatus` 재사용) + 전체 사용법(`HelpManualButton` 재사용), 프런트 전용. 검증: 일정 단위 5+통합 5, 실행기록 단위 4+통합 3, tsc 0. **알림(폐쇄망 in-app 배지)만 후속**.
 - **P5**: 통합 UX·성능 예산·문서·회귀 테스트 + 각 단계 phase 보고서(minor/major 는 phase 보고서 필수, AGENTS §9.6).
 

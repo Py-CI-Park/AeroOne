@@ -1276,3 +1276,18 @@ export async function fetchAeroWorkActivity(limit = 50) {
     { method: 'GET' },
   );
 }
+
+// ---- Aero Work 문서작성(HWPX) (P3) ----
+export async function generateAeroWorkHwpx(payload: { title: string; body: string }, csrfToken: string): Promise<Blob> {
+  const response = await fetch('/api/frontend/aero-work/document/hwpx', {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
+  }
+  return response.blob();
+}

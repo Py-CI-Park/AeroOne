@@ -126,3 +126,8 @@ class ActivityResponse(BaseModel):
 
 class ActivityListResponse(BaseModel):
     activities: list[ActivityResponse]
+
+
+class DocumentRequest(BaseModel):
+    title: str = Field(default='', max_length=300)
+    body: str = Field(default='', max_length=100000)
