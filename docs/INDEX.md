@@ -97,6 +97,7 @@
 | 1.13.1 정식 Release | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | 1.13.0을 움직이지 않는 immutable historical patch로 보존 | `1.13.1` immutable historical |
 | 1.13.2 정식 immutable Release | [`reports/phase-27-v1-13-0-release-candidate.md`](reports/phase-27-v1-13-0-release-candidate.md) | Git tag inspection 실패를 `git-tag-inspection-failed`로 fail closed; package fail-closed behavior와 QA contract seam만 변경하고 제품 feature behavior는 변경하지 않음 | `1.13.2` immutable |
 | v1.13.0 과거 WIP | [`reports/v1-13-0-development-status-2026-07-11.md`](reports/v1-13-0-development-status-2026-07-11.md) | Task 3 중단 당시 역사 기록. 현재 상태는 단계 27 보고서와 최신 SHA artifacts를 기준으로 한다. | `superseded` |
+| Aero Work G001~G007(진행중 워크트리 `aero-work-dev`) | [`reports/aero-work-ultragoal-g1-g7.md`](reports/aero-work-ultragoal-g1-g7.md) | SSE 스트리밍·분류체계 마법사+업무 허브·FTS5 키워드검색+백그라운드 재색인·종이 미리보기+수정 지시 재생성·업무대화 첨부+LLM 보조 라우팅(G007 Playwright E2E 진행 중) — major `2.0.0` 후보, 릴리스 선결 게이트(한컴 실기 HWPX 검증·`main` 병합/태그/Release는 운영자 액션) 대기. 계획: [`dev_plan/aero-work-full-parity-plan.md`](dev_plan/aero-work-full-parity-plan.md) | `f085ac0` |
 
 ---
 
