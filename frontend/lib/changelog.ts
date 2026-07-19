@@ -18,6 +18,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.17.1',
+    date: '2026-07-18',
+    items: [
+      '1.17.0 과 동일한 제품 tree 를 유지한 forward-only 재게시 패치임. 1.17.0 오프라인 ZIP asset 을 GitHub Release 에 붙이기 전 릴리스가 immutable 로 굳어 태그 1.17.0 을 재사용할 수 없어, 리포지토리 forward-only 정책대로 1.17.1 로 다시 게시함(코드 변경 없음, 버전 표기만 증가).',
+    ],
+  },
+  {
     version: '1.17.0',
     date: '2026-07-17',
     items: [
