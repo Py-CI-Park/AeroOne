@@ -202,3 +202,11 @@ class DocumentComposeRequest(BaseModel):
 
 class DocumentComposeResponse(BaseModel):
     paragraphs: list[str]
+
+
+class PrefResponse(BaseModel):
+    llm_mode: str
+
+
+class PrefUpdateRequest(BaseModel):
+    llm_mode: str = Field(pattern='^(default|local)$')

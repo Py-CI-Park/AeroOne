@@ -136,3 +136,15 @@ class AeroWorkChatMessage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
     )
+
+
+class AeroWorkUserPref(Base):
+    """사용자별 Aero Work 환경설정(LLM 프로필 등) — user_id 가 PK."""
+
+    __tablename__ = 'aero_work_user_prefs'
+
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    llm_mode: Mapped[str] = mapped_column(String(20), nullable=False, server_default='default')
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
