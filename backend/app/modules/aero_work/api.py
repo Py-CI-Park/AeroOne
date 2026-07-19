@@ -695,7 +695,12 @@ def compose_document_stream(
             if kind == 'delta':
                 yield _sse_frame('delta', value)
             elif kind == 'done':
-                yield _sse_frame('done', {'paragraphs': value})
+                # P3 잔여 해소 — 스트리밍 주경로에서도 절단 신호를 내려 '일부만 반영됨' 안내가
+                # 비스트리밍 폴백에서만 뜨는 비대칭을 없앤다(프레임에 truncated 추가, 후방호환).
+                yield _sse_frame('done', {
+                    'paragraphs': value,
+                    'truncated': compose_truncated(payload.instruction, payload.previous_paragraphs),
+                })
             elif kind == 'error':
                 yield _sse_frame('error', value)
 

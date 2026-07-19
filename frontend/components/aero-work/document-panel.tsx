@@ -185,8 +185,8 @@ export function DocumentPanel() {
           onDelta: () => {
             // 수정 지시 재생성은 완료본만 반영한다(부분 델타로 본문을 덮어쓰지 않음).
           },
-          onDone: (revised) => {
-            applyRevisionResult(revised, previousParagraphs.length, false);
+          onDone: (revised, truncated) => {
+            applyRevisionResult(revised, previousParagraphs.length, truncated ?? false);
           },
           onError: () => {
             fallbackPending = (async () => {
@@ -260,7 +260,7 @@ export function DocumentPanel() {
         <div className="mt-3 flex items-center gap-2">
           <button
             type="submit"
-            disabled={busy || (!title.trim() && !body.trim())}
+            disabled={busy || revising || (!title.trim() && !body.trim())}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-on disabled:opacity-50"
           >
             {busy ? '생성 중…' : 'HWPX 생성·다운로드'}
@@ -428,7 +428,7 @@ export function DocumentPanel() {
           </div>
           <button
             type="button"
-            disabled={busy || composing || (!title.trim() && !body.trim())}
+            disabled={busy || composing || revising || (!title.trim() && !body.trim())}
             onClick={() => {
               void (async () => {
                 setError(null);

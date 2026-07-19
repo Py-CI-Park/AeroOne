@@ -1546,10 +1546,10 @@ function dispatchAeroWorkAnswerFrame(frame: AiSseFrame, handlers: AeroWorkAnswer
   }
 }
 
-// 문서 AI 내용 생성 스트림: delta(N) -> done(1) data={"paragraphs": [...]}, 실패 시 error.
+// 문서 AI 내용 생성 스트림: delta(N) -> done(1) data={"paragraphs": [...], "truncated": bool}, 실패 시 error.
 export interface AeroWorkComposeStreamHandlers {
   onDelta: (chunk: string) => void;
-  onDone: (paragraphs: string[]) => void;
+  onDone: (paragraphs: string[], truncated?: boolean) => void;
   onError: (message: string) => void;
 }
 
@@ -1597,8 +1597,8 @@ function dispatchAeroWorkComposeFrame(frame: AiSseFrame, handlers: AeroWorkCompo
       const chunk = JSON.parse(frame.data) as string;
       handlers.onDelta(chunk);
     } else if (frame.event === 'done') {
-      const parsed = JSON.parse(frame.data) as { paragraphs: string[] };
-      handlers.onDone(parsed.paragraphs);
+      const parsed = JSON.parse(frame.data) as { paragraphs: string[]; truncated?: boolean };
+      handlers.onDone(parsed.paragraphs, parsed.truncated ?? false);
     } else if (frame.event === 'error') {
       const message = JSON.parse(frame.data) as string;
       handlers.onError(message);

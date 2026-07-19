@@ -170,7 +170,7 @@ def test_compose_stream_frame_order_delta_then_done(csrf_client, monkeypatch: py
     frames = _sse_frames(resp.text)
     kinds = [kind for kind, _ in frames]
     assert kinds == ['delta', 'delta', 'done']
-    assert frames[-1][1] == {'paragraphs': ['목표를 설정함', '후속 조치를 수립함']}
+    assert frames[-1][1] == {'paragraphs': ['목표를 설정함', '후속 조치를 수립함'], 'truncated': False}
 
 
 def test_compose_stream_error_frame_when_stream_fails(csrf_client, monkeypatch: pytest.MonkeyPatch) -> None:
