@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AiChatWorkspace } from '@/components/ai/ai-chat-workspace';
 import { KnowledgePanel } from '@/components/aero-work/knowledge-panel';
 import { SchedulePanel } from '@/components/aero-work/schedule-panel';
+import { HomeBriefing } from '@/components/aero-work/home-briefing';
 
 // Aero Work — gongmuwon(공무원) 워크스페이스의 AeroOne 네이티브 재구현 (P0 스캐폴딩).
 // gongmuwon 과 동일한 6메뉴 IA(업무대화·일정·문서작성·내 지식폴더·실행기록·환경설정) + 홈
@@ -68,7 +69,9 @@ export function AeroWorkShell() {
         </div>
 
         {view === 'home' ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="mt-6 space-y-6">
+            <HomeBriefing onOpenSchedule={() => setView('schedule')} onOpenKnowledge={() => setView('knowledge')} />
+            <div className="grid gap-4 md:grid-cols-2">
             {NAV.filter((item) => item.key !== 'home').map((item) => (
               <button
                 key={item.key}
@@ -81,6 +84,7 @@ export function AeroWorkShell() {
                 <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">{item.phase} · {item.reuse}</span>
               </button>
             ))}
+            </div>
           </div>
         ) : view === 'chat' ? (
           <div className="mt-4">
