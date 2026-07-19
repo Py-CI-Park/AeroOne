@@ -6,6 +6,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.modules.aero_work.attachments import (
+    ATTACHMENT_MAX_COUNT,
+    ATTACHMENT_MAX_TOTAL_CHARS,
+    AeroWorkAttachment,
+    extract_attachment_text,
+)
 from app.modules.aero_work.models import KnowledgeFolder
 
 
@@ -143,6 +149,16 @@ class OrchestrateRequest(BaseModel):
     utterance: str = Field(min_length=1, max_length=2000)
     session_id: int | None = None
     synthesize: bool = True
+    # G006: AeroAI 첨부 계약(허용 확장자·개수/총량 상한) 재사용 — 후방호환을 위해 optional·기본 빈 리스트.
+    attachments: list[AeroWorkAttachment] = Field(default_factory=list, max_length=ATTACHMENT_MAX_COUNT)
+
+    @field_validator('attachments')
+    @classmethod
+    def _check_attachment_total_chars(cls, value: list[AeroWorkAttachment]) -> list[AeroWorkAttachment]:
+        total = sum(len(extract_attachment_text(a)) for a in value)
+        if total > ATTACHMENT_MAX_TOTAL_CHARS:
+            raise ValueError(f'첨부 내용이 총 {ATTACHMENT_MAX_TOTAL_CHARS}자를 초과합니다.')
+        return value
 
 
 class DocumentIntent(BaseModel):
@@ -159,6 +175,9 @@ class OrchestrateResult(BaseModel):
     document: DocumentIntent | None = None
     feature: str | None = None
     answer: str = ''
+    # G006: 규칙 확정('rule') vs knowledge 폴백에서 LLM 2차 분류가 개입('llm') 표시.
+    # optional·기본 None — 기존 클라이언트는 이 필드를 몰라도 그대로 동작(후방호환).
+    routed_by: str | None = None
 
 
 class OrchestrateResponse(BaseModel):

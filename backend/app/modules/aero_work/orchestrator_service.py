@@ -13,8 +13,17 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.modules.aero_work.activity_service import record_activity
+from app.modules.aero_work.attachments import AeroWorkAttachment, build_attachment_block
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
-from app.modules.aero_work.intent_router import Intent, classify
+from app.modules.aero_work.intent_router import (
+    Intent,
+    classify,
+    classify_with_llm,
+    detect_document_format,
+    detect_feature,
+    extract_title,
+)
+from app.modules.aero_work.korean_datetime import parse_datetime
 from app.modules.aero_work.knowledge_service import KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleService
 from app.modules.aero_work.prefs_service import get_llm_mode
@@ -93,6 +102,33 @@ def _format_when(value: datetime, has_time: bool) -> str:
     return value.strftime('%m월 %d일 %H:%M') if has_time else value.strftime('%m월 %d일')
 
 
+def _llm_category_to_intent(category: str, text: str, now: datetime) -> Intent:
+    """2차 LLM 분류(schedule/document/knowledge/help) 결과를 실행 가능한 Intent 로 옮긴다.
+
+    LLM 은 범주 하나만 돌려주고 슬롯(날짜·양식·기능명)은 없다 — classify() 의 개별 감지기
+    (extract_title/detect_document_format/detect_feature/parse_datetime)를 그대로 재사용해
+    항상 안전한 기본값으로 슬롯을 채운다. schedule 은 발화에서 날짜·시각을 못 찾으면(원래
+    규칙도 실패했던 이유와 동일) 이벤트를 지어내지 않고 schedule.list 로 안전 강등한다.
+    """
+
+    if category == 'document':
+        return Intent(
+            'document', text, {'format': detect_document_format(text), 'title': extract_title(text) or '무제'}
+        )
+    if category == 'schedule':
+        started_at, has_time = parse_datetime(text, now)
+        if started_at is not None:
+            return Intent(
+                'schedule.create',
+                text,
+                {'starts_at': started_at, 'has_time': has_time, 'title': extract_title(text) or '새 일정'},
+            )
+        return Intent('schedule.list', text, {})
+    if category == 'help':
+        return Intent('help', text, {'feature': detect_feature(text)})
+    return Intent('knowledge', text, {'query': text})
+
+
 class OrchestratorService:
     def __init__(
         self,
@@ -102,6 +138,7 @@ class OrchestratorService:
         *,
         embedder: OllamaEmbedder | None = None,
         synthesizer=None,
+        llm_classify=None,
     ) -> None:
         self.db = db
         self.settings = settings
@@ -112,10 +149,32 @@ class OrchestratorService:
             if synthesizer is not None
             else (lambda s, q, h: default_synthesize(s, q, h, db=db, force_local=get_llm_mode(db, user_id) == 'local'))
         )
+        # G006: 규칙이 knowledge 로 폴백했을 때만 쓰는 2차 LLM 분류(주입 가능 — 테스트는 실
+        # LLM 없이 결정적으로 돈다). 첨부 블록은 run() 호출마다 새로 조립해 인스턴스에 담는다.
+        self.llm_classify = llm_classify if llm_classify is not None else (lambda u: classify_with_llm(settings, db, u))
+        self.attachment_block = ''
 
-    def run(self, utterance: str, *, now: datetime | None = None) -> list[dict]:
+    def run(
+        self, utterance: str, *, now: datetime | None = None, attachments: list[AeroWorkAttachment] | None = None
+    ) -> list[dict]:
         now = now or datetime.now()
-        return [self._execute(intent, now) for intent in classify(utterance, now)]
+        self.attachment_block = build_attachment_block(attachments or [])
+        intents = classify(utterance, now)
+        routed_by = 'rule'
+        # 규칙이 knowledge 로 폴백한 "비확정" 케이스(단일 knowledge 인텐트)에 한해서만 2차 LLM
+        # 분류를 시도한다 — 규칙이 확정한 결과(schedule.create/list/delete·document·help, 혹은
+        # 멀티 인텐트)는 여기서 절대 LLM 을 호출하지 않는다(회귀 고정 발화표 불변 보장).
+        if len(intents) == 1 and intents[0].kind == 'knowledge':
+            routed_by = 'llm'
+            category = self.llm_classify(utterance)
+            if category != 'knowledge':
+                intents = [_llm_category_to_intent(category, (utterance or '').strip(), now)]
+        results = []
+        for intent in intents:
+            result = self._execute(intent, now)
+            result['routed_by'] = routed_by
+            results.append(result)
+        return results
 
     def _execute(self, intent: Intent, now: datetime) -> dict:
         handler = {
@@ -195,8 +254,13 @@ class OrchestratorService:
         record_activity(self.db, self.user_id, 'knowledge.search', f'지식 검색 "{query}" — {len(hits)}건')
         answer = ''
         if hits:
+            # G006: 첨부 텍스트가 있으면 합성 질의에 방어 블록으로 덧붙인다 — synthesizer 시그니처
+            # (settings, query, hits)는 그대로 두어 기존 주입 테스트와 호환한다.
+            synthesis_query = query
+            if self.attachment_block:
+                synthesis_query = f'{query}\n\n{self.attachment_block}'
             try:
-                answer = self.synthesizer(self.settings, query, hits)
+                answer = self.synthesizer(self.settings, synthesis_query, hits)
             except Exception:  # noqa: BLE001 — 합성 실패는 근거만 제공
                 answer = ''
         summary = (
