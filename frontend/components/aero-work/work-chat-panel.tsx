@@ -8,6 +8,7 @@ import {
   fetchAeroWorkChatSessions,
   generateAeroWorkHwpx,
   orchestrateAeroWork,
+  streamAeroWorkAnswer,
   type AeroWorkChatSession,
   type OrchestrateResult,
 } from '@/lib/api';
@@ -98,11 +99,35 @@ export function WorkChatPanel() {
     setBusy(true);
     setError(null);
     try {
-      const response = await orchestrateAeroWork(text, getCsrfCookie(), activeSession);
+      const response = await orchestrateAeroWork(text, getCsrfCookie(), activeSession, { synthesize: false });
       setActiveSession(response.session_id);
-      setLog((prev) => [{ id: Date.now(), utterance: text, results: response.results }, ...prev]);
+      const entryId = Date.now();
+      setLog((prev) => [{ id: entryId, utterance: text, results: response.results }, ...prev]);
       setUtterance('');
       void loadSessions();
+
+      response.results.forEach((result, resultIndex) => {
+        if (result.kind !== 'knowledge' || result.hits.length === 0) {
+          return;
+        }
+        const setResultAnswer = (updater: (previous: string | undefined) => string | undefined) => {
+          setLog((prev) =>
+            prev.map((entry) =>
+              entry.id === entryId
+                ? {
+                    ...entry,
+                    results: entry.results.map((r, i) => (i === resultIndex ? { ...r, answer: updater(r.answer) } : r)),
+                  }
+                : entry,
+            ),
+          );
+        };
+        void streamAeroWorkAnswer({ query: text }, getCsrfCookie(), {
+          onDelta: (chunk) => setResultAnswer((previous) => (previous ?? '') + chunk),
+          onDone: (answer) => setResultAnswer(() => answer),
+          onError: () => setResultAnswer(() => undefined),
+        });
+      });
     } catch {
       setError('처리 실패. 로그인 상태를 확인할 것.');
     } finally {

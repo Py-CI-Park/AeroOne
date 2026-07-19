@@ -142,6 +142,7 @@ class DocumentRequest(BaseModel):
 class OrchestrateRequest(BaseModel):
     utterance: str = Field(min_length=1, max_length=2000)
     session_id: int | None = None
+    synthesize: bool = True
 
 
 class DocumentIntent(BaseModel):

@@ -7,10 +7,12 @@ service_modules 카드 노출은 후속(P0/P5) 범위이며, 여기서는 인증
 from __future__ import annotations
 
 import json
+from collections.abc import Generator
 from datetime import datetime
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -25,6 +27,8 @@ from app.modules.aero_work.schedule_service import ScheduleError, ScheduleServic
 from app.modules.aero_work.prefs_service import get_llm_mode, set_llm_mode
 from app.modules.aero_work.knowledge_summary import SummaryUnavailable, summarize_file
 from app.modules.aero_work.orchestrator_service import OrchestratorService
+from app.modules.aero_work.streaming import stream_answer, stream_compose
+from app.modules.aero_work.version_ranker import mark_latest
 from app.modules.aero_work.schemas import (
     ActivityListResponse,
     ChatHistoryItem,
@@ -70,6 +74,10 @@ def _require_user(user: User | None) -> User:
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='로그인이 필요합니다.')
     return user
+
+
+def _sse_frame(event: str, data: object) -> str:
+    return f'event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n'
 
 
 @router.get('/knowledge/folders', response_model=FolderListResponse)
@@ -171,6 +179,43 @@ def search_knowledge(
     record_activity(db, owner.id, 'knowledge.search', f'지식 검색 "{payload.query}" — {len(hits)}건')
     db.commit()
     return result
+
+
+@router.post('/knowledge/answer/stream', dependencies=[Depends(require_csrf)])
+def answer_stream(
+    payload: SearchRequest,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> StreamingResponse:
+    """지식 근거 검색 + LLM 합성을 SSE 로 스트리밍한다(hits → delta* → done|error).
+
+    비스트리밍 ``/knowledge/search`` + ``OrchestratorService`` 합성 경로와 동일한 근거 조립을
+    쓰되, 답변을 한 번에 반환하지 않고 청크 단위로 내보낸다(기존 엔드포인트는 불변 폴백).
+    """
+
+    owner = _require_user(user)
+    service = _service(db, settings)
+    try:
+        hits = service.search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
+    except EmbeddingUnavailable as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    mark_latest(hits)
+    record_activity(db, owner.id, 'knowledge.search', f'지식 검색 "{payload.query}" — {len(hits)}건')
+    db.commit()
+    force_local = get_llm_mode(db, owner.id) == 'local'
+
+    def event_stream() -> Generator[str, None, None]:
+        yield _sse_frame('hits', [SearchHit(**hit).model_dump() for hit in hits])
+        for kind, value in stream_answer(settings, db, payload.query, hits, force_local=force_local):
+            if kind == 'delta':
+                yield _sse_frame('delta', value)
+            elif kind == 'done':
+                yield _sse_frame('done', {'answer': value})
+            elif kind == 'error':
+                yield _sse_frame('error', value)
+
+    return StreamingResponse(event_stream(), media_type='text/event-stream')
 
 
 @router.post('/knowledge/keyword-search', response_model=SearchResponse)
@@ -335,7 +380,11 @@ def orchestrate(
     user: User | None = Depends(get_optional_user),
 ) -> OrchestrateResponse:
     owner = _require_user(user)
-    service = OrchestratorService(db, settings, owner.id)
+    service = (
+        OrchestratorService(db, settings, owner.id, synthesizer=lambda s, q, h: '')
+        if not payload.synthesize
+        else OrchestratorService(db, settings, owner.id)
+    )
     raw_results = service.run(payload.utterance)
     results = [
         OrchestrateResult(
@@ -460,6 +509,40 @@ def compose_document(
     record_activity(db, owner.id, 'document.compose', f'문서 내용 생성 "{title}" — {len(paragraphs)}문장')
     db.commit()
     return DocumentComposeResponse(paragraphs=paragraphs)
+
+
+@router.post('/document/compose/stream', dependencies=[Depends(require_csrf)])
+def compose_document_stream(
+    payload: DocumentComposeRequest,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> StreamingResponse:
+    """지시 → LLM 개조식 내용 생성을 SSE 로 스트리밍한다(delta* → done|error).
+
+    비스트리밍 ``/document/compose`` 와 동일한 프롬프트 조립을 쓰되, 결과를 청크 단위로
+    내보낸다(기존 엔드포인트는 불변 폴백). 실행기록은 스트림 시작 전에 커밋한다 — 완성
+    문장 수는 스트리밍 특성상 시작 시점에 알 수 없다.
+    """
+
+    owner = _require_user(user)
+    title = (payload.title or '').strip() or '무제'
+    record_activity(db, owner.id, 'document.compose', f'문서 내용 생성 "{title}"')
+    db.commit()
+    force_local = get_llm_mode(db, owner.id) == 'local'
+
+    def event_stream() -> Generator[str, None, None]:
+        for kind, value in stream_compose(
+            settings, db, fmt=payload.format, title=title, instruction=payload.instruction, force_local=force_local
+        ):
+            if kind == 'delta':
+                yield _sse_frame('delta', value)
+            elif kind == 'done':
+                yield _sse_frame('done', {'paragraphs': value})
+            elif kind == 'error':
+                yield _sse_frame('error', value)
+
+    return StreamingResponse(event_stream(), media_type='text/event-stream')
 
 
 # ---- 환경설정(사용자 LLM 프로필) ----

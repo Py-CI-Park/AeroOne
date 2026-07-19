@@ -1342,10 +1342,19 @@ export type OrchestrateResult = {
   answer?: string;
 };
 
-export async function orchestrateAeroWork(utterance: string, csrfToken: string, sessionId?: number | null) {
+export async function orchestrateAeroWork(
+  utterance: string,
+  csrfToken: string,
+  sessionId?: number | null,
+  options?: { synthesize?: boolean },
+) {
+  const body: Record<string, unknown> = { utterance, session_id: sessionId ?? null };
+  if (options?.synthesize !== undefined) {
+    body.synthesize = options.synthesize;
+  }
   return browserFetch<{ utterance: string; session_id: number | null; results: OrchestrateResult[] }>('/api/frontend/aero-work/orchestrate', {
     method: 'POST',
-    body: JSON.stringify({ utterance, session_id: sessionId ?? null }),
+    body: JSON.stringify(body),
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
@@ -1381,6 +1390,137 @@ export async function composeAeroWorkDocument(
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
   });
+}
+
+// ---- Aero Work 지식 근거 합성/문서 AI 내용 생성 SSE 스트리밍 (G001) ----
+// AeroAI streamAiChat 과 동일한 방식(fetch + ReadableStream, EventSource 는 POST 미지원)으로
+// SSE 프레임을 소비한다. 프레임 파서(parseSseBuffer)는 계약이 동일한 순수 유틸이라 그대로
+// 재사용한다. 지식 답변: hits(0~1) -> delta(N) -> done(1), 실패 시 error.
+export interface AeroWorkAnswerStreamHandlers {
+  onHits?: (hits: KnowledgeSearchHit[]) => void;
+  onDelta: (chunk: string) => void;
+  onDone: (answer: string) => void;
+  onError: (message: string) => void;
+}
+
+export async function streamAeroWorkAnswer(
+  payload: { query: string; folder_id?: number | null; top_k?: number },
+  csrfToken: string,
+  handlers: AeroWorkAnswerStreamHandlers,
+): Promise<void> {
+  const response = await fetch('/api/frontend/aero-work/knowledge/answer/stream', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    handlers.onError(text || `지식 답변 스트림 요청 실패: ${response.status}`);
+    return;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { frames, rest } = parseSseBuffer(buffer);
+      buffer = rest;
+      for (const frame of frames) dispatchAeroWorkAnswerFrame(frame, handlers);
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      const { frames } = parseSseBuffer(`${buffer}\n\n`);
+      for (const frame of frames) dispatchAeroWorkAnswerFrame(frame, handlers);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function dispatchAeroWorkAnswerFrame(frame: AiSseFrame, handlers: AeroWorkAnswerStreamHandlers): void {
+  try {
+    if (frame.event === 'hits') {
+      const hits = JSON.parse(frame.data) as KnowledgeSearchHit[];
+      handlers.onHits?.(hits);
+    } else if (frame.event === 'delta') {
+      const chunk = JSON.parse(frame.data) as string;
+      handlers.onDelta(chunk);
+    } else if (frame.event === 'done') {
+      const parsed = JSON.parse(frame.data) as { answer: string };
+      handlers.onDone(parsed.answer);
+    } else if (frame.event === 'error') {
+      const message = JSON.parse(frame.data) as string;
+      handlers.onError(message);
+    }
+  } catch {
+    // 파싱 불가한 프레임(빈 keep-alive 등)은 조용히 무시한다.
+  }
+}
+
+// 문서 AI 내용 생성 스트림: delta(N) -> done(1) data={"paragraphs": [...]}, 실패 시 error.
+export interface AeroWorkComposeStreamHandlers {
+  onDelta: (chunk: string) => void;
+  onDone: (paragraphs: string[]) => void;
+  onError: (message: string) => void;
+}
+
+export async function streamAeroWorkCompose(
+  payload: { title: string; instruction: string; format: string },
+  csrfToken: string,
+  handlers: AeroWorkComposeStreamHandlers,
+): Promise<void> {
+  const response = await fetch('/api/frontend/aero-work/document/compose/stream', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    handlers.onError(text || `문서 내용 생성 스트림 요청 실패: ${response.status}`);
+    return;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { frames, rest } = parseSseBuffer(buffer);
+      buffer = rest;
+      for (const frame of frames) dispatchAeroWorkComposeFrame(frame, handlers);
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      const { frames } = parseSseBuffer(`${buffer}\n\n`);
+      for (const frame of frames) dispatchAeroWorkComposeFrame(frame, handlers);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function dispatchAeroWorkComposeFrame(frame: AiSseFrame, handlers: AeroWorkComposeStreamHandlers): void {
+  try {
+    if (frame.event === 'delta') {
+      const chunk = JSON.parse(frame.data) as string;
+      handlers.onDelta(chunk);
+    } else if (frame.event === 'done') {
+      const parsed = JSON.parse(frame.data) as { paragraphs: string[] };
+      handlers.onDone(parsed.paragraphs);
+    } else if (frame.event === 'error') {
+      const message = JSON.parse(frame.data) as string;
+      handlers.onError(message);
+    }
+  } catch {
+    // 파싱 불가한 프레임은 조용히 무시한다.
+  }
 }
 
 export async function fetchAeroWorkPrefs() {
