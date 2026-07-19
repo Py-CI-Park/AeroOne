@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.modules.ai.provider_config_service import ProviderConfigService
 from app.modules.ai.schemas import AiChatMessage
-from app.modules.ai.service import AiChatService, OllamaError
+from app.modules.ai.service import AiChatService, OllamaClient, OllamaError
 
 _FORMAT_GUIDE = {
     'onepage': '1페이지 보고서: 첫 줄은 두괄식 핵심 요약 1문장, 이어서 세부 항목 4~7문장.',
@@ -47,6 +47,10 @@ def _default_chat(settings: Settings, db: Session, messages: list[AiChatMessage]
     return answer
 
 
+def _local_chat(settings: Settings, db: Session, messages: list[AiChatMessage]) -> str:
+    return OllamaClient(settings).chat(messages)
+
+
 def parse_lines(answer: str) -> list[str]:
     """LLM 응답을 문장 리스트로 정리한다(머리표·번호 제거, 빈 줄 삭제, 최대 12줄)."""
 
@@ -66,6 +70,7 @@ def compose_content(
     title: str,
     instruction: str,
     chat: Callable[[Settings, Session, list[AiChatMessage]], str] | None = None,
+    force_local: bool = False,
 ) -> list[str]:
     """지시를 양식에 맞는 개조식 내용 문장으로 확장한다. 실패 시 ComposeUnavailable."""
 
@@ -82,7 +87,7 @@ def compose_content(
             content=f'문서 제목: {title or "무제"}\n양식 지침: {guide}\n\n지시:\n{instruction[:6000]}',
         ),
     ]
-    caller = chat if chat is not None else _default_chat
+    caller = chat if chat is not None else (_local_chat if force_local else _default_chat)
     try:
         answer = caller(settings, db, messages)
     except OllamaError as exc:

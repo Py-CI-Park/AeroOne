@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 
 import { HelpManualButton } from '@/components/layout/help-manual-button';
-import { fetchAiStatus } from '@/lib/api';
+import { fetchAeroWorkPrefs, fetchAiStatus, updateAeroWorkPrefs } from '@/lib/api';
+import { getCsrfCookie } from '@/lib/cookies';
 import type { AiStatusResponse } from '@/lib/types';
 
 // Aero Work P4 환경설정 — 업무대화·지식폴더가 함께 쓰는 로컬 AI(폐쇄망 Ollama/OpenAI 호환)
@@ -44,6 +45,38 @@ export function SettingsPanel() {
     };
   }, []);
 
+  const [llmMode, setLlmMode] = useState<'default' | 'local'>('default');
+  const [savingMode, setSavingMode] = useState(false);
+  const [modeMessage, setModeMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void fetchAeroWorkPrefs()
+      .then((prefs) => {
+        if (alive && (prefs.llm_mode === 'default' || prefs.llm_mode === 'local')) {
+          setLlmMode(prefs.llm_mode);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const switchMode = async (mode: 'default' | 'local') => {
+    setSavingMode(true);
+    setModeMessage(null);
+    try {
+      const result = await updateAeroWorkPrefs(mode, getCsrfCookie());
+      setLlmMode(result.llm_mode as 'default' | 'local');
+      setModeMessage(mode === 'local' ? '이 계정은 로컬 AI(Ollama)만 사용합니다.' : '관리자 선택 provider 를 따릅니다.');
+    } catch {
+      setModeMessage('프로필 전환 실패. 로그인 상태를 확인할 것.');
+    } finally {
+      setSavingMode(false);
+    }
+  };
+
   const meta = aiStatus ? STATUS_META[aiStatus.status] : null;
 
   return (
@@ -79,10 +112,38 @@ export function SettingsPanel() {
       </div>
 
       <div className="rounded-xl border border-line-subtle bg-surface-base p-4">
+        <p className="text-sm font-semibold text-ink-1">LLM 프로필 (내 계정)</p>
+        <p className="mt-1 text-xs text-ink-2">업무대화 근거 답변·문서 AI 생성에 쓸 모델 경로를 고릅니다.</p>
+        <div className="mt-2 flex gap-1">
+          {[
+            ['default', '관리자 선택 따름'],
+            ['local', '로컬 AI 강제'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              disabled={savingMode}
+              onClick={() => void switchMode(value as 'default' | 'local')}
+              className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
+                llmMode === value ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2 hover:bg-accent-soft'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {modeMessage ? <p className="mt-2 text-xs text-ink-3">{modeMessage}</p> : null}
+        <p className="mt-2 text-xs leading-relaxed text-ink-3">
+          '로컬 AI 강제'는 이 계정의 요청을 폐쇄망 로컬 Ollama 로만 보냅니다(내부서버·외부 API 미사용).
+          연결 등록·기본 선택은 관리자 콘솔이 관리합니다.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-line-subtle bg-surface-base p-4">
         <p className="text-sm font-semibold text-ink-1">Aero Work 워크스페이스</p>
         <p className="mt-1 text-xs leading-relaxed text-ink-2">
-          홈 브리핑 · 업무대화 · 일정 · 지식폴더 · 실행기록을 한 자리에서 사용합니다. 문서작성(HWPX)은
-          준비 중입니다. 화면 테마는 AeroOne 앱 전역 설정을 따릅니다.
+          홈 브리핑 · 업무대화 · 일정 · 문서작성(HWPX) · 지식폴더 · 실행기록을 한 자리에서
+          사용합니다. 화면 테마는 AeroOne 앱 전역 설정을 따릅니다.
         </p>
       </div>
     </div>

@@ -22,6 +22,7 @@ from app.modules.aero_work.document_formats import FORMAT_LABELS, format_documen
 from app.modules.aero_work.hwpx_generator import build_hwpx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
+from app.modules.aero_work.prefs_service import get_llm_mode, set_llm_mode
 from app.modules.aero_work.orchestrator_service import OrchestratorService
 from app.modules.aero_work.schemas import (
     ActivityListResponse,
@@ -29,6 +30,8 @@ from app.modules.aero_work.schemas import (
     ChatHistoryResponse,
     DocumentComposeRequest,
     DocumentComposeResponse,
+    PrefResponse,
+    PrefUpdateRequest,
     ActivityResponse,
     EventCreateRequest,
     EventListResponse,
@@ -389,10 +392,34 @@ def compose_document(
     title = (payload.title or '').strip() or '무제'
     try:
         paragraphs = compose_content(
-            settings, db, fmt=payload.format, title=title, instruction=payload.instruction
+            settings, db, fmt=payload.format, title=title, instruction=payload.instruction,
+            force_local=get_llm_mode(db, owner.id) == 'local',
         )
     except ComposeUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     record_activity(db, owner.id, 'document.compose', f'문서 내용 생성 "{title}" — {len(paragraphs)}문장')
     db.commit()
     return DocumentComposeResponse(paragraphs=paragraphs)
+
+
+# ---- 환경설정(사용자 LLM 프로필) ----
+@router.get('/prefs', response_model=PrefResponse)
+def get_prefs(
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> PrefResponse:
+    owner = _require_user(user)
+    return PrefResponse(llm_mode=get_llm_mode(db, owner.id))
+
+
+@router.put('/prefs', response_model=PrefResponse, dependencies=[Depends(require_csrf)])
+def update_prefs(
+    payload: PrefUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> PrefResponse:
+    owner = _require_user(user)
+    mode = set_llm_mode(db, owner.id, payload.llm_mode)
+    record_activity(db, owner.id, 'settings.llm_mode', f'LLM 프로필 전환 — {"로컬 강제" if mode == "local" else "관리자 선택 따름"}')
+    db.commit()
+    return PrefResponse(llm_mode=mode)

@@ -1358,3 +1358,15 @@ export async function composeAeroWorkDocument(
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
+
+export async function fetchAeroWorkPrefs() {
+  return browserFetch<{ llm_mode: string }>('/api/frontend/aero-work/prefs', { method: 'GET' });
+}
+
+export async function updateAeroWorkPrefs(llmMode: 'default' | 'local', csrfToken: string) {
+  return browserFetch<{ llm_mode: string }>('/api/frontend/aero-work/prefs', {
+    method: 'PUT',
+    body: JSON.stringify({ llm_mode: llmMode }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
