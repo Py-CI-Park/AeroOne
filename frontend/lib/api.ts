@@ -1370,3 +1370,52 @@ export async function updateAeroWorkPrefs(llmMode: 'default' | 'local', csrfToke
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
+
+// ---- Aero Work 문서 최종 저장(승인형) ----
+export type SavedAeroWorkDocument = {
+  id: number;
+  title: string;
+  format: string;
+  status: string;
+  created_at: string;
+};
+
+export async function saveAeroWorkDocumentRequest(
+  payload: { title: string; body: string; format: string },
+  csrfToken: string,
+) {
+  return browserFetch<SavedAeroWorkDocument>('/api/frontend/aero-work/document/save-request', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchSavedAeroWorkDocuments() {
+  return browserFetch<{ documents: SavedAeroWorkDocument[] }>('/api/frontend/aero-work/document/saved', { method: 'GET' });
+}
+
+export async function approveAeroWorkDocument(id: number, csrfToken: string) {
+  return browserFetch<SavedAeroWorkDocument>(`/api/frontend/aero-work/document/saved/${id}/approve`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function downloadSavedAeroWorkDocument(id: number): Promise<Blob> {
+  const response = await fetch(`/api/frontend/aero-work/document/saved/${id}/download`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
+  }
+  return response.blob();
+}
+
+export async function deleteSavedAeroWorkDocument(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/document/saved/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}

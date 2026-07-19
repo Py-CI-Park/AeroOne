@@ -210,3 +210,19 @@ class PrefResponse(BaseModel):
 
 class PrefUpdateRequest(BaseModel):
     llm_mode: str = Field(pattern='^(default|local)$')
+
+
+class SavedDocumentResponse(BaseModel):
+    id: int
+    title: str
+    format: str
+    status: str
+    created_at: datetime
+
+    @classmethod
+    def from_model(cls, doc) -> 'SavedDocumentResponse':
+        return cls(id=doc.id, title=doc.title, format=doc.format, status=doc.status, created_at=doc.created_at)
+
+
+class SavedDocumentListResponse(BaseModel):
+    documents: list[SavedDocumentResponse]
