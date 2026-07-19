@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 
 import {
+  fetchAeroWorkChatSessions,
   fetchAeroWorkEvents,
   fetchKnowledgeFolders,
+  type AeroWorkChatSession,
   type AeroWorkEvent,
   type KnowledgeFolder,
 } from '@/lib/api';
@@ -30,12 +32,15 @@ function eventWhen(event: AeroWorkEvent): string {
 export function HomeBriefing({
   onOpenSchedule,
   onOpenKnowledge,
+  onOpenChat,
 }: {
   onOpenSchedule: () => void;
   onOpenKnowledge: () => void;
+  onOpenChat: () => void;
 }) {
   const [events, setEvents] = useState<AeroWorkEvent[]>([]);
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
+  const [lastSession, setLastSession] = useState<AeroWorkChatSession | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,15 +50,17 @@ export function HomeBriefing({
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 19);
         const end = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 19);
-        const [eventsResult, foldersResult] = await Promise.all([
+        const [eventsResult, foldersResult, sessionsResult] = await Promise.all([
           fetchAeroWorkEvents({ start, end }).catch(() => ({ events: [] as AeroWorkEvent[] })),
           fetchKnowledgeFolders().catch(() => ({ folders: [] as KnowledgeFolder[] })),
+          fetchAeroWorkChatSessions().catch(() => ({ sessions: [] as AeroWorkChatSession[] })),
         ]);
         if (!alive) {
           return;
         }
         setEvents(eventsResult.events);
         setFolders(foldersResult.folders);
+        setLastSession(sessionsResult.sessions[0] ?? null);
       } finally {
         if (alive) {
           setLoading(false);
@@ -73,6 +80,15 @@ export function HomeBriefing({
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent">오늘의 브리핑</p>
         <p className="mt-1 text-lg font-semibold text-ink-1">{todayLabel()}</p>
         <p className="mt-1 text-sm text-ink-2">일정과 지식폴더를 한눈에 보고 바로 이어서 일하세요.</p>
+        {lastSession ? (
+          <button
+            type="button"
+            onClick={onOpenChat}
+            className="mt-2 inline-flex items-center gap-1 rounded-full bg-surface-raised px-3 py-1 text-xs font-medium text-accent hover:bg-accent hover:text-accent-on"
+          >
+            ▶ 이어서 하기: <span className="max-w-[220px] truncate">{lastSession.title}</span>
+          </button>
+        ) : null}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
