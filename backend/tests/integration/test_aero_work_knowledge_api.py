@@ -108,3 +108,28 @@ def test_keyword_search_flow(csrf_client, fake_embedder, kb_dir: Path) -> None:
     assert body['model'] == 'keyword'
     assert body['hits']
     assert body['hits'][0]['rel_path'] == 'security.md'
+
+
+def test_wiki_groups_version_families(csrf_client, fake_embedder, tmp_path: Path) -> None:
+    root = tmp_path / 'kb'
+    root.mkdir()
+    (root / '예산_20260101.md').write_text('예산 옛판', encoding='utf-8')
+    (root / '예산_20260715.md').write_text('예산 최신', encoding='utf-8')
+    (root / '단일문서.md').write_text('단독', encoding='utf-8')
+    created = csrf_client.post(
+        '/api/v1/aero-work/knowledge/folders', json={'name': '규정', 'path': str(root)}
+    )
+    folder_id = created.json()['id']
+    csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex')
+
+    resp = csrf_client.get('/api/v1/aero-work/knowledge/wiki')
+    assert resp.status_code == 200, resp.text
+    families = resp.json()['families']
+
+    budget = next(f for f in families if f['representative']['rel_path'].startswith('예산'))
+    assert budget['has_versions'] is True
+    assert budget['representative']['rel_path'] == '예산_20260715.md'
+    assert len(budget['items']) == 2
+
+    solo = next(f for f in families if f['representative']['rel_path'] == '단일문서.md')
+    assert solo['has_versions'] is False

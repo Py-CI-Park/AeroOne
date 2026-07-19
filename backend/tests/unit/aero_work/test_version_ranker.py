@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.modules.aero_work.version_ranker import mark_latest
+from app.modules.aero_work.version_ranker import group_by_family, mark_latest
 
 
 def _hits(*paths: str) -> list[dict]:
@@ -44,3 +44,22 @@ def test_distinct_base_names_are_separate_groups() -> None:
     hits = _hits('예산_v1.md', '성과_v2.md')
     mark_latest(hits)
     assert _latest(hits) == []  # 각 그룹이 단일 판본이라 미표시
+
+
+def test_group_by_family_groups_versions_and_marks_representative() -> None:
+    items = [
+        {'rel_path': '예산_20260101.md'},
+        {'rel_path': '예산_20260715.md'},
+        {'rel_path': '성과.md'},
+    ]
+    families = group_by_family(items)
+
+    budget = next(f for f in families if f['representative']['rel_path'].startswith('예산'))
+    assert budget['has_versions'] is True
+    assert budget['representative']['rel_path'] == '예산_20260715.md'
+    assert budget['representative']['is_latest'] is True
+    assert [item['rel_path'] for item in budget['items']] == ['예산_20260715.md', '예산_20260101.md']
+
+    solo = next(f for f in families if f['representative']['rel_path'] == '성과.md')
+    assert solo['has_versions'] is False
+    assert solo['representative']['is_latest'] is False

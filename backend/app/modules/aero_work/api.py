@@ -39,6 +39,7 @@ from app.modules.aero_work.schemas import (
     SearchHit,
     SearchRequest,
     SearchResponse,
+    WikiResponse,
 )
 from app.modules.auth.dependencies import get_db, get_optional_user, get_settings, require_csrf
 from app.modules.auth.models import User
@@ -170,6 +171,18 @@ def keyword_search(
     record_activity(db, owner.id, 'knowledge.search', f'키워드 검색 "{payload.query}" — {len(hits)}건')
     db.commit()
     return SearchResponse(hits=[SearchHit(**hit) for hit in hits], model='keyword')
+
+
+@router.get('/knowledge/wiki', response_model=WikiResponse)
+def knowledge_wiki(
+    folder_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> WikiResponse:
+    _require_user(user)
+    service = _service(db, settings)
+    return WikiResponse(families=service.wiki(folder_id=folder_id))
 
 
 # ---- 일정(Schedule) ----

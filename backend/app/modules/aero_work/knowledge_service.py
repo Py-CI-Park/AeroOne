@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.models import KnowledgeChunk, KnowledgeFile, KnowledgeFolder
 from app.modules.aero_work.text_extract import extract_text, is_supported
+from app.modules.aero_work.version_ranker import group_by_family
 
 MAX_INDEX_BYTES = 20 * 1024 * 1024  # 파일당 20MB 상한(PDF/DOCX 등 오피스 문서 대응)
 CHUNK_SIZE = 900
@@ -267,3 +268,23 @@ class KnowledgeService:
             )
         hits.sort(key=lambda item: item['score'], reverse=True)
         return hits[:top_k]
+
+    # ---- 위키 (버전 가족 문서 목록) ----
+    def wiki(self, *, folder_id: int | None = None) -> list[dict]:
+        """색인된 파일을 버전 가족(대표 + 판본 이력)으로 묶어 반환한다(gongmuwon 업무 허브 백본)."""
+
+        stmt = select(KnowledgeFile, KnowledgeFolder).join(
+            KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id
+        )
+        if folder_id is not None:
+            stmt = stmt.where(KnowledgeFolder.id == folder_id)
+        items = [
+            {
+                'folder_id': folder.id,
+                'folder_name': folder.name,
+                'rel_path': file_row.rel_path,
+                'chunk_count': file_row.chunk_count,
+            }
+            for file_row, folder in self.db.execute(stmt).all()
+        ]
+        return group_by_family(items)

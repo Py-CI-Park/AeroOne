@@ -69,3 +69,35 @@ def mark_latest(hits: list[dict]) -> list[dict]:
         best_hit['is_latest'] = True
 
     return hits
+
+
+def group_by_family(items: list[dict]) -> list[dict]:
+    """파일 dict 리스트를 버전 가족으로 묶는다(gongmuwon 업무 허브의 '대표 + 버전 이력').
+
+    같은 base 로 묶어 각 가족의 대표(대표=최고 키=공식본)를 앞세우고, 나머지를 최신순 판본
+    이력으로 정렬한다. 반환: ``[{'base', 'representative', 'items'(최신순), 'has_versions'}]``.
+    """
+
+    groups: dict[str, list[tuple[tuple[int, int, int, int], dict]]] = {}
+    for item in items:
+        item.setdefault('is_latest', False)
+        base, key = _analyze(str(item.get('rel_path', '')))
+        groups.setdefault(base, []).append((key, item))
+
+    families: list[dict] = []
+    for base, entries in groups.items():
+        ordered = [entry[1] for entry in sorted(entries, key=lambda pair: pair[0], reverse=True)]
+        representative = ordered[0]
+        has_versions = len(ordered) > 1
+        if has_versions:
+            representative['is_latest'] = True
+        families.append(
+            {
+                'base': base,
+                'representative': representative,
+                'items': ordered,
+                'has_versions': has_versions,
+            }
+        )
+    families.sort(key=lambda family: str(family['representative'].get('rel_path', '')))
+    return families

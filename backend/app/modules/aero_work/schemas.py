@@ -158,3 +158,22 @@ class OrchestrateResult(BaseModel):
 class OrchestrateResponse(BaseModel):
     utterance: str
     results: list[OrchestrateResult]
+
+
+class WikiFile(BaseModel):
+    folder_id: int
+    folder_name: str
+    rel_path: str
+    chunk_count: int
+    is_latest: bool = False
+
+
+class WikiFamily(BaseModel):
+    base: str
+    representative: WikiFile
+    items: list[WikiFile]
+    has_versions: bool
+
+
+class WikiResponse(BaseModel):
+    families: list[WikiFamily]

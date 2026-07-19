@@ -12,6 +12,7 @@ import {
   type KnowledgeFolder,
   type KnowledgeSearchHit,
 } from '@/lib/api';
+import { KnowledgeWiki } from '@/components/aero-work/knowledge-wiki';
 import { getCsrfCookie } from '@/lib/cookies';
 
 // Aero Work P2 '내 지식폴더' — 지정 폴더를 in-place 색인(Ollama nomic-embed 임베딩)하고
@@ -271,6 +272,8 @@ export function KnowledgePanel() {
           </div>
         ) : null}
       </form>
+
+      <KnowledgeWiki />
     </div>
   );
 }
