@@ -141,6 +141,7 @@ class DocumentRequest(BaseModel):
 
 class OrchestrateRequest(BaseModel):
     utterance: str = Field(min_length=1, max_length=2000)
+    session_id: int | None = None
 
 
 class DocumentIntent(BaseModel):
@@ -161,6 +162,7 @@ class OrchestrateResult(BaseModel):
 
 class OrchestrateResponse(BaseModel):
     utterance: str
+    session_id: int | None = None
     results: list[OrchestrateResult]
 
 
@@ -226,3 +228,13 @@ class SavedDocumentResponse(BaseModel):
 
 class SavedDocumentListResponse(BaseModel):
     documents: list[SavedDocumentResponse]
+
+
+class ChatSessionResponse(BaseModel):
+    id: int
+    title: str
+    updated_at: datetime
+
+
+class ChatSessionListResponse(BaseModel):
+    sessions: list[ChatSessionResponse]
