@@ -245,3 +245,47 @@ class ChatSessionListResponse(BaseModel):
 
 class FileSummaryResponse(BaseModel):
     summary: str
+
+
+class TaxonomyProposeRequest(BaseModel):
+    organization: str = Field(min_length=1, max_length=200)
+    department: str = Field(min_length=1, max_length=200)
+    duties: str = Field(min_length=1, max_length=2000)
+
+
+class TaxonomyCategoryInput(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default='', max_length=2000)
+    file_ids: list[int] = Field(default_factory=list, max_length=500)
+
+
+class TaxonomyProposeResponse(BaseModel):
+    candidates: list[TaxonomyCategoryInput]
+    model: str
+
+
+class TaxonomyApplyRequest(BaseModel):
+    categories: list[TaxonomyCategoryInput] = Field(default_factory=list, max_length=100)
+
+
+class TaxonomyApplyResponse(BaseModel):
+    applied: int
+
+
+class TaxonomyCategoryFile(BaseModel):
+    id: int
+    rel_path: str
+    folder_name: str
+    summary: str
+
+
+class TaxonomyCategoryResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    sort_order: int
+    files: list[TaxonomyCategoryFile]
+
+
+class TaxonomyResponse(BaseModel):
+    categories: list[TaxonomyCategoryResponse]

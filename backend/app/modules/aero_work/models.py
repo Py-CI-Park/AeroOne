@@ -185,3 +185,42 @@ class AeroWorkChatSession(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True, nullable=False
     )
+
+
+class AeroWorkTaskCategory(Base):
+    """마법사(§6.6) ②검토→③적용으로 확정한 업무 분류 1건 — 사용자별 분류 트리의 노드.
+
+    ``sort_order`` 는 사용자가 확정한 순서를 그대로 보존한다(적용 시 매번 순번 재부여).
+    """
+
+    __tablename__ = 'aero_work_task_categories'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default='')
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default='0')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    files: Mapped[list['AeroWorkTaskCategoryFile']] = relationship(
+        back_populates='category', cascade='all, delete-orphan'
+    )
+
+
+class AeroWorkTaskCategoryFile(Base):
+    """업무 분류 ↔ 색인 파일 매핑(복합 PK) — 분류·파일 어느 쪽이 삭제돼도 CASCADE 로 정리."""
+
+    __tablename__ = 'aero_work_task_category_files'
+
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey('aero_work_task_categories.id', ondelete='CASCADE'), primary_key=True
+    )
+    file_id: Mapped[int] = mapped_column(
+        ForeignKey('aero_work_knowledge_files.id', ondelete='CASCADE'), primary_key=True
+    )
+
+    category: Mapped['AeroWorkTaskCategory'] = relationship(back_populates='files')

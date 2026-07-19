@@ -1246,6 +1246,61 @@ export async function summarizeKnowledgeFile(fileId: number, csrfToken: string) 
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
+// 분류체계 마법사(§6.6) — 색인 파일명/요약 기반 LLM 업무 후보 생성→사용자 확정→적용.
+// apply 는 전체 트리를 교체(applied 는 반영된 분류 수)한다 — 서버 계약은 항상 고정.
+export type TaxonomyFile = {
+  id: number;
+  rel_path: string;
+  folder_name: string;
+  summary: string;
+};
+
+export type TaxonomyCategory = {
+  id: number;
+  name: string;
+  description: string;
+  sort_order: number;
+  files: TaxonomyFile[];
+};
+
+export type TaxonomyCandidate = {
+  name: string;
+  description: string;
+  file_ids: number[];
+};
+
+export type TaxonomyProposeInput = {
+  organization: string;
+  department: string;
+  duties: string;
+};
+
+export async function proposeTaxonomy(input: TaxonomyProposeInput, csrfToken: string) {
+  return browserFetch<{ candidates: TaxonomyCandidate[]; model: string }>('/api/frontend/aero-work/taxonomy/propose', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function applyTaxonomy(categories: TaxonomyCandidate[], csrfToken: string) {
+  return browserFetch<{ applied: number }>('/api/frontend/aero-work/taxonomy/apply', {
+    method: 'POST',
+    body: JSON.stringify({ categories }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchTaxonomy() {
+  return browserFetch<{ categories: TaxonomyCategory[] }>('/api/frontend/aero-work/taxonomy', { method: 'GET' });
+}
+
+export async function deleteTaxonomyCategory(categoryId: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/taxonomy/${categoryId}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
 
 // ---- Aero Work 일정 (P4) ----
 export type AeroWorkEvent = {
