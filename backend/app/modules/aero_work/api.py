@@ -28,6 +28,7 @@ from app.modules.aero_work.prefs_service import get_llm_mode, set_llm_mode
 from app.modules.aero_work.knowledge_summary import SummaryUnavailable, summarize_file
 from app.modules.aero_work.orchestrator_service import OrchestratorService
 from app.modules.aero_work.streaming import stream_answer, stream_compose
+from app.modules.aero_work.taxonomy_service import apply_categories, delete_category, list_categories, propose_categories
 from app.modules.aero_work.version_ranker import mark_latest
 from app.modules.aero_work.schemas import (
     ActivityListResponse,
@@ -59,6 +60,14 @@ from app.modules.aero_work.schemas import (
     SearchRequest,
     SearchResponse,
     WikiResponse,
+    TaxonomyApplyRequest,
+    TaxonomyApplyResponse,
+    TaxonomyCategoryFile,
+    TaxonomyCategoryInput,
+    TaxonomyCategoryResponse,
+    TaxonomyProposeRequest,
+    TaxonomyProposeResponse,
+    TaxonomyResponse,
 )
 from app.modules.auth.dependencies import get_db, get_optional_user, get_settings, require_csrf
 from app.modules.auth.models import User
@@ -677,3 +686,80 @@ def summarize_knowledge_file(
     record_activity(db, owner.id, 'knowledge.summarize', f'문서 요약 생성 (file #{file_id})')
     db.commit()
     return FileSummaryResponse(summary=summary)
+
+
+# ---- 업무 분류체계 마법사(§6.6) ----
+@router.post('/taxonomy/propose', response_model=TaxonomyProposeResponse, dependencies=[Depends(require_csrf)])
+def propose_taxonomy(
+    payload: TaxonomyProposeRequest,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> TaxonomyProposeResponse:
+    """① 니즈 파악 입력 → ② 색인 파일 근거로 LLM 업무 분류 후보 생성(사용자 검토용)."""
+
+    owner = _require_user(user)
+    candidates, model = propose_categories(
+        db,
+        settings,
+        owner.id,
+        organization=payload.organization,
+        department=payload.department,
+        duties=payload.duties,
+    )
+    record_activity(db, owner.id, 'taxonomy.propose', f'업무 분류 후보 생성 — {len(candidates)}건')
+    db.commit()
+    return TaxonomyProposeResponse(
+        candidates=[TaxonomyCategoryInput(**candidate) for candidate in candidates], model=model
+    )
+
+
+@router.post('/taxonomy/apply', response_model=TaxonomyApplyResponse, dependencies=[Depends(require_csrf)])
+def apply_taxonomy(
+    payload: TaxonomyApplyRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaxonomyApplyResponse:
+    """③ 적용 — 사용자가 확정한 분류로 기존 분류를 전량 교체한다(멱등)."""
+
+    owner = _require_user(user)
+    applied = apply_categories(db, owner.id, [category.model_dump() for category in payload.categories])
+    db.commit()
+    return TaxonomyApplyResponse(applied=applied)
+
+
+@router.get('/taxonomy', response_model=TaxonomyResponse)
+def get_taxonomy(
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaxonomyResponse:
+    """지식위키의 업무 분류 트리 — 분류별 소속 파일(경로/폴더명/요약)과 함께 반환."""
+
+    owner = _require_user(user)
+    categories = list_categories(db, owner.id)
+    return TaxonomyResponse(
+        categories=[
+            TaxonomyCategoryResponse(
+                id=item['id'],
+                name=item['name'],
+                description=item['description'],
+                sort_order=item['sort_order'],
+                files=[TaxonomyCategoryFile(**file_row) for file_row in item['files']],
+            )
+            for item in categories
+        ]
+    )
+
+
+@router.delete('/taxonomy/{category_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)])
+def delete_taxonomy_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    deleted = delete_category(db, owner.id, category_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='업무 분류를 찾을 수 없습니다.')
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

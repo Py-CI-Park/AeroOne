@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
-import { fetchKnowledgeWiki, summarizeKnowledgeFile, type WikiFamily } from '@/lib/api';
+import {
+  deleteTaxonomyCategory,
+  fetchKnowledgeWiki,
+  fetchTaxonomy,
+  summarizeKnowledgeFile,
+  type TaxonomyCategory,
+  type WikiFamily,
+} from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
+import { TaxonomyWizard } from '@/components/aero-work/taxonomy-wizard';
 
 // Aero Work F5 지식 위키(버전 가족) — 색인된 문서를 같은 문서의 대표(공식본) + 판본 이력으로
 // 묶어 보여준다(gongmuwon 업무 허브 백본, §6.5). 분류체계 마법사·주제 페이지는 후속.
@@ -33,11 +41,13 @@ export function highlightMatches(text: string, term: string): ReactNode {
 
 export function KnowledgeWiki() {
   const [families, setFamilies] = useState<WikiFamily[]>([]);
+  const [categories, setCategories] = useState<TaxonomyCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [keyword, setKeyword] = useState('');
   const [summarizing, setSummarizing] = useState<number | null>(null);
   const [summaries, setSummaries] = useState<Record<number, string>>({});
+  const [showWizard, setShowWizard] = useState(false);
 
   const summarize = async (fileId: number) => {
     setSummarizing(fileId);
@@ -48,6 +58,24 @@ export function KnowledgeWiki() {
       setSummaries((prev) => ({ ...prev, [fileId]: '요약 실패 — 로컬 AI(또는 연결) 상태를 확인할 것.' }));
     } finally {
       setSummarizing(null);
+    }
+  };
+
+  const loadTaxonomy = useCallback(async () => {
+    try {
+      const data = await fetchTaxonomy();
+      setCategories(data.categories);
+    } catch {
+      setCategories([]);
+    }
+  }, []);
+
+  const removeCategory = async (categoryId: number) => {
+    try {
+      await deleteTaxonomyCategory(categoryId, getCsrfCookie());
+      await loadTaxonomy();
+    } catch {
+      // 삭제 실패는 조용히 무시 — 목록이 그대로 유지되어 사용자가 재시도할 수 있음.
     }
   };
 
@@ -65,7 +93,8 @@ export function KnowledgeWiki() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadTaxonomy();
+  }, [load, loadTaxonomy]);
 
   const toggle = (base: string) => {
     setExpanded((prev) => {
@@ -77,6 +106,17 @@ export function KnowledgeWiki() {
       }
       return next;
     });
+  };
+
+  // 분류에 배정된 파일(대표 기준)은 '미분류' 가족 목록에서 제외한다 — 분류체계 마법사가
+  // 적용한 트리와 기존 버전 가족 목록이 같은 파일을 중복 노출하지 않도록 한다.
+  const classifiedFileIds = new Set(categories.flatMap((category) => category.files.map((file) => file.id)));
+  const unclassifiedFamilies = families.filter((family) => !classifiedFileIds.has(family.representative.id));
+
+  const handleApplied = () => {
+    setShowWizard(false);
+    void loadTaxonomy();
+    void load();
   };
 
   return (
@@ -95,10 +135,70 @@ export function KnowledgeWiki() {
         </button>
       </div>
 
+      {showWizard ? (
+        <div className="mt-3">
+          <TaxonomyWizard onApplied={handleApplied} onCancel={() => setShowWizard(false)} />
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="mt-3 flex items-center justify-between rounded-lg border border-accent/30 bg-accent-soft px-3 py-2">
+          <p className="text-xs text-ink-2">업무 분류가 아직 없음. 마법사로 담당업무 기반 분류 트리를 만들 것.</p>
+          <button
+            type="button"
+            onClick={() => setShowWizard(true)}
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-on"
+          >
+            분류체계 마법사 시작
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-ink-1">업무 분류</p>
+            <button
+              type="button"
+              onClick={() => setShowWizard(true)}
+              className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink-1 hover:bg-surface-sunken"
+            >
+              분류 재구성
+            </button>
+          </div>
+          <ul className="space-y-1">
+            {categories.map((category) => (
+              <li key={category.id} className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-semibold text-ink-1">{category.name}</span>
+                  <span className="text-ink-3">파일 {category.files.length}건</span>
+                  <button
+                    type="button"
+                    onClick={() => void removeCategory(category.id)}
+                    className="ml-auto rounded px-2 py-0.5 text-[11px] text-red-500 hover:bg-red-500/10"
+                  >
+                    분류 삭제
+                  </button>
+                </div>
+                {category.description ? <p className="mt-1 text-[11px] leading-relaxed text-ink-2">{category.description}</p> : null}
+                {category.files.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5 border-t border-line-subtle pt-1">
+                    {category.files.map((file) => (
+                      <li key={file.id} className="flex gap-2 pl-2 text-[11px] text-ink-2">
+                        <span className="font-mono">{file.rel_path}</span>
+                        <span className="text-ink-3">{file.folder_name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {loading ? (
         <p className="mt-2 text-sm text-ink-3">불러오는 중…</p>
-      ) : families.length === 0 ? (
-        <p className="mt-2 text-sm text-ink-3">색인된 문서가 없음. 폴더를 등록·색인하면 여기에 정리됨.</p>
+      ) : unclassifiedFamilies.length === 0 ? (
+        <p className="mt-2 text-sm text-ink-3">
+          {families.length === 0 ? '색인된 문서가 없음. 폴더를 등록·색인하면 여기에 정리됨.' : '미분류 문서가 없음.'}
+        </p>
       ) : (
         <>
         <input
@@ -108,7 +208,7 @@ export function KnowledgeWiki() {
           className="mt-2 w-full rounded-lg border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs text-ink-1"
         />
         <ul className="mt-2 space-y-1">
-          {families
+          {unclassifiedFamilies
             .filter((family) => {
               const term = keyword.trim().toLowerCase();
               if (!term) return true;
