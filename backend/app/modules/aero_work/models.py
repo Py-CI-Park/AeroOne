@@ -132,6 +132,7 @@ class AeroWorkChatMessage(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
     utterance: Mapped[str] = mapped_column(Text, nullable=False)
+    session_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     results_json: Mapped[str] = mapped_column(Text, nullable=False, server_default='[]')
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
@@ -166,4 +167,20 @@ class AeroWorkDocument(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class AeroWorkChatSession(Base):
+    """업무대화 세션 1건 — 대화 흐름을 세션 단위로 묶는다(gongmuwon 세션 중심 IA)."""
+
+    __tablename__ = 'aero_work_chat_sessions'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False, server_default='새 세션')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True, nullable=False
     )

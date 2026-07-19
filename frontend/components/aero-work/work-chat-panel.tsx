@@ -3,9 +3,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import {
+  deleteAeroWorkChatSession,
   fetchAeroWorkChatHistory,
+  fetchAeroWorkChatSessions,
   generateAeroWorkHwpx,
   orchestrateAeroWork,
+  type AeroWorkChatSession,
   type OrchestrateResult,
 } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
@@ -40,23 +43,53 @@ export function WorkChatPanel() {
   const [log, setLog] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<AeroWorkChatSession[]>([]);
+  const [activeSession, setActiveSession] = useState<number | null>(null);
+
+  const loadSessions = async () => {
+    try {
+      const data = await fetchAeroWorkChatSessions();
+      setSessions(data.sessions);
+      return data.sessions;
+    } catch {
+      return [];
+    }
+  };
+
+  const loadHistory = async (sessionId: number) => {
+    try {
+      const history = await fetchAeroWorkChatHistory(50, sessionId);
+      setLog(history.items.map((item) => ({ id: item.id, utterance: item.utterance, results: item.results })));
+    } catch {
+      setLog([]);
+    }
+  };
+
+  const selectSession = (sessionId: number) => {
+    setActiveSession(sessionId);
+    void loadHistory(sessionId);
+  };
+
+  const newSession = () => {
+    setActiveSession(null);
+    setLog([]);
+  };
 
   useEffect(() => {
     let alive = true;
     void (async () => {
-      try {
-        const history = await fetchAeroWorkChatHistory(20);
-        if (alive && history.items.length > 0) {
-          setLog(history.items.map((item) => ({ id: item.id, utterance: item.utterance, results: item.results })));
-        }
-      } catch {
-        // 히스토리 로드는 best-effort — 실패해도 새 대화는 가능.
+      const list = await loadSessions();
+      if (alive && list.length > 0) {
+        setActiveSession(list[0].id);
+        await loadHistory(list[0].id);
       }
     })();
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const submit = async (value: string) => {
     const text = value.trim();
     if (!text) {
@@ -65,9 +98,11 @@ export function WorkChatPanel() {
     setBusy(true);
     setError(null);
     try {
-      const response = await orchestrateAeroWork(text, getCsrfCookie());
+      const response = await orchestrateAeroWork(text, getCsrfCookie(), activeSession);
+      setActiveSession(response.session_id);
       setLog((prev) => [{ id: Date.now(), utterance: text, results: response.results }, ...prev]);
       setUtterance('');
+      void loadSessions();
     } catch {
       setError('처리 실패. 로그인 상태를 확인할 것.');
     } finally {
@@ -95,6 +130,38 @@ export function WorkChatPanel() {
       {error ? (
         <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">{error}</p>
       ) : null}
+
+      <div className="flex flex-wrap items-center gap-1">
+        <button
+          type="button"
+          onClick={newSession}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${activeSession === null ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2 hover:bg-accent-soft'}`}
+        >
+          + 새 세션
+        </button>
+        {sessions.map((session) => (
+          <span key={session.id} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs ${activeSession === session.id ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2'}`}>
+            <button type="button" onClick={() => selectSession(session.id)} className="max-w-[160px] truncate">{session.title}</button>
+            <button
+              type="button"
+              aria-label="세션 삭제"
+              onClick={() => {
+                void deleteAeroWorkChatSession(session.id, getCsrfCookie())
+                  .then(async () => {
+                    if (activeSession === session.id) {
+                      newSession();
+                    }
+                    await loadSessions();
+                  })
+                  .catch(() => setError('세션 삭제 실패.'));
+              }}
+              className="opacity-60 hover:opacity-100"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
 
       <form onSubmit={handleSubmit} className="rounded-xl border border-line-subtle bg-surface-base p-4">
         <div className="flex gap-2">

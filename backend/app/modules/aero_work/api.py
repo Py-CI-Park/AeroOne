@@ -27,6 +27,8 @@ from app.modules.aero_work.orchestrator_service import OrchestratorService
 from app.modules.aero_work.schemas import (
     ActivityListResponse,
     ChatHistoryItem,
+    ChatSessionListResponse,
+    ChatSessionResponse,
     ChatHistoryResponse,
     DocumentComposeRequest,
     DocumentComposeResponse,
@@ -345,29 +347,46 @@ def orchestrate(
         )
         for item in raw_results
     ]
+    # 세션 해석 — 지정 없으면 새 세션 생성(제목=첫 발화 40자, gongmuwon 세션 중심 IA).
+    session_row = None
+    if payload.session_id is not None:
+        session_row = db.get(aero_work_models.AeroWorkChatSession, payload.session_id)
+        if session_row is None or session_row.user_id != owner.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='세션을 찾을 수 없습니다.')
+        session_row.updated_at = datetime.now()
+    else:
+        session_row = aero_work_models.AeroWorkChatSession(user_id=owner.id, title=payload.utterance[:40])
+        db.add(session_row)
+        db.flush()
     # 업무대화 영속화 — 새로고침해도 세션 흐름이 남는다(소유자 스코프).
     db.add(
         aero_work_models.AeroWorkChatMessage(
             user_id=owner.id,
+            session_id=session_row.id,
             utterance=payload.utterance,
             results_json=json.dumps([r.model_dump(mode='json') for r in results], ensure_ascii=False),
         )
     )
     db.commit()
-    return OrchestrateResponse(utterance=payload.utterance, results=results)
+    return OrchestrateResponse(utterance=payload.utterance, session_id=session_row.id, results=results)
 
 
 @router.get('/chat/history', response_model=ChatHistoryResponse)
 def chat_history(
     limit: int = Query(default=20, ge=1, le=100),
+    session_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ) -> ChatHistoryResponse:
     owner = _require_user(user)
-    rows = (
+    query = (
         db.query(aero_work_models.AeroWorkChatMessage)
         .filter(aero_work_models.AeroWorkChatMessage.user_id == owner.id)
-        .order_by(aero_work_models.AeroWorkChatMessage.created_at.desc(), aero_work_models.AeroWorkChatMessage.id.desc())
+    )
+    if session_id is not None:
+        query = query.filter(aero_work_models.AeroWorkChatMessage.session_id == session_id)
+    rows = (
+        query.order_by(aero_work_models.AeroWorkChatMessage.created_at.desc(), aero_work_models.AeroWorkChatMessage.id.desc())
         .limit(limit)
         .all()
     )
@@ -379,6 +398,43 @@ def chat_history(
             results = []
         items.append(ChatHistoryItem(id=row.id, utterance=row.utterance, results=results, created_at=row.created_at))
     return ChatHistoryResponse(items=items)
+
+
+@router.get('/chat/sessions', response_model=ChatSessionListResponse)
+def list_chat_sessions(
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> ChatSessionListResponse:
+    owner = _require_user(user)
+    rows = (
+        db.query(aero_work_models.AeroWorkChatSession)
+        .filter(aero_work_models.AeroWorkChatSession.user_id == owner.id)
+        .order_by(aero_work_models.AeroWorkChatSession.updated_at.desc(), aero_work_models.AeroWorkChatSession.id.desc())
+        .limit(50)
+        .all()
+    )
+    return ChatSessionListResponse(
+        sessions=[ChatSessionResponse(id=row.id, title=row.title, updated_at=row.updated_at) for row in rows]
+    )
+
+
+@router.delete('/chat/sessions/{session_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)])
+def delete_chat_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    row = db.get(aero_work_models.AeroWorkChatSession, session_id)
+    if row is None or row.user_id != owner.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='세션을 찾을 수 없습니다.')
+    db.query(aero_work_models.AeroWorkChatMessage).filter(
+        aero_work_models.AeroWorkChatMessage.user_id == owner.id,
+        aero_work_models.AeroWorkChatMessage.session_id == session_id,
+    ).delete()
+    db.delete(row)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post('/document/compose', response_model=DocumentComposeResponse, dependencies=[Depends(require_csrf)])

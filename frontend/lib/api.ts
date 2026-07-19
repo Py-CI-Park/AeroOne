@@ -1333,19 +1333,34 @@ export type OrchestrateResult = {
   answer?: string;
 };
 
-export async function orchestrateAeroWork(utterance: string, csrfToken: string) {
-  return browserFetch<{ utterance: string; results: OrchestrateResult[] }>('/api/frontend/aero-work/orchestrate', {
+export async function orchestrateAeroWork(utterance: string, csrfToken: string, sessionId?: number | null) {
+  return browserFetch<{ utterance: string; session_id: number | null; results: OrchestrateResult[] }>('/api/frontend/aero-work/orchestrate', {
     method: 'POST',
-    body: JSON.stringify({ utterance }),
+    body: JSON.stringify({ utterance, session_id: sessionId ?? null }),
     headers: { 'X-CSRF-Token': csrfToken },
   });
 }
 
-export async function fetchAeroWorkChatHistory(limit = 20) {
+export async function fetchAeroWorkChatHistory(limit = 20, sessionId?: number | null) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (sessionId != null) params.set('session_id', String(sessionId));
   return browserFetch<{ items: { id: number; utterance: string; results: OrchestrateResult[]; created_at: string }[] }>(
-    `/api/frontend/aero-work/chat/history?limit=${limit}`,
+    `/api/frontend/aero-work/chat/history?${params.toString()}`,
     { method: 'GET' },
   );
+}
+
+export type AeroWorkChatSession = { id: number; title: string; updated_at: string };
+
+export async function fetchAeroWorkChatSessions() {
+  return browserFetch<{ sessions: AeroWorkChatSession[] }>('/api/frontend/aero-work/chat/sessions', { method: 'GET' });
+}
+
+export async function deleteAeroWorkChatSession(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/chat/sessions/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
 }
 
 export async function composeAeroWorkDocument(

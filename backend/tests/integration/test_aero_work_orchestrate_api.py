@@ -68,3 +68,34 @@ def test_chat_history_persists_exchanges(csrf_client, client) -> None:
     assert items and items[0]['utterance'] == '내일 오전 9시 히스토리 회의 등록해줘'
     assert items[0]['results'][0]['kind'] == 'schedule.create'
     assert items[0]['results'][0]['events'][0]['title'].startswith('히스토리')
+
+
+def test_chat_sessions_flow(csrf_client) -> None:
+    # 세션 미지정 → 자동 생성(제목=발화 40자)
+    first = csrf_client.post('/api/v1/aero-work/orchestrate', json={'utterance': '이번 주 일정 알려줘'})
+    assert first.status_code == 200, first.text
+    session_id = first.json()['session_id']
+    assert session_id is not None
+
+    sessions = csrf_client.get('/api/v1/aero-work/chat/sessions').json()['sessions']
+    assert sessions[0]['id'] == session_id
+    assert sessions[0]['title'].startswith('이번 주 일정')
+
+    # 같은 세션 이어가기
+    second = csrf_client.post(
+        '/api/v1/aero-work/orchestrate',
+        json={'utterance': '문서작성 어떻게 하는지 알려줘', 'session_id': session_id},
+    )
+    assert second.json()['session_id'] == session_id
+    history = csrf_client.get(f'/api/v1/aero-work/chat/history?session_id={session_id}').json()['items']
+    assert len(history) == 2
+
+    # 새 세션은 분리
+    third = csrf_client.post('/api/v1/aero-work/orchestrate', json={'utterance': '예산 근거 찾아줘'})
+    other_id = third.json()['session_id']
+    assert other_id != session_id
+    assert len(csrf_client.get(f'/api/v1/aero-work/chat/history?session_id={other_id}').json()['items']) == 1
+
+    # 세션 삭제 → 메시지도 제거
+    assert csrf_client.delete(f'/api/v1/aero-work/chat/sessions/{session_id}').status_code == 204
+    assert csrf_client.get(f'/api/v1/aero-work/chat/history?session_id={session_id}').json()['items'] == []
