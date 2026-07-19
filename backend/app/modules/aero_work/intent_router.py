@@ -105,11 +105,14 @@ def classify(utterance: str, now: datetime) -> list[Intent]:
 
     intents: list[Intent] = []
     if is_create:
+        # 멀티인텐트("…등록하고 …작성해줘")면 일정 제목은 연결어 앞 절에서만 뽑는다 —
+        # 문서 절(시행문/보고서…)이 일정 제목에 섞이는 것을 막는다(실사 발견 결함).
+        schedule_text = re.split(r'하고|그리고|그\s*내용', text)[0] if is_document else text
         intents.append(
             Intent(
                 'schedule.create',
                 text,
-                {'starts_at': started_at, 'has_time': has_time, 'title': extract_title(text) or '새 일정'},
+                {'starts_at': started_at, 'has_time': has_time, 'title': extract_title(schedule_text) or '새 일정'},
             )
         )
     if is_document:

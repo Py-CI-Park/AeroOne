@@ -38,8 +38,12 @@ def test_help_and_knowledge() -> None:
 
 
 def test_multi_intent_create_and_document() -> None:
-    kinds = _kinds('내일 오후 2시 부서 워크숍 등록하고 그 내용으로 보고서 작성해줘')
-    assert kinds == ['schedule.create', 'document']
+    intents = classify('내일 오후 2시 부서 워크숍 등록하고 그 내용으로 시행문 작성해줘', NOW)
+    assert [intent.kind for intent in intents] == ['schedule.create', 'document']
+    title = intents[0].slots['title']
+    assert '워크숍' in title
+    assert '시행문' not in title  # 문서 절이 일정 제목에 섞이면 안 됨(실사 발견 회귀)
+    assert intents[1].slots['format'] == 'official'
 
 
 def test_empty_utterance() -> None:
