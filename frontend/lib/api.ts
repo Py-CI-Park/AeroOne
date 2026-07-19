@@ -1452,10 +1452,25 @@ export async function deleteAeroWorkChatSession(id: number, csrfToken: string) {
 }
 
 export async function composeAeroWorkDocument(
-  payload: { title: string; instruction: string; format: string },
+  payload: { title: string; instruction: string; format: string; previous_paragraphs?: string[] },
   csrfToken: string,
 ) {
   return browserFetch<{ paragraphs: string[] }>('/api/frontend/aero-work/document/compose', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// 양식(종이) 미리보기(G005) — 서버가 document_formats 위계를 반영해 만든 self-contained
+// HTML 조각(inline style, 외부 리소스 0)을 그대로 받는다. 사용자 입력은 서버가 escape 해
+// 넣으므로 프런트에서 추가 sanitize 없이 dangerouslySetInnerHTML 로 렌더할 수 있다(서버 생성
+// HTML 만 — 사용자 텍스트를 직접 주입하지 않는다). WASM 근사 렌더는 범위 밖(후속).
+export async function previewAeroWorkDocument(
+  payload: { format_id: string; title: string; paragraphs: string[] },
+  csrfToken: string,
+): Promise<{ html: string }> {
+  return browserFetch<{ html: string }>('/api/frontend/aero-work/document/preview', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },
@@ -1539,7 +1554,7 @@ export interface AeroWorkComposeStreamHandlers {
 }
 
 export async function streamAeroWorkCompose(
-  payload: { title: string; instruction: string; format: string },
+  payload: { title: string; instruction: string; format: string; previous_paragraphs?: string[] },
   csrfToken: string,
   handlers: AeroWorkComposeStreamHandlers,
 ): Promise<void> {

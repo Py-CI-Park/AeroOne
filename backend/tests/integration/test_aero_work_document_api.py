@@ -47,3 +47,91 @@ def test_official_format_applies_hierarchy(csrf_client) -> None:
     assert '제목' in section
     assert '1. 자료 제출 협조' in section
     assert '끝.' in section
+
+
+# ---- 종이 미리보기(G005) ----
+
+
+def test_preview_anonymous_rejected(client) -> None:
+    resp = client.post(
+        '/api/v1/aero-work/document/preview',
+        json={'format_id': 'onepage', 'title': 't', 'paragraphs': ['x']},
+    )
+    assert resp.status_code == 401
+
+
+def test_preview_requires_csrf(client) -> None:
+    assert client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'password'}).status_code == 200
+    resp = client.post(
+        '/api/v1/aero-work/document/preview',
+        json={'format_id': 'onepage', 'title': 't', 'paragraphs': ['x']},
+    )
+    assert resp.status_code == 403
+
+
+def test_preview_official_renders_hierarchy_and_records_activity(csrf_client) -> None:
+    resp = csrf_client.post(
+        '/api/v1/aero-work/document/preview',
+        json={'format_id': 'official', 'title': '협조 요청', 'paragraphs': ['자료 제출 협조', '기한 엄수']},
+    )
+    assert resp.status_code == 200, resp.text
+    html = resp.json()['html']
+    assert '수신' in html
+    assert '1. 자료 제출 협조' in html
+    assert '끝.' in html
+
+    activities = csrf_client.get('/api/v1/aero-work/activity').json()['activities']
+    assert activities[0]['kind'] == 'document.preview'
+    assert '협조 요청' in activities[0]['summary']
+
+
+def test_preview_escapes_script_injection(csrf_client) -> None:
+    resp = csrf_client.post(
+        '/api/v1/aero-work/document/preview',
+        json={'format_id': 'onepage', 'title': '<script>alert(1)</script>', 'paragraphs': ['<b>x</b>']},
+    )
+    assert resp.status_code == 200, resp.text
+    html = resp.json()['html']
+    assert '<script>' not in html
+    assert '&lt;script&gt;' in html
+    assert '<b>x</b>' not in html
+    assert '&lt;b&gt;x&lt;/b&gt;' in html
+
+
+def test_preview_unsupported_format_rejected_with_422(csrf_client) -> None:
+    resp = csrf_client.post(
+        '/api/v1/aero-work/document/preview',
+        json={'format_id': 'pdf', 'title': 't', 'paragraphs': ['x']},
+    )
+    assert resp.status_code == 422
+
+
+def test_compose_with_previous_paragraphs_regenerates_via_revision_instruction(
+    csrf_client, monkeypatch
+) -> None:
+    """수정 지시 → previous_paragraphs 를 함께 보내면 재생성 프롬프트에 이전 본문과 지시가
+    모두 반영되어야 한다(``document_composer.compose_content`` 실호출, chat 만 주입 스텁)."""
+
+    captured: dict = {}
+
+    def fake_default_chat(settings, db, messages):
+        captured['user'] = messages[1].content
+        return '목표를 15%로 상향함'
+
+    monkeypatch.setattr('app.modules.aero_work.document_composer._default_chat', fake_default_chat)
+
+    resp = csrf_client.post(
+        '/api/v1/aero-work/document/compose',
+        json={
+            'title': '절감 방안',
+            'instruction': '목표를 15%로 올려줘',
+            'format': 'onepage',
+            'previous_paragraphs': ['목표를 10%로 설정함', '조명 교체를 추진함'],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {'paragraphs': ['목표를 15%로 상향함']}
+    assert '이전 본문' in captured['user']
+    assert '목표를 10%로 설정함' in captured['user'] and '조명 교체를 추진함' in captured['user']
+    assert '수정 지시' in captured['user']
+    assert '목표를 15%로 올려줘' in captured['user']

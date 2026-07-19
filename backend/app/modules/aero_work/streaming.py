@@ -115,6 +115,7 @@ def stream_compose(
     fmt: str,
     title: str,
     instruction: str,
+    previous_paragraphs: list[str] | None = None,
     force_local: bool = False,
     chat_stream: ChatStreamFn | None = None,
 ) -> Generator[StreamEvent, None, None]:
@@ -128,7 +129,7 @@ def stream_compose(
     if not instruction:
         yield ('error', '지시(개요)를 입력해야 합니다.')
         return
-    messages = build_compose_messages(fmt, title, instruction)
+    messages = build_compose_messages(fmt, title, instruction, previous_paragraphs)
     caller = _resolve_chat_stream(force_local, chat_stream)
     answer = yield from _stream_chunks(settings, db, messages, caller)
     if answer is None:

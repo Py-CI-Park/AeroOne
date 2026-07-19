@@ -22,6 +22,7 @@ from app.modules.aero_work import models as aero_work_models  # noqa: F401  (cre
 from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.activity_service import ActivityService, record_activity
 from app.modules.aero_work.document_composer import ComposeUnavailable, compose_content
+from app.modules.aero_work.document_preview import render_preview_html
 from app.modules.aero_work.document_formats import FORMAT_LABELS, format_document
 from app.modules.aero_work.hwpx_generator import build_hwpx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
@@ -39,6 +40,8 @@ from app.modules.aero_work.schemas import (
     ChatSessionResponse,
     ChatHistoryResponse,
     DocumentComposeRequest,
+    PreviewRequest,
+    PreviewResponse,
     DocumentComposeResponse,
     PrefResponse,
     PrefUpdateRequest,
@@ -653,6 +656,7 @@ def compose_document(
     try:
         paragraphs = compose_content(
             settings, db, fmt=payload.format, title=title, instruction=payload.instruction,
+            previous_paragraphs=payload.previous_paragraphs,
             force_local=get_llm_mode(db, owner.id) == 'local',
         )
     except ComposeUnavailable as exc:
@@ -684,7 +688,8 @@ def compose_document_stream(
 
     def event_stream() -> Generator[str, None, None]:
         for kind, value in stream_compose(
-            settings, db, fmt=payload.format, title=title, instruction=payload.instruction, force_local=force_local
+            settings, db, fmt=payload.format, title=title, instruction=payload.instruction,
+            previous_paragraphs=payload.previous_paragraphs, force_local=force_local
         ):
             if kind == 'delta':
                 yield _sse_frame('delta', value)
@@ -694,6 +699,21 @@ def compose_document_stream(
                 yield _sse_frame('error', value)
 
     return StreamingResponse(event_stream(), media_type='text/event-stream')
+
+@router.post('/document/preview', response_model=PreviewResponse, dependencies=[Depends(require_csrf)])
+def preview_document(
+    payload: PreviewRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> PreviewResponse:
+    """양식(종이) 미리보기 — gongmuwon §5.3. 사용자 텍스트는 전부 이스케이프해 텍스트로만 삽입."""
+
+    owner = _require_user(user)
+    title = (payload.title or '').strip() or '무제'
+    html = render_preview_html(payload.format_id, title, payload.paragraphs)
+    record_activity(db, owner.id, 'document.preview', f'문서 미리보기 "{title}" — {FORMAT_LABELS.get(payload.format_id, payload.format_id)}')
+    db.commit()
+    return PreviewResponse(html=html)
 
 
 # ---- 환경설정(사용자 LLM 프로필) ----
