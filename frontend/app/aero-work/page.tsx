@@ -15,7 +15,7 @@ export default async function AeroWorkPage({
   const theme = await getAppTheme(params.theme);
 
   return (
-    <AppShell title="Aero Work" theme={theme} showThemeSelector themePath="/aero-work" active="none" contentClassName="max-w-6xl">
+    <AppShell title="Aero Work" theme={theme} showThemeSelector themePath="/aero-work" active="none" contentClassName="max-w-none">
       <AeroWorkShell />
     </AppShell>
   );
