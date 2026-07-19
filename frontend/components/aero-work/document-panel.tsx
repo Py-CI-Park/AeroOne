@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 
-import { generateAeroWorkHwpx } from '@/lib/api';
+import { composeAeroWorkDocument, generateAeroWorkHwpx } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 
 // Aero Work P3 문서작성 — 제목 + 본문(한 줄=한 문단)을 즉시 미리보고 HWPX(한글, OWPML) 로
@@ -14,6 +14,7 @@ export function DocumentPanel() {
   const [body, setBody] = useState('');
   const [format, setFormat] = useState('onepage');
   const [busy, setBusy] = useState(false);
+  const [composing, setComposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -98,6 +99,36 @@ export function DocumentPanel() {
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-on disabled:opacity-50"
           >
             {busy ? '생성 중…' : 'HWPX 생성·다운로드'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void (async () => {
+                if (!body.trim()) {
+                  setError('지시(개요)를 본문 칸에 먼저 적으세요. AI가 개조식 내용으로 확장합니다.');
+                  return;
+                }
+                setComposing(true);
+                setError(null);
+                setDone(null);
+                try {
+                  const result = await composeAeroWorkDocument(
+                    { title: title.trim(), instruction: body, format },
+                    getCsrfCookie(),
+                  );
+                  setBody(result.paragraphs.join('\n'));
+                  setDone(`AI가 ${result.paragraphs.length}문장으로 확장했음. 검토·수정 후 HWPX로 내려받으세요.`);
+                } catch {
+                  setError('AI 내용 생성 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
+                } finally {
+                  setComposing(false);
+                }
+              })();
+            }}
+            disabled={composing || busy || !body.trim()}
+            className="rounded-lg border border-accent bg-accent-soft px-4 py-2 text-sm font-medium text-accent disabled:opacity-50"
+          >
+            {composing ? 'AI 생성 중…' : '🪄 AI로 내용 생성'}
           </button>
           <span className="text-xs text-ink-3">{paragraphs.length}개 문단</span>
         </div>
