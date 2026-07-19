@@ -91,6 +91,51 @@ def test_0031_upgrade_creates_fts_table_and_downgrade_removes_it(tmp_path: Path)
         assert row_after is None
 
 
+def test_0031_upgrade_backfills_existing_chunks_into_fts(tmp_path: Path) -> None:
+    """H1: 0031 적용 전부터 있던 청크도 upgrade 한 번으로 FTS 검색에 히트해야 한다."""
+
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'backfill.db'}")
+    Base.metadata.create_all(
+        bind=engine,
+        tables=[
+            Base.metadata.tables['aero_work_knowledge_folders'],
+            Base.metadata.tables['aero_work_knowledge_files'],
+            Base.metadata.tables['aero_work_knowledge_chunks'],
+        ],
+    )
+    with Session(engine) as db:
+        service = KnowledgeService(db, _NullEmbedder())
+        folder = service.register_folder('kb', str(tmp_path))
+        db.commit()
+        db.execute(
+            sa.text(
+                'INSERT INTO aero_work_knowledge_files (folder_id, rel_path, signature, chunk_count) '
+                'VALUES (:folder_id, :rel_path, :signature, 1)'
+            ),
+            {'folder_id': folder.id, 'rel_path': 'legacy.md', 'signature': 'legacy-sig'},
+        )
+        file_id = db.execute(sa.text('SELECT id FROM aero_work_knowledge_files')).scalar_one()
+        db.execute(
+            sa.text(
+                'INSERT INTO aero_work_knowledge_chunks (file_id, chunk_index, content, embedding) '
+                "VALUES (:file_id, 0, '예산편성 계획 수립 지침', '[]')"
+            ),
+            {'file_id': file_id},
+        )
+        db.commit()
+
+    with engine.begin() as connection:
+        module = _load_migration(FTS_MIGRATION_FILE)
+        module.op = Operations(MigrationContext.configure(connection))
+        module.upgrade()
+
+    with Session(engine) as db:
+        assert ks._fts_available(db) is True
+        service = KnowledgeService(db, _NullEmbedder())
+        hits = service.keyword_search('예산')
+        assert hits and hits[0]['rel_path'] == 'legacy.md'
+
+
 # ---- KnowledgeService × FTS 동기화/검색 ----
 
 

@@ -48,8 +48,35 @@ def upgrade() -> None:
     if tokenizer is None:
         return  # FTS5 자체 미지원 → 가상 테이블 생성 스킵(런타임 LIKE 폴백)
     op.execute(
-        f"CREATE VIRTUAL TABLE {FTS_TABLE} USING fts5(content, rel_path, tokenize='{tokenizer}')"
+        f"CREATE VIRTUAL TABLE {FTS_TABLE} USING fts5("
+        f"content, rel_path UNINDEXED, tokenize='{tokenizer}')"
     )
+    _backfill_existing_chunks(bind)
+
+
+def _backfill_existing_chunks(conn) -> None:
+    """기존(마이그레이션 이전) 청크를 FTS 색인에 채운다 — 런타임(``_fts_index_chunk``)과
+    동일하게 ``str.lower()`` 로 정규화한 본문을 넣어야 대소문자 무시 부분일치가 일관된다.
+    Python 루프로 처리하는 이유는 SQLite 가 트리거 기반 UPSERT-INTO-FTS 를 지원하지 않고,
+    본문이 커서 단일 INSERT-SELECT 로는 소문자 정규화를 SQL 레벨에서 이식하기 번거롭기
+    때문이다(청크 수가 실용적으로 크지 않아 성능 문제는 없다).
+    """
+
+    table_exists = conn.exec_driver_sql(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='aero_work_knowledge_chunks'"
+    ).first()
+    if table_exists is None:
+        return  # 신규 DB(테이블이 아직 없는 단위 테스트용 엔진 등) — 백필할 청크가 없다
+    rows = conn.exec_driver_sql(
+        'SELECT c.id AS chunk_id, c.content AS content, f.rel_path AS rel_path '
+        'FROM aero_work_knowledge_chunks AS c '
+        'JOIN aero_work_knowledge_files AS f ON f.id = c.file_id'
+    ).fetchall()
+    for chunk_id, content, rel_path in rows:
+        conn.exec_driver_sql(
+            f'INSERT INTO {FTS_TABLE}(rowid, content, rel_path) VALUES (?, ?, ?)',
+            (chunk_id, (content or '').lower(), rel_path),
+        )
 
 
 def downgrade() -> None:
