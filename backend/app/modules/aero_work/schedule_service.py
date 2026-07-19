@@ -59,6 +59,7 @@ class ScheduleService:
         all_day: bool,
         location: str,
         notes: str,
+        remind_before_minutes: int | None = None,
     ) -> AeroWorkEvent:
         title = (title or '').strip()
         if not title:
@@ -75,6 +76,7 @@ class ScheduleService:
             all_day=all_day,
             location=(location or '').strip(),
             notes=(notes or '').strip(),
+            remind_before_minutes=remind_before_minutes,
         )
         self.db.add(event)
         self.db.flush()
@@ -99,6 +101,8 @@ class ScheduleService:
             event.location = (fields['location'] or '').strip()
         if 'notes' in fields:
             event.notes = (fields['notes'] or '').strip()
+        if 'remind_before_minutes' in fields:
+            event.remind_before_minutes = fields['remind_before_minutes']
         if event.ends_at is not None and event.ends_at < event.starts_at:
             raise ScheduleError('종료 시각이 시작 시각보다 앞설 수 없습니다.')
         self.db.flush()

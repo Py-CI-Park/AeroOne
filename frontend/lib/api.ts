@@ -1247,6 +1247,7 @@ export type AeroWorkEvent = {
   all_day: boolean;
   location: string;
   notes: string;
+  remind_before_minutes: number | null;
 };
 
 export type AeroWorkEventInput = {
@@ -1256,6 +1257,7 @@ export type AeroWorkEventInput = {
   all_day?: boolean;
   location?: string;
   notes?: string;
+  remind_before_minutes?: number | null;
 };
 
 export async function fetchAeroWorkEvents(range?: { start?: string; end?: string }) {

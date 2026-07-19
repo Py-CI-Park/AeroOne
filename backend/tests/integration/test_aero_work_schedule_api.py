@@ -70,3 +70,23 @@ def test_schedule_rejects_reversed_range(csrf_client) -> None:
 def test_schedule_update_missing_returns_404(csrf_client) -> None:
     resp = csrf_client.patch('/api/v1/aero-work/schedule/events/999999', json={'title': 'nope'})
     assert resp.status_code == 404
+
+
+def test_schedule_reminder_roundtrip(csrf_client) -> None:
+    created = csrf_client.post(
+        '/api/v1/aero-work/schedule/events',
+        json={'title': '회의', 'starts_at': '2026-07-20T10:00:00', 'remind_before_minutes': 30},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()['remind_before_minutes'] == 30
+    event_id = created.json()['id']
+
+    patched = csrf_client.patch(
+        f'/api/v1/aero-work/schedule/events/{event_id}', json={'remind_before_minutes': 60}
+    )
+    assert patched.json()['remind_before_minutes'] == 60
+
+    cleared = csrf_client.patch(
+        f'/api/v1/aero-work/schedule/events/{event_id}', json={'remind_before_minutes': None}
+    )
+    assert cleared.json()['remind_before_minutes'] is None

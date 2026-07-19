@@ -97,6 +97,7 @@ class AeroWorkEvent(Base):
     all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     location: Mapped[str] = mapped_column(String(300), nullable=False, server_default='')
     notes: Mapped[str] = mapped_column(Text, nullable=False, server_default='')
+    remind_before_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

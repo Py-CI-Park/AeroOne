@@ -70,6 +70,7 @@ class EventCreateRequest(BaseModel):
     all_day: bool = False
     location: str = Field(default='', max_length=300)
     notes: str = ''
+    remind_before_minutes: int | None = None
 
 
 class EventUpdateRequest(BaseModel):
@@ -79,6 +80,7 @@ class EventUpdateRequest(BaseModel):
     all_day: bool | None = None
     location: str | None = Field(default=None, max_length=300)
     notes: str | None = None
+    remind_before_minutes: int | None = None
 
 
 class EventResponse(BaseModel):
@@ -89,6 +91,7 @@ class EventResponse(BaseModel):
     all_day: bool
     location: str
     notes: str
+    remind_before_minutes: int | None
 
     @classmethod
     def from_model(cls, event) -> 'EventResponse':
@@ -100,6 +103,7 @@ class EventResponse(BaseModel):
             all_day=event.all_day,
             location=event.location,
             notes=event.notes,
+            remind_before_minutes=event.remind_before_minutes,
         )
 
 

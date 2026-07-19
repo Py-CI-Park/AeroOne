@@ -10,6 +10,8 @@ import {
   type AeroWorkEvent,
 } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
+import { ReminderBanner } from '@/components/aero-work/reminder-banner';
+import { ScheduleMonth } from '@/components/aero-work/schedule-month';
 
 // Aero Work P4 일정 — 사용자별 개인 캘린더(아젠다 뷰 + 생성/수정/삭제). 향후 홈 브리핑이
 // 이 데이터를 소비한다. 시각은 datetime-local(로컬 naive)로 주고받으며 백엔드가 정규화한다.
@@ -21,9 +23,10 @@ type EventForm = {
   all_day: boolean;
   location: string;
   notes: string;
+  remind: string;
 };
 
-const EMPTY_FORM: EventForm = { title: '', starts_at: '', ends_at: '', all_day: false, location: '', notes: '' };
+const EMPTY_FORM: EventForm = { title: '', starts_at: '', ends_at: '', all_day: false, location: '', notes: '', remind: '' };
 
 function toInputValue(iso: string | null): string {
   return iso ? iso.slice(0, 16) : '';
@@ -45,6 +48,7 @@ export function SchedulePanel() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<EventForm>(EMPTY_FORM);
+  const [calendarView, setCalendarView] = useState<'agenda' | 'month'>('agenda');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +98,7 @@ export function SchedulePanel() {
       all_day: event.all_day,
       location: event.location,
       notes: event.notes,
+      remind: event.remind_before_minutes != null ? String(event.remind_before_minutes) : '',
     });
   };
 
@@ -112,6 +117,7 @@ export function SchedulePanel() {
         all_day: form.all_day,
         location: form.location.trim(),
         notes: form.notes.trim(),
+        remind_before_minutes: form.remind ? Number(form.remind) : null,
       };
       if (editingId !== null) {
         await updateAeroWorkEvent(editingId, payload, getCsrfCookie());
@@ -145,6 +151,8 @@ export function SchedulePanel() {
       {error ? (
         <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">{error}</p>
       ) : null}
+
+      <ReminderBanner events={events} />
 
       <form onSubmit={handleSubmit} className="rounded-xl border border-line-subtle bg-surface-base p-4">
         <p className="text-sm font-semibold text-ink-1">{editingId !== null ? '일정 수정' : '새 일정'}</p>
@@ -187,6 +195,20 @@ export function SchedulePanel() {
             />
             종일
           </label>
+          <label className="flex items-center gap-2 text-xs text-ink-3">
+            사전 알림
+            <select
+              value={form.remind}
+              onChange={(event) => setForm((prev) => ({ ...prev, remind: event.target.value }))}
+              className="rounded-lg border border-line-subtle bg-surface-raised px-2 py-1.5 text-sm text-ink-1"
+            >
+              <option value="">없음</option>
+              <option value="10">10분 전</option>
+              <option value="30">30분 전</option>
+              <option value="60">1시간 전</option>
+              <option value="1440">하루 전</option>
+            </select>
+          </label>
           <textarea
             value={form.notes}
             onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
@@ -212,8 +234,31 @@ export function SchedulePanel() {
       </form>
 
       <div>
-        <p className="text-sm font-semibold text-ink-1">다가오는 일정</p>
-        {loading ? (
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink-1">{calendarView === 'month' ? '월 캘린더' : '다가오는 일정'}</p>
+          <div className="flex gap-1">
+            {[
+              ['agenda', '아젠다'],
+              ['month', '월'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setCalendarView(value as 'agenda' | 'month')}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  calendarView === value ? 'bg-accent text-accent-on' : 'bg-surface-sunken text-ink-2 hover:bg-accent-soft'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {calendarView === 'month' ? (
+          <div className="mt-2">
+            <ScheduleMonth events={events} onSelectEvent={startEdit} />
+          </div>
+        ) : loading ? (
           <p className="mt-2 text-sm text-ink-3">불러오는 중…</p>
         ) : grouped.length === 0 ? (
           <p className="mt-2 rounded-lg border border-dashed border-line-subtle bg-surface-base px-3 py-4 text-sm text-ink-3">
@@ -231,7 +276,10 @@ export function SchedulePanel() {
                         {event.all_day ? '종일' : event.starts_at.slice(11, 16)}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink-1">{event.title}</p>
+                        <p className="text-sm font-medium text-ink-1">
+                          {event.title}
+                          {event.remind_before_minutes != null ? <span className="ml-1" title="사전 알림">🔔</span> : null}
+                        </p>
                         {event.location ? <p className="text-xs text-ink-3">📍 {event.location}</p> : null}
                         {event.notes ? <p className="mt-0.5 whitespace-pre-wrap text-xs text-ink-2">{event.notes}</p> : null}
                       </div>
