@@ -17,7 +17,7 @@ vi.mock('@/lib/api', async () => {
     previewAeroWorkDocument: vi.fn(async () => ({
       html: '<div style="font-weight:bold">제목</div><p>본문 문단</p>',
     })),
-    composeAeroWorkDocument: vi.fn(async () => ({ paragraphs: ['재생성된 문단1', '재생성된 문단2'] })),
+    composeAeroWorkDocument: vi.fn(async () => ({ paragraphs: ['재생성된 문단1', '재생성된 문단2'], truncated: false })),
     streamAeroWorkCompose: vi.fn(),
   };
 });
@@ -105,5 +105,117 @@ describe('DocumentPanel — 종이 미리보기(G005)', () => {
     const paper = screen.getByTestId('paper-preview');
     expect(paper.querySelector('script')).toBeNull();
     expect(paper.textContent).toContain('<script>alert(1)</script>');
+  });
+
+  test('빠르게 연속으로 변경하면 늦게 도착한 이전 미리보기 응답이 최신 렌더를 덮어쓰지 않는다(M1)', async () => {
+    vi.useFakeTimers();
+    let resolveFirst: (value: { html: string }) => void = () => {};
+    let resolveSecond: (value: { html: string }) => void = () => {};
+    const first = new Promise<{ html: string }>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const second = new Promise<{ html: string }>((resolve) => {
+      resolveSecond = resolve;
+    });
+    vi.mocked(previewAeroWorkDocument).mockImplementationOnce(() => first).mockImplementationOnce(() => second);
+
+    render(<DocumentPanel />);
+    fireEvent.click(screen.getByLabelText('종이 미리보기'));
+
+    fireEvent.change(screen.getByPlaceholderText(/본문을 입력하세요/), { target: { value: '첫 번째' } });
+    await advance500();
+
+    fireEvent.change(screen.getByPlaceholderText(/본문을 입력하세요/), { target: { value: '두 번째' } });
+    await advance500();
+
+    expect(previewAeroWorkDocument).toHaveBeenCalledTimes(2);
+
+    // 두 번째(최신) 요청이 먼저 응답한다.
+    await act(async () => {
+      resolveSecond({ html: '<p>두 번째 결과</p>' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const paper = screen.getByTestId('paper-preview');
+    expect(paper.innerHTML).toContain('두 번째 결과');
+
+    // 첫 번째(구) 요청이 뒤늦게 도착해도 최신 화면을 덮어쓰지 않아야 한다.
+    await act(async () => {
+      resolveFirst({ html: '<p>첫 번째 결과(구)</p>' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(paper.innerHTML).toContain('두 번째 결과');
+    expect(paper.innerHTML).not.toContain('첫 번째 결과(구)');
+  });
+
+  test('미리보기 API 실패 시 오류 문구를 표시한다(L5)', async () => {
+    vi.useFakeTimers();
+    vi.mocked(previewAeroWorkDocument).mockRejectedValueOnce(new Error('boom'));
+
+    render(<DocumentPanel />);
+    fireEvent.change(screen.getByPlaceholderText(/본문을 입력하세요/), { target: { value: 'x' } });
+    fireEvent.click(screen.getByLabelText('종이 미리보기'));
+    await advance500();
+
+    expect(previewAeroWorkDocument).toHaveBeenCalled();
+    expect(screen.getByText('미리보기 생성 실패.')).toBeInTheDocument();
+  });
+
+  test('수정 지시 재생성 스트림이 실패(onError)하면 비스트리밍 composeAeroWorkDocument 로 폴백한다(L5)', async () => {
+    vi.useFakeTimers();
+    vi.mocked(streamAeroWorkCompose).mockImplementation(async (_payload, _csrf, handlers) => {
+      handlers.onError('스트림 실패');
+    });
+    vi.mocked(composeAeroWorkDocument).mockResolvedValueOnce({
+      paragraphs: ['폴백 문단1', '폴백 문단2'],
+      truncated: false,
+    });
+
+    render(<DocumentPanel />);
+    fireEvent.change(screen.getByPlaceholderText(/본문을 입력하세요/), {
+      target: { value: '첫 문단\n둘째 문단' },
+    });
+    fireEvent.click(screen.getByLabelText('종이 미리보기'));
+    await advance500();
+    fireEvent.change(screen.getByPlaceholderText(/수정해줘/), { target: { value: '더 격식있게 고쳐줘' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '지시 반영 재생성' }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(composeAeroWorkDocument).toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/본문을 입력하세요/)).toHaveValue('폴백 문단1\n폴백 문단2');
+  });
+
+  test('재생성 결과 문단 수가 이전의 50% 미만으로 급감하면 인라인 확인 후에만 교체한다(M3)', async () => {
+    vi.useFakeTimers();
+    vi.mocked(streamAeroWorkCompose).mockImplementation(async (_payload, _csrf, handlers) => {
+      handlers.onDone(['짧아진 결과']);
+    });
+
+    render(<DocumentPanel />);
+    fireEvent.change(screen.getByPlaceholderText(/본문을 입력하세요/), {
+      target: { value: '문단1\n문단2\n문단3\n문단4' },
+    });
+    fireEvent.click(screen.getByLabelText('종이 미리보기'));
+    await advance500();
+    fireEvent.change(screen.getByPlaceholderText(/수정해줘/), { target: { value: '요약해줘' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '지시 반영 재생성' }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // 4개 -> 1개(25%, 50% 미만) 이므로 즉시 교체되지 않고 확인 UI 가 떠야 한다.
+    expect(screen.getByTestId('revision-drop-confirm')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/본문을 입력하세요/)).toHaveValue('문단1\n문단2\n문단3\n문단4');
+
+    fireEvent.click(screen.getByRole('button', { name: '교체' }));
+    expect(screen.getByPlaceholderText(/본문을 입력하세요/)).toHaveValue('짧아진 결과');
   });
 });

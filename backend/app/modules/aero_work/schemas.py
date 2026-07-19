@@ -201,13 +201,26 @@ class ChatHistoryResponse(BaseModel):
 
 class DocumentComposeRequest(BaseModel):
     title: str = Field(default='', max_length=300)
-    instruction: str = Field(min_length=1, max_length=10000)
+    # M3: instruction 절단(document_composer._INSTRUCTION_MAX_CHARS)과 일치시킨다 — 스키마가
+    # 더 긴 입력을 허용해도 프롬프트 조립 단계에서 말없이 잘리는 불일치를 없앤다.
+    instruction: str = Field(min_length=1, max_length=2000)
     format: str = Field(default='onepage', max_length=20)
     previous_paragraphs: list[str] = Field(default_factory=list, max_length=100)
+
+    @field_validator('previous_paragraphs')
+    @classmethod
+    def _previous_paragraph_lengths(cls, value: list[str]) -> list[str]:
+        for paragraph in value:
+            if len(paragraph) > 10000:
+                raise ValueError('이전 본문 문단이 너무 깁니다(최대 10000자).')
+        return value
 
 
 class DocumentComposeResponse(BaseModel):
     paragraphs: list[str]
+    # M3: instruction/이전 본문 절단이 실제로 일어났을 때만 True — 계약 후방호환을 위해
+    # 기본값 False(기존 클라이언트는 이 필드를 몰라도 그대로 동작).
+    truncated: bool = False
 
 
 class PreviewRequest(BaseModel):

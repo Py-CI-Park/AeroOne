@@ -1454,8 +1454,8 @@ export async function deleteAeroWorkChatSession(id: number, csrfToken: string) {
 export async function composeAeroWorkDocument(
   payload: { title: string; instruction: string; format: string; previous_paragraphs?: string[] },
   csrfToken: string,
-) {
-  return browserFetch<{ paragraphs: string[] }>('/api/frontend/aero-work/document/compose', {
+): Promise<{ paragraphs: string[]; truncated: boolean }> {
+  return browserFetch<{ paragraphs: string[]; truncated: boolean }>('/api/frontend/aero-work/document/compose', {
     method: 'POST',
     body: JSON.stringify(payload),
     headers: { 'X-CSRF-Token': csrfToken },

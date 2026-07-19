@@ -17,7 +17,6 @@ from html import escape
 from app.modules.aero_work.document_formats import FORMATS, format_document
 
 _BASE_FONT = "font-family:'Malgun Gothic','맑은 고딕',sans-serif; color:#111;"
-_HANGUL_ORDER = tuple('가나다라마바사아자차카타파하')
 
 
 class UnknownFormat(ValueError):
@@ -69,15 +68,18 @@ def _render_official(title: str, paragraphs: list[str]) -> str:
 
 
 def _render_onepage(title: str, paragraphs: list[str]) -> str:
-    """1페이지 보고서 — 제목 중앙 + 위계 번호(1. 가.)."""
+    """1페이지 보고서 — 제목 중앙 + ``format_document('onepage')`` 위계(□ 요약/세부, ◦ 항목)
+    그대로 재사용한다(M2 — 이중 위계 로직 제거, 문서 다운로드용 위계와 화면 미리보기 위계가
+    갈라지지 않게 한다)."""
 
-    body = _lines(paragraphs)
+    lines = format_document('onepage', title, '\n'.join(_lines(paragraphs)))
+    _, *body_lines = lines
     parts = [_title_header(title)]
-    if body:
-        parts.append(f'<p style="{_BASE_FONT} font-weight:bold; margin:6px 0;">1. {escape(body[0])}</p>')
-    for index, item in enumerate(body[1:]):
-        ordinal = _HANGUL_ORDER[index % len(_HANGUL_ORDER)]
-        parts.append(f'<p style="{_BASE_FONT} margin:4px 0 4px 24px;">{ordinal}. {escape(item)}</p>')
+    for line in body_lines:
+        if line.startswith('  ◦ '):
+            parts.append(f'<p style="{_BASE_FONT} margin:4px 0 4px 24px;">{escape(line.strip())}</p>')
+        else:
+            parts.append(f'<p style="{_BASE_FONT} font-weight:bold; margin:6px 0;">{escape(line)}</p>')
     return ''.join(parts)
 
 

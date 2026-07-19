@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   approveAeroWorkDocument,
@@ -42,6 +42,11 @@ export function DocumentPanel() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [instruction, setInstruction] = useState('');
   const [revising, setRevising] = useState(false);
+  // M3: 재생성 문단 수가 이전의 50% 미만으로 급감하면 즉시 교체하지 않고 인라인 확인을 거친다
+  // (window.confirm 대신 화면 안 확인 버튼 — 테스트 가능하고 화면 흐름을 벗어나지 않는다).
+  const [pendingRevision, setPendingRevision] = useState<
+    { paragraphs: string[]; previousCount: number; truncated: boolean } | null
+  >(null);
 
   const loadSaved = async () => {
     try {
@@ -65,7 +70,12 @@ export function DocumentPanel() {
   );
 
   // 종이 미리보기가 켜져 있는 동안 제목/본문/양식 변경을 500ms 디바운스로 반영한다.
+  // M1: 세대 토큰으로 늦게 도착한 이전 요청 응답을 폐기한다 — 빠른 연속 변경(또는 토글 off)
+  // 이후 먼저 시작된 느린 응답이 나중에 도착해 최신 화면을 덮어쓰는 경합을 막는다.
+  const previewGenerationRef = useRef(0);
   useEffect(() => {
+    previewGenerationRef.current += 1;
+    const generation = previewGenerationRef.current;
     if (!paperPreviewOn) {
       return;
     }
@@ -78,11 +88,19 @@ export function DocumentPanel() {
             { format_id: format, title: title.trim() || '무제', paragraphs },
             getCsrfCookie(),
           );
+          if (previewGenerationRef.current !== generation) {
+            return; // 이 요청보다 나중 요청이 이미 시작됨(또는 토글 off) — 화면을 덮어쓰지 않는다.
+          }
           setPreviewHtml(result.html);
         } catch {
+          if (previewGenerationRef.current !== generation) {
+            return;
+          }
           setPreviewError('미리보기 생성 실패.');
         } finally {
-          setPreviewLoading(false);
+          if (previewGenerationRef.current === generation) {
+            setPreviewLoading(false);
+          }
         }
       })();
     }, PREVIEW_DEBOUNCE_MS);
@@ -115,6 +133,38 @@ export function DocumentPanel() {
     }
   };
 
+  // M3: 문단 수 급감(이전의 50% 미만) 시 즉시 교체하지 않고 확인 대기 상태로 돌린다.
+  const applyRevisionResult = (revisedParagraphs: string[], previousCount: number, truncated: boolean) => {
+    const droppedSharply = previousCount > 0 && revisedParagraphs.length < previousCount * 0.5;
+    if (droppedSharply) {
+      setPendingRevision({ paragraphs: revisedParagraphs, previousCount, truncated });
+      return;
+    }
+    setBody(revisedParagraphs.join('\n'));
+    setInstruction('');
+    setDone(
+      truncated
+        ? `AI가 지시를 반영해 ${revisedParagraphs.length}문장으로 재생성했음. (일부만 반영됨: 지시/이전 본문이 길어 일부만 반영되었습니다.)`
+        : `AI가 지시를 반영해 ${revisedParagraphs.length}문장으로 재생성했음.`,
+    );
+  };
+
+  const confirmPendingRevision = () => {
+    if (!pendingRevision) {
+      return;
+    }
+    setBody(pendingRevision.paragraphs.join('\n'));
+    setInstruction('');
+    setDone(
+      pendingRevision.truncated
+        ? `AI가 지시를 반영해 ${pendingRevision.paragraphs.length}문장으로 재생성했음. (일부만 반영됨: 지시/이전 본문이 길어 일부만 반영되었습니다.)`
+        : `AI가 지시를 반영해 ${pendingRevision.paragraphs.length}문장으로 재생성했음.`,
+    );
+    setPendingRevision(null);
+  };
+
+  const cancelPendingRevision = () => setPendingRevision(null);
+
   const handleRevise = async () => {
     if (!instruction.trim()) {
       setError('수정 지시를 입력하세요.');
@@ -123,6 +173,7 @@ export function DocumentPanel() {
     setRevising(true);
     setError(null);
     setDone(null);
+    setPendingRevision(null);
     const currentInstruction = instruction.trim();
     const previousParagraphs = paragraphs;
     let fallbackPending: Promise<void> | undefined;
@@ -135,9 +186,7 @@ export function DocumentPanel() {
             // 수정 지시 재생성은 완료본만 반영한다(부분 델타로 본문을 덮어쓰지 않음).
           },
           onDone: (revised) => {
-            setBody(revised.join('\n'));
-            setInstruction('');
-            setDone(`AI가 지시를 반영해 ${revised.length}문장으로 재생성했음.`);
+            applyRevisionResult(revised, previousParagraphs.length, false);
           },
           onError: () => {
             fallbackPending = (async () => {
@@ -146,9 +195,7 @@ export function DocumentPanel() {
                   { title: title.trim(), instruction: currentInstruction, format, previous_paragraphs: previousParagraphs },
                   getCsrfCookie(),
                 );
-                setBody(result.paragraphs.join('\n'));
-                setInstruction('');
-                setDone(`AI가 지시를 반영해 ${result.paragraphs.length}문장으로 재생성했음.`);
+                applyRevisionResult(result.paragraphs, previousParagraphs.length, result.truncated);
               } catch {
                 setError('수정 지시 반영 실패. 로컬 AI(또는 OpenAI 호환 연결) 상태를 확인할 것.');
               }
@@ -207,7 +254,7 @@ export function DocumentPanel() {
           onChange={(event) => setBody(event.target.value)}
           placeholder="본문을 입력하세요. 한 줄이 한 문단이 됩니다."
           rows={10}
-          readOnly={composing}
+          readOnly={composing || revising}
           className="mt-2 w-full rounded-lg border border-line-subtle bg-surface-raised px-3 py-2 text-sm leading-relaxed text-ink-1"
         />
         <div className="mt-3 flex items-center gap-2">
@@ -271,7 +318,7 @@ export function DocumentPanel() {
                 }
               })();
             }}
-            disabled={composing || busy || !body.trim()}
+            disabled={composing || busy || revising || !body.trim()}
             className="rounded-lg border border-accent bg-accent-soft px-4 py-2 text-sm font-medium text-accent disabled:opacity-50"
           >
             {composing ? 'AI 생성 중…' : '🪄 AI로 내용 생성'}
@@ -323,11 +370,38 @@ export function DocumentPanel() {
               <button
                 type="button"
                 onClick={() => void handleRevise()}
-                disabled={revising || !instruction.trim()}
+                disabled={revising || composing || !instruction.trim()}
                 className="mt-2 rounded-lg border border-accent bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent disabled:opacity-50"
               >
                 {revising ? '반영 중…' : '지시 반영 재생성'}
               </button>
+              {pendingRevision ? (
+                <div
+                  data-testid="revision-drop-confirm"
+                  className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700"
+                >
+                  <p>
+                    문단 수가 {pendingRevision.previousCount}개에서 {pendingRevision.paragraphs.length}개로
+                    크게 줄었습니다. 교체할까요?
+                  </p>
+                  <div className="mt-1.5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={confirmPendingRevision}
+                      className="rounded px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent-soft"
+                    >
+                      교체
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelPendingRevision}
+                      className="rounded px-2 py-0.5 text-[11px] font-medium text-ink-2 hover:bg-surface-sunken"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
