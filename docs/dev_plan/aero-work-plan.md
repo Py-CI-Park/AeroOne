@@ -1,6 +1,6 @@
 # Aero Work — gongmuwon 기능의 AeroOne 네이티브 재구현 계획 (다음 버전)
 
-- 상태: **P0~P4 구현 완료 + P3 기본 구현(`aero-work-dev` 브랜치, 1.17.0 태그 기준 분기)** — 7메뉴(홈 브리핑·업무대화·일정·문서작성·지식폴더·실행기록·환경설정) 모두 기능 동작. 잔여: 알림(폐쇄망 in-app 배지)·HWPX 서식 템플릿·P5(통합/성능/phase 보고서/릴리스 스코프 결정). 1.17.x 릴리스는 게시 완료. 상세는 §4.
+- 상태: **7메뉴 골격(breadth) 구현 완료 · 실무 깊이·핵심 오케스트레이션 미구현** (`aero-work-dev`). ⚠️ 실물 gongmuwon 대조 결과 폭만 확보하고 깊이를 놓쳤음 — **완전 파리티 계획은 [`aero-work-full-parity-plan.md`](aero-work-full-parity-plan.md), 중간 검토는 [`../reports/aero-work-midterm-review.md`](../reports/aero-work-midterm-review.md)** 로 이관·심화한다. 본 문서 §4 는 초기 6기능 매핑의 기록으로 보존한다. 1.17.x 릴리스는 게시 완료.
 - 대체 관계: 본 문서는 [`gongmuwon-integration-review.md`](gongmuwon-integration-review.md) 의 "외부 앱 내장" 권고를 **대체**한다. 운영자 결정에 따라 방향이 **"외부 gongmuwon 연동" → "AeroOne 안에 네이티브 재구현(Aero Work)"** 으로 바뀌었다.
 - 목표: gongmuwon(공무원)의 전 기능을, **더 개선된 React 시스템**으로 AeroOne 안에 `Aero Work` 라는 이름의 워크스페이스 모듈로 구현한다.
 - 전제: AI 는 **폐쇄망 Ollama + OpenAI 호환 API 키가 이미 AeroOne 에 있음** → gongmuwon 의 6.3GB **AI 팩은 반입/번들하지 않는다**. AeroOne 의 기존 AI provider(Ollama·OpenAI 호환, DPAPI 보호 키, egress 정책)를 그대로 재사용한다.
