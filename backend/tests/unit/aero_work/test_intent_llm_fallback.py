@@ -147,7 +147,8 @@ def test_knowledge_fallback_routes_via_llm_for_each_category(session: Session, c
 
     assert len(results) == 1
     assert results[0]['kind'] == expected_kind
-    assert results[0]['routed_by'] == 'llm'
+    # L1: LLM 이 실제로 결과를 바꿨을 때만 'llm' — category 가 'knowledge' 면 개입이 없었으므로 'rule'.
+    assert results[0]['routed_by'] == ('rule' if category == 'knowledge' else 'llm')
 
 
 def test_knowledge_fallback_llm_parse_failure_keeps_knowledge(session: Session) -> None:
@@ -162,6 +163,25 @@ def test_knowledge_fallback_llm_parse_failure_keeps_knowledge(session: Session) 
     results = orchestrator.run(FALLBACK_UTTERANCE, now=NOW)
 
     assert results[0]['kind'] == 'knowledge'
+    # L1: 파싱 실패로 knowledge 를 그대로 유지했다 — 실제 개입이 없었으므로 'rule'.
+    assert results[0]['routed_by'] == 'rule'
+
+
+def test_knowledge_fallback_schedule_category_with_date_in_utterance_never_creates(session: Session) -> None:
+    """B5: LLM 2차 분류가 'schedule' 을 돌려줘도, 발화에 날짜·시각이 있어도 schedule.create 를
+    지어내지 않고 항상 schedule.list 로 강등한다(생성 동사 부재가 LLM 레인의 구조적 전제)."""
+
+    orchestrator = OrchestratorService(
+        session,
+        _settings(),
+        user_id=1,
+        embedder=FakeEmbedder(),
+        synthesizer=lambda s, q, h: '',
+        llm_classify=lambda u: 'schedule',
+    )
+    results = orchestrator.run('내일 오전 10시에 뭐 있었는지 궁금하네', now=NOW)
+
+    assert results[0]['kind'] == 'schedule.list'
     assert results[0]['routed_by'] == 'llm'
 
 
