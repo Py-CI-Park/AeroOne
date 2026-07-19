@@ -19,17 +19,22 @@ from app.modules.aero_work.activity_service import ActivityService, record_activ
 from app.modules.aero_work.hwpx_generator import build_hwpx
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
+from app.modules.aero_work.orchestrator_service import OrchestratorService
 from app.modules.aero_work.schemas import (
     ActivityListResponse,
     ActivityResponse,
     EventCreateRequest,
     EventListResponse,
     EventResponse,
+    DocumentIntent,
     DocumentRequest,
     EventUpdateRequest,
     FolderListResponse,
     FolderRegisterRequest,
     FolderResponse,
+    OrchestrateRequest,
+    OrchestrateResponse,
+    OrchestrateResult,
     SearchHit,
     SearchRequest,
     SearchResponse,
@@ -272,3 +277,29 @@ def generate_hwpx(
         media_type='application/hwp+zip',
         headers={'Content-Disposition': disposition},
     )
+
+
+# ---- 업무대화 오케스트레이션 (F1) ----
+@router.post('/orchestrate', response_model=OrchestrateResponse, dependencies=[Depends(require_csrf)])
+def orchestrate(
+    payload: OrchestrateRequest,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User | None = Depends(get_optional_user),
+) -> OrchestrateResponse:
+    owner = _require_user(user)
+    service = OrchestratorService(db, settings, owner.id)
+    raw_results = service.run(payload.utterance)
+    db.commit()
+    results = [
+        OrchestrateResult(
+            kind=item['kind'],
+            summary=item['summary'],
+            events=item.get('events', []),
+            hits=[SearchHit(**hit) for hit in item.get('hits', [])],
+            document=DocumentIntent(**item['document']) if item.get('document') else None,
+            feature=item.get('feature'),
+        )
+        for item in raw_results
+    ]
+    return OrchestrateResponse(utterance=payload.utterance, results=results)

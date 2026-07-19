@@ -131,3 +131,27 @@ class ActivityListResponse(BaseModel):
 class DocumentRequest(BaseModel):
     title: str = Field(default='', max_length=300)
     body: str = Field(default='', max_length=100000)
+
+
+class OrchestrateRequest(BaseModel):
+    utterance: str = Field(min_length=1, max_length=2000)
+
+
+class DocumentIntent(BaseModel):
+    format: str
+    title: str
+    content: str
+
+
+class OrchestrateResult(BaseModel):
+    kind: str
+    summary: str
+    events: list[EventResponse] = Field(default_factory=list)
+    hits: list[SearchHit] = Field(default_factory=list)
+    document: DocumentIntent | None = None
+    feature: str | None = None
+
+
+class OrchestrateResponse(BaseModel):
+    utterance: str
+    results: list[OrchestrateResult]

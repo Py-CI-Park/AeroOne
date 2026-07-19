@@ -1291,3 +1291,21 @@ export async function generateAeroWorkHwpx(payload: { title: string; body: strin
   }
   return response.blob();
 }
+
+// ---- Aero Work 업무대화 오케스트레이션 (F1) ----
+export type OrchestrateResult = {
+  kind: string;
+  summary: string;
+  events: AeroWorkEvent[];
+  hits: KnowledgeSearchHit[];
+  document: { format: string; title: string; content: string } | null;
+  feature: string | null;
+};
+
+export async function orchestrateAeroWork(utterance: string, csrfToken: string) {
+  return browserFetch<{ utterance: string; results: OrchestrateResult[] }>('/api/frontend/aero-work/orchestrate', {
+    method: 'POST',
+    body: JSON.stringify({ utterance }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
