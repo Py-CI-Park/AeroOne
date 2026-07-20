@@ -177,12 +177,10 @@ class KnowledgeService:
                 raise KnowledgeError('허용된 지식 루트 밖의 경로는 등록할 수 없습니다.')
         canonical = str(resolved)
         existing = self.db.execute(
-            select(KnowledgeFolder).where(
-                KnowledgeFolder.owner_id == self.owner_id, KnowledgeFolder.path == canonical
-            )
+            select(KnowledgeFolder).where(KnowledgeFolder.path == canonical)
         ).scalar_one_or_none()
         if existing is not None:
-            raise KnowledgeError('이미 등록된 폴더입니다.')
+            raise KnowledgeError('이 경로는 이미 등록되어 있습니다(다른 사용자 포함).')
         folder = KnowledgeFolder(
             owner_id=self.owner_id, name=(name or '').strip() or resolved.name, path=canonical, status='pending'
         )

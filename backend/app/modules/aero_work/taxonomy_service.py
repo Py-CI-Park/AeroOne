@@ -266,7 +266,10 @@ def list_categories(db: Session, user_id: int) -> list[dict]:
         select(AeroWorkTaskCategoryFile.category_id, KnowledgeFile, KnowledgeFolder.name)
         .join(KnowledgeFile, AeroWorkTaskCategoryFile.file_id == KnowledgeFile.id)
         .join(KnowledgeFolder, KnowledgeFolder.id == KnowledgeFile.folder_id)
-        .where(AeroWorkTaskCategoryFile.category_id.in_(category_ids))
+        .where(
+            AeroWorkTaskCategoryFile.category_id.in_(category_ids),
+            KnowledgeFolder.owner_id == user_id,
+        )
         .order_by(KnowledgeFile.rel_path)
     ).all()
     files_by_category: dict[int, list[dict]] = {}

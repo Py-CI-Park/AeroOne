@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -21,12 +21,11 @@ class KnowledgeFolder(Base):
     """색인 대상 로컬 폴더 1건."""
 
     __tablename__ = 'aero_work_knowledge_folders'
-    __table_args__ = (UniqueConstraint('owner_id', 'path', name='uq_aero_work_folder_owner_path'),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     owner_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    path: Mapped[str] = mapped_column(Text, nullable=False)
+    path: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default='pending')
     status_detail: Mapped[str] = mapped_column(Text, nullable=False, server_default='')
     file_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default='0')
