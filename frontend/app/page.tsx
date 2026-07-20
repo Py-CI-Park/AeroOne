@@ -122,7 +122,7 @@ export default async function HomePage({
                       href={module.href}
                       badge={module.badge}
                       active={module.is_enabled}
-                      external={module.key === 'leantime'}
+                      external={false}
                     />
                   ),
                 )}
