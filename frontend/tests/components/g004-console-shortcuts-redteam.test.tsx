@@ -174,7 +174,7 @@ test('G004 exposes collapsible onboarding help with audit tab and shortcut guida
   expect(within(helpList as HTMLElement).getByText(/숫자 키 1~6/)).toBeInTheDocument();
 });
 
-test('release version constants advance to 2.0.0-dev', () => {
-  expect(APP_VERSION).toBe('2.0.0-dev');
-  expect(CHANGELOG[0].version).toBe('2.0.0-dev');
+test('release version constants advance to 1.18.0', () => {
+  expect(APP_VERSION).toBe('1.18.0');
+  expect(CHANGELOG[0].version).toBe('1.18.0');
 });
