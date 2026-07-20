@@ -61,8 +61,8 @@ _FEATURES = (
 )
 
 _STRIP_TOKENS = re.compile(
-    r'(오전|오후|정오|일정|등록|잡아|예약|추가|해줘|해 줘|만들어|만들|생성|작성|써줘|써|'
-    r'알려|보여|조회|목록|삭제|취소|그리고|그 내용으로|그내용으로|줘|해)'
+    r'(오전|오후|정오|일정|할\s*일|등록|잡아|예약|추가|해줘|해 줘|만들어|만들|생성|작성|써줘|써|'
+    r'알려|보여|조회|목록|삭제|취소|완료|했어|그리고|그 내용으로|그내용으로|줘|해)'
 )
 
 
@@ -110,7 +110,17 @@ def classify(utterance: str, now: datetime) -> list[Intent]:
     is_list = '일정' in text and _has(text, r'알려|보여|조회|목록')
     is_help = _has(text, r'사용법|어떻게\s*(하|쓰|해|사용)|사용\s*방법')
 
+    is_task = '할 일' in text
+    is_task_create = is_task and _has(text, r'추가|등록')
+    is_task_list = is_task and _has(text, r'목록|알려|보여')
+    is_task_done = is_task and _has(text, r'완료|했어')
     intents: list[Intent] = []
+    if is_task_create:
+        return [Intent('task.create', text, {'title': extract_title(text) or '새 할 일'})]
+    if is_task_list:
+        return [Intent('task.list', text, {})]
+    if is_task_done:
+        return [Intent('task.done', text, {'title': extract_title(text)})]
     if is_create:
         # 멀티인텐트("…등록하고 …작성해줘")면 일정 제목은 연결어 앞 절에서만 뽑는다 —
         # 문서 절(시행문/보고서…)이 일정 제목에 섞이는 것을 막는다(실사 발견 결함).
