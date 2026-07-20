@@ -63,3 +63,12 @@ Aero Work 의 업무대화·문서 생성·요약·분류·오케스트레이터
 
 - **지금(1.18.0)**: 대화·문서·요약·분류는 관리자 LLM 연결(OpenAI 호환) 등록+선택+프로필 default 로 **바로 사용 가능**. 지식폴더 의미검색만 Ollama 필요.
 - **1.19.0 이후**: 지식폴더 임베딩도 OpenAI `/v1/embeddings` 로 전환 가능(embed 모델 설정). Ollama 완전 미사용 가능(단, provider 전환 시 지식폴더 재색인 필요).
+
+---
+
+## 5. Provider 전환 시 주의 (1.19.0 구현 반영)
+
+- **임베딩 provider 전환 = 지식폴더 재색인 필요.** Ollama(nomic-embed-text, 768d) ↔ OpenAI(text-embedding-3-small, 1536d) 는 벡터 공간이 다르다. 활성 임베더와 다른 모델로 색인된 청크는 의미검색에서 제외된다. **전환 후에는 각 지식폴더를 재색인**하면 새 임베딩 공간으로 재생성되어 검색이 복구된다(파일 미변경이어도 임베딩 모델이 바뀌면 강제 재임베딩 — 무증상 공백 방지).
+- 키워드(FTS5) 검색은 임베딩과 무관하게 항상 동작한다.
+- 설정 키: `AI_COMPATIBLE_EMBED_MODEL`(기본 `text-embedding-3-small`) 로 OpenAI 임베드 모델 지정. egress 허용(`AI_COMPATIBLE_ALLOWED_CIDRS`/`_HOSTNAMES`/`_PORTS`)은 §1 참조.
+- 잘못된 자격증명이어도 폴더 목록·키워드 검색은 정상 동작하며, 의미검색만 503 으로 안내한다(임베딩 credential 은 embed 호출 시점에만 로드).
