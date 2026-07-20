@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
 
-from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
+from app.modules.aero_work.embedding_client import CompatibleEmbedder, EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.models import KnowledgeChunk, KnowledgeFile, KnowledgeFolder
 from app.modules.aero_work.text_extract import extract_text, is_supported
 from app.modules.aero_work.version_ranker import group_by_family
@@ -124,7 +124,7 @@ def _file_signature(path: Path) -> str:
 
 
 class KnowledgeService:
-    def __init__(self, db: Session, embedder: OllamaEmbedder) -> None:
+    def __init__(self, db: Session, embedder: OllamaEmbedder | CompatibleEmbedder) -> None:
         self.db = db
         self.embedder = embedder
 
@@ -244,6 +244,7 @@ class KnowledgeService:
                         chunk_index=index,
                         content=piece,
                         embedding=json.dumps(vector),
+                        embed_model=self.embedder.model,
                     )
                     self.db.add(chunk)
                     new_chunks.append((chunk, piece))
@@ -297,6 +298,10 @@ class KnowledgeService:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
         hits: list[dict] = []
         for chunk, file_row, folder in self.db.execute(stmt).all():
+            if chunk.embed_model != self.embedder.model and not (
+                chunk.embed_model is None and isinstance(self.embedder, OllamaEmbedder)
+            ):
+                continue
             try:
                 vector = json.loads(chunk.embedding)
             except (ValueError, TypeError):

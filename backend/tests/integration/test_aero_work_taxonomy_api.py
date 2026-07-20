@@ -31,7 +31,7 @@ class _FakeEmbedder:
 
 @pytest.fixture()
 def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', _FakeEmbedder)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _FakeEmbedder())
 
 
 @pytest.fixture()

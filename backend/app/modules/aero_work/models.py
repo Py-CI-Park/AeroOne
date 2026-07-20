@@ -77,6 +77,7 @@ class KnowledgeChunk(Base):
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False, server_default='0')
     content: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[str] = mapped_column(Text, nullable=False)
+    embed_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     file: Mapped['KnowledgeFile'] = relationship(back_populates='chunks')
 

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
-from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
+from app.modules.aero_work.embedding_client import EmbeddingUnavailable, build_embedder
 from app.modules.aero_work.activity_service import ActivityService, record_activity
 from app.modules.aero_work.document_composer import ComposeUnavailable, compose_content, compose_truncated
 from app.modules.aero_work.document_preview import render_preview_html
@@ -83,7 +83,7 @@ router = APIRouter()
 
 
 def _service(db: Session, settings: Settings) -> KnowledgeService:
-    return KnowledgeService(db, OllamaEmbedder(settings))
+    return KnowledgeService(db, build_embedder(settings, db))
 
 
 # ---- 비동기 재색인(G004) ----
@@ -146,7 +146,7 @@ def _run_background_reindex(folder_id: int, settings: Settings, owner_id: int) -
 
     db = get_session_factory()()
     try:
-        service = KnowledgeService(db, OllamaEmbedder(settings))
+        service = KnowledgeService(db, build_embedder(settings, db))
 
         def _on_progress(done: int, total: int) -> None:
             folder = service.get_folder(folder_id)

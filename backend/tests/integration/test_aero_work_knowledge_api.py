@@ -14,12 +14,12 @@ import app.modules.aero_work.api as aero_api
 
 
 class _FakeEmbedder:
-    """route 가 생성하는 OllamaEmbedder 를 대체하는 결정적 bag-of-vocab 임베더."""
+    """라우터가 build_embedder 로 받는 결정적 bag-of-vocab 임베더."""
 
     model = 'fake-embed'
     VOCAB = ('travel', 'expense', 'security', 'usb', 'export', 'meeting')
 
-    def __init__(self, settings=None) -> None:  # noqa: ANN001 (route 시그니처 호환)
+    def __init__(self, settings=None) -> None:  # noqa: ANN001 (테스트 팩토리 시그니처 호환)
         pass
 
     def embed_one(self, text: str) -> list[float]:
@@ -32,7 +32,7 @@ class _FakeEmbedder:
 
 @pytest.fixture()
 def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', _FakeEmbedder)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _FakeEmbedder())
 
 
 @pytest.fixture()

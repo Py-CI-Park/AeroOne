@@ -512,3 +512,46 @@ def chat_completion(
     if not isinstance(content, str):
         return EgressOutcome(ok=False, error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID, status_code=outcome.status_code, latency_ms=outcome.latency_ms, payload=None)
     return outcome
+def embeddings(
+    raw_url: str,
+    *,
+    model: str,
+    inputs: list[str],
+    app_env: str,
+    api_key: str,
+    policy: EgressPolicy,
+    peer_policy: PeerPolicy,
+) -> EgressOutcome:
+    """OpenAI 호환 POST /v1/embeddings 호출과 응답 벡터 형태를 검증한다."""
+    outcome = _execute(
+        raw_url,
+        app_env=app_env,
+        method="POST",
+        path="/v1/embeddings",
+        body={"model": model, "input": inputs},
+        api_key=api_key,
+        policy=policy,
+        peer_policy=peer_policy,
+    )
+    if not outcome.ok or outcome.payload is None:
+        return outcome
+    data = outcome.payload.get("data")
+    if (
+        not isinstance(data, list)
+        or len(data) != len(inputs)
+        or any(
+            not isinstance(item, dict)
+            or not isinstance(item.get("embedding"), list)
+            or not item["embedding"]
+            or any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in item["embedding"])
+            for item in data
+        )
+    ):
+        return EgressOutcome(
+            ok=False,
+            error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID,
+            status_code=outcome.status_code,
+            latency_ms=outcome.latency_ms,
+            payload=None,
+        )
+    return outcome

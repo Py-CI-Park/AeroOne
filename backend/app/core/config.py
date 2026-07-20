@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = 'http://127.0.0.1:11434'
     ollama_default_model: str = 'gemma4:12b'
     ollama_embed_model: str = 'nomic-embed-text'
+    ai_compatible_embed_model: str = 'text-embedding-3-small'
     ollama_connect_timeout_seconds: float = 5.0
     ollama_read_timeout_seconds: float = 120.0
     ai_max_context_chars: int = 12000
