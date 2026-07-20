@@ -149,6 +149,19 @@ test('degraded fallback keeps login visible, Admin hidden, and the main nav to 3
   expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
 });
 
+test('degraded fallback (admin, API rejected) also omits the excluded Leantime card', async () => {
+  // 성공 API fixture 뿐 아니라 실제 page.tsx FALLBACK_MODULES 경로에서도 Leantime 이
+  // 재등장하지 않음을 잠근다 — FALLBACK 에 항목이 되살아나면 이 단언이 잡는다.
+  fetchPublicServiceModulesMock.mockRejectedValue(new Error('DB unavailable'));
+  isAdminMock.mockReturnValue(true);
+
+  await renderHome();
+
+  expect(screen.queryByRole('link', { name: /Leantime/i })).not.toBeInTheDocument();
+  // 대조: 유지되는 Aero Work 카드는 degraded fallback 에서도 보인다.
+  expect(screen.getByRole('link', { name: /Aero Work/i })).toBeInTheDocument();
+});
+
 test('adds an active Civil Aircraft Spec Catalog card linking to the report page', async () => {
   await renderHome();
 
