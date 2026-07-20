@@ -122,10 +122,16 @@ def _file_signature(path: Path) -> str:
     stat = path.stat()
     return f'{int(stat.st_mtime_ns)}-{stat.st_size}'
 
+def _embed_fingerprint(embedder: object) -> str:
+    # provider-qualified 임베딩 공간 식별자. 실 임베더는 embed_fingerprint(예: 'ollama:...',
+    # 'openai_compatible:...')를 제공하고, 테스트 fake 등 미제공 시 model 로 폴백한다.
+    return getattr(embedder, 'embed_fingerprint', None) or embedder.model  # type: ignore[attr-defined]
+
+
 def _chunk_uses_active_embedding_model(
     chunk: KnowledgeChunk, embedder: OllamaEmbedder | CompatibleEmbedder
 ) -> bool:
-    return chunk.embed_model == embedder.model or (
+    return chunk.embed_model == _embed_fingerprint(embedder) or (
         chunk.embed_model is None and isinstance(embedder, OllamaEmbedder)
     )
 
@@ -255,7 +261,7 @@ class KnowledgeService:
                         chunk_index=index,
                         content=piece,
                         embedding=json.dumps(vector),
-                        embed_model=self.embedder.model,
+                        embed_model=_embed_fingerprint(self.embedder),
                     )
                     self.db.add(chunk)
                     new_chunks.append((chunk, piece))
