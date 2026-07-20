@@ -75,8 +75,9 @@ class CompatibleEmbedder:
     def __init__(self, settings: Settings, db: Session) -> None:
         self._settings = settings
         self._provider_config_service = ProviderConfigService(db, settings)
-        self._model = settings.ai_compatible_embed_model
-        self._base_url = self._binding_base_url()
+        state = self._provider_config_service.get_state()
+        self._model = state.compatible_model or settings.ai_compatible_embed_model
+        self._base_url = state.compatible_display_url or ''
 
     @property
     def model(self) -> str:
@@ -86,24 +87,16 @@ class CompatibleEmbedder:
     def base_url(self) -> str:
         return self._base_url
 
-    def _binding_base_url(self) -> str:
+    def _load_binding(self):
         try:
-            binding = self._provider_config_service.load_active_compatible_binding()
+            return self._provider_config_service.load_active_compatible_binding()
         except ProviderConfigError as exc:
             raise EmbeddingUnavailable(f'OpenAI 호환 임베딩 바인딩을 사용할 수 없습니다: {exc}') from exc
-        finally:
-            if 'binding' in locals():
-                wiped = bytearray(binding.api_key)
-                wiped[:] = b'\0' * len(wiped)
-        return binding.canonical_url
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        try:
-            binding = self._provider_config_service.load_active_compatible_binding()
-        except ProviderConfigError as exc:
-            raise EmbeddingUnavailable(f'OpenAI 호환 임베딩 바인딩을 사용할 수 없습니다: {exc}') from exc
+        binding = self._load_binding()
         try:
             outcome = egress_transport.embeddings(
                 binding.canonical_url,

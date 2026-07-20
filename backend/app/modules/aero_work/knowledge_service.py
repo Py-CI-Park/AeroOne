@@ -122,6 +122,14 @@ def _file_signature(path: Path) -> str:
     stat = path.stat()
     return f'{int(stat.st_mtime_ns)}-{stat.st_size}'
 
+def _chunk_uses_active_embedding_model(
+    chunk: KnowledgeChunk, embedder: OllamaEmbedder | CompatibleEmbedder
+) -> bool:
+    return chunk.embed_model == embedder.model or (
+        chunk.embed_model is None and isinstance(embedder, OllamaEmbedder)
+    )
+
+
 
 class KnowledgeService:
     def __init__(self, db: Session, embedder: OllamaEmbedder | CompatibleEmbedder) -> None:
@@ -214,11 +222,14 @@ class KnowledgeService:
         try:
             for rel_path, (path, signature) in disk.items():
                 file_row = existing.get(rel_path)
-                if file_row is not None and file_row.signature == signature:
+                if file_row is not None and file_row.signature == signature and all(
+                    _chunk_uses_active_embedding_model(chunk, self.embedder)
+                    for chunk in file_row.chunks
+                ):
                     processed += 1
                     if progress_cb and (processed % PROGRESS_EVERY == 0 or processed == total):
                         progress_cb(processed, total)
-                    continue  # 미변경 → 스킵(증분)
+                    continue  # 파일·임베딩 공간 모두 미변경 → 스킵(증분)
                 try:
                     text = extract_text(path)
                 except OSError:
@@ -298,9 +309,7 @@ class KnowledgeService:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
         hits: list[dict] = []
         for chunk, file_row, folder in self.db.execute(stmt).all():
-            if chunk.embed_model != self.embedder.model and not (
-                chunk.embed_model is None and isinstance(self.embedder, OllamaEmbedder)
-            ):
+            if not _chunk_uses_active_embedding_model(chunk, self.embedder):
                 continue
             try:
                 vector = json.loads(chunk.embedding)

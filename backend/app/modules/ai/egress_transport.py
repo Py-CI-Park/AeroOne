@@ -3,6 +3,7 @@ from __future__ import annotations
 import http.client
 import ipaddress
 import json
+import math
 import re
 import socket
 import ssl
@@ -536,17 +537,8 @@ def embeddings(
     if not outcome.ok or outcome.payload is None:
         return outcome
     data = outcome.payload.get("data")
-    if (
-        not isinstance(data, list)
-        or len(data) != len(inputs)
-        or any(
-            not isinstance(item, dict)
-            or not isinstance(item.get("embedding"), list)
-            or not item["embedding"]
-            or any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in item["embedding"])
-            for item in data
-        )
-    ):
+    data = outcome.payload.get("data")
+    if not isinstance(data, list) or len(data) != len(inputs):
         return EgressOutcome(
             ok=False,
             error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID,
@@ -554,4 +546,48 @@ def embeddings(
             latency_ms=outcome.latency_ms,
             payload=None,
         )
-    return outcome
+
+    indexed: dict[int, dict[str, Any]] = {}
+    dimension: int | None = None
+    for item in data:
+        index = item.get("index") if isinstance(item, dict) else None
+        vector = item.get("embedding") if isinstance(item, dict) else None
+        if (
+            isinstance(index, bool)
+            or not isinstance(index, int)
+            or index in indexed
+            or not isinstance(vector, list)
+            or not vector
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                for value in vector
+            )
+            or (dimension is not None and len(vector) != dimension)
+        ):
+            return EgressOutcome(
+                ok=False,
+                error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID,
+                status_code=outcome.status_code,
+                latency_ms=outcome.latency_ms,
+                payload=None,
+            )
+        dimension = len(vector)
+        indexed[index] = item
+
+    if set(indexed) != set(range(len(inputs))):
+        return EgressOutcome(
+            ok=False,
+            error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID,
+            status_code=outcome.status_code,
+            latency_ms=outcome.latency_ms,
+            payload=None,
+        )
+    return EgressOutcome(
+        ok=True,
+        error_code=None,
+        status_code=outcome.status_code,
+        latency_ms=outcome.latency_ms,
+        payload={**outcome.payload, "data": [indexed[index] for index in range(len(inputs))]},
+    )

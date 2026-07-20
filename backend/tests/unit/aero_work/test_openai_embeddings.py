@@ -6,13 +6,15 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import sqlalchemy as sa
 from alembic.operations import Operations
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.modules.ai.egress_transport import EgressOutcome
+from app.modules.ai import egress_transport
+from app.modules.ai.egress_transport import EgressErrorCode, EgressOutcome
 from app.modules.ai.provider_config_service import ActiveCompatibleBinding
 from app.modules.aero_work import embedding_client
 from app.modules.aero_work.embedding_client import CompatibleEmbedder, OllamaEmbedder, build_embedder
@@ -25,7 +27,11 @@ class _ProviderService:
         pass
 
     def get_state(self):
-        return SimpleNamespace(selected_kind='openai_compatible')
+        return SimpleNamespace(
+            selected_kind='openai_compatible',
+            compatible_display_url='http://127.0.0.1:8080/',
+            compatible_model='임베딩모델',
+        )
 
     def load_active_compatible_binding(self):
         return ActiveCompatibleBinding('http://127.0.0.1:8080/', '채팅모델', '비밀키'.encode('utf-8'))
@@ -65,7 +71,7 @@ def test_compatible_embedder_uses_pinned_transport(monkeypatch) -> None:
     embedder = CompatibleEmbedder(Settings(app_env='test'), object())
 
     assert embedder.base_url == 'http://127.0.0.1:8080/'
-    assert embedder.model == 'text-embedding-3-small'
+    assert embedder.model == '임베딩모델'
     assert embedder.embed_one('문서') == [1.0, 2.5]
     assert captured['raw_url'] == embedder.base_url
     assert captured['model'] == embedder.model
@@ -128,3 +134,86 @@ def test_0033_migration_is_single_step_and_reversible(tmp_path: Path) -> None:
         assert 'embed_model' in sa.inspect(connection).get_columns('aero_work_knowledge_chunks')[1]['name']
         module.downgrade()
         assert [column['name'] for column in sa.inspect(connection).get_columns('aero_work_knowledge_chunks')] == ['id']
+@pytest.mark.parametrize(
+    'data',
+    [
+        [{'index': 0, 'embedding': [1.0, 2.0]}, {'index': 1, 'embedding': [1.0]}],
+        [{'index': 0, 'embedding': [1.0, float('nan')]}, {'index': 1, 'embedding': [1.0, 2.0]}],
+        [{'index': 0, 'embedding': [1.0, 2.0]}, {'index': 2, 'embedding': [1.0, 2.0]}],
+    ],
+)
+def test_compatible_embeddings_reject_invalid_vector_shapes(monkeypatch, data) -> None:
+    monkeypatch.setattr(
+        egress_transport,
+        '_execute',
+        lambda *_args, **_kwargs: EgressOutcome(True, None, 200, 1, {'data': data}),
+    )
+
+    outcome = egress_transport.embeddings(
+        'http://127.0.0.1:8080/',
+        model='임베딩모델',
+        inputs=['첫째', '둘째'],
+        app_env='test',
+        api_key='비밀키',
+        policy=None,
+        peer_policy=None,
+    )
+
+    assert outcome.ok is False
+    assert outcome.error_code == EgressErrorCode.UPSTREAM_SHAPE_INVALID
+
+
+def test_compatible_embeddings_sorts_upstream_indexes(monkeypatch) -> None:
+    monkeypatch.setattr(
+        egress_transport,
+        '_execute',
+        lambda *_args, **_kwargs: EgressOutcome(
+            True,
+            None,
+            200,
+            1,
+            {'data': [
+                {'index': 1, 'embedding': [3.0, 4.0]},
+                {'index': 0, 'embedding': [1.0, 2.0]},
+            ]},
+        ),
+    )
+
+    outcome = egress_transport.embeddings(
+        'http://127.0.0.1:8080/',
+        model='임베딩모델',
+        inputs=['첫째', '둘째'],
+        app_env='test',
+        api_key='비밀키',
+        policy=None,
+        peer_policy=None,
+    )
+
+    assert outcome.ok is True
+    assert [item['index'] for item in outcome.payload['data']] == [0, 1]
+
+
+def test_compatible_embedder_defers_credential_loading(monkeypatch) -> None:
+    class _UnavailableProvider(_ProviderService):
+        def load_active_compatible_binding(self):
+            from app.modules.ai.provider_config_service import ProviderCredentialUnavailable
+
+            raise ProviderCredentialUnavailable()
+
+    monkeypatch.setattr(embedding_client, 'ProviderConfigService', _UnavailableProvider)
+    embedder = CompatibleEmbedder(Settings(app_env='test'), object())
+
+    engine = sa.create_engine('sqlite://')
+    from app.db.base import Base
+
+    Base.metadata.create_all(
+        bind=engine, tables=[Base.metadata.tables['aero_work_knowledge_folders']]
+    )
+    with Session(engine) as db:
+        db.add(KnowledgeFolder(name='지식', path='/tmp/knowledge', status='ready'))
+        db.commit()
+        assert len(KnowledgeService(db, embedder).list_folders()) == 1
+
+    assert embedder.model == '임베딩모델'
+    with pytest.raises(embedding_client.EmbeddingUnavailable):
+        embedder.embed_one('문서')
