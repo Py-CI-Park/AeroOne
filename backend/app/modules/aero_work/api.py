@@ -215,7 +215,8 @@ def register_folder(
     owner = _require_user(user)
     service = _service(db, settings)
     try:
-        folder = service.register_folder(payload.name, payload.path)
+        allowed_roots = [r for r in settings.aero_work_knowledge_roots.split(',') if r.strip()]
+        folder = service.register_folder(payload.name, payload.path, allowed_roots=allowed_roots)
     except KnowledgeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     record_activity(db, owner.id, 'knowledge.register', f'지식폴더 "{folder.name}" 등록', folder.path)
