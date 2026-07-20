@@ -138,18 +138,29 @@ def _chunk_uses_active_embedding_model(
 
 
 class KnowledgeService:
-    def __init__(self, db: Session, embedder: OllamaEmbedder | CompatibleEmbedder) -> None:
+    def __init__(
+        self, db: Session, embedder: OllamaEmbedder | CompatibleEmbedder, owner_id: int | None = None
+    ) -> None:
         self.db = db
         self.embedder = embedder
+        self.owner_id = owner_id
 
     # ---- 폴더 CRUD ----
     def list_folders(self) -> list[KnowledgeFolder]:
         return list(
-            self.db.execute(select(KnowledgeFolder).order_by(KnowledgeFolder.id)).scalars().all()
+            self.db.execute(
+                select(KnowledgeFolder)
+                .where(KnowledgeFolder.owner_id == self.owner_id)
+                .order_by(KnowledgeFolder.id)
+            ).scalars().all()
         )
 
     def get_folder(self, folder_id: int) -> KnowledgeFolder | None:
-        return self.db.get(KnowledgeFolder, folder_id)
+        return self.db.execute(
+            select(KnowledgeFolder).where(
+                KnowledgeFolder.id == folder_id, KnowledgeFolder.owner_id == self.owner_id
+            )
+        ).scalar_one_or_none()
 
     def register_folder(self, name: str, path: str, allowed_roots: list[str] | None = None) -> KnowledgeFolder:
         resolved = Path(path).expanduser()
@@ -166,11 +177,15 @@ class KnowledgeService:
                 raise KnowledgeError('허용된 지식 루트 밖의 경로는 등록할 수 없습니다.')
         canonical = str(resolved)
         existing = self.db.execute(
-            select(KnowledgeFolder).where(KnowledgeFolder.path == canonical)
+            select(KnowledgeFolder).where(
+                KnowledgeFolder.owner_id == self.owner_id, KnowledgeFolder.path == canonical
+            )
         ).scalar_one_or_none()
         if existing is not None:
             raise KnowledgeError('이미 등록된 폴더입니다.')
-        folder = KnowledgeFolder(name=(name or '').strip() or resolved.name, path=canonical, status='pending')
+        folder = KnowledgeFolder(
+            owner_id=self.owner_id, name=(name or '').strip() or resolved.name, path=canonical, status='pending'
+        )
         self.db.add(folder)
         self.db.flush()
         return folder
@@ -331,6 +346,7 @@ class KnowledgeService:
             select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
             .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
             .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+            .where(KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
@@ -396,7 +412,7 @@ class KnowledgeService:
             select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
             .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
             .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
-            .where(KnowledgeChunk.id.in_(fts_rowids))
+            .where(KnowledgeChunk.id.in_(fts_rowids), KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
@@ -409,6 +425,7 @@ class KnowledgeService:
             select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
             .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
             .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+            .where(KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
@@ -447,8 +464,10 @@ class KnowledgeService:
     def wiki(self, *, folder_id: int | None = None) -> list[dict]:
         """색인된 파일을 버전 가족(대표 + 판본 이력)으로 묶어 반환한다(gongmuwon 업무 허브 백본)."""
 
-        stmt = select(KnowledgeFile, KnowledgeFolder).join(
-            KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id
+        stmt = (
+            select(KnowledgeFile, KnowledgeFolder)
+            .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+            .where(KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
