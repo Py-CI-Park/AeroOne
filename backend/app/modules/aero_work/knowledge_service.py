@@ -168,21 +168,22 @@ class KnowledgeService:
             raise KnowledgeError('폴더 경로는 절대 경로여야 합니다.')
         if not resolved.is_dir():
             raise KnowledgeError(f'폴더를 찾을 수 없습니다: {resolved}')
-        # AW-R01: 허용 루트가 설정돼 있으면 실경로(symlink/junction resolve 후)가 그 안이어야 한다.
-        # resolve() 로 실제 대상 경로를 얻어 junction/symlink 로 루트 밖을 가리키는 우회를 차단한다.
+        # B1: 소유권 경계는 파일시스템 실체여야 한다 — 별칭(.., symlink, junction, 대소문자 변형)으로
+        # 같은 물리 폴더를 다른 문자열로 재등록하는 우회를 막기 위해 resolve() 실경로를 정규 키로 쓴다.
+        real = resolved.resolve()
+        # AW-R01: 허용 루트가 설정돼 있으면 실경로가 그 안이어야 한다.
         if allowed_roots:
-            real = resolved.resolve()
             roots = [Path(r).expanduser().resolve() for r in allowed_roots if r.strip()]
             if roots and not any(real == root or real.is_relative_to(root) for root in roots):
                 raise KnowledgeError('허용된 지식 루트 밖의 경로는 등록할 수 없습니다.')
-        canonical = str(resolved)
+        canonical = str(real)
         existing = self.db.execute(
             select(KnowledgeFolder).where(KnowledgeFolder.path == canonical)
         ).scalar_one_or_none()
         if existing is not None:
             raise KnowledgeError('이 경로는 이미 등록되어 있습니다(다른 사용자 포함).')
         folder = KnowledgeFolder(
-            owner_id=self.owner_id, name=(name or '').strip() or resolved.name, path=canonical, status='pending'
+            owner_id=self.owner_id, name=(name or '').strip() or real.name, path=canonical, status='pending'
         )
         self.db.add(folder)
         self.db.flush()

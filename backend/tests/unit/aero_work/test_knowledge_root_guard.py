@@ -71,3 +71,33 @@ def test_symlink_escape_outside_root_is_rejected(db: Session, tmp_path: Path) ->
         pytest.skip('이 환경에서 symlink 생성 불가(권한/OS)')
     with pytest.raises(KnowledgeError, match='허용된 지식 루트'):
         _svc(db).register_folder('링크탈출', str(link), allowed_roots=[str(root)])
+
+
+def test_alias_path_of_existing_folder_is_rejected(db: Session, tmp_path: Path) -> None:
+    # B1: 같은 물리 폴더를 별칭(.., 하위→상위)으로 다른 문자열로 재등록하려 해도 실경로 정규화로 차단된다.
+    real = tmp_path / 'kb-real'
+    (real / 'sub').mkdir(parents=True)
+    svc_a = KnowledgeService(db, _FakeEmbedder(), owner_id=1)
+    svc_a.register_folder('A', str(real))
+    db.commit()
+
+    alias = str(real / 'sub' / '..')  # 실경로는 kb-real 로 동일
+    svc_b = KnowledgeService(db, _FakeEmbedder(), owner_id=2)
+    with pytest.raises(KnowledgeError, match='이미 등록'):
+        svc_b.register_folder('B-별칭', alias)
+
+
+def test_symlink_alias_of_existing_folder_is_rejected(db: Session, tmp_path: Path) -> None:
+    # B1: symlink 별칭으로 같은 물리 폴더를 타 사용자가 재등록하는 우회도 실경로로 붕괴돼 차단된다.
+    real = tmp_path / 'kb-real2'
+    real.mkdir()
+    KnowledgeService(db, _FakeEmbedder(), owner_id=1).register_folder('A', str(real))
+    db.commit()
+
+    link = tmp_path / 'kb-link'
+    try:
+        link.symlink_to(real, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip('이 환경에서 symlink 생성 불가(권한/OS)')
+    with pytest.raises(KnowledgeError, match='이미 등록'):
+        KnowledgeService(db, _FakeEmbedder(), owner_id=2).register_folder('B-링크', str(link))
