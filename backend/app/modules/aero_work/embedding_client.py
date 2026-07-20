@@ -35,6 +35,12 @@ class OllamaEmbedder:
         return self._model
 
     @property
+    def embed_fingerprint(self) -> str:
+        # provider-qualified 임베딩 공간 식별자 — 서로 다른 provider 가 같은 모델명을 써도
+        # stale 벡터를 현재 것으로 오인하지 않도록 provider kind 를 접두로 붙인다.
+        return f'ollama:{self._model}'
+
+    @property
     def base_url(self) -> str:
         return self._base_url
 
@@ -82,6 +88,11 @@ class CompatibleEmbedder:
     @property
     def model(self) -> str:
         return self._model
+
+    @property
+    def embed_fingerprint(self) -> str:
+        # provider-qualified 임베딩 공간 식별자(OllamaEmbedder 와 동일 계약).
+        return f'openai_compatible:{self._model}'
 
     @property
     def base_url(self) -> str:
