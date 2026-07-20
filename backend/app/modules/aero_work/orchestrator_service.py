@@ -262,7 +262,7 @@ class OrchestratorService:
 
     def _knowledge(self, intent: Intent, now: datetime) -> dict:
         query = intent.slots.get('query', intent.raw)
-        service = KnowledgeService(self.db, self.embedder)
+        service = KnowledgeService(self.db, self.embedder, self.user_id)
         try:
             hits = service.search(query, top_k=5)
         except EmbeddingUnavailable:

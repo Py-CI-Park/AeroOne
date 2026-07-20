@@ -64,11 +64,12 @@ def _local_chat(settings: Settings, db: Session, messages: list[AiChatMessage]) 
     return OllamaClient(settings).chat(messages), settings.ollama_default_model
 
 
-def _indexed_files(db: Session) -> tuple[list[dict], bool]:
-    """색인 파일(최대 ``_MAX_INDEXED_FILES``건)과, 총량이 상한을 넘어 잘렸는지 여부를 반환한다."""
-
+def _indexed_files(db: Session, user_id: int) -> tuple[list[dict], bool]:
+    """사용자 소유 색인 파일(최대 ``_MAX_INDEXED_FILES``건)과 잘림 여부를 반환한다."""
     rows = db.execute(
         select(KnowledgeFile.id, KnowledgeFile.rel_path, KnowledgeFile.summary)
+        .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+        .where(KnowledgeFolder.owner_id == user_id)
         .order_by(KnowledgeFile.id)
         .limit(_MAX_INDEXED_FILES + 1)
     ).all()
@@ -175,7 +176,7 @@ def propose_categories(
     (``_MAX_INDEXED_FILES``)을 넘어 일부만 근거로 쓰였는지 여부다.
     """
 
-    files, truncated = _indexed_files(db)
+    files, truncated = _indexed_files(db, user_id)
     valid_file_ids = {file_row['id'] for file_row in files}
     if not settings.ai_features_enabled:
         logger.warning('taxonomy propose: AI 기능이 비활성화되어 있습니다 — 빈 후보를 반환합니다.')
@@ -215,7 +216,14 @@ def apply_categories(db: Session, user_id: int, categories: list[dict]) -> int:
         db.execute(sa_delete(AeroWorkTaskCategory).where(AeroWorkTaskCategory.id.in_(existing_ids)))
     db.flush()
 
-    valid_file_ids = {fid for (fid,) in db.execute(select(KnowledgeFile.id)).all()}
+    valid_file_ids = {
+        fid
+        for (fid,) in db.execute(
+            select(KnowledgeFile.id)
+            .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+            .where(KnowledgeFolder.owner_id == user_id)
+        ).all()
+    }
     created = 0
     for order, category in enumerate(categories):
         name = str(category.get('name') or '').strip()[:_MAX_NAME_CHARS]

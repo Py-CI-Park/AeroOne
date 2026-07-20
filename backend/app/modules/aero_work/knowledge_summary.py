@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.modules.aero_work.models import KnowledgeChunk, KnowledgeFile
+from app.modules.aero_work.models import KnowledgeChunk, KnowledgeFile, KnowledgeFolder
 from app.modules.ai.provider_config_service import ProviderConfigService
 from app.modules.ai.schemas import AiChatMessage
 from app.modules.ai.service import AiChatService, OllamaClient, OllamaError
@@ -44,14 +44,18 @@ def summarize_file(
     db: Session,
     file_id: int,
     *,
+    owner_id: int | None = None,
     force_local: bool = False,
     chat: Callable[[Settings, Session, list[AiChatMessage]], str] | None = None,
 ) -> str:
     """파일 청크 앞부분을 요약해 저장·반환한다. 실패 시 SummaryUnavailable."""
-
     if not settings.ai_features_enabled:
         raise SummaryUnavailable('AI 기능이 비활성화되어 있습니다.')
-    file_row = db.get(KnowledgeFile, file_id)
+    file_row = db.execute(
+        select(KnowledgeFile)
+        .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+        .where(KnowledgeFile.id == file_id, KnowledgeFolder.owner_id == owner_id)
+    ).scalar_one_or_none()
     if file_row is None:
         raise SummaryUnavailable('파일을 찾을 수 없습니다.')
     chunks = (

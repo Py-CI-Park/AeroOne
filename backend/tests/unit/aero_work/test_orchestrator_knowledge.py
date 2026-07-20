@@ -53,7 +53,7 @@ def test_knowledge_intent_marks_latest_and_synthesizes(session: Session, tmp_pat
     (root / '예산_20260101.md').write_text('예산 편성 기준 예산 예산', encoding='utf-8')
     (root / '예산_20260715.md').write_text('예산 편성 최신 기준 예산 예산', encoding='utf-8')
     embedder = FakeEmbedder()
-    knowledge = KnowledgeService(session, embedder)
+    knowledge = KnowledgeService(session, embedder, owner_id=1)
     folder = knowledge.register_folder('규정', str(root))
     session.commit()
     knowledge.reindex(folder.id)

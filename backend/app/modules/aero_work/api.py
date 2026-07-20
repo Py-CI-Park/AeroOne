@@ -82,8 +82,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _service(db: Session, settings: Settings) -> KnowledgeService:
-    return KnowledgeService(db, build_embedder(settings, db))
+def _service(db: Session, settings: Settings, owner_id: int) -> KnowledgeService:
+    return KnowledgeService(db, build_embedder(settings, db), owner_id)
 
 
 # ---- 비동기 재색인(G004) ----
@@ -146,7 +146,7 @@ def _run_background_reindex(folder_id: int, settings: Settings, owner_id: int) -
 
     db = get_session_factory()()
     try:
-        service = KnowledgeService(db, build_embedder(settings, db))
+        service = KnowledgeService(db, build_embedder(settings, db), owner_id)
 
         def _on_progress(done: int, total: int) -> None:
             folder = service.get_folder(folder_id)
@@ -195,8 +195,8 @@ def list_folders(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> FolderListResponse:
-    _require_user(user)
-    service = _service(db, settings)
+    owner = _require_user(user)
+    service = _service(db, settings, owner.id)
     return FolderListResponse(folders=[FolderResponse.from_model(f) for f in service.list_folders()])
 
 
@@ -213,7 +213,7 @@ def register_folder(
     user: User | None = Depends(get_optional_user),
 ) -> FolderResponse:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     try:
         allowed_roots = [r for r in settings.aero_work_knowledge_roots.split(',') if r.strip()]
         folder = service.register_folder(payload.name, payload.path, allowed_roots=allowed_roots)
@@ -244,7 +244,7 @@ def reindex_folder(
     """
 
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     folder = service.get_folder(folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
@@ -300,7 +300,7 @@ def delete_folder(
     user: User | None = Depends(get_optional_user),
 ) -> Response:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     folder = service.get_folder(folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
@@ -324,7 +324,7 @@ def search_knowledge(
     user: User | None = Depends(get_optional_user),
 ) -> SearchResponse:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     try:
         hits = service.search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
     except EmbeddingUnavailable as exc:
@@ -349,7 +349,7 @@ def answer_stream(
     """
 
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     try:
         hits = service.search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
     except EmbeddingUnavailable as exc:
@@ -381,7 +381,7 @@ def keyword_search(
     user: User | None = Depends(get_optional_user),
 ) -> SearchResponse:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     hits = service.keyword_search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
     record_activity(db, owner.id, 'knowledge.search', f'키워드 검색 "{payload.query}" — {len(hits)}건')
     db.commit()
@@ -395,8 +395,8 @@ def knowledge_wiki(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> WikiResponse:
-    _require_user(user)
-    service = _service(db, settings)
+    owner = _require_user(user)
+    service = _service(db, settings, owner.id)
     return WikiResponse(families=service.wiki(folder_id=folder_id))
 
 
@@ -849,7 +849,7 @@ def summarize_knowledge_file(
     owner = _require_user(user)
     try:
         summary = summarize_file(
-            settings, db, file_id, force_local=get_llm_mode(db, owner.id) == 'local'
+            settings, db, file_id, owner_id=owner.id, force_local=get_llm_mode(db, owner.id) == 'local'
         )
     except SummaryUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc

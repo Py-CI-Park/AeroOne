@@ -214,7 +214,7 @@ def test_attachment_text_included_in_synthesis_prompt_with_defense_markers(sessi
     (root / '예산_20260101.md').write_text('예산 편성 기준 예산 예산', encoding='utf-8')
 
     embedder = FakeEmbedder()
-    knowledge = KnowledgeService(session, embedder)
+    knowledge = KnowledgeService(session, embedder, owner_id=1)
     folder = knowledge.register_folder('규정', str(root))
     session.commit()
     knowledge.reindex(folder.id)
@@ -246,7 +246,7 @@ def test_no_attachments_leaves_prompt_unchanged(session: Session, tmp_path: Path
     (root / '예산_20260101.md').write_text('예산 편성 기준 예산 예산', encoding='utf-8')
 
     embedder = FakeEmbedder()
-    knowledge = KnowledgeService(session, embedder)
+    knowledge = KnowledgeService(session, embedder, owner_id=1)
     folder = knowledge.register_folder('규정', str(root))
     session.commit()
     knowledge.reindex(folder.id)
