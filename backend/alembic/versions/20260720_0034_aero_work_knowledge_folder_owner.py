@@ -15,12 +15,23 @@ depends_on = None
 def upgrade() -> None:
     with op.batch_alter_table('aero_work_knowledge_folders') as batch_op:
         batch_op.add_column(sa.Column('owner_id', sa.Integer(), nullable=True))
-        batch_op.drop_constraint('uq_aero_work_knowledge_folders_path', type_='unique')
-        batch_op.create_unique_constraint('uq_aero_work_folder_owner_path', ['owner_id', 'path'])
     op.execute(
         """
         UPDATE aero_work_knowledge_folders
         SET owner_id = (SELECT MIN(id) FROM users WHERE role = 'admin')
+        """
+    )
+    op.execute(
+        """
+        DELETE FROM aero_work_task_category_files
+        WHERE EXISTS (
+            SELECT 1
+            FROM aero_work_task_categories AS category
+            JOIN aero_work_knowledge_files AS file ON file.id = aero_work_task_category_files.file_id
+            JOIN aero_work_knowledge_folders AS folder ON folder.id = file.folder_id
+            WHERE category.id = aero_work_task_category_files.category_id
+              AND (folder.owner_id IS NULL OR folder.owner_id != category.user_id)
+        )
         """
     )
 
@@ -28,6 +39,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     with op.batch_alter_table('aero_work_knowledge_folders') as batch_op:
-        batch_op.drop_constraint('uq_aero_work_folder_owner_path', type_='unique')
         batch_op.drop_column('owner_id')
-        batch_op.create_unique_constraint('uq_aero_work_knowledge_folders_path', ['path'])
