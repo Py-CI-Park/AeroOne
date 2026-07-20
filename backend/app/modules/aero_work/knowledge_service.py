@@ -232,6 +232,10 @@ class KnowledgeService:
 
         changed = 0
         processed = 0
+        # QW-4: 검색 누락 원인 진단 카운터 — 추출 실패(권한/손상/OS)와 빈 추출(스캔본·암호 등)을
+        # 조용히 흡수하지 않고 집계해 status_detail 에 노출한다(경로·원문은 남기지 않는다).
+        extract_errors = 0
+        empty_extracts = 0
         try:
             for rel_path, (path, signature) in disk.items():
                 file_row = existing.get(rel_path)
@@ -246,9 +250,12 @@ class KnowledgeService:
                 try:
                     text = extract_text(path)
                 except OSError:
+                    extract_errors += 1
                     processed += 1
                     continue
                 pieces = chunk_text(text)
+                if not pieces:
+                    empty_extracts += 1  # 추출은 됐으나 본문이 비어 검색 대상 청크가 없다(스캔본·암호 등)
                 embeddings = self.embedder.embed(pieces) if pieces else []
                 if file_row is None:
                     file_row = KnowledgeFile(folder_id=folder.id, rel_path=rel_path, signature=signature)
@@ -300,9 +307,16 @@ class KnowledgeService:
             ).scalar_one()
         )
         folder.status = 'ready'
-        folder.status_detail = (
-            f'{folder.file_count}개 파일 · {folder.chunk_count}개 청크 (이번 {changed}개 갱신)'
-        )
+        detail = f'{folder.file_count}개 파일 · {folder.chunk_count}개 청크 (이번 {changed}개 갱신)'
+        # QW-4: 검색에 안 잡히는 파일이 있으면 원인을 함께 안내한다(추출 실패·빈 문서).
+        diagnostics = []
+        if extract_errors:
+            diagnostics.append(f'추출 실패 {extract_errors}개')
+        if empty_extracts:
+            diagnostics.append(f'빈 문서 {empty_extracts}개')
+        if diagnostics:
+            detail += ' · ' + ' · '.join(diagnostics)
+        folder.status_detail = detail
         folder.last_indexed_at = datetime.now(timezone.utc)
         self.db.flush()
         return folder
