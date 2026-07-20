@@ -151,12 +151,19 @@ class KnowledgeService:
     def get_folder(self, folder_id: int) -> KnowledgeFolder | None:
         return self.db.get(KnowledgeFolder, folder_id)
 
-    def register_folder(self, name: str, path: str) -> KnowledgeFolder:
+    def register_folder(self, name: str, path: str, allowed_roots: list[str] | None = None) -> KnowledgeFolder:
         resolved = Path(path).expanduser()
         if not resolved.is_absolute():
             raise KnowledgeError('폴더 경로는 절대 경로여야 합니다.')
         if not resolved.is_dir():
             raise KnowledgeError(f'폴더를 찾을 수 없습니다: {resolved}')
+        # AW-R01: 허용 루트가 설정돼 있으면 실경로(symlink/junction resolve 후)가 그 안이어야 한다.
+        # resolve() 로 실제 대상 경로를 얻어 junction/symlink 로 루트 밖을 가리키는 우회를 차단한다.
+        if allowed_roots:
+            real = resolved.resolve()
+            roots = [Path(r).expanduser().resolve() for r in allowed_roots if r.strip()]
+            if roots and not any(real == root or real.is_relative_to(root) for root in roots):
+                raise KnowledgeError('허용된 지식 루트 밖의 경로는 등록할 수 없습니다.')
         canonical = str(resolved)
         existing = self.db.execute(
             select(KnowledgeFolder).where(KnowledgeFolder.path == canonical)
