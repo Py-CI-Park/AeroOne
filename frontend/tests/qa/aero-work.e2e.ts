@@ -11,8 +11,16 @@ import path from 'node:path';
 //
 // 실 LLM 호출(합성·오케스트레이션) 구간은 90s+ 여유를 두고 waitForResponse 로 완료를 기다린다.
 
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'AeroOneAdmin2026Secure';
+function requiredEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`환경변수 미설정: ${name}`);
+  }
+  return value;
+}
+
+const ADMIN_USERNAME = requiredEnv('AEROONE_E2E_ADMIN_USERNAME');
+const ADMIN_PASSWORD = requiredEnv('AEROONE_E2E_ADMIN_PASSWORD');
 const ARTIFACT_DIR = path.resolve(process.cwd(), '..', 'artifacts', 'qa', 'ultragoal', 'G007');
 const SAMPLE_DOCS_PATH = path.resolve(process.cwd(), '..', 'artifacts', 'qa', 'aero-work-sample-docs');
 
@@ -42,12 +50,56 @@ async function shot(page: Page, name: string) {
 }
 
 type Folder = { id: number; name: string; path: string; status: string };
+type OrchestrateEvent = { id: number; title: string };
+type OrchestrateResult = { kind: string; events?: OrchestrateEvent[] };
+type SavedDocument = { id: number; title: string };
+
+const cleanupEventIds = new Set<number>();
+const cleanupDocumentIds = new Set<number>();
+let cleanupCsrfToken: string | null = null;
+
+async function readCsrfToken(page: Page) {
+  const csrfCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'csrf_token');
+  if (!csrfCookie?.value) {
+    throw new Error('로그인 후 CSRF 쿠키(csrf_token)를 찾을 수 없습니다.');
+  }
+  return csrfCookie.value;
+}
+
+async function cleanupCreatedArtifacts(page: Page) {
+  if (cleanupEventIds.size === 0 && cleanupDocumentIds.size === 0) {
+    cleanupCsrfToken = null;
+    return;
+  }
+  if (!cleanupCsrfToken) {
+    throw new Error('E2E 정리용 CSRF 토큰을 찾을 수 없습니다.');
+  }
+
+  const headers = { 'X-CSRF-Token': cleanupCsrfToken };
+  for (const documentId of [...cleanupDocumentIds]) {
+    const response = await page.request.delete(`/api/frontend/aero-work/document/saved/${documentId}`, { headers });
+    expect([204, 404], `저장 문서 #${documentId} API 정리`).toContain(response.status());
+  }
+  for (const eventId of [...cleanupEventIds]) {
+    const response = await page.request.delete(`/api/frontend/aero-work/schedule/events/${eventId}`, { headers });
+    expect([204, 404], `생성 일정 #${eventId} API 정리`).toContain(response.status());
+  }
+
+  cleanupDocumentIds.clear();
+  cleanupEventIds.clear();
+  cleanupCsrfToken = null;
+}
+
+test.afterEach(async ({ page }) => {
+  await cleanupCreatedArtifacts(page);
+});
 
 test('Aero Work 핵심 플로 5막', async ({ page }) => {
   test.setTimeout(600_000);
 
   // ---- 1막: 로그인 → /aero-work 진입 · 7탭 렌더 확인 ----
   await login(page);
+  cleanupCsrfToken = await readCsrfToken(page);
   await expect(page.getByRole('heading', { name: /홈|오늘의 브리핑/ }).first()).toBeVisible();
   const navBar = nav(page);
   await expect(navBar).toBeVisible();
@@ -62,7 +114,8 @@ test('Aero Work 핵심 플로 5막', async ({ page }) => {
   await expect(page.getByRole('button', { name: '업무 명령 (일정·문서·지식)' })).toHaveClass(/bg-accent/);
   const chatInput = page.locator('input[placeholder="예: 내일 오전 10시 회의 등록하고 그 내용으로 보고서 작성해줘"]');
   await expect(chatInput).toBeVisible();
-  await chatInput.fill('내일 오전 9시 월간보고 등록하고 그 내용으로 시행문 작성해줘');
+  const monthlyTitle = `월간보고-${Date.now()}`;
+  await chatInput.fill(`내일 오전 9시 ${monthlyTitle} 등록하고 그 내용으로 시행문 작성해줘`);
   const [orchestrateResponse] = await Promise.all([
     page.waitForResponse(
       (resp) => resp.url().includes('/api/frontend/aero-work/orchestrate') && resp.request().method() === 'POST',
@@ -71,20 +124,37 @@ test('Aero Work 핵심 플로 5막', async ({ page }) => {
     page.getByRole('button', { name: '보내기' }).click(),
   ]);
   expect(orchestrateResponse.status(), '멀티인텐트 오케스트레이션 응답 200').toBe(200);
-  const orchestratePayload = await orchestrateResponse.json();
-  expect(
-    Array.isArray(orchestratePayload.results) && orchestratePayload.results.length >= 2,
-    `멀티인텐트(일정+문서) 결과 최소 2건 기대, 실제 ${JSON.stringify(orchestratePayload.results?.map((r: { kind: string }) => r.kind))}`,
-  ).toBe(true);
+  const orchestratePayload = (await orchestrateResponse.json()) as { results?: OrchestrateResult[] };
+  const orchestrateResults = Array.isArray(orchestratePayload.results) ? orchestratePayload.results : [];
+  const resultKinds = new Set(orchestrateResults.map((result) => result.kind));
+  expect([...resultKinds], `멀티인텐트 results kind 집합: ${JSON.stringify([...resultKinds])}`).toEqual(
+    expect.arrayContaining(['schedule.create', 'document']),
+  );
+
+  const scheduleCreateResult = orchestrateResults.find((result) => result.kind === 'schedule.create');
+  const createdEvent = scheduleCreateResult?.events?.[0];
+  if (!createdEvent || typeof createdEvent.id !== 'number') {
+    throw new Error(`schedule.create 응답 이벤트 id 누락: ${JSON.stringify(scheduleCreateResult)}`);
+  }
+  expect(createdEvent.title, 'schedule.create 응답 이벤트 제목').toBe(monthlyTitle);
+  cleanupEventIds.add(createdEvent.id);
+
   await expect(page.getByRole('button', { name: '보내기' })).not.toHaveText('처리 중…', { timeout: 10_000 });
-  await expect(page.getByText('월간보고').first(), '업무대화 로그에 일정 등록 메시지(월간보고) 표시').toBeVisible();
+  await expect(page.getByText(monthlyTitle).first(), `업무대화 로그에 일정 등록 메시지(${monthlyTitle}) 표시`).toBeVisible();
   const chatHwpxButton = page.getByRole('button', { name: 'HWPX 생성·다운로드' }).first();
   await expect(chatHwpxButton, '업무대화 응답에 HWPX 생성·다운로드 버튼 표시').toBeVisible();
   await shot(page, 'act2-chat-multi-intent');
 
   // ---- 3막: 일정 탭 이벤트 확인 ----
   await gotoTab(page, '일정');
-  await expect(page.getByText('월간보고').first(), '일정 탭에 등록된 이벤트(월간보고) 표시').toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(monthlyTitle).first(), `일정 탭에 등록된 이벤트(${monthlyTitle}) 표시`).toBeVisible({ timeout: 15_000 });
+  const scheduleVerifyResponse = await page.request.get('/api/frontend/aero-work/schedule/events');
+  expect(scheduleVerifyResponse.status(), '일정 목록 API 재조회 200').toBe(200);
+  const scheduleVerifyPayload = (await scheduleVerifyResponse.json()) as { events: OrchestrateEvent[] };
+  expect(
+    scheduleVerifyPayload.events.some((event) => event.id === createdEvent.id && event.title === monthlyTitle),
+    `오케스트레이션 응답 id/title로 생성 일정 확인: id=${createdEvent.id}, title=${monthlyTitle}`,
+  ).toBe(true);
   await shot(page, 'act3a-schedule-event');
 
   // ---- 3막(계속): 문서작성 탭에서 HWPX 생성·다운로드 (응답 200 · 파일명 확인) ----
@@ -145,7 +215,7 @@ test('Aero Work 핵심 플로 5막', async ({ page }) => {
     await gotoTab(page, '내 지식폴더');
   }
 
-  await page.getByRole('button', { name: '키워드 검색' }).click();
+  await page.getByRole('button', { name: '키워드 검색', exact: true }).click();
   await page.locator('select').first().selectOption('all');
   await page.locator('input[placeholder="예: 출장 정산 규정, 보안 서약서 절차"]').fill('예산');
   const [searchResponse] = await Promise.all([
@@ -174,6 +244,9 @@ test('Aero Work 핵심 플로 5막', async ({ page }) => {
     page.getByRole('button', { name: '최종 저장 요청' }).click(),
   ]);
   expect(saveRequestResponse.status(), '최종 저장 요청 응답 201/200').toBeLessThan(300);
+  const savedDocument = (await saveRequestResponse.json()) as SavedDocument;
+  expect(savedDocument.title, '최종 저장 요청 응답 제목').toBe(approvalTitle);
+  cleanupDocumentIds.add(savedDocument.id);
   await expect(page.getByText('최종 저장을 요청했음 — 아래 목록에서 승인 후 내려받으세요.')).toBeVisible();
   const savedRow = page.locator('li', { hasText: approvalTitle });
   await expect(savedRow, '승인 대기 문서가 저장 목록에 표시').toBeVisible();
