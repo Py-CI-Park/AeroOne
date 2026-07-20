@@ -946,6 +946,10 @@ def test_start_leantime_falls_back_when_stack_missing(tmp_path: Path) -> None:
 
     env = os.environ.copy()
     env["AEROONE_LEANTIME_SCRIPTS"] = str(empty_scripts_dir)
+    # 포터블 동거 스택(AeroOne-Leantime-Stack)이 실제로 반입된 PC 에서는 스택 감지 레인이
+    # 먼저 발동해 '스택 부재' 시나리오가 깨진다(실 Leantime 기동까지 발생) — 스택 경로도
+    # 존재하지 않는 위치로 고정해 테스트를 밀폐형으로 만든다.
+    env["AEROONE_LEANTIME_STACK"] = str(tmp_path / "no-portable-stack")
 
     result = _run_cmd(REPO_ROOT, r"scripts\leantime\start-leantime.bat", env=env)
 
