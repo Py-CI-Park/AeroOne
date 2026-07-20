@@ -23,7 +23,7 @@ const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClient
     { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 13, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 45, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-    { id: 14, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 안내·열기 페이지.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    // Leantime 카드는 폐쇄망 릴리스에서 제외됨(service_modules 삭제) — 픽스처에서도 제거해 대시보드가 노출하지 않음을 반영.
   ],
 }));
 
@@ -193,7 +193,8 @@ test('operator dashboard groups cards into ordered Newsletter/Document/AI/Develo
   expect(screen.queryByRole('link', { name: /Announcement/i })).not.toBeInTheDocument();
   expect(announcement.closest('[aria-disabled="true"]')).not.toBeNull();
   expect(schedule.closest('[aria-disabled="true"]')).toHaveTextContent('Coming soon');
-  expect(screen.getByText('11 active · 2 coming soon')).toBeInTheDocument();
+  // Leantime 카드 제외로 활성 카드가 11 → 10 개로 줄었다.
+  expect(screen.getByText('10 active · 2 coming soon')).toBeInTheDocument();
 });
 
 test('operator dashboard shows the unified office-tools hub card in Development', async () => {
@@ -213,18 +214,12 @@ test('non-admin dashboard hides the admin-only office-tools hub card', async () 
   expect(screen.queryByRole('link', { name: /Office Studio/ })).not.toBeInTheDocument();
 });
 
-test('operator dashboard links the Leantime card to the internal co-deploy landing page', async () => {
+test('operator dashboard no longer shows the excluded Leantime card', async () => {
   isAdminMock.mockReturnValue(true);
   await renderHome();
 
-  const main = screen.getByRole('main');
-  const leantimeLink = within(main).getByRole('link', { name: /Leantime/i });
-
-  // 구동 중이면 새 탭에서 곧바로 Leantime 으로 이동하도록 /leantime 을 새 탭으로 연다
-  // (미구동이면 그 탭에 설치·기동 안내가 남아 AeroOne 대시보드는 원래 탭에 유지된다).
-  expect(leantimeLink).toHaveAttribute('href', '/leantime');
-  expect(leantimeLink).toHaveAttribute('target', '_blank');
-  expect(within(leantimeLink).getByTestId('service-card-description')).toHaveTextContent(/프로젝트/);
+  // Leantime 동거 카드는 폐쇄망 릴리스에서 제외되어 관리자에게도 노출되지 않는다.
+  expect(screen.queryByRole('link', { name: /Leantime/i })).not.toBeInTheDocument();
 });
 
 test('non-admin dashboard hides the admin-only Leantime card', async () => {

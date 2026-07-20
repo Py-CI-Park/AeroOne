@@ -30,7 +30,8 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 12, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 45, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-  { id: 13, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 구동 중이면 새 탭에서 바로 열리고, 미구동이면 설치·기동 안내가 뜹니다.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  // Leantime 동거 카드는 폐쇄망 릴리스에서 제외됨(마이그레이션 20260720_0032 로 service_modules 에서 삭제,
+  // 프런트 라우트·office-tools 컴포넌트·scripts/leantime 은 오프라인 패키지 denylist 로 제외). 재도입은 위 3자리 정합으로.
 ];
 
 const SECTION_ORDER = ['Newsletter', 'Document', 'AI', 'Development', 'ETC'];

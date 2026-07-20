@@ -158,6 +158,13 @@ _TRACKED_PATHS_HAPPY = [
     "BACKEND/REQUIREMENTS-DEV.TXT",
     "Frontend/Node_Modules/pkg/index.js",
     ".worktrees/other/file.py",
+    # Leantime 동거 제외(릴리스 결정) — 라우트·BFF·office-tools 컴포넌트·co-deploy 스크립트.
+    "scripts/leantime/start-leantime.bat",
+    "frontend/app/leantime/page.tsx",
+    "frontend/app/api/frontend/leantime/[...segments]/route.ts",
+    "frontend/components/office-tools/leantime-status.tsx",
+    "frontend/components/office-tools/leantime-dashboard.tsx",
+    "frontend/components/office-tools/leantime-launch.tsx",
 ]
 
 
@@ -195,6 +202,12 @@ def test_select_allowlisted_paths_excludes_forbidden_and_out_of_allowlist_entrie
         "Scripts/QA/run_gate.mjs",
         "BACKEND/REQUIREMENTS-DEV.TXT",
         "Frontend/Node_Modules/pkg/index.js",
+        "scripts/leantime/start-leantime.bat",
+        "frontend/app/leantime/page.tsx",
+        "frontend/app/api/frontend/leantime/[...segments]/route.ts",
+        "frontend/components/office-tools/leantime-status.tsx",
+        "frontend/components/office-tools/leantime-dashboard.tsx",
+        "frontend/components/office-tools/leantime-launch.tsx",
     ):
         assert forbidden not in selected
 
