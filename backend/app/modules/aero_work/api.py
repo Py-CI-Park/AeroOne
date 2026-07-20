@@ -27,6 +27,7 @@ from app.modules.aero_work.document_formats import FORMAT_LABELS, format_documen
 from app.modules.aero_work.hwpx_generator import build_hwpx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
+from app.modules.aero_work.task_service import TaskError, create_task, delete_task, list_tasks, update_task
 from app.modules.aero_work.prefs_service import get_llm_mode, set_llm_mode
 from app.modules.aero_work.knowledge_summary import SummaryUnavailable, summarize_file
 from app.modules.aero_work.orchestrator_service import OrchestratorService
@@ -55,6 +56,10 @@ from app.modules.aero_work.schemas import (
     DocumentIntent,
     DocumentRequest,
     EventUpdateRequest,
+    TaskCreateRequest,
+    TaskListResponse,
+    TaskResponse,
+    TaskUpdateRequest,
     FolderListResponse,
     FolderRegisterRequest,
     FolderResponse,
@@ -491,6 +496,64 @@ def delete_event(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# ---- 할 일(Task) ----
+@router.get('/tasks', response_model=TaskListResponse)
+def list_task_items(
+    status_filter: str | None = Query(default=None, alias='status', pattern='^(todo|doing|done)$'),
+    overdue: bool | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaskListResponse:
+    owner = _require_user(user)
+    tasks = list_tasks(db, owner.id, status=status_filter, overdue=overdue)
+    return TaskListResponse(tasks=[TaskResponse.from_model(task) for task in tasks])
+
+
+@router.post('/tasks', response_model=TaskResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_csrf)])
+def create_task_item(
+    payload: TaskCreateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaskResponse:
+    owner = _require_user(user)
+    try:
+        task = create_task(db, owner.id, payload.title, payload.due_date, payload.tags)
+    except TaskError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    db.commit()
+    return TaskResponse.from_model(task)
+
+
+@router.patch('/tasks/{task_id}', response_model=TaskResponse, dependencies=[Depends(require_csrf)])
+def update_task_item(
+    task_id: int,
+    payload: TaskUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaskResponse:
+    owner = _require_user(user)
+    try:
+        task = update_task(db, owner.id, task_id, **payload.model_dump(exclude_unset=True))
+    except TaskError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='할 일을 찾을 수 없습니다.')
+    db.commit()
+    return TaskResponse.from_model(task)
+
+
+@router.delete('/tasks/{task_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)])
+def delete_task_item(
+    task_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    if not delete_task(db, owner.id, task_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='할 일을 찾을 수 없습니다.')
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 # ---- 실행기록(Activity) ----
 @router.get('/activity', response_model=ActivityListResponse)
 def list_activity(
@@ -546,6 +609,7 @@ def orchestrate(
             kind=item['kind'],
             summary=item['summary'],
             events=item.get('events', []),
+            tasks=item.get('tasks', []),
             hits=[SearchHit(**hit) for hit in item.get('hits', [])],
             document=DocumentIntent(**item['document']) if item.get('document') else None,
             feature=item.get('feature'),

@@ -27,9 +27,11 @@ from app.modules.aero_work.intent_router import (
 )
 
 from app.modules.aero_work.knowledge_service import KnowledgeService
+from app.modules.aero_work.korean_datetime import parse_datetime
 from app.modules.aero_work.schedule_service import ScheduleService
+from app.modules.aero_work.task_service import create_task, list_tasks, update_task
 from app.modules.aero_work.prefs_service import get_llm_mode
-from app.modules.aero_work.schemas import EventResponse
+from app.modules.aero_work.schemas import EventResponse, TaskResponse
 from app.modules.aero_work.version_ranker import mark_latest
 from app.modules.ai.schemas import AiChatMessage
 from app.modules.ai.provider_config_service import ProviderConfigService
@@ -193,11 +195,48 @@ class OrchestratorService:
             'schedule.create': self._schedule_create,
             'schedule.list': self._schedule_list,
             'schedule.delete': self._schedule_delete,
+            'task.create': self._task_create,
+            'task.list': self._task_list,
+            'task.done': self._task_done,
             'document': self._document,
             'help': self._help,
             'knowledge': self._knowledge,
         }.get(intent.kind, self._knowledge)
         return handler(intent, now)
+
+    def _task_create(self, intent: Intent, now: datetime) -> dict:
+        due_at, _ = parse_datetime(intent.raw, now)
+        task = create_task(
+            self.db, self.user_id, intent.slots['title'], due_at.date() if due_at is not None else None
+        )
+        due = f' (마감 {task.due_date.strftime("%m월 %d일")})' if task.due_date else ''
+        return {
+            'kind': 'task.create',
+            'summary': f'할 일을 추가했습니다: {task.title}{due}',
+            'tasks': [TaskResponse.from_model(task)],
+        }
+
+    def _task_list(self, intent: Intent, now: datetime) -> dict:
+        tasks = list_tasks(self.db, self.user_id, now=now.date())
+        summary = f'할 일 {len(tasks)}건입니다.' if tasks else '등록된 할 일이 없습니다.'
+        return {'kind': 'task.list', 'summary': summary, 'tasks': [TaskResponse.from_model(task) for task in tasks]}
+
+    def _task_done(self, intent: Intent, now: datetime) -> dict:
+        title = (intent.slots.get('title') or '').strip()
+        tasks = list_tasks(self.db, self.user_id)
+        matches = [task for task in tasks if title in task.title and task.status != 'done'] if title else []
+        if len(matches) != 1:
+            return {
+                'kind': 'task.done',
+                'summary': f'"{title}" 할 일을 찾지 못했습니다.' if not matches else f'"{title}"에 해당하는 할 일이 {len(matches)}건입니다. 제목을 더 구체적으로 말해 주세요.',
+                'tasks': [TaskResponse.from_model(task) for task in matches],
+            }
+        task = update_task(self.db, self.user_id, matches[0].id, status='done')
+        return {
+            'kind': 'task.done',
+            'summary': f'할 일을 완료했습니다: {task.title}',
+            'tasks': [TaskResponse.from_model(task)],
+        }
 
     def _schedule_create(self, intent: Intent, now: datetime) -> dict:
         service = ScheduleService(self.db)
