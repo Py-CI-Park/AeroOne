@@ -1,7 +1,7 @@
 # Aero Work 울트라골 G001~G007 — 2.0.0 후보 정리 보고서
 
 - 작성일: 2026-07-20
-- 브랜치: `aero-work-dev` (HEAD `7d94464`; 이번 리뷰 해소 커밋은 리더가 추후 기입)
+- 브랜치: `aero-work-dev` (HEAD `2c45a2e` — C 게이트 리뷰 해소 `f8a0a6d` 병합 반영)
 - 관계: [`../dev_plan/aero-work-full-parity-plan.md`](../dev_plan/aero-work-full-parity-plan.md)의 F8 "남은 후속"([`aero-work-phase-f1-f8.md`](aero-work-phase-f1-f8.md) §3)을 채운 후속 사이클. F1~F8(기본 구현)이 세운 골격 위에 G001~G007이 릴리스 후보 수준 깊이를 더한다.
 - 한 줄: SSE 스트리밍·분류체계 마법사+업무 허브·FTS5 키워드 검색(백그라운드 재색인)·종이 미리보기+수정 지시 재생성·업무대화 첨부+LLM 보조 라우팅 5개 기능 스토리(G001~G006)를 각각 기능 구현 → 아키텍트 재리뷰 → 레드팀 스위트 게이트로 마감했고, G007 Playwright E2E·ZIP QA·2.0.0-dev 버전 정합까지 완료했다. 리뷰 지적(P1 1·P2 4·P3 1)은 본 워킹트리에서 해소하며 커밋 해시는 리더 커밋 후 채운다.
 
