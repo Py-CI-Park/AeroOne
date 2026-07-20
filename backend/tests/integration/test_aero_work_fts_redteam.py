@@ -137,7 +137,7 @@ class _FailingEmbedder:
 
 @pytest.fixture()
 def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', _FakeEmbedder)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _FakeEmbedder())
 
 
 @pytest.fixture(autouse=True)
@@ -249,7 +249,7 @@ def test_delete_folder_during_indexing_is_rejected_then_succeeds_after_completio
 
     embedder = _PausingEmbedder()
     embedder.pause_at = 1  # 임베딩이 시작되기 전(파일 행 flush 이전)에 멈춰 세운다
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: embedder)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: embedder)
 
     root = tmp_path / 'kb'
     root.mkdir()
@@ -286,7 +286,7 @@ def test_reindex_conflict_is_scoped_to_the_indexing_folder(
 ) -> None:
     embedder_a = _PausingEmbedder()
     embedder_a.pause_at = 1
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: embedder_a)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: embedder_a)
 
     root_a = tmp_path / 'kb-a'
     root_a.mkdir()
@@ -305,7 +305,7 @@ def test_reindex_conflict_is_scoped_to_the_indexing_folder(
     same_folder_conflict = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_a}/reindex')
     assert same_folder_conflict.status_code == 409, same_folder_conflict.text
 
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: _FakeEmbedder())
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _FakeEmbedder())
     other_folder_ok = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_b}/reindex?inline=true')
     assert other_folder_ok.status_code == 200, other_folder_ok.text
     assert other_folder_ok.json()['status'] == 'ready'
@@ -320,7 +320,7 @@ def test_reindex_conflict_is_scoped_to_the_indexing_folder(
 def test_background_embedder_failure_records_error_and_releases_guard(
     csrf_client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: _FailingEmbedder())
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _FailingEmbedder())
 
     root = tmp_path / 'kb'
     root.mkdir()
@@ -344,7 +344,7 @@ def test_background_embedder_failure_records_error_and_releases_guard(
     assert folder_id not in aero_api._REINDEXING_FOLDER_IDS, '실패해도 가드는 해제되어야 재요청이 가능하다'
 
     # 가드가 실제로 풀렸는지 — 같은 폴더에 즉시 재요청해도 409 가 아니라 202/200 이어야 한다.
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: _FakeEmbedder())
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _FakeEmbedder())
     retry = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex?inline=true')
     assert retry.status_code == 200, retry.text
     assert retry.json()['status'] == 'ready'
