@@ -99,7 +99,8 @@ test('opens the usage manual popup from the header', async () => {
   expect(screen.getByText(/개발중 섹션의 Active 카드/)).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: '대시보드' }));
   expect(screen.getAllByText(/현재 서비스 중/).length).toBeGreaterThan(0);
-  expect(screen.getByText(/Viewer, AeroAI, Notebook, Ladder/)).toBeInTheDocument();
+  // Leantime 카드 제외 + Aero Work 반영으로 개발중 요약 문구가 갱신됨.
+  expect(screen.getByText(/Viewer, AeroAI, Aero Work, Notebook, Ladder/)).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: '관리자' }));
   expect(screen.getByText(/자격 증명 사고 대응 런북/)).toBeInTheDocument();
   expect(screen.queryByText(/초기 비밀번호는 \d+/)).not.toBeInTheDocument();

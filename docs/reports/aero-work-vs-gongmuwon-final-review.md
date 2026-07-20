@@ -151,7 +151,15 @@
 | backend `launchers` 모듈 · admin permissions | Leantime 런처 엔트리 | 비활성 대상 |
 | `AeroOne-Leantime-Stack/` | **0바이트(빈 디렉터리)** | 실체 없음 |
 
-### 5.2 판정: **가능 — 소규모 작업**
+### 5.2 실행 결과: **완료 (2026-07-20)**
+
+운영자 승인에 따라 `feature/release-exclude-leantime`(커밋 `a663e06`)에서 구현·실증했다:
+- 마이그레이션 `20260720_0032` 로 service_modules 의 leantime 카드 삭제(가역 — downgrade 가 0011+0014 최종상태 복원). **leantime 카드 0, aero-work 유지 실측.**
+- `offline_package_policy.py` denylist 에 `scripts/leantime/`·`frontend/app/leantime/`·`frontend/app/api/frontend/leantime/`·office-tools leantime 컴포넌트 3종 추가.
+- **ZIP 재빌드 실증**: Task5 pre/post ok(entry 21,416 ← 21,442 감소), Next 빌드 라우트 **`/leantime` 0 · `/aero-work` 4 유지**, office-tools 정상.
+- 백엔드 `app/modules/leantime` 라우터는 유지(카드 없어 UI 도달 불가 — 무력화, DB 모델·연결 레지스트리 대수술 회피). 정책 35·leantime 백엔드 96·home-page 20·tsc 0 green.
+
+### 5.2 (참고) 사전 계획 — 원래 산정
 
 핵심 사실: **폐쇄망 실제 사용 경로(`start_offline.bat` + `/aero-work`)는 이미 Leantime과 무관**하고, Leantime 카드는 **admin에게만** 보이는 Development 실험 카드입니다. 따라서:
 
