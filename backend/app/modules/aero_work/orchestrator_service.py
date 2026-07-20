@@ -229,9 +229,19 @@ class OrchestratorService:
         service = ScheduleService(self.db)
         title = (intent.slots.get('title') or '').strip()
         events = service.list_events(self.user_id)
-        target = next((e for e in events if title and title in e.title), None)
-        if target is None:
+        matches = [e for e in events if title in e.title] if title else []
+        if not matches:
             return {'kind': 'schedule.delete', 'summary': f'"{title}" 일정을 찾지 못했습니다.', 'events': []}
+        if len(matches) > 1:
+            # AW-R03: 제목 부분일치가 여러 건이면 즉시 삭제하지 않고 후보를 돌려 선택을 요청한다.
+            # (같은 제목 반복 회의·넓은 검색어에서 다른 일정이 지워지는 오삭제를 막는다.)
+            record_activity(self.db, self.user_id, 'schedule.delete', f'삭제 후보 {len(matches)}건 — 확인 요청 "{title}"')
+            return {
+                'kind': 'schedule.delete',
+                'summary': f'"{title}"에 해당하는 일정이 {len(matches)}건입니다. 삭제할 일정을 날짜·시각까지 넣어 더 구체적으로 말해 주세요.',
+                'events': [EventResponse.from_model(e) for e in matches],
+            }
+        target = matches[0]
         removed_title = target.title
         service.delete_event(self.user_id, target.id)
         record_activity(self.db, self.user_id, 'schedule.delete', f'일정 삭제 "{removed_title}"')

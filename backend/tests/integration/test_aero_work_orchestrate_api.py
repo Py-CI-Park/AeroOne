@@ -33,6 +33,20 @@ def test_schedule_create_then_list_then_delete(csrf_client) -> None:
     assert '주간회의' in deleted[0]['summary']
 
 
+def test_schedule_delete_multiple_candidates_asks_before_deleting(csrf_client) -> None:
+    # AW-R03: 같은 제목의 일정이 여러 건이면 즉시 삭제하지 않고 후보를 돌려 확인을 요청한다.
+    _orchestrate(csrf_client, '내일 오전 9시 팀 회의 일정 등록해줘')
+    _orchestrate(csrf_client, '모레 오후 3시 팀 회의 일정 등록해줘')
+
+    result = _orchestrate(csrf_client, '팀 회의 일정 삭제해줘')[0]
+    assert result['kind'] == 'schedule.delete'
+    assert len(result['events']) == 2  # 삭제하지 않고 후보 2건을 돌려줌
+    assert '구체적으로' in result['summary']
+
+    # 후보가 여전히 남아 있어야 한다(오삭제 방지).
+    listed = _orchestrate(csrf_client, '이번 주 일정 알려줘')[0]
+    assert sum(1 for e in listed['events'] if '팀 회의' in e['title']) == 2
+
 def test_document_intent_recognized(csrf_client) -> None:
     results = _orchestrate(csrf_client, '청사 에너지 절감 방안을 1페이지 보고서로 작성해줘')
     assert results[0]['kind'] == 'document'
