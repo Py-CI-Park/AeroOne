@@ -92,6 +92,11 @@ def _is_builder_denied_path(rel_posix: str) -> bool:
     denied_exact = {
         "backend/requirements-dev.txt",
         "frontend/playwright.qa.config.ts",
+        # Leantime 동거 UI 제외(릴리스 결정) — /leantime 라우트가 임포트하는 자기완결 컴포넌트.
+        # 유지 파일 중 이들을 임포트하는 것은 없음(임포트 그래프 검증 완료)이라 빌드 안전.
+        "frontend/components/office-tools/leantime-status.tsx",
+        "frontend/components/office-tools/leantime-dashboard.tsx",
+        "frontend/components/office-tools/leantime-launch.tsx",
     }
     if normalized in denied_exact:
         return True
@@ -102,6 +107,10 @@ def _is_builder_denied_path(rel_posix: str) -> bool:
         "frontend/node_modules/",
         "frontend/.next/",
         "offline_assets/python-wheels/",
+        # Leantime 동거 제외 — 안내 라우트·BFF 프록시·co-deploy 배치 스크립트.
+        "scripts/leantime/",
+        "frontend/app/leantime/",
+        "frontend/app/api/frontend/leantime/",
     )
     return normalized.startswith(denied_prefixes)
 

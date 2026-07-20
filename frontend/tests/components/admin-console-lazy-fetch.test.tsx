@@ -38,7 +38,7 @@ const overviewFixture = {
   ai: { total: { current: 0, prior: 0, delta: 0 }, failure: { current: 0, prior: 0, delta: 0 } },
   sessions: { active_session_count: 0, active_user_count: 0, active_count: 0 },
   modules: { total: 0, buckets: { unavailable: [], coming: [], development: [], active: [] } },
-  system: { app_version: '1.17.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 0, asset_health: { ok: 0, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 0, total_reads: 0 } },
+  system: { app_version: '1.18.0', app_env: 'test', database_kind: 'sqlite', newsletter_count: 0, asset_health: { ok: 0, missing: 0, checksum_mismatch: 0, misconfig: 0 }, read_summary: { rows: 0, total_reads: 0 } },
   recent_audit: [],
 };
 

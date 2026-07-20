@@ -20,6 +20,7 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, launcher_kind: 'none', visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
   { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  { id: 14, key: 'aero-work', title: 'Aero Work', description: '대화 한 줄로 일정·문서(HWPX)·지식 검색을 잇는 업무 워크스페이스.', href: '/aero-work', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 42, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
   // OpenWebUI 는 dashboard.openwebui.launch 권한을 가진 활성 로그인 사용자(admin/user 기본 권한)에게만
   // 노출된다. degraded fallback 은 검증된 권한 정보가 없으므로 admin 이 아닌 한 required_permission
@@ -29,7 +30,8 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 10, key: 'schedule', title: 'Schedule', description: 'Shared calendar & event tracking.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 100, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 12, key: 'office-tools', title: 'Office Studio', description: '보고서·차트·다이어그램을 한 곳에서 (샘플 예제 포함).', href: '/office-tools', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 45, is_external: false, launcher_kind: 'none', visibility: 'admin' },
-  { id: 13, key: 'leantime', title: 'Leantime', description: '프로젝트·업무 관리(동거 앱). 구동 중이면 새 탭에서 바로 열리고, 미구동이면 설치·기동 안내가 뜹니다.', href: '/leantime', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 140, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+  // Leantime 동거 카드는 폐쇄망 릴리스에서 제외됨(마이그레이션 20260720_0032 로 service_modules 에서 삭제,
+  // 프런트 라우트·office-tools 컴포넌트·scripts/leantime 은 오프라인 패키지 denylist 로 제외). 재도입은 위 3자리 정합으로.
 ];
 
 const SECTION_ORDER = ['Newsletter', 'Document', 'AI', 'Development', 'ETC'];
@@ -120,7 +122,7 @@ export default async function HomePage({
                       href={module.href}
                       badge={module.badge}
                       active={module.is_enabled}
-                      external={module.key === 'leantime'}
+                      external={false}
                     />
                   ),
                 )}

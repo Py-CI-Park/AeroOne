@@ -1150,3 +1150,528 @@ export async function fetchLeantimeCalendar(start: string, end: string): Promise
     { method: 'GET' },
   );
 }
+
+// ---- Aero Work 지식폴더 (P2) ----
+export type KnowledgeFolder = {
+  id: number;
+  name: string;
+  path: string;
+  status: string;
+  status_detail?: string | null;
+  file_count: number;
+  chunk_count: number;
+  last_indexed_at: string | null;
+};
+
+export type KnowledgeSearchHit = {
+  folder_id: number;
+  folder_name: string;
+  rel_path: string;
+  chunk_index: number;
+  content: string;
+  score: number;
+  is_latest?: boolean;
+};
+
+export type KnowledgeSearchResponse = {
+  hits: KnowledgeSearchHit[];
+  model: string;
+};
+
+export async function fetchKnowledgeFolders() {
+  return browserFetch<{ folders: KnowledgeFolder[] }>('/api/frontend/aero-work/knowledge/folders', { method: 'GET' });
+}
+
+export async function registerKnowledgeFolder(payload: { name: string; path: string }, csrfToken: string) {
+  return browserFetch<KnowledgeFolder>('/api/frontend/aero-work/knowledge/folders', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export type KnowledgeReindexResponse = { status: string };
+
+// 재색인은 즉시 완료가 아니라 백그라운드 스레드로 넘어가며 202 {status:"indexing"} 을 받는다.
+// 이미 진행 중이면 409 를 받는데, 일반 안전 메시지 대신 사용자에게 구분되는 한국어 문구로
+// 재정의해 UI 가 재시도 안내를 다르게 보여줄 수 있게 한다.
+export async function reindexKnowledgeFolder(folderId: number, csrfToken: string): Promise<KnowledgeReindexResponse> {
+  try {
+    return await browserFetch<KnowledgeReindexResponse>(`/api/frontend/aero-work/knowledge/folders/${folderId}/reindex`, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      throw new ApiError('이미 색인 진행 중입니다', 409);
+    }
+    throw err;
+  }
+}
+
+export async function deleteKnowledgeFolder(folderId: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/knowledge/folders/${folderId}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function searchKnowledge(payload: { query: string; folder_id?: number | null; top_k?: number }) {
+  return browserFetch<KnowledgeSearchResponse>('/api/frontend/aero-work/knowledge/search', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function keywordSearchKnowledge(payload: { query: string; folder_id?: number | null; top_k?: number }) {
+  return browserFetch<KnowledgeSearchResponse>('/api/frontend/aero-work/knowledge/keyword-search', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export type WikiFile = {
+  id: number;
+  summary: string;
+  folder_id: number;
+  folder_name: string;
+  rel_path: string;
+  chunk_count: number;
+  is_latest: boolean;
+};
+
+export type WikiFamily = {
+  base: string;
+  representative: WikiFile;
+  items: WikiFile[];
+  has_versions: boolean;
+};
+
+export async function fetchKnowledgeWiki(folderId?: number | null) {
+  const qs = folderId ? `?folder_id=${folderId}` : '';
+  return browserFetch<{ families: WikiFamily[] }>(`/api/frontend/aero-work/knowledge/wiki${qs}`, { method: 'GET' });
+}
+
+export async function summarizeKnowledgeFile(fileId: number, csrfToken: string) {
+  return browserFetch<{ summary: string }>(`/api/frontend/aero-work/knowledge/files/${fileId}/summarize`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+// 분류체계 마법사(§6.6) — 색인 파일명/요약 기반 LLM 업무 후보 생성→사용자 확정→적용.
+// apply 는 전체 트리를 교체(applied 는 반영된 분류 수)한다 — 서버 계약은 항상 고정.
+export type TaxonomyFile = {
+  id: number;
+  rel_path: string;
+  folder_name: string;
+  summary: string;
+};
+
+export type TaxonomyCategory = {
+  id: number;
+  name: string;
+  description: string;
+  sort_order: number;
+  files: TaxonomyFile[];
+};
+
+export type TaxonomyCandidate = {
+  name: string;
+  description: string;
+  file_ids: number[];
+};
+
+export type TaxonomyProposeInput = {
+  organization: string;
+  department: string;
+  duties: string;
+};
+
+export async function proposeTaxonomy(input: TaxonomyProposeInput, csrfToken: string) {
+  return browserFetch<{ candidates: TaxonomyCandidate[]; model: string; reason: string; truncated: boolean }>(
+    '/api/frontend/aero-work/taxonomy/propose',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+  );
+}
+
+export async function applyTaxonomy(categories: TaxonomyCandidate[], csrfToken: string) {
+  return browserFetch<{ applied: number }>('/api/frontend/aero-work/taxonomy/apply', {
+    method: 'POST',
+    body: JSON.stringify({ categories }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchTaxonomy() {
+  return browserFetch<{ categories: TaxonomyCategory[] }>('/api/frontend/aero-work/taxonomy', { method: 'GET' });
+}
+
+export async function deleteTaxonomyCategory(categoryId: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/taxonomy/${categoryId}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// ---- Aero Work 일정 (P4) ----
+export type AeroWorkEvent = {
+  id: number;
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  all_day: boolean;
+  location: string;
+  notes: string;
+  remind_before_minutes: number | null;
+};
+
+export type AeroWorkEventInput = {
+  title: string;
+  starts_at: string;
+  ends_at?: string | null;
+  all_day?: boolean;
+  location?: string;
+  notes?: string;
+  remind_before_minutes?: number | null;
+};
+
+export async function fetchAeroWorkEvents(range?: { start?: string; end?: string }) {
+  const params = new URLSearchParams();
+  if (range?.start) params.set('start', range.start);
+  if (range?.end) params.set('end', range.end);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return browserFetch<{ events: AeroWorkEvent[] }>(`/api/frontend/aero-work/schedule/events${qs}`, { method: 'GET' });
+}
+
+export async function createAeroWorkEvent(payload: AeroWorkEventInput, csrfToken: string) {
+  return browserFetch<AeroWorkEvent>('/api/frontend/aero-work/schedule/events', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateAeroWorkEvent(id: number, payload: Partial<AeroWorkEventInput>, csrfToken: string) {
+  return browserFetch<AeroWorkEvent>(`/api/frontend/aero-work/schedule/events/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteAeroWorkEvent(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/schedule/events/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// ---- Aero Work 실행기록 (P4) ----
+export type AeroWorkActivity = {
+  id: number;
+  kind: string;
+  summary: string;
+  detail: string;
+  created_at: string;
+};
+
+export async function fetchAeroWorkActivity(limit = 50) {
+  return browserFetch<{ activities: AeroWorkActivity[] }>(
+    `/api/frontend/aero-work/activity?limit=${limit}`,
+    { method: 'GET' },
+  );
+}
+
+// ---- Aero Work 문서작성(HWPX) (P3) ----
+export async function generateAeroWorkHwpx(payload: { title: string; body: string; format?: string }, csrfToken: string): Promise<Blob> {
+  const response = await fetch('/api/frontend/aero-work/document/hwpx', {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
+  }
+  return response.blob();
+}
+
+// ---- Aero Work 업무대화 오케스트레이션 (F1) ----
+export type OrchestrateResult = {
+  kind: string;
+  summary: string;
+  events: AeroWorkEvent[];
+  hits: KnowledgeSearchHit[];
+  document: { format: string; title: string; content: string } | null;
+  feature: string | null;
+  answer?: string;
+  // G006: 규칙 확정('rule') vs knowledge 폴백에서 LLM 2차 분류가 개입('llm') — 결과 항목별로
+  // 온다(B3). 응답 최상위에는 이 필드가 없다(백엔드 계약 — results[i].routed_by 만 읽는다).
+  routed_by?: 'rule' | 'llm' | null;
+};
+export async function orchestrateAeroWork(
+  utterance: string,
+  csrfToken: string,
+  sessionId?: number | null,
+  options?: { synthesize?: boolean; attachments?: AiAttachment[] },
+) {
+  const body: Record<string, unknown> = { utterance, session_id: sessionId ?? null };
+  if (options?.synthesize !== undefined) {
+    body.synthesize = options.synthesize;
+  }
+  if (options?.attachments !== undefined) {
+    // B1: 백엔드 첨부 계약은 {name, text} 다 — 프런트 첨부(AiAttachment)는 {name, content} 이므로
+    // 여기서 매핑한다(base64 data 레인은 API 전용, 프런트는 항상 text 로만 보낸다 — M3).
+    body.attachments = options.attachments.map((attachment) => ({ name: attachment.name, text: attachment.content }));
+  }
+  return browserFetch<{ utterance: string; session_id: number | null; results: OrchestrateResult[] }>('/api/frontend/aero-work/orchestrate', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchAeroWorkChatHistory(limit = 20, sessionId?: number | null) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (sessionId != null) params.set('session_id', String(sessionId));
+  return browserFetch<{ items: { id: number; utterance: string; results: OrchestrateResult[]; created_at: string }[] }>(
+    `/api/frontend/aero-work/chat/history?${params.toString()}`,
+    { method: 'GET' },
+  );
+}
+
+export type AeroWorkChatSession = { id: number; title: string; updated_at: string };
+
+export async function fetchAeroWorkChatSessions() {
+  return browserFetch<{ sessions: AeroWorkChatSession[] }>('/api/frontend/aero-work/chat/sessions', { method: 'GET' });
+}
+
+export async function deleteAeroWorkChatSession(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/chat/sessions/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function composeAeroWorkDocument(
+  payload: { title: string; instruction: string; format: string; previous_paragraphs?: string[] },
+  csrfToken: string,
+): Promise<{ paragraphs: string[]; truncated: boolean }> {
+  return browserFetch<{ paragraphs: string[]; truncated: boolean }>('/api/frontend/aero-work/document/compose', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// 양식(종이) 미리보기(G005) — 서버가 document_formats 위계를 반영해 만든 self-contained
+// HTML 조각(inline style, 외부 리소스 0)을 그대로 받는다. 사용자 입력은 서버가 escape 해
+// 넣으므로 프런트에서 추가 sanitize 없이 dangerouslySetInnerHTML 로 렌더할 수 있다(서버 생성
+// HTML 만 — 사용자 텍스트를 직접 주입하지 않는다). WASM 근사 렌더는 범위 밖(후속).
+export async function previewAeroWorkDocument(
+  payload: { format_id: string; title: string; paragraphs: string[] },
+  csrfToken: string,
+): Promise<{ html: string }> {
+  return browserFetch<{ html: string }>('/api/frontend/aero-work/document/preview', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// ---- Aero Work 지식 근거 합성/문서 AI 내용 생성 SSE 스트리밍 (G001) ----
+// AeroAI streamAiChat 과 동일한 방식(fetch + ReadableStream, EventSource 는 POST 미지원)으로
+// SSE 프레임을 소비한다. 프레임 파서(parseSseBuffer)는 계약이 동일한 순수 유틸이라 그대로
+// 재사용한다. 지식 답변: hits(0~1) -> delta(N) -> done(1), 실패 시 error.
+export interface AeroWorkAnswerStreamHandlers {
+  onHits?: (hits: KnowledgeSearchHit[]) => void;
+  onDelta: (chunk: string) => void;
+  onDone: (answer: string) => void;
+  onError: (message: string) => void;
+}
+
+export async function streamAeroWorkAnswer(
+  payload: { query: string; folder_id?: number | null; top_k?: number },
+  csrfToken: string,
+  handlers: AeroWorkAnswerStreamHandlers,
+): Promise<void> {
+  const response = await fetch('/api/frontend/aero-work/knowledge/answer/stream', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    handlers.onError(text || `지식 답변 스트림 요청 실패: ${response.status}`);
+    return;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { frames, rest } = parseSseBuffer(buffer);
+      buffer = rest;
+      for (const frame of frames) dispatchAeroWorkAnswerFrame(frame, handlers);
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      const { frames } = parseSseBuffer(`${buffer}\n\n`);
+      for (const frame of frames) dispatchAeroWorkAnswerFrame(frame, handlers);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function dispatchAeroWorkAnswerFrame(frame: AiSseFrame, handlers: AeroWorkAnswerStreamHandlers): void {
+  try {
+    if (frame.event === 'hits') {
+      const hits = JSON.parse(frame.data) as KnowledgeSearchHit[];
+      handlers.onHits?.(hits);
+    } else if (frame.event === 'delta') {
+      const chunk = JSON.parse(frame.data) as string;
+      handlers.onDelta(chunk);
+    } else if (frame.event === 'done') {
+      const parsed = JSON.parse(frame.data) as { answer: string };
+      handlers.onDone(parsed.answer);
+    } else if (frame.event === 'error') {
+      const message = JSON.parse(frame.data) as string;
+      handlers.onError(message);
+    }
+  } catch {
+    // 파싱 불가한 프레임(빈 keep-alive 등)은 조용히 무시한다.
+  }
+}
+
+// 문서 AI 내용 생성 스트림: delta(N) -> done(1) data={"paragraphs": [...], "truncated": bool}, 실패 시 error.
+export interface AeroWorkComposeStreamHandlers {
+  onDelta: (chunk: string) => void;
+  onDone: (paragraphs: string[], truncated?: boolean) => void;
+  onError: (message: string) => void;
+}
+
+export async function streamAeroWorkCompose(
+  payload: { title: string; instruction: string; format: string; previous_paragraphs?: string[] },
+  csrfToken: string,
+  handlers: AeroWorkComposeStreamHandlers,
+): Promise<void> {
+  const response = await fetch('/api/frontend/aero-work/document/compose/stream', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    handlers.onError(text || `문서 내용 생성 스트림 요청 실패: ${response.status}`);
+    return;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const { frames, rest } = parseSseBuffer(buffer);
+      buffer = rest;
+      for (const frame of frames) dispatchAeroWorkComposeFrame(frame, handlers);
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      const { frames } = parseSseBuffer(`${buffer}\n\n`);
+      for (const frame of frames) dispatchAeroWorkComposeFrame(frame, handlers);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function dispatchAeroWorkComposeFrame(frame: AiSseFrame, handlers: AeroWorkComposeStreamHandlers): void {
+  try {
+    if (frame.event === 'delta') {
+      const chunk = JSON.parse(frame.data) as string;
+      handlers.onDelta(chunk);
+    } else if (frame.event === 'done') {
+      const parsed = JSON.parse(frame.data) as { paragraphs: string[]; truncated?: boolean };
+      handlers.onDone(parsed.paragraphs, parsed.truncated ?? false);
+    } else if (frame.event === 'error') {
+      const message = JSON.parse(frame.data) as string;
+      handlers.onError(message);
+    }
+  } catch {
+    // 파싱 불가한 프레임은 조용히 무시한다.
+  }
+}
+
+export async function fetchAeroWorkPrefs() {
+  return browserFetch<{ llm_mode: string }>('/api/frontend/aero-work/prefs', { method: 'GET' });
+}
+
+export async function updateAeroWorkPrefs(llmMode: 'default' | 'local', csrfToken: string) {
+  return browserFetch<{ llm_mode: string }>('/api/frontend/aero-work/prefs', {
+    method: 'PUT',
+    body: JSON.stringify({ llm_mode: llmMode }),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+// ---- Aero Work 문서 최종 저장(승인형) ----
+export type SavedAeroWorkDocument = {
+  id: number;
+  title: string;
+  format: string;
+  status: string;
+  created_at: string;
+};
+
+export async function saveAeroWorkDocumentRequest(
+  payload: { title: string; body: string; format: string },
+  csrfToken: string,
+) {
+  return browserFetch<SavedAeroWorkDocument>('/api/frontend/aero-work/document/save-request', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function fetchSavedAeroWorkDocuments() {
+  return browserFetch<{ documents: SavedAeroWorkDocument[] }>('/api/frontend/aero-work/document/saved', { method: 'GET' });
+}
+
+export async function approveAeroWorkDocument(id: number, csrfToken: string) {
+  return browserFetch<SavedAeroWorkDocument>(`/api/frontend/aero-work/document/saved/${id}/approve`, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function downloadSavedAeroWorkDocument(id: number): Promise<Blob> {
+  const response = await fetch(`/api/frontend/aero-work/document/saved/${id}/download`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
+  }
+  return response.blob();
+}
+
+export async function deleteSavedAeroWorkDocument(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/document/saved/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}

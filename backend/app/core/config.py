@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     app_name: str = 'AeroOne Newsletter Platform'
-    app_version: str = '1.17.1'
+    app_version: str = '1.18.0'
     app_env: Literal['development', 'test', 'production', 'closed_network'] = 'development'
     backend_port: int = 18437
     frontend_port: int = 29501
@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     ai_features_enabled: bool = True
     ollama_base_url: str = 'http://127.0.0.1:11434'
     ollama_default_model: str = 'gemma4:12b'
+    ollama_embed_model: str = 'nomic-embed-text'
     ollama_connect_timeout_seconds: float = 5.0
     ollama_read_timeout_seconds: float = 120.0
     ai_max_context_chars: int = 12000

@@ -11,7 +11,7 @@ const MANUAL_SECTIONS = [
     title: '대시보드와 서비스 상태',
     rows: [
       ['현재 서비스 중', 'Newsletter, Document, Civil Aircraft 는 모든 사용자에게 보이는 운영 중 열람 서비스입니다. NSA 는 권한 있는 계정에만 노출·열람됩니다. 카드나 상단 메뉴를 클릭해 이동합니다.'],
-      ['Development(개발중)', '기본 활성 카드는 Viewer, AeroAI, Notebook, Ladder, Office Studio, Leantime 이고 Announcement 와 Schedule 은 Coming soon 비활성 카드입니다. 이 섹션과 Coming soon 카드는 앱 관리자 권한 계정에만 노출됩니다. 이 권한은 Windows·서버 프로세스를 실행하는 운영체제 계정 권한과 별개입니다. 카드 구성·노출·순서는 관리자 service_modules 설정에 따라 바뀔 수 있습니다.'],
+      ['Development(개발중)', '기본 활성 카드는 Viewer, AeroAI, Aero Work, Notebook, Ladder, Office Studio 이고 Announcement 와 Schedule 은 Coming soon 비활성 카드입니다. 이 섹션과 Coming soon 카드는 앱 관리자 권한 계정에만 노출됩니다. 이 권한은 Windows·서버 프로세스를 실행하는 운영체제 계정 권한과 별개입니다. 카드 구성·노출·순서는 관리자 service_modules 설정에 따라 바뀔 수 있습니다.'],
       ['Admin·테마·사용법', '헤더 오른쪽은 다크(DARK/LIGHT) · 사용법 · (로그인 또는 Admin) 순서입니다. 로그인 전에는 로그인 링크가, 관리자로 로그인하면 Admin 링크가 보입니다. 일반 사용자에게는 둘 다 표시되지 않습니다.'],
     ],
   },
@@ -66,16 +66,6 @@ const MANUAL_SECTIONS = [
     ],
   },
   {
-    id: 'leantime',
-    label: 'Leantime',
-    title: 'Leantime 동거 앱',
-    rows: [
-      ['기본 활성 카드', 'Leantime 은 Development 섹션의 기본 Active 카드이며 내부 안내 페이지(`/leantime`)로 연결됩니다. 카드의 활성화·노출·순서는 관리자 service_modules 설정에 따라 조정될 수 있습니다.'],
-      ['상태 확인과 열기', '안내 페이지의 상태 표시는 설정된 host:port에 TCP 연결만 확인합니다. up은 포트가 연결됨을 뜻할 뿐 Leantime HTTP 응답·로그인·기능 준비를 증명하지 않으며, 이때만 열기 버튼이 활성화됩니다. 설치·기동 절차를 마친 뒤 새 탭에서 실제 Leantime 화면을 확인하세요.'],
-      ['분리 운영', 'Leantime 은 AeroOne 에 흡수된 작업 관리 UI가 아니라 PHP·MariaDB·IIS로 따로 운영하는 동거 앱입니다. AeroOne 은 상태 확인과 안내·열기만 제공하며 Leantime 데이터나 DB를 관리하지 않습니다.'],
-    ],
-  },
-  {
     id: 'notebook-ladder',
     label: '기타 개발중',
     title: 'Notebook·Ladder (개발중)',
@@ -122,7 +112,6 @@ const SECTION_AUDIENCE: Record<string, 'all' | 'member' | 'admin'> = {
   ai: 'member',
   viewer: 'member',
   'office-studio': 'member',
-  leantime: 'member',
   'notebook-ladder': 'member',
   admin: 'admin',
 };
