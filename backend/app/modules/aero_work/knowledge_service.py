@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
 
-from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
+from app.modules.aero_work.embedding_client import CompatibleEmbedder, EmbeddingUnavailable, OllamaEmbedder
 from app.modules.aero_work.models import KnowledgeChunk, KnowledgeFile, KnowledgeFolder
 from app.modules.aero_work.text_extract import extract_text, is_supported
 from app.modules.aero_work.version_ranker import group_by_family
@@ -122,34 +122,69 @@ def _file_signature(path: Path) -> str:
     stat = path.stat()
     return f'{int(stat.st_mtime_ns)}-{stat.st_size}'
 
+def _embed_fingerprint(embedder: object) -> str:
+    # provider-qualified 임베딩 공간 식별자. 실 임베더는 embed_fingerprint(예: 'ollama:...',
+    # 'openai_compatible:...')를 제공하고, 테스트 fake 등 미제공 시 model 로 폴백한다.
+    return getattr(embedder, 'embed_fingerprint', None) or embedder.model  # type: ignore[attr-defined]
+
+
+def _chunk_uses_active_embedding_model(
+    chunk: KnowledgeChunk, embedder: OllamaEmbedder | CompatibleEmbedder
+) -> bool:
+    return chunk.embed_model == _embed_fingerprint(embedder) or (
+        chunk.embed_model is None and isinstance(embedder, OllamaEmbedder)
+    )
+
+
 
 class KnowledgeService:
-    def __init__(self, db: Session, embedder: OllamaEmbedder) -> None:
+    def __init__(
+        self, db: Session, embedder: OllamaEmbedder | CompatibleEmbedder, owner_id: int | None = None
+    ) -> None:
         self.db = db
         self.embedder = embedder
+        self.owner_id = owner_id
 
     # ---- 폴더 CRUD ----
     def list_folders(self) -> list[KnowledgeFolder]:
         return list(
-            self.db.execute(select(KnowledgeFolder).order_by(KnowledgeFolder.id)).scalars().all()
+            self.db.execute(
+                select(KnowledgeFolder)
+                .where(KnowledgeFolder.owner_id == self.owner_id)
+                .order_by(KnowledgeFolder.id)
+            ).scalars().all()
         )
 
     def get_folder(self, folder_id: int) -> KnowledgeFolder | None:
-        return self.db.get(KnowledgeFolder, folder_id)
+        return self.db.execute(
+            select(KnowledgeFolder).where(
+                KnowledgeFolder.id == folder_id, KnowledgeFolder.owner_id == self.owner_id
+            )
+        ).scalar_one_or_none()
 
-    def register_folder(self, name: str, path: str) -> KnowledgeFolder:
+    def register_folder(self, name: str, path: str, allowed_roots: list[str] | None = None) -> KnowledgeFolder:
         resolved = Path(path).expanduser()
         if not resolved.is_absolute():
             raise KnowledgeError('폴더 경로는 절대 경로여야 합니다.')
         if not resolved.is_dir():
             raise KnowledgeError(f'폴더를 찾을 수 없습니다: {resolved}')
-        canonical = str(resolved)
+        # B1: 소유권 경계는 파일시스템 실체여야 한다 — 별칭(.., symlink, junction, 대소문자 변형)으로
+        # 같은 물리 폴더를 다른 문자열로 재등록하는 우회를 막기 위해 resolve() 실경로를 정규 키로 쓴다.
+        real = resolved.resolve()
+        # AW-R01: 허용 루트가 설정돼 있으면 실경로가 그 안이어야 한다.
+        if allowed_roots:
+            roots = [Path(r).expanduser().resolve() for r in allowed_roots if r.strip()]
+            if roots and not any(real == root or real.is_relative_to(root) for root in roots):
+                raise KnowledgeError('허용된 지식 루트 밖의 경로는 등록할 수 없습니다.')
+        canonical = str(real)
         existing = self.db.execute(
             select(KnowledgeFolder).where(KnowledgeFolder.path == canonical)
         ).scalar_one_or_none()
         if existing is not None:
-            raise KnowledgeError('이미 등록된 폴더입니다.')
-        folder = KnowledgeFolder(name=(name or '').strip() or resolved.name, path=canonical, status='pending')
+            raise KnowledgeError('이 경로는 이미 등록되어 있습니다(다른 사용자 포함).')
+        folder = KnowledgeFolder(
+            owner_id=self.owner_id, name=(name or '').strip() or real.name, path=canonical, status='pending'
+        )
         self.db.add(folder)
         self.db.flush()
         return folder
@@ -211,20 +246,30 @@ class KnowledgeService:
 
         changed = 0
         processed = 0
+        # QW-4: 검색 누락 원인 진단 카운터 — 추출 실패(권한/손상/OS)와 빈 추출(스캔본·암호 등)을
+        # 조용히 흡수하지 않고 집계해 status_detail 에 노출한다(경로·원문은 남기지 않는다).
+        extract_errors = 0
+        empty_extracts = 0
         try:
             for rel_path, (path, signature) in disk.items():
                 file_row = existing.get(rel_path)
-                if file_row is not None and file_row.signature == signature:
+                if file_row is not None and file_row.signature == signature and all(
+                    _chunk_uses_active_embedding_model(chunk, self.embedder)
+                    for chunk in file_row.chunks
+                ):
                     processed += 1
                     if progress_cb and (processed % PROGRESS_EVERY == 0 or processed == total):
                         progress_cb(processed, total)
-                    continue  # 미변경 → 스킵(증분)
+                    continue  # 파일·임베딩 공간 모두 미변경 → 스킵(증분)
                 try:
                     text = extract_text(path)
                 except OSError:
+                    extract_errors += 1
                     processed += 1
                     continue
                 pieces = chunk_text(text)
+                if not pieces:
+                    empty_extracts += 1  # 추출은 됐으나 본문이 비어 검색 대상 청크가 없다(스캔본·암호 등)
                 embeddings = self.embedder.embed(pieces) if pieces else []
                 if file_row is None:
                     file_row = KnowledgeFile(folder_id=folder.id, rel_path=rel_path, signature=signature)
@@ -244,6 +289,7 @@ class KnowledgeService:
                         chunk_index=index,
                         content=piece,
                         embedding=json.dumps(vector),
+                        embed_model=_embed_fingerprint(self.embedder),
                     )
                     self.db.add(chunk)
                     new_chunks.append((chunk, piece))
@@ -275,9 +321,16 @@ class KnowledgeService:
             ).scalar_one()
         )
         folder.status = 'ready'
-        folder.status_detail = (
-            f'{folder.file_count}개 파일 · {folder.chunk_count}개 청크 (이번 {changed}개 갱신)'
-        )
+        detail = f'{folder.file_count}개 파일 · {folder.chunk_count}개 청크 (이번 {changed}개 갱신)'
+        # QW-4: 검색에 안 잡히는 파일이 있으면 원인을 함께 안내한다(추출 실패·빈 문서).
+        diagnostics = []
+        if extract_errors:
+            diagnostics.append(f'추출 실패 {extract_errors}개')
+        if empty_extracts:
+            diagnostics.append(f'빈 문서 {empty_extracts}개')
+        if diagnostics:
+            detail += ' · ' + ' · '.join(diagnostics)
+        folder.status_detail = detail
         folder.last_indexed_at = datetime.now(timezone.utc)
         self.db.flush()
         return folder
@@ -292,11 +345,14 @@ class KnowledgeService:
             select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
             .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
             .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+            .where(KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
         hits: list[dict] = []
         for chunk, file_row, folder in self.db.execute(stmt).all():
+            if not _chunk_uses_active_embedding_model(chunk, self.embedder):
+                continue
             try:
                 vector = json.loads(chunk.embedding)
             except (ValueError, TypeError):
@@ -355,7 +411,7 @@ class KnowledgeService:
             select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
             .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
             .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
-            .where(KnowledgeChunk.id.in_(fts_rowids))
+            .where(KnowledgeChunk.id.in_(fts_rowids), KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
@@ -368,6 +424,7 @@ class KnowledgeService:
             select(KnowledgeChunk, KnowledgeFile, KnowledgeFolder)
             .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
             .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+            .where(KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)
@@ -406,8 +463,10 @@ class KnowledgeService:
     def wiki(self, *, folder_id: int | None = None) -> list[dict]:
         """색인된 파일을 버전 가족(대표 + 판본 이력)으로 묶어 반환한다(gongmuwon 업무 허브 백본)."""
 
-        stmt = select(KnowledgeFile, KnowledgeFolder).join(
-            KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id
+        stmt = (
+            select(KnowledgeFile, KnowledgeFolder)
+            .join(KnowledgeFolder, KnowledgeFile.folder_id == KnowledgeFolder.id)
+            .where(KnowledgeFolder.owner_id == self.owner_id)
         )
         if folder_id is not None:
             stmt = stmt.where(KnowledgeFolder.id == folder_id)

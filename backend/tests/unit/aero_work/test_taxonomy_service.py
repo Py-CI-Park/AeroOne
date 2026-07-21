@@ -53,12 +53,12 @@ def _settings(**overrides) -> Settings:
     return Settings(app_env='test', jwt_secret_key='x', **overrides)
 
 
-def _indexed_file_ids(session: Session, tmp_path: Path) -> list[int]:
+def _indexed_file_ids(session: Session, tmp_path: Path, *, owner_id: int = 1) -> list[int]:
     root = tmp_path / 'kb'
     root.mkdir()
     (root / '예산지침.md').write_text('예산 편성 기준', encoding='utf-8')
     (root / '출장규정.md').write_text('출장 여비 규정', encoding='utf-8')
-    service = KnowledgeService(session, FakeEmbedder())
+    service = KnowledgeService(session, FakeEmbedder(), owner_id)
     folder = service.register_folder('kb', str(root))
     session.commit()
     service.reindex(folder.id)
@@ -157,7 +157,7 @@ def test_propose_ai_disabled_returns_empty_without_calling_chat(session: Session
 
 
 def test_apply_creates_categories_and_is_idempotent(session: Session, tmp_path: Path) -> None:
-    file_ids = _indexed_file_ids(session, tmp_path)
+    file_ids = _indexed_file_ids(session, tmp_path, owner_id=7)
     categories = [
         {'name': '예산업무', 'description': '예산 편성', 'file_ids': [file_ids[0]]},
         {'name': '출장업무', 'description': '출장 여비', 'file_ids': [file_ids[1]]},
@@ -182,7 +182,7 @@ def test_apply_creates_categories_and_is_idempotent(session: Session, tmp_path: 
 
 
 def test_apply_skips_blank_names_and_unknown_file_ids(session: Session, tmp_path: Path) -> None:
-    file_ids = _indexed_file_ids(session, tmp_path)
+    file_ids = _indexed_file_ids(session, tmp_path, owner_id=3)
     fake_id = max(file_ids) + 999
     categories = [
         {'name': '  ', 'description': '이름 없음', 'file_ids': []},

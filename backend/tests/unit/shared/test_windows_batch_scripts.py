@@ -885,7 +885,7 @@ def test_offline_package_delegates_to_allow_list_builder() -> None:
 
     script = (REPO_ROOT / "offline_package.bat").read_text(encoding="utf-8")
     assert "scripts\\build_offline_package.ps1" in script
-    assert "-Version 1.18.1 -DryRun" in script
+    assert "-Version 1.19.0 -DryRun" in script
     assert "robocopy" not in script.lower()
     assert "requirements-dev.txt" not in script
 

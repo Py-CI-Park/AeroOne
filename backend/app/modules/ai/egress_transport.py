@@ -3,6 +3,7 @@ from __future__ import annotations
 import http.client
 import ipaddress
 import json
+import math
 import re
 import socket
 import ssl
@@ -512,3 +513,81 @@ def chat_completion(
     if not isinstance(content, str):
         return EgressOutcome(ok=False, error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID, status_code=outcome.status_code, latency_ms=outcome.latency_ms, payload=None)
     return outcome
+def embeddings(
+    raw_url: str,
+    *,
+    model: str,
+    inputs: list[str],
+    app_env: str,
+    api_key: str,
+    policy: EgressPolicy,
+    peer_policy: PeerPolicy,
+) -> EgressOutcome:
+    """OpenAI 호환 POST /v1/embeddings 호출과 응답 벡터 형태를 검증한다."""
+    outcome = _execute(
+        raw_url,
+        app_env=app_env,
+        method="POST",
+        path="/v1/embeddings",
+        body={"model": model, "input": inputs},
+        api_key=api_key,
+        policy=policy,
+        peer_policy=peer_policy,
+    )
+    if not outcome.ok or outcome.payload is None:
+        return outcome
+    data = outcome.payload.get("data")
+    data = outcome.payload.get("data")
+    if not isinstance(data, list) or len(data) != len(inputs):
+        return EgressOutcome(
+            ok=False,
+            error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID,
+            status_code=outcome.status_code,
+            latency_ms=outcome.latency_ms,
+            payload=None,
+        )
+
+    indexed: dict[int, dict[str, Any]] = {}
+    dimension: int | None = None
+    for item in data:
+        index = item.get("index") if isinstance(item, dict) else None
+        vector = item.get("embedding") if isinstance(item, dict) else None
+        if (
+            isinstance(index, bool)
+            or not isinstance(index, int)
+            or index in indexed
+            or not isinstance(vector, list)
+            or not vector
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                for value in vector
+            )
+            or (dimension is not None and len(vector) != dimension)
+        ):
+            return EgressOutcome(
+                ok=False,
+                error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID,
+                status_code=outcome.status_code,
+                latency_ms=outcome.latency_ms,
+                payload=None,
+            )
+        dimension = len(vector)
+        indexed[index] = item
+
+    if set(indexed) != set(range(len(inputs))):
+        return EgressOutcome(
+            ok=False,
+            error_code=EgressErrorCode.UPSTREAM_SHAPE_INVALID,
+            status_code=outcome.status_code,
+            latency_ms=outcome.latency_ms,
+            payload=None,
+        )
+    return EgressOutcome(
+        ok=True,
+        error_code=None,
+        status_code=outcome.status_code,
+        latency_ms=outcome.latency_ms,
+        payload={**outcome.payload, "data": [indexed[index] for index in range(len(inputs))]},
+    )

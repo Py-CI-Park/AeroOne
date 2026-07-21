@@ -65,7 +65,7 @@ def _wait_until(predicate, *, timeout: float = 5.0, interval: float = 0.05):
 def test_reindex_returns_202_then_progresses_and_completes(csrf_client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     embedder = _PausingEmbedder()
     embedder.pause_at = 6  # 5번째 파일까지 처리·커밋된 뒤, 6번째 embed() 호출에서 대기
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: embedder)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: embedder)
 
     root = tmp_path / 'kb'
     root.mkdir()
@@ -116,7 +116,7 @@ def test_reindex_returns_202_then_progresses_and_completes(csrf_client, monkeypa
 def test_reindex_conflict_only_for_same_folder(csrf_client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     embedder_a = _PausingEmbedder()
     embedder_a.pause_at = 1
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: embedder_a)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: embedder_a)
 
     root_a = tmp_path / 'kb-a'
     root_a.mkdir()
@@ -137,7 +137,7 @@ def test_reindex_conflict_only_for_same_folder(csrf_client, monkeypatch: pytest.
     assert embedder_a.reached_pause.wait(timeout=5)
 
     # 다른 폴더는 첫 폴더가 진행 중이어도 영향받지 않는다(폴더별 가드).
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', lambda settings=None: _PausingEmbedder())
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _PausingEmbedder())
     reindex_b = csrf_client.post(f'/api/v1/aero-work/knowledge/folders/{folder_b}/reindex?inline=true')
     assert reindex_b.status_code == 200, reindex_b.text
     assert reindex_b.json()['status'] == 'ready'

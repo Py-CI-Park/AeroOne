@@ -14,12 +14,12 @@ import app.modules.aero_work.api as aero_api
 
 
 class _FakeEmbedder:
-    """route 가 생성하는 OllamaEmbedder 를 대체하는 결정적 bag-of-vocab 임베더."""
+    """라우터가 build_embedder 로 받는 결정적 bag-of-vocab 임베더."""
 
     model = 'fake-embed'
     VOCAB = ('travel', 'expense', 'security', 'usb', 'export', 'meeting')
 
-    def __init__(self, settings=None) -> None:  # noqa: ANN001 (route 시그니처 호환)
+    def __init__(self, settings=None) -> None:  # noqa: ANN001 (테스트 팩토리 시그니처 호환)
         pass
 
     def embed_one(self, text: str) -> list[float]:
@@ -32,7 +32,7 @@ class _FakeEmbedder:
 
 @pytest.fixture()
 def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(aero_api, 'OllamaEmbedder', _FakeEmbedder)
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _FakeEmbedder())
 
 
 @pytest.fixture()
@@ -85,6 +85,49 @@ def test_register_reindex_search_delete_flow(csrf_client, fake_embedder, kb_dir:
     deleted = csrf_client.delete(f'/api/v1/aero-work/knowledge/folders/{folder_id}')
     assert deleted.status_code == 204
     assert csrf_client.get('/api/v1/aero-work/knowledge/folders').json()['folders'] == []
+def test_reindex_recreates_unchanged_files_after_embedding_model_switch(
+    csrf_client, monkeypatch: pytest.MonkeyPatch, kb_dir: Path
+) -> None:
+    class _SwitchableEmbedder(_FakeEmbedder):
+        model = 'model-a'
+        calls: list[str] = []
+
+        def embed(self, texts: list[str]) -> list[list[float]]:
+            type(self).calls.extend(texts)
+            return super().embed(texts)
+
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _SwitchableEmbedder())
+    created = csrf_client.post(
+        '/api/v1/aero-work/knowledge/folders', json={'name': '규정', 'path': str(kb_dir)}
+    )
+    folder_id = created.json()['id']
+    assert csrf_client.post(
+        f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex?inline=true'
+    ).status_code == 200
+    assert csrf_client.post(
+        '/api/v1/aero-work/knowledge/search', json={'query': 'usb export'}
+    ).json()['hits']
+
+    class _ModelBEmbedder(_SwitchableEmbedder):
+        model = 'model-b'
+        calls: list[str] = []
+
+    monkeypatch.setattr(aero_api, 'build_embedder', lambda _settings, _db: _ModelBEmbedder())
+    assert csrf_client.post(
+        '/api/v1/aero-work/knowledge/search', json={'query': 'usb export'}
+    ).json()['hits'] == []
+
+    reindex = csrf_client.post(
+        f'/api/v1/aero-work/knowledge/folders/{folder_id}/reindex?inline=true'
+    )
+    assert reindex.status_code == 200, reindex.text
+    assert _ModelBEmbedder.calls
+    recovered = csrf_client.post(
+        '/api/v1/aero-work/knowledge/search', json={'query': 'usb export'}
+    )
+    assert recovered.status_code == 200, recovered.text
+    assert recovered.json()['model'] == 'model-b'
+    assert recovered.json()['hits'][0]['rel_path'] == 'security.md'
 
 
 def test_register_rejects_missing_path(csrf_client, tmp_path: Path) -> None:

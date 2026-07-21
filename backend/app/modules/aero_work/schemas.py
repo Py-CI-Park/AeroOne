@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -112,6 +112,40 @@ class EventListResponse(BaseModel):
     events: list[EventResponse]
 
 
+
+class TaskCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    due_date: date | None = None
+    tags: str = Field(default='', max_length=2000)
+
+
+class TaskUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=300)
+    status: str | None = Field(default=None, pattern='^(todo|doing|done)$')
+    due_date: date | None = None
+    tags: str | None = Field(default=None, max_length=2000)
+
+
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    status: str
+    due_date: date | None
+    tags: str
+    created_at: datetime
+    updated_at: datetime
+    done_at: datetime | None
+
+    @classmethod
+    def from_model(cls, task) -> 'TaskResponse':
+        return cls(
+            id=task.id, title=task.title, status=task.status, due_date=task.due_date,
+            tags=task.tags, created_at=task.created_at, updated_at=task.updated_at, done_at=task.done_at,
+        )
+
+
+class TaskListResponse(BaseModel):
+    tasks: list[TaskResponse]
 class ActivityResponse(BaseModel):
     id: int
     kind: str
@@ -162,6 +196,7 @@ class OrchestrateResult(BaseModel):
     kind: str
     summary: str
     events: list[EventResponse] = Field(default_factory=list)
+    tasks: list[TaskResponse] = Field(default_factory=list)
     hits: list[SearchHit] = Field(default_factory=list)
     document: DocumentIntent | None = None
     feature: str | None = None

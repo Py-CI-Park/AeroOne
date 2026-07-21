@@ -48,6 +48,8 @@ def _settings(**overrides) -> Settings:
 
 
 class FakeEmbedder:
+    # knowledge_service 가 색인 시 embedder.model 을 청크에 저장하므로 필수(build_embedder 계약).
+    model = 'fake-embed'
     VOCAB = ('예산', '성과', '보고')
 
     def embed_one(self, text: str) -> list[float]:
@@ -212,7 +214,7 @@ def test_attachment_text_included_in_synthesis_prompt_with_defense_markers(sessi
     (root / '예산_20260101.md').write_text('예산 편성 기준 예산 예산', encoding='utf-8')
 
     embedder = FakeEmbedder()
-    knowledge = KnowledgeService(session, embedder)
+    knowledge = KnowledgeService(session, embedder, owner_id=1)
     folder = knowledge.register_folder('규정', str(root))
     session.commit()
     knowledge.reindex(folder.id)
@@ -244,7 +246,7 @@ def test_no_attachments_leaves_prompt_unchanged(session: Session, tmp_path: Path
     (root / '예산_20260101.md').write_text('예산 편성 기준 예산 예산', encoding='utf-8')
 
     embedder = FakeEmbedder()
-    knowledge = KnowledgeService(session, embedder)
+    knowledge = KnowledgeService(session, embedder, owner_id=1)
     folder = knowledge.register_folder('규정', str(root))
     session.commit()
     knowledge.reindex(folder.id)

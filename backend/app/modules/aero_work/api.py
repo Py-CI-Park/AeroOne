@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.modules.aero_work import models as aero_work_models  # noqa: F401  (create_all 등록용)
-from app.modules.aero_work.embedding_client import EmbeddingUnavailable, OllamaEmbedder
+from app.modules.aero_work.embedding_client import EmbeddingUnavailable, build_embedder
 from app.modules.aero_work.activity_service import ActivityService, record_activity
 from app.modules.aero_work.document_composer import ComposeUnavailable, compose_content, compose_truncated
 from app.modules.aero_work.document_preview import render_preview_html
@@ -27,6 +27,7 @@ from app.modules.aero_work.document_formats import FORMAT_LABELS, format_documen
 from app.modules.aero_work.hwpx_generator import build_hwpx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
+from app.modules.aero_work.task_service import TaskError, create_task, delete_task, list_tasks, update_task
 from app.modules.aero_work.prefs_service import get_llm_mode, set_llm_mode
 from app.modules.aero_work.knowledge_summary import SummaryUnavailable, summarize_file
 from app.modules.aero_work.orchestrator_service import OrchestratorService
@@ -55,6 +56,10 @@ from app.modules.aero_work.schemas import (
     DocumentIntent,
     DocumentRequest,
     EventUpdateRequest,
+    TaskCreateRequest,
+    TaskListResponse,
+    TaskResponse,
+    TaskUpdateRequest,
     FolderListResponse,
     FolderRegisterRequest,
     FolderResponse,
@@ -82,8 +87,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _service(db: Session, settings: Settings) -> KnowledgeService:
-    return KnowledgeService(db, OllamaEmbedder(settings))
+def _service(db: Session, settings: Settings, owner_id: int) -> KnowledgeService:
+    return KnowledgeService(db, build_embedder(settings, db), owner_id)
 
 
 # ---- 비동기 재색인(G004) ----
@@ -146,7 +151,7 @@ def _run_background_reindex(folder_id: int, settings: Settings, owner_id: int) -
 
     db = get_session_factory()()
     try:
-        service = KnowledgeService(db, OllamaEmbedder(settings))
+        service = KnowledgeService(db, build_embedder(settings, db), owner_id)
 
         def _on_progress(done: int, total: int) -> None:
             folder = service.get_folder(folder_id)
@@ -195,8 +200,8 @@ def list_folders(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> FolderListResponse:
-    _require_user(user)
-    service = _service(db, settings)
+    owner = _require_user(user)
+    service = _service(db, settings, owner.id)
     return FolderListResponse(folders=[FolderResponse.from_model(f) for f in service.list_folders()])
 
 
@@ -213,9 +218,10 @@ def register_folder(
     user: User | None = Depends(get_optional_user),
 ) -> FolderResponse:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     try:
-        folder = service.register_folder(payload.name, payload.path)
+        allowed_roots = [r for r in settings.aero_work_knowledge_roots.split(',') if r.strip()]
+        folder = service.register_folder(payload.name, payload.path, allowed_roots=allowed_roots)
     except KnowledgeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     record_activity(db, owner.id, 'knowledge.register', f'지식폴더 "{folder.name}" 등록', folder.path)
@@ -243,7 +249,7 @@ def reindex_folder(
     """
 
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     folder = service.get_folder(folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
@@ -299,7 +305,7 @@ def delete_folder(
     user: User | None = Depends(get_optional_user),
 ) -> Response:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     folder = service.get_folder(folder_id)
     if folder is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='폴더를 찾을 수 없습니다.')
@@ -323,7 +329,7 @@ def search_knowledge(
     user: User | None = Depends(get_optional_user),
 ) -> SearchResponse:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     try:
         hits = service.search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
     except EmbeddingUnavailable as exc:
@@ -348,7 +354,7 @@ def answer_stream(
     """
 
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     try:
         hits = service.search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
     except EmbeddingUnavailable as exc:
@@ -380,7 +386,7 @@ def keyword_search(
     user: User | None = Depends(get_optional_user),
 ) -> SearchResponse:
     owner = _require_user(user)
-    service = _service(db, settings)
+    service = _service(db, settings, owner.id)
     hits = service.keyword_search(payload.query, folder_id=payload.folder_id, top_k=payload.top_k)
     record_activity(db, owner.id, 'knowledge.search', f'키워드 검색 "{payload.query}" — {len(hits)}건')
     db.commit()
@@ -394,8 +400,8 @@ def knowledge_wiki(
     settings: Settings = Depends(get_settings),
     user: User | None = Depends(get_optional_user),
 ) -> WikiResponse:
-    _require_user(user)
-    service = _service(db, settings)
+    owner = _require_user(user)
+    service = _service(db, settings, owner.id)
     return WikiResponse(families=service.wiki(folder_id=folder_id))
 
 
@@ -490,6 +496,64 @@ def delete_event(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# ---- 할 일(Task) ----
+@router.get('/tasks', response_model=TaskListResponse)
+def list_task_items(
+    status_filter: str | None = Query(default=None, alias='status', pattern='^(todo|doing|done)$'),
+    overdue: bool | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaskListResponse:
+    owner = _require_user(user)
+    tasks = list_tasks(db, owner.id, status=status_filter, overdue=overdue)
+    return TaskListResponse(tasks=[TaskResponse.from_model(task) for task in tasks])
+
+
+@router.post('/tasks', response_model=TaskResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_csrf)])
+def create_task_item(
+    payload: TaskCreateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaskResponse:
+    owner = _require_user(user)
+    try:
+        task = create_task(db, owner.id, payload.title, payload.due_date, payload.tags)
+    except TaskError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    db.commit()
+    return TaskResponse.from_model(task)
+
+
+@router.patch('/tasks/{task_id}', response_model=TaskResponse, dependencies=[Depends(require_csrf)])
+def update_task_item(
+    task_id: int,
+    payload: TaskUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> TaskResponse:
+    owner = _require_user(user)
+    try:
+        task = update_task(db, owner.id, task_id, **payload.model_dump(exclude_unset=True))
+    except TaskError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='할 일을 찾을 수 없습니다.')
+    db.commit()
+    return TaskResponse.from_model(task)
+
+
+@router.delete('/tasks/{task_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)])
+def delete_task_item(
+    task_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    if not delete_task(db, owner.id, task_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='할 일을 찾을 수 없습니다.')
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 # ---- 실행기록(Activity) ----
 @router.get('/activity', response_model=ActivityListResponse)
 def list_activity(
@@ -545,6 +609,7 @@ def orchestrate(
             kind=item['kind'],
             summary=item['summary'],
             events=item.get('events', []),
+            tasks=item.get('tasks', []),
             hits=[SearchHit(**hit) for hit in item.get('hits', [])],
             document=DocumentIntent(**item['document']) if item.get('document') else None,
             feature=item.get('feature'),
@@ -848,7 +913,7 @@ def summarize_knowledge_file(
     owner = _require_user(user)
     try:
         summary = summarize_file(
-            settings, db, file_id, force_local=get_llm_mode(db, owner.id) == 'local'
+            settings, db, file_id, owner_id=owner.id, force_local=get_llm_mode(db, owner.id) == 'local'
         )
     except SummaryUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc

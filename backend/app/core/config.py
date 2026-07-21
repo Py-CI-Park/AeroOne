@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     app_name: str = 'AeroOne Newsletter Platform'
-    app_version: str = '1.18.1'
+    app_version: str = '1.19.0'
     app_env: Literal['development', 'test', 'production', 'closed_network'] = 'development'
     backend_port: int = 18437
     frontend_port: int = 29501
@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     ollama_base_url: str = 'http://127.0.0.1:11434'
     ollama_default_model: str = 'gemma4:12b'
     ollama_embed_model: str = 'nomic-embed-text'
+    ai_compatible_embed_model: str = 'text-embedding-3-small'
+    # Aero Work 지식폴더 등록 허용 루트(콤마 구분 절대경로). 비어 있으면 임의 절대경로 허용(하위호환),
+    # 설정하면 등록 폴더의 실경로(symlink/junction resolve 후)가 허용 루트 안에 있어야 한다(AW-R01).
+    aero_work_knowledge_roots: str = ''
     ollama_connect_timeout_seconds: float = 5.0
     ollama_read_timeout_seconds: float = 120.0
     ai_max_context_chars: int = 12000

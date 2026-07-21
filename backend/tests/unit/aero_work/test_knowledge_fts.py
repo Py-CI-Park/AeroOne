@@ -272,3 +272,20 @@ def test_reindex_progress_callback_fires_every_five_files_and_at_end(engine_with
         db.commit()
 
     assert calls == [(5, 7), (7, 7)]
+
+def test_reindex_reports_empty_document_diagnostic(engine_with_fts, tmp_path: Path) -> None:
+    # QW-4: 본문이 빈 파일은 검색에 안 잡히므로 status_detail 에 '빈 문서 N개' 를 안내한다.
+    root = tmp_path / 'kb'
+    root.mkdir()
+    (root / 'good.md').write_text('예산 편성 지침 본문', encoding='utf-8')
+    (root / 'empty.md').write_text('', encoding='utf-8')
+    (root / 'blank.txt').write_text('   \n  ', encoding='utf-8')
+
+    with Session(engine_with_fts) as db:
+        service = KnowledgeService(db, _NullEmbedder())
+        folder = service.register_folder('kb', str(root))
+        db.commit()
+        service.reindex(folder.id)
+        db.commit()
+        assert '빈 문서 2개' in folder.status_detail
+        assert '3개 파일' in folder.status_detail

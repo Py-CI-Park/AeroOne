@@ -18,10 +18,21 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.19.0',
+    date: '2026-07-21',
+    items: [
+      'Aero Work 지식폴더를 사용자별 소유로 전환함 — 각 계정은 자기가 등록한 폴더만 조회·색인·검색하고, 등록 경로를 실경로로 정규화해 상위경로(..)·심볼릭 링크 등 별칭으로 남의 폴더를 재등록하는 우회를 막음(멀티유저 워크스테이션에서 폴더 격리).',
+      'Aero Work 에 경량 할 일(To-do)을 추가함 — 마감일·상태(할 일/진행/완료) 중심 태스크를 전용 "할 일" 탭과 업무대화("~ 할 일 추가/목록/완료")로 관리함. 같은 제목이 정확히 하나일 때만 완료 처리해 오완료를 막고, 기존 일정 발화 라우팅은 그대로 보존함.',
+      'Aero Work 에 "사용법" 탭을 추가함 — 기능별 활용 예시와 세팅법(로컬 AI·OpenAI 호환 연결·지식폴더 등록·폐쇄망 배포)을 HTML 보고서 형식으로 한 화면에 제공함. 헤더 사용법(매뉴얼)에도 Aero Work 섹션을 더해 로그인 사용자에게만 노출함.',
+      'OpenAI 호환 임베딩을 지원함 — 폐쇄망 내부 OpenAI 게이트웨이(SSRF 핀닝·CIDR/호스트 허용목록 경유)로 지식폴더 임베딩을 쓸 수 있고, provider 를 바꾸면 임베딩 차원 혼합(Ollama 768 ↔ OpenAI 1536)을 막기 위해 자동으로 재색인함.',
+      '지식폴더 등록 허용 루트(AERO_WORK_KNOWLEDGE_ROOTS)를 설정하면 그 밖의 경로 등록을 차단하고, 색인 진단(추출 실패·빈 문서 수)을 진행 상태에 함께 표시함.',
+    ],
+  },
+  {
     version: '1.18.1',
     date: '2026-07-21',
     items: [
-      '폐쇄망 오프라인 설치 부팅 실패를 고침 — setup_offline.bat 의 pip install 단계에서 requirements.txt 의 한글 주석을 한국어 Windows 로케일(cp949)로 해독하지 못해 UnicodeDecodeError(byte 0x80) 로 멈추던 문제를, 그 파일을 순수 ASCII 로 되돌려 근본 해소함(설치되는 의존성 목록은 불변). 같은 파일을 읽는 온라인 ZIP 빌드(pip download)도 함께 안전해졌고, requirements 를 ASCII 로 강제하는 회귀 테스트를 추가함.',
+      '폐쇄망 오프라인 설치 부팅 실패를 고침 — setup_offline.bat 의 pip install 단계에서 requirements.txt 의 한글 주석을 한국어 Windows 로케일(cp949)로 해독하지 못해 UnicodeDecodeError(byte 0x80)로 멈추던 문제를, 그 파일을 순수 ASCII 로 되돌려 근본 해소함(설치되는 의존성 목록은 불변). 같은 파일을 읽는 온라인 ZIP 빌드(pip download)도 함께 안전해졌고, requirements 를 ASCII 로 강제하는 회귀 테스트를 추가함.',
     ],
   },
   {

@@ -11,6 +11,13 @@ import json
 from urllib import error, request
 
 from app.core.config import Settings
+from sqlalchemy.orm import Session
+
+from app.modules.ai import egress_transport
+from app.modules.ai.provider_config_service import (
+    ProviderConfigError,
+    ProviderConfigService,
+)
 
 
 class EmbeddingUnavailable(RuntimeError):
@@ -26,6 +33,12 @@ class OllamaEmbedder:
     @property
     def model(self) -> str:
         return self._model
+
+    @property
+    def embed_fingerprint(self) -> str:
+        # provider-qualified 임베딩 공간 식별자 — 서로 다른 provider 가 같은 모델명을 써도
+        # stale 벡터를 현재 것으로 오인하지 않도록 provider kind 를 접두로 붙인다.
+        return f'ollama:{self._model}'
 
     @property
     def base_url(self) -> str:
@@ -62,3 +75,69 @@ class OllamaEmbedder:
                 f'Ollama 임베딩 응답에 embedding 벡터가 없습니다(model={self._model}).'
             )
         return [float(value) for value in vector]
+class CompatibleEmbedder:
+    """선택된 OpenAI 호환 제공자의 SSRF 핀닝 임베딩 어댑터."""
+
+    def __init__(self, settings: Settings, db: Session) -> None:
+        self._settings = settings
+        self._provider_config_service = ProviderConfigService(db, settings)
+        state = self._provider_config_service.get_state()
+        self._model = state.compatible_model or settings.ai_compatible_embed_model
+        self._base_url = state.compatible_display_url or ''
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @property
+    def embed_fingerprint(self) -> str:
+        # provider-qualified 임베딩 공간 식별자(OllamaEmbedder 와 동일 계약).
+        return f'openai_compatible:{self._model}'
+
+    @property
+    def base_url(self) -> str:
+        return self._base_url
+
+    def _load_binding(self):
+        try:
+            return self._provider_config_service.load_active_compatible_binding()
+        except ProviderConfigError as exc:
+            raise EmbeddingUnavailable(f'OpenAI 호환 임베딩 바인딩을 사용할 수 없습니다: {exc}') from exc
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
+        binding = self._load_binding()
+        try:
+            outcome = egress_transport.embeddings(
+                binding.canonical_url,
+                model=self._model,
+                inputs=texts,
+                app_env=self._settings.app_env,
+                api_key=binding.api_key.decode('utf-8'),
+                policy=self._settings.ai_compatible_egress_policy,
+                peer_policy=self._settings.ai_compatible_peer_policy,
+            )
+        finally:
+            wiped = bytearray(binding.api_key)
+            wiped[:] = b'\0' * len(wiped)
+        if not outcome.ok or outcome.payload is None:
+            reason = outcome.error_code.value if outcome.error_code else 'unknown'
+            raise EmbeddingUnavailable(
+                f'OpenAI 호환 임베딩 호출 실패: {reason} (base_url={self._base_url}, model={self._model})'
+            )
+        data = outcome.payload['data']
+        return [[float(value) for value in item['embedding']] for item in data]
+
+    def embed_one(self, text: str) -> list[float]:
+        return self.embed([text])[0]
+
+
+def build_embedder(settings: Settings, db: Session | None) -> OllamaEmbedder | CompatibleEmbedder:
+    """관리자 선택이 OpenAI 호환일 때만 해당 임베더를 사용하고 기본 경로는 Ollama로 유지한다."""
+    if db is None:
+        return OllamaEmbedder(settings)
+    provider_config_service = ProviderConfigService(db, settings)
+    if provider_config_service.get_state().selected_kind == 'openai_compatible':
+        return CompatibleEmbedder(settings, db)
+    return OllamaEmbedder(settings)
