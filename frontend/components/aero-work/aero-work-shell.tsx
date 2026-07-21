@@ -11,13 +11,15 @@ import { DocumentPanel } from '@/components/aero-work/document-panel';
 import { WorkChatPanel } from '@/components/aero-work/work-chat-panel';
 import { AeroWorkContextPanel } from '@/components/aero-work/aero-work-context-panel';
 import { AeroWorkOnboarding } from '@/components/aero-work/aero-work-onboarding';
+import { TaskPanel } from '@/components/aero-work/task-panel';
+import { AeroWorkGuidePanel } from '@/components/aero-work/aero-work-guide-panel';
 
 // Aero Work — gongmuwon(공무원) 워크스페이스의 AeroOne 네이티브 재구현 (P0 스캐폴딩).
 // gongmuwon 과 동일한 6메뉴 IA(업무대화·일정·문서작성·내 지식폴더·실행기록·환경설정) + 홈
 // '오늘의 브리핑' 을 세션 중심 워크스페이스로 배치한다. 각 메뉴 본문은 P1~P5 에서 채운다.
 // AI 는 폐쇄망 Ollama + OpenAI provider(기존 AeroOne 자산)를 재사용하며 별도 AI 팩을 쓰지 않는다.
 
-type ViewKey = 'home' | 'chat' | 'schedule' | 'document' | 'knowledge' | 'log' | 'settings';
+type ViewKey = 'home' | 'chat' | 'schedule' | 'task' | 'document' | 'knowledge' | 'log' | 'guide' | 'settings';
 
 type NavItem = {
   key: ViewKey;
@@ -32,9 +34,11 @@ const NAV: NavItem[] = [
   { key: 'home', icon: '🏠', label: '홈 · 오늘의 브리핑', summary: '오늘 일정·이어서 하기·지식 요약·이용 팁을 한 화면에.', reuse: '대시보드·최근 열람 스트립', phase: 'P4' },
   { key: 'chat', icon: '💬', label: '업무대화', summary: '대화 한 줄을 일정·문서·지식·도움말로 라우팅(멀티인텐트). 자유 대화 모드로 로컬 AI 와 이어서 대화.', reuse: '오케스트레이터(F1) + AeroAI 자유 대화', phase: '구현됨(F1)' },
   { key: 'schedule', icon: '📅', label: '일정', summary: '개인 캘린더 — 일정 추가·수정·삭제, 다가오는 일정 아젠다. 알림·세션 연결은 후속.', reuse: '신규(대시보드 Schedule 자리 승격)', phase: '구현됨(P4)' },
+  { key: 'task', icon: '✅', label: '할 일', summary: '마감·상태(할 일/진행/완료) 중심 태스크 관리. 업무대화 "할 일 추가/목록/완료" 또는 여기서 직접 추가·완료.', reuse: '할 일(To-do) 서비스(신규)', phase: '구현됨(1.19)' },
   { key: 'document', icon: '📝', label: '문서작성', summary: '제목·본문을 미리보고 HWPX(한글, OWPML)로 내려받음. 서식 템플릿·양식 슬롯은 후속(실험적).', reuse: 'HWPX(OWPML) 생성기(신규)', phase: '구현됨(P3)' },
   { key: 'knowledge', icon: '📚', label: '내 지식폴더', summary: '지정 폴더를 그 자리에서 색인 → 키워드·근거 벡터 검색, 증분 동기화(추가·수정·이동·삭제).', reuse: 'Ollama nomic-embed 임베딩 + 코사인 벡터 검색', phase: '구현됨(P2)' },
   { key: 'log', icon: '🧾', label: '실행기록', summary: '워크스페이스에서 실행한 작업(지식 색인·검색, 일정 변경)을 최신순 타임라인으로 투명하게.', reuse: '전용 실행기록 로그(신규)', phase: '구현됨(P4)' },
+  { key: 'guide', icon: '📖', label: '사용법', summary: '기능별 활용 예시와 세팅법(로컬 AI·OpenAI 호환·지식폴더·폐쇄망 배포)을 한 화면에. 처음 쓰는 사람도 바로 따라 하도록.', reuse: '사용 가이드(신규)', phase: '구현됨(1.19)' },
   { key: 'settings', icon: '⚙️', label: '환경설정', summary: '업무대화·지식폴더가 쓰는 로컬 AI 연결 상태 확인, 전체 사용법 다시 보기.', reuse: '관리자 AI provider·사용법 매뉴얼', phase: '구현됨(P4)' },
 ];
 
@@ -126,6 +130,10 @@ export function AeroWorkShell() {
           <SettingsPanel />
         ) : view === 'document' ? (
           <DocumentPanel />
+        ) : view === 'task' ? (
+          <TaskPanel />
+        ) : view === 'guide' ? (
+          <AeroWorkGuidePanel />
         ) : (
           <div className="mt-6 rounded-xl border border-dashed border-line-subtle bg-surface-base p-6">
             <p className="text-sm font-semibold text-ink-1">준비 중 ({active.phase})</p>
