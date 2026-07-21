@@ -18,6 +18,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.18.1',
+    date: '2026-07-21',
+    items: [
+      '폐쇄망 오프라인 설치 부팅 실패를 고침 — setup_offline.bat 의 pip install 단계에서 requirements.txt 의 한글 주석을 한국어 Windows 로케일(cp949)로 해독하지 못해 UnicodeDecodeError(byte 0x80) 로 멈추던 문제를, 그 파일을 순수 ASCII 로 되돌려 근본 해소함(설치되는 의존성 목록은 불변). 같은 파일을 읽는 온라인 ZIP 빌드(pip download)도 함께 안전해졌고, requirements 를 ASCII 로 강제하는 회귀 테스트를 추가함.',
+    ],
+  },
+  {
     version: '1.18.0',
     date: '2026-07-20',
     items: [
