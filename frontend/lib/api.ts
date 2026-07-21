@@ -1370,6 +1370,59 @@ export async function deleteAeroWorkEvent(id: number, csrfToken: string) {
   });
 }
 
+// ---- Aero Work 할 일 (P4) ----
+export type AeroWorkTask = {
+  id: number;
+  title: string;
+  status: 'todo' | 'doing' | 'done';
+  due_date: string | null;
+  tags: string;
+  created_at: string;
+  updated_at: string;
+  done_at: string | null;
+};
+
+export type AeroWorkTaskInput = {
+  title: string;
+  due_date?: string | null;
+  tags?: string;
+};
+
+export async function fetchAeroWorkTasks(filter?: { status?: 'todo' | 'doing' | 'done'; overdue?: boolean }) {
+  const params = new URLSearchParams();
+  if (filter?.status) params.set('status', filter.status);
+  if (filter?.overdue) params.set('overdue', 'true');
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return browserFetch<{ tasks: AeroWorkTask[] }>(`/api/frontend/aero-work/tasks${qs}`, { method: 'GET' });
+}
+
+export async function createAeroWorkTask(payload: AeroWorkTaskInput, csrfToken: string) {
+  return browserFetch<AeroWorkTask>('/api/frontend/aero-work/tasks', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function updateAeroWorkTask(
+  id: number,
+  payload: Partial<{ title: string; status: 'todo' | 'doing' | 'done'; due_date: string | null; tags: string }>,
+  csrfToken: string,
+) {
+  return browserFetch<AeroWorkTask>(`/api/frontend/aero-work/tasks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
+export async function deleteAeroWorkTask(id: number, csrfToken: string) {
+  return browserFetch<void>(`/api/frontend/aero-work/tasks/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': csrfToken },
+  });
+}
+
 // ---- Aero Work 실행기록 (P4) ----
 export type AeroWorkActivity = {
   id: number;
