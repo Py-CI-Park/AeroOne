@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     app_name: str = 'AeroOne Newsletter Platform'
-    app_version: str = '1.19.0'
+    app_version: str = '1.20.0'
     app_env: Literal['development', 'test', 'production', 'closed_network'] = 'development'
     backend_port: int = 18437
     frontend_port: int = 29501

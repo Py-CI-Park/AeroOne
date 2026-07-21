@@ -2,7 +2,15 @@ import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { DocumentPanel } from '@/components/aero-work/document-panel';
-import { composeAeroWorkDocument, previewAeroWorkDocument, streamAeroWorkCompose } from '@/lib/api';
+import {
+  composeAeroWorkDocument,
+  downloadSavedAeroWorkDocument,
+  fetchSavedAeroWorkDocuments,
+  generateAeroWorkDocx,
+  generateAeroWorkHwpx,
+  previewAeroWorkDocument,
+  streamAeroWorkCompose,
+} from '@/lib/api';
 
 // G005 gongmuwon §5.3 양식(종이) 미리보기 — '종이 미리보기' 토글이 서버 근사 렌더(HTML)를
 // 요청·표시하고, '수정 지시' 재생성 루프가 instruction/previous_paragraphs 를 정확히 전달하며,
@@ -19,6 +27,9 @@ vi.mock('@/lib/api', async () => {
     })),
     composeAeroWorkDocument: vi.fn(async () => ({ paragraphs: ['재생성된 문단1', '재생성된 문단2'], truncated: false })),
     streamAeroWorkCompose: vi.fn(),
+    generateAeroWorkDocx: vi.fn(async () => new Blob()),
+    generateAeroWorkHwpx: vi.fn(async () => new Blob()),
+    downloadSavedAeroWorkDocument: vi.fn(async () => new Blob()),
   };
 });
 
@@ -35,6 +46,10 @@ describe('DocumentPanel — 종이 미리보기(G005)', () => {
     vi.mocked(previewAeroWorkDocument).mockClear();
     vi.mocked(composeAeroWorkDocument).mockClear();
     vi.mocked(streamAeroWorkCompose).mockReset();
+    vi.mocked(generateAeroWorkDocx).mockClear();
+    vi.mocked(generateAeroWorkHwpx).mockClear();
+    vi.mocked(downloadSavedAeroWorkDocument).mockClear();
+    vi.mocked(fetchSavedAeroWorkDocuments).mockResolvedValue({ documents: [] });
     vi.useRealTimers();
   });
 
@@ -217,5 +232,68 @@ describe('DocumentPanel — 종이 미리보기(G005)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '교체' }));
     expect(screen.getByPlaceholderText(/본문을 입력하세요/)).toHaveValue('짧아진 결과');
+  });
+  test('Word 생성 버튼은 DOCX API를 호출하고 기존 HWPX 버튼은 HWPX API를 호출한다', async () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:document') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+
+    try {
+      render(<DocumentPanel />);
+      fireEvent.change(screen.getByPlaceholderText('문서 제목'), { target: { value: '출장 보고' } });
+      fireEvent.change(screen.getByPlaceholderText(/본문을 입력하세요/), { target: { value: '본문' } });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('docx-generate-button'));
+        await Promise.resolve();
+      });
+      expect(generateAeroWorkDocx).toHaveBeenCalledWith(
+        { title: '출장 보고', body: '본문', format: 'onepage' },
+        expect.any(String),
+      );
+      expect(generateAeroWorkHwpx).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'HWPX 생성·다운로드' }));
+        await Promise.resolve();
+      });
+      expect(generateAeroWorkHwpx).toHaveBeenCalledWith(
+        { title: '출장 보고', body: '본문', format: 'onepage' },
+        expect.any(String),
+      );
+      expect(anchorClick).toHaveBeenCalledTimes(2);
+    } finally {
+      anchorClick.mockRestore();
+      Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: originalCreateObjectURL });
+      Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: originalRevokeObjectURL });
+    }
+  });
+
+  test('승인된 저장 문서의 Word 버튼은 DOCX 다운로드를 요청한다', async () => {
+    vi.mocked(fetchSavedAeroWorkDocuments).mockResolvedValueOnce({
+      documents: [{ id: 17, title: '승인 문서', format: 'onepage', status: 'approved', created_at: '2026-07-21T00:00:00Z' }],
+    });
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:document') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+
+    try {
+      render(<DocumentPanel />);
+      fireEvent.click(await screen.findByTestId('docx-download-button-17'));
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(downloadSavedAeroWorkDocument).toHaveBeenCalledWith(17, 'docx');
+      expect(anchorClick).toHaveBeenCalledOnce();
+    } finally {
+      anchorClick.mockRestore();
+      Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: originalCreateObjectURL });
+      Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: originalRevokeObjectURL });
+    }
   });
 });

@@ -1439,7 +1439,7 @@ export async function fetchAeroWorkActivity(limit = 50) {
   );
 }
 
-// ---- Aero Work 문서작성(HWPX) (P3) ----
+// ---- Aero Work 문서작성(HWPX/DOCX) (P3) ----
 export async function generateAeroWorkHwpx(payload: { title: string; body: string; format?: string }, csrfToken: string): Promise<Blob> {
   const response = await fetch('/api/frontend/aero-work/document/hwpx', {
     method: 'POST',
@@ -1453,6 +1453,20 @@ export async function generateAeroWorkHwpx(payload: { title: string; body: strin
   }
   return response.blob();
 }
+export async function generateAeroWorkDocx(payload: { title: string; body: string; format?: string }, csrfToken: string): Promise<Blob> {
+  const response = await fetch('/api/frontend/aero-work/document/docx', {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new ApiError(getSafeApiErrorMessage(response.status), response.status);
+  }
+  return response.blob();
+}
+
 
 // ---- Aero Work 업무대화 오케스트레이션 (F1) ----
 export type OrchestrateResult = {
@@ -1711,8 +1725,9 @@ export async function approveAeroWorkDocument(id: number, csrfToken: string) {
   });
 }
 
-export async function downloadSavedAeroWorkDocument(id: number): Promise<Blob> {
-  const response = await fetch(`/api/frontend/aero-work/document/saved/${id}/download`, {
+export async function downloadSavedAeroWorkDocument(id: number, kind: 'hwpx' | 'docx' = 'hwpx'): Promise<Blob> {
+  const suffix = kind === 'docx' ? '?kind=docx' : '';
+  const response = await fetch(`/api/frontend/aero-work/document/saved/${id}/download${suffix}`, {
     credentials: 'include',
     cache: 'no-store',
   });
