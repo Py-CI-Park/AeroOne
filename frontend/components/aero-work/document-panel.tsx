@@ -9,6 +9,7 @@ import {
   downloadSavedAeroWorkDocument,
   fetchSavedAeroWorkDocuments,
   generateAeroWorkHwpx,
+  generateAeroWorkDocx,
   previewAeroWorkDocument,
   saveAeroWorkDocumentRequest,
   streamAeroWorkCompose,
@@ -16,9 +17,9 @@ import {
 } from '@/lib/api';
 import { getCsrfCookie } from '@/lib/cookies';
 
-// Aero Work P3 문서작성 — 제목 + 본문(한 줄=한 문단)을 즉시 미리보고 HWPX(한글, OWPML) 로
-// 내려받는다. OWPML 구조 유효성은 백엔드 테스트로 보장하지만, 한컴 오피스 실제 서식/호환은
-// 실기(한컴 설치 PC) 확인이 필요한 실험적 기능이라 화면에 명시한다. 임의형식 슬롯 채움은 후속.
+// Aero Work P3 문서작성 — 제목 + 본문(한 줄=한 문단)을 즉시 미리보고 HWPX(한글, OWPML) 또는
+// Word(DOCX)로 내려받는다. HWPX OWPML 구조 유효성은 백엔드 테스트로 보장하지만, 한컴 오피스 실제
+// 서식/호환은 실기(한컴 설치 PC) 확인이 필요한 실험적 기능이라 화면에 명시한다. 임의형식 슬롯 채움은 후속.
 //
 // G005 종이(양식) 미리보기 — 서버가 gongmuwon §5.3 양식 5종 위계를 반영해 만든
 // self-contained HTML 조각(previewAeroWorkDocument)만 A4 비율 종이 프레임 안에
@@ -107,27 +108,31 @@ export function DocumentPanel() {
     return () => clearTimeout(timer);
   }, [paperPreviewOn, title, format, paragraphs]);
 
-  const handleGenerate = async (event: FormEvent) => {
-    event.preventDefault();
+  const handleGenerate = async (kind: 'hwpx' | 'docx', event?: FormEvent) => {
+    event?.preventDefault();
     if (!title.trim() && !body.trim()) {
       return;
     }
+    const formatName = kind === 'docx' ? 'Word(.docx)' : 'HWPX';
     setBusy(true);
     setError(null);
     setDone(null);
     try {
-      const blob = await generateAeroWorkHwpx({ title: title.trim(), body, format }, getCsrfCookie());
+      const payload = { title: title.trim(), body, format };
+      const blob = kind === 'docx'
+        ? await generateAeroWorkDocx(payload, getCsrfCookie())
+        : await generateAeroWorkHwpx(payload, getCsrfCookie());
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `${title.trim() || '무제'}.hwpx`;
+      anchor.download = `${title.trim() || '무제'}.${kind}`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      setDone('HWPX 파일을 내려받았음.');
+      setDone(`${formatName} 파일을 내려받았음.`);
     } catch {
-      setError('HWPX 생성 실패. 로그인 상태를 확인할 것.');
+      setError(`${formatName} 생성 실패. 로그인 상태를 확인할 것.`);
     } finally {
       setBusy(false);
     }
@@ -214,7 +219,7 @@ export function DocumentPanel() {
   };
 
   return (
-    <form onSubmit={handleGenerate} className="mt-4 space-y-4">
+    <form onSubmit={(event) => { void handleGenerate('hwpx', event); }} className="mt-4 space-y-4">
       {error ? (
         <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">{error}</p>
       ) : null}
@@ -264,6 +269,15 @@ export function DocumentPanel() {
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-on disabled:opacity-50"
           >
             {busy ? '생성 중…' : 'HWPX 생성·다운로드'}
+          </button>
+          <button
+            type="button"
+            data-testid="docx-generate-button"
+            onClick={() => { void handleGenerate('docx'); }}
+            disabled={busy || revising || (!title.trim() && !body.trim())}
+            className="rounded-lg border border-accent px-4 py-2 text-sm font-medium text-accent disabled:opacity-50"
+          >
+            {busy ? '생성 중…' : 'Word(.docx) 생성·다운로드'}
           </button>
           <button
             type="button"
@@ -424,7 +438,7 @@ export function DocumentPanel() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-ink-1">최종 저장 (승인형)</p>
-            <p className="mt-0.5 text-xs text-ink-3">되돌리기 어려운 최종 저장은 승인 대기를 거친 뒤 HWPX 로 내려받습니다.</p>
+            <p className="mt-0.5 text-xs text-ink-3">되돌리기 어려운 최종 저장은 승인 대기를 거친 뒤 HWPX 또는 Word로 내려받습니다.</p>
           </div>
           <button
             type="button"
@@ -466,6 +480,7 @@ export function DocumentPanel() {
                       승인
                     </button>
                   ) : (
+                    <>
                     <button
                       type="button"
                       onClick={() => {
@@ -484,6 +499,26 @@ export function DocumentPanel() {
                     >
                       HWPX
                     </button>
+                    <button
+                      type="button"
+                      data-testid={`docx-download-button-${doc.id}`}
+                      onClick={() => {
+                        void downloadSavedAeroWorkDocument(doc.id, 'docx')
+                          .then((blob) => {
+                            const url = URL.createObjectURL(blob);
+                            const anchor = document.createElement('a');
+                            anchor.href = url;
+                            anchor.download = `${doc.title}.docx`;
+                            anchor.click();
+                            URL.revokeObjectURL(url);
+                          })
+                          .catch(() => setError('다운로드 실패.'));
+                      }}
+                      className="rounded px-2 py-0.5 text-[11px] text-accent hover:bg-accent-soft"
+                    >
+                      Word
+                    </button>
+                    </>
                   )}
                   <button
                     type="button"
@@ -500,9 +535,9 @@ export function DocumentPanel() {
       </div>
 
       <p className="text-xs leading-relaxed text-ink-3">
-        ※ 표준 HWPX(한글, OWPML) 포맷으로 생성합니다. 파일 구조 유효성은 검증되었으나, 한컴 오피스에서의
-        서식·호환은 한컴 설치 PC에서 실제 열어 확인하는 것을 권장합니다(실험적 기능). 시행문·양식 슬롯
-        채움 등 서식 템플릿은 후속에서 확장합니다.
+        ※ 표준 HWPX(한글, OWPML) 또는 Word(DOCX) 포맷으로 생성합니다. HWPX 파일 구조 유효성은 검증되었으나,
+        한컴 오피스에서의 서식·호환은 한컴 설치 PC에서 실제 열어 확인하는 것을 권장합니다(실험적 기능).
+        시행문·양식 슬롯 채움 등 서식 템플릿은 후속에서 확장합니다.
       </p>
     </form>
   );

@@ -18,6 +18,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.20.0',
+    date: '2026-07-21',
+    items: [
+      'Aero Work 문서작성을 Word(DOCX)로도 생성함 — 기존 한글 HWPX 와 나란히, 같은 제목·본문·양식(시행문·1페이지·풀버전·이메일·임의형식)을 python-docx 로 .docx 파일로 내려받을 수 있음. 문서작성 화면과 승인 저장 문서 목록 모두에 "Word(.docx)" 다운로드를 더했고, 기존 HWPX 경로는 그대로 보존함(폐쇄망 순도 — 이미 번들된 python-docx 만 사용).',
+    ],
+  },
+  {
     version: '1.19.0',
     date: '2026-07-21',
     items: [

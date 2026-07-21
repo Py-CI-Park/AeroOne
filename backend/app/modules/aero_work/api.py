@@ -25,6 +25,7 @@ from app.modules.aero_work.document_composer import ComposeUnavailable, compose_
 from app.modules.aero_work.document_preview import render_preview_html
 from app.modules.aero_work.document_formats import FORMAT_LABELS, format_document
 from app.modules.aero_work.hwpx_generator import build_hwpx_document
+from app.modules.aero_work.docx_generator import build_docx_document
 from app.modules.aero_work.knowledge_service import KnowledgeError, KnowledgeService
 from app.modules.aero_work.schedule_service import ScheduleError, ScheduleService
 from app.modules.aero_work.task_service import TaskError, create_task, delete_task, list_tasks, update_task
@@ -588,6 +589,29 @@ def generate_hwpx(
         headers={'Content-Disposition': disposition},
     )
 
+# ---- 문서작성(DOCX) ----
+@router.post('/document/docx', dependencies=[Depends(require_csrf)])
+def generate_docx(
+    payload: DocumentRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> Response:
+    owner = _require_user(user)
+    title = (payload.title or '').strip() or '무제'
+    paragraphs = format_document(payload.format, title, payload.body)
+    data = build_docx_document(title, paragraphs)
+    label = FORMAT_LABELS.get(payload.format, '문서')
+    record_activity(db, owner.id, 'document.generate', f'DOCX {label} 생성 "{title}"')
+    db.commit()
+    disposition = f"attachment; filename=\"document.docx\"; filename*=UTF-8''{quote(title)}.docx"
+    return Response(
+        content=data,
+        media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        headers={'Content-Disposition': disposition},
+    )
+
+
+
 
 # ---- 업무대화 오케스트레이션 (F1) ----
 @router.post('/orchestrate', response_model=OrchestrateResponse, dependencies=[Depends(require_csrf)])
@@ -871,6 +895,7 @@ def approve_document(
 @router.get('/document/saved/{document_id}/download')
 def download_saved_document(
     document_id: int,
+    kind: str = Query(default='hwpx', pattern='^(hwpx|docx)$'),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ) -> Response:
@@ -879,11 +904,21 @@ def download_saved_document(
     if doc.status != 'approved':
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='승인 대기 중입니다. 승인 후 내려받을 수 있습니다.')
     paragraphs = format_document(doc.format, doc.title, doc.body)
-    data = build_hwpx_document(doc.title, paragraphs)
-    record_activity(db, owner.id, 'document.generate', f'HWPX {FORMAT_LABELS.get(doc.format, "문서")} 생성 "{doc.title}" (승인본)')
+    label = FORMAT_LABELS.get(doc.format, '문서')
+    if kind == 'docx':
+        data = build_docx_document(doc.title, paragraphs)
+        media_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        extension = 'docx'
+        activity_summary = f'DOCX {label} 생성 "{doc.title}" (승인본)'
+    else:
+        data = build_hwpx_document(doc.title, paragraphs)
+        media_type = 'application/hwp+zip'
+        extension = 'hwpx'
+        activity_summary = f'HWPX {label} 생성 "{doc.title}" (승인본)'
+    record_activity(db, owner.id, 'document.generate', activity_summary)
     db.commit()
-    disposition = f"attachment; filename=\"document.hwpx\"; filename*=UTF-8''{quote(doc.title)}.hwpx"
-    return Response(content=data, media_type='application/hwp+zip', headers={'Content-Disposition': disposition})
+    disposition = f"attachment; filename=\"document.{extension}\"; filename*=UTF-8''{quote(doc.title)}.{extension}"
+    return Response(content=data, media_type=media_type, headers={'Content-Disposition': disposition})
 
 
 @router.delete('/document/saved/{document_id}', status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)])
