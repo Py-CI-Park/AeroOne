@@ -518,3 +518,23 @@ def test_builder_to_verifier_chain_fails_closed_when_forbidden_path_smuggled_int
     with pytest.raises(PackagePolicyError) as excinfo:
         verify_pre_stage(stage_root, manifest, policy, provenance, signatures)
     assert excinfo.value.code == PackagePolicyErrorCode.FORBIDDEN_ENV_SECRET
+
+
+def test_offline_requirements_are_locale_safe_for_pip_on_korean_windows() -> None:
+    """폐쇄망 setup 의 ``pip install -r requirements.txt`` 는 pip 의 auto_decode 를 거친다.
+
+    BOM 이 없으면 pip 은 시스템 로케일(한국어 Windows=cp949)로 requirements 파일을 디코드한다.
+    파일에 비ASCII(한글) 주석이 있으면 offline setup 이 ``UnicodeDecodeError: 'cp949' codec
+    can't decode byte 0x80`` 로 부팅에 실패한다(1.18.0 실사용 회귀). 매니페스트를 순수 ASCII 로
+    강제해 재발을 막는다 — 한글 근거는 코드/문서 주석에 두고, pip 이 파싱하는 이 파일은 ASCII 로."""
+    backend_root = Path(__file__).parents[2]
+    for name in ("requirements.txt", "requirements-dev.txt"):
+        data = (backend_root / name).read_bytes()
+        offenders = [index for index, byte in enumerate(data) if byte >= 0x80]
+        assert not offenders, (
+            f"{name} position {offenders[0]} 에 비ASCII 바이트 "
+            f"0x{data[offenders[0]]:02x} 가 있어 pip 이 cp949 로 디코드하다 offline setup 이 "
+            "실패한다. requirements 주석은 반드시 ASCII 로 유지하라."
+        )
+        # pip 의 로케일 폴백(cp949) 재현 — BOM 없는 순수 ASCII 는 어떤 로케일에서도 디코드된다.
+        data.decode("cp949")
