@@ -24,11 +24,11 @@ export function CinematicHero({ modules, auth, activeCount, comingCount }: Cinem
     modules.filter((module) => module.key === key && module.is_enabled && !module.is_external),
   ).slice(0, 4);
 
-  const greeting = !auth.authenticated
-    ? 'AeroOne의 문서와 업무 서비스를 한곳에서 확인하세요.'
-    : auth.isAdmin
+  const heroTitle = auth.authenticated
+    ? auth.isAdmin
       ? `${auth.username ?? '운영자'}님, 서비스 운영 현황을 확인하세요.`
-      : `${auth.username ?? '사용자'}님, 업무를 이어가세요.`;
+      : `${auth.username ?? '사용자'}님, 업무를 이어가세요.`
+    : 'AeroOne 대시보드';
 
   return (
     <section className="cinematic-hero" aria-labelledby="cinematic-hero-title">
@@ -40,7 +40,12 @@ export function CinematicHero({ modules, auth, activeCount, comingCount }: Cinem
       <div className="cinematic-hero__content">
         <div className="max-w-2xl">
           <p className="cinematic-hero__eyebrow">AeroOne flight deck</p>
-          <h1 id="cinematic-hero-title" className="cinematic-hero__title">{greeting}</h1>
+          <h1
+            id="cinematic-hero-title"
+            className={auth.authenticated ? 'cinematic-hero__title' : 'sr-only'}
+          >
+            {heroTitle}
+          </h1>
           <p className="cinematic-hero__count">{activeCount} active · {comingCount} coming soon</p>
           {!auth.authenticated ? (
             <Link href="/login" aria-label="AeroOne 로그인" className="cinematic-hero__cta">
