@@ -1,7 +1,7 @@
 # 폐쇄망 start_offline.bat exit 98(유지보수 게이트 경합) 조사 기록
 
 - 작성일: 2026-07-22
-- 상태: **1.19.1 로 실제 결함(복구 도구 누락) 해결·게시 완료. 근본 재현 여부는 운영자 재부팅 클린 부팅 확인 대기(재검토 예정).**
+- 상태: **1.19.1 로 실제 결함(복구 도구 누락) 해결·게시 완료. 리더 실기 스모크로 신선 설치 시 exit 98 미발생·전 경로 정상 확인(§6). 운영자 실기는 참고용.**
 - 관련 릴리스: 1.19.1 (Latest, immutable). 개발 승계: 1.20.0-dev.
 
 > 이 문서는 운영자 요청으로 "나중에 재검토"를 위해 조사 내용·결론·후속 확인 단계를 기록만 해 둔 것이다.
@@ -86,3 +86,21 @@ powershell -NoProfile -Command "foreach($p in 18437,29501){Get-NetTCPConnection 
 - `scripts/credential_rotation/Rotation.ProcessLock.psm1`(Enter-RotationMutex/Enter-AeroOneMaintenanceGate)
 - `start_offline.bat`(:maintenance_preflight, :check_already_running, :run_startup_preflight)
 - `stop_offline.bat`, `packaging/installer-policy.json`, `backend/tests/unit/test_installer_policy_json.py`
+
+---
+
+## 6. 리더 실기 스모크 결과 (2026-07-22, 이 PC·격리 폴더)
+
+Windows Sandbox 는 이 PC 에 미설치라 격리(네트워크 차단) 스모크는 불가. 대신 1.19.1 ZIP 을 저장소 밖 격리 폴더에 풀어(`py -3.12` 3.12.9 + cp312 wheelhouse 일치) 실제 설치→기동→서빙→정리를 1회 수행함.
+
+| 단계 | 결과 |
+|---|---|
+| `setup_offline.bat --no-pause` | **정상**. pip install(wheelhouse, cp949 경로) 무오류, 마이그레이션·시드 완료, `backend/.env` `APP_ENV=closed_network` 생성, `_database/db/aeroone.db`(475KB) 생성 |
+| `start_offline.bat` (신선 설치, 클린 env) | **preflight exit 98 미발생**. 게이트 통과 → 마이그레이션 → credential store 검증 → `[READY] Backend 18437`·`[READY] Frontend 29501` 둘 다 기동 |
+| 서빙 확인 | 백엔드 `/api/v1/admin/service-modules/public` **HTTP 200**(실 JSON), 프런트 `/` **HTTP 200**(Next.js). `app_version=1.19.1`, `app_env=closed_network` |
+| `stop_offline.bat --no-pause` | **정상**. 창 종료·포트 종료·게이트 홀더 정리 → "두 포트 모두 해제됨" |
+
+### 결론(§2 확증)
+- **신선 설치 자체는 exit 98 을 내지 않는다**(코드 버그 아님). §2 진단대로 exit 98 은 잔여 홀더가 있을 때만 발생하며, 복구 도구 stop_offline.bat(1.19.1 포함)이 정상 동작함을 실증.
+- 최초 시도에서 "백엔드 미기동" 이 관측됐으나, 이는 스모크를 띄운 셸의 환경 오염(`APP_ENV=development`, repo `DATABASE_URL`)이 `cmd`에 상속돼 백엔드가 smoke `.env`(closed_network)가 아닌 오염 환경으로 뜬 것이었음. 오염 변수를 비우고 재기동하니 백엔드가 정상 기동·서빙함. **패키지 결함 아님, 스모크 절차 오염**.
+- 남은 참고: 운영자 환경에서 클린 재부팅 후에도 98 이 재현되면 그때 §5 후보(포트 감지 사각 등)로 추가 조사. 현재 근거로는 shipped fix 로 충분.
