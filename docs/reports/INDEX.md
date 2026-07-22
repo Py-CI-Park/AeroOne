@@ -253,6 +253,14 @@
 - 결론: 2차 연구까지 대조해 TravelX·Avora 계열 날개/구름 구도, 실제 권한 기반 DOM Featured 모듈, 제한적 CSS 2.5D, Civil Aircraft로 분리한 후속 3D를 채택 후보로 확정했다. 1.20.0 기본은 컴팩트·포스터 우선·신규 dependency 없음이며 Motion은 실측 뒤 조건부, GSAP·홈 Three.js·가상 기능 카드는 제외한다.
 - 검증 상태: 저장소·GitHub Release·Next.js/Motion/R3F 공식 문서 정적 대조를 수행했다. 로컬 실행, production build, 원본 레퍼런스 이미지, 영상·3D 자산 실측은 미실행.
 
+### 단계 34 — 1.20.0 AeroOne Flight Deck 구현
+
+- 파일: [`v1-20-0-cinematic-dashboard-implementation.md`](v1-20-0-cinematic-dashboard-implementation.md)
+- 분류: minor (`1.20.0`) UX/UI 고도화 — 연구 단계의 날개·구름 시각 언어를 신규 runtime dependency 없는 컴팩트 항공 히어로로 구현.
+- 무엇: 익명·사용자·관리자 신원별 카피, 실제 RBAC 필터 결과에만 기반한 Featured 최대 4개, 31,616-byte 오리지널 WebP 포스터, CSS 2.5D·focus·reduced-motion을 추가하고 기존 Recent Reads·전체 서비스 그리드·fallback을 보존.
+- 코드: `frontend/app/page.tsx`, `frontend/components/dashboard/cinematic-hero.tsx`, `frontend/lib/server-auth.ts`, `frontend/app/globals.css`, `frontend/public/media/`.
+- 검증: frontend **671 passed / 104 files**, `tsc --noEmit`, clean `next build`, First Load JS 예산 `/` **136/160kB**, Newsletter **143/170kB**, Civil **134/160kB**, production Chromium 1440×1000 HTTP 200 실측. 시작 `6efea8a`, 구현 `53028f7`.
+
 ---
 
 ## 보고서가 다루지 않는 자리
