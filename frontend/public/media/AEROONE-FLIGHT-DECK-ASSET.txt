@@ -1,0 +1,12 @@
+AeroOne Flight Deck hero poster
+
+File: aeroone-flight-deck.webp
+Created: 2026-07-22
+Purpose: AeroOne 1.20.0 dashboard hero background
+Origin: Original AI-generated image created for this repository with the OpenAI image generation service, then reviewed and locally optimized to WebP.
+Prompt intent: Generic modern twin-engine civil-airliner passenger-window view, exactly one visible underwing engine, unbranded wing, restrained blue-gold sky, left-side negative space.
+Third-party logo or source image: None.
+Dimensions: 1599 x 900
+Size: 31,616 bytes
+SHA-256: ada5e0b7330cff0d7e5ef67153ebbbc2e6423a381de1eefe45c7c91d3de91732
+Restrictions: Use only as an AeroOne product asset. Do not represent the generic aircraft as a specific manufacturer, airline, or certified engineering reference.

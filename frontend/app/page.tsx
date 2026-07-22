@@ -1,11 +1,12 @@
 import { cookies } from 'next/headers';
 
 import { AppShell } from '@/components/layout/app-shell';
+import { CinematicHero } from '@/components/dashboard/cinematic-hero';
 import { ServiceCard } from '@/components/dashboard/service-card';
 import { ExternalLauncherCard } from '@/components/dashboard/notebook-link-card';
 import { RecentReadsStrip } from '@/components/dashboard/recent-reads-strip';
 import { fetchPublicServiceModules } from '@/lib/api';
-import { resolveIsAdmin } from '@/lib/server-auth';
+import { resolveDashboardAuth } from '@/lib/server-auth';
 import { getAppTheme } from '@/lib/server-theme';
 import type { ServiceModule } from '@/lib/types';
 
@@ -23,8 +24,8 @@ const FALLBACK_MODULES: ServiceModule[] = [
   { id: 14, key: 'aero-work', title: 'Aero Work', description: '대화 한 줄로 일정·문서(HWPX)·지식 검색을 잇는 업무 워크스페이스.', href: '/aero-work', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 42, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
   // OpenWebUI 는 dashboard.openwebui.launch 권한을 가진 활성 로그인 사용자(admin/user 기본 권한)에게만
-  // 노출된다. degraded fallback 은 검증된 권한 정보가 없으므로 admin 이 아닌 한 required_permission
-  // 이 있는 카드를 숨기는 기존 보수적 규칙을 그대로 적용한다(아래 필터 로직 참고).
+  // 노출된다. degraded fallback 은 검증된 권한 grant 가 없으므로 required_permission 카드를 모두
+  // 숨긴다(아래 필터 로직 참고).
   { id: 11, key: 'openwebui', title: 'AI', description: '', href: '', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
   { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'ETC', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
   { id: 9, key: 'announcement', title: 'Announcement', description: 'Company-wide announcements module.', href: '#', badge: 'Coming soon', is_enabled: false, section: 'ETC', status: 'coming_soon', sort_order: 90, is_external: false, launcher_kind: 'none', visibility: 'admin' },
@@ -57,24 +58,23 @@ export default async function HomePage({
 }) {
   const params = await searchParams;
   // Next 15 에서 cookies() 는 async — await 로 접근(동기 접근 경고 제거)하고,
-  // 서로 독립인 테마/권한/모듈 조회는 Promise.all 로 병렬화해 SSR 지연을 줄인다.
+  // 서로 독립인 테마/인증/모듈 조회는 Promise.all 로 병렬화해 SSR 지연을 줄인다.
   const cookieStore = await cookies();
   const cookieHeader = cookieStore
     .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join('; ');
-  const [theme, isAdmin, moduleResult] = await Promise.all([
+  const [theme, auth, moduleResult] = await Promise.all([
     getAppTheme(params.theme),
-    resolveIsAdmin(),
+    resolveDashboardAuth(),
     loadModules(cookieHeader),
   ]);
   const { modules, degraded } = moduleResult;
   // The live SSR path is already backend-filtered per caller (visibility + required_permission +
-  // resource/collection policy), so trust it as-is. Only the degraded/fallback list has no
-  // per-user info, so conservatively drop operator-only (non-public) and permission-gated cards
-  // for non-admins there.
+  // resource/collection policy), so trust it as-is. The degraded list has no verified resource
+  // grants, so permission-gated cards are hidden even for an authenticated administrator.
   const visibleModules = degraded
-    ? modules.filter((module) => isAdmin || (module.visibility === 'public' && !module.required_permission))
+    ? modules.filter((module) => !module.required_permission && (auth.isAdmin || module.visibility === 'public'))
     : modules;
   const sortedModules = [...visibleModules].sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title));
   const activeCount = sortedModules.filter((module) => module.is_enabled).length;
@@ -86,9 +86,16 @@ export default async function HomePage({
       theme={theme}
       themePath="/"
       active="dashboard"
-      titleMeta={`${activeCount} active · ${comingCount} coming soon`}
+      hideTitle
+      contentClassName="max-w-7xl"
     >
       <section className="flex flex-col gap-8">
+        <CinematicHero
+          modules={sortedModules}
+          auth={auth}
+          activeCount={activeCount}
+          comingCount={comingCount}
+        />
         {degraded ? (
           <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             대시보드 모듈 DB 를 읽지 못해 내장 fallback 목록을 표시합니다. 관리자 화면에서 DB 상태와
@@ -97,39 +104,42 @@ export default async function HomePage({
         ) : null}
 
         <RecentReadsStrip />
-        {orderSections(sortedModules).map((sectionName) => {
-          const sectionModules = sortedModules.filter((module) => module.section === sectionName);
-          if (sectionModules.length === 0) return null;
-          return (
-            <div key={sectionName}>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">{sectionName}</h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {sectionModules.map((module) =>
-                  module.is_external ? (
-                    <ExternalLauncherCard
-                      key={module.key}
-                      title={module.title}
-                      description={module.description ?? undefined}
-                      badge={module.badge}
-                      launcherKind={module.launcher_kind}
-                      active={module.is_enabled}
-                    />
-                  ) : (
-                    <ServiceCard
-                      key={module.key}
-                      title={module.title}
-                      description={module.description ?? undefined}
-                      href={module.href}
-                      badge={module.badge}
-                      active={module.is_enabled}
-                      external={false}
-                    />
-                  ),
-                )}
+        <section aria-labelledby="all-services-title">
+          <h2 id="all-services-title" className="sr-only">전체 서비스</h2>
+          {orderSections(sortedModules).map((sectionName) => {
+            const sectionModules = sortedModules.filter((module) => module.section === sectionName);
+            if (sectionModules.length === 0) return null;
+            return (
+              <div key={sectionName}>
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-3">{sectionName}</h2>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {sectionModules.map((module) =>
+                    module.is_external ? (
+                      <ExternalLauncherCard
+                        key={module.key}
+                        title={module.title}
+                        description={module.description ?? undefined}
+                        badge={module.badge}
+                        launcherKind={module.launcher_kind}
+                        active={module.is_enabled}
+                      />
+                    ) : (
+                      <ServiceCard
+                        key={module.key}
+                        title={module.title}
+                        description={module.description ?? undefined}
+                        href={module.href}
+                        badge={module.badge}
+                        active={module.is_enabled}
+                        external={false}
+                      />
+                    ),
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </section>
       </section>
     </AppShell>
   );
