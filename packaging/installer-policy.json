@@ -12,6 +12,7 @@
     "alembic.ini",
     "README.md",
     "start_offline.bat",
+    "stop_offline.bat",
     "setup_offline.bat",
     "offline_package.bat",
     "setup.bat"

@@ -47,3 +47,10 @@ def test_installer_policy_declares_forbidden_categories_beyond_a_bare_deny_list(
 
     assert len(policy.allow_top_level_entries) > 0
     assert "storage" not in policy.allow_top_level_entries
+    # 폐쇄망 운영자가 부팅·복구에 쓰는 세 배치는 반드시 패키지에 실려야 한다. stop_offline.bat 은
+    # start_offline.bat 이 exit 98(게이트 경합)로 실패할 때 안내하는 유일한 복구 도구인데, allow-list
+    # 누락으로 어떤 오프라인 ZIP 에도 실린 적이 없어 1.19.0 폐쇄망 부팅 복구 불가 회귀를 냈다.
+    for required_batch in ("setup_offline.bat", "start_offline.bat", "stop_offline.bat"):
+        assert required_batch in policy.allow_top_level_entries, (
+            f"{required_batch} 가 allow_top_level_entries 에 없어 오프라인 패키지에서 누락된다."
+        )
