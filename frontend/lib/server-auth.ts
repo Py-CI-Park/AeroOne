@@ -36,22 +36,34 @@ export async function requireAdminSession() {
   return user;
 }
 
-export async function resolveIsAdmin(): Promise<boolean> {
+export type DashboardAuth = {
+  authenticated: boolean;
+  isAdmin: boolean;
+  username?: string;
+};
+
+export async function resolveDashboardAuth(): Promise<DashboardAuth> {
   const cookieHeader = await buildCookieHeader();
   if (!cookieHeader) {
-    return false;
+    return { authenticated: false, isAdmin: false };
   }
+
   try {
     const response = await fetch(`${getServerApiBase()}/api/v1/auth/me`, {
       cache: 'no-store',
       headers: { cookie: cookieHeader },
     });
     if (!response.ok) {
-      return false;
+      return { authenticated: false, isAdmin: false };
     }
+
     const user = (await response.json()) as AuthResponse['user'];
-    return user.role === 'admin';
+    return {
+      authenticated: true,
+      isAdmin: user.role === 'admin',
+      username: user.username,
+    };
   } catch {
-    return false;
+    return { authenticated: false, isAdmin: false };
   }
 }

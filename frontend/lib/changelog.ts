@@ -19,9 +19,10 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.20.0',
-    date: '2026-07-21',
+    date: '2026-07-22',
     items: [
       'Aero Work 문서작성을 Word(DOCX)로도 생성함 — 기존 한글 HWPX 와 나란히, 같은 제목·본문·양식(시행문·1페이지·풀버전·이메일·임의형식)을 python-docx 로 .docx 파일로 내려받을 수 있음. 문서작성 화면과 승인 저장 문서 목록 모두에 "Word(.docx)" 다운로드를 더했고, 기존 HWPX 경로는 그대로 보존함(폐쇄망 순도 — 이미 번들된 python-docx 만 사용).',
+      '대시보드 첫 화면을 AeroOne Flight Deck 으로 고도화함 — 오리지널 민항기 날개·구름 포스터 위에 로그인 상태별 안내와 권한 필터를 통과한 Civil Aircraft·AeroAI·Aero Work·Newsletter 빠른 실행을 최대 4개 표시하고, 기존 최근 열람·전체 서비스 그리드는 그대로 보존함. 신규 애니메이션·3D dependency 없이 CSS 2.5D, 키보드 focus, 모션 감소 대응을 적용해 폐쇄망·저사양 환경에서도 동일 업무 진입을 유지함.',
     ],
   },
   {

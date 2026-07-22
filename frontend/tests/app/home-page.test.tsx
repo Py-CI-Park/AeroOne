@@ -3,9 +3,11 @@ import { act, render, screen, within } from '@testing-library/react';
 
 import HomePage from '@/app/page';
 
-const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClientSessionMock, fetchMyRecentReadsMock, fetchLauncherHealthMock, MODULES } = vi.hoisted(() => ({
+const { cookieThemeMock, isAdminMock, authenticatedMock, usernameMock, fetchPublicServiceModulesMock, fetchClientSessionMock, fetchMyRecentReadsMock, fetchLauncherHealthMock, MODULES } = vi.hoisted(() => ({
   cookieThemeMock: vi.fn<() => string | undefined>(),
   isAdminMock: vi.fn<() => boolean>(),
+  authenticatedMock: vi.fn<() => boolean>(),
+  usernameMock: vi.fn<() => string | undefined>(),
   fetchPublicServiceModulesMock: vi.fn(),
   fetchClientSessionMock: vi.fn(),
   fetchMyRecentReadsMock: vi.fn(),
@@ -17,6 +19,7 @@ const { cookieThemeMock, isAdminMock, fetchPublicServiceModulesMock, fetchClient
     { id: 4, key: 'nsa', title: 'NSA', description: 'Access-controlled HTML documents.', href: '/nsa', badge: 'Active', is_enabled: true, section: 'Document', status: 'active', sort_order: 40, is_external: false, launcher_kind: 'none', visibility: 'public', required_permission: 'collections.nsa.read', resource_type: 'collection', resource_id: 'nsa' },
     { id: 5, key: 'viewer', title: 'Viewer', description: '로컬 Markdown·HTML 파일을 열어 보고 편집 (서버 sanitize 미리보기).', href: '/viewer', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 50, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 6, key: 'ai', title: 'AeroAI', description: '사내 폐쇄망 문서를 근거로 답하는 AI 어시스턴트.', href: '/ai', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 60, is_external: false, launcher_kind: 'none', visibility: 'admin' },
+    { id: 14, key: 'aero-work', title: 'Aero Work', description: '대화 한 줄로 일정·문서(HWPX)·지식 검색을 잇는 업무 워크스페이스.', href: '/aero-work', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 42, is_external: false, launcher_kind: 'none', visibility: 'admin' },
     { id: 7, key: 'open-notebook', title: 'Notebook', description: 'NotebookLM 대안 — 소스 정리·요약·벡터 검색 (별도 폐쇄망 앱).', href: '', badge: 'Active', is_enabled: true, section: 'Development', status: 'development', sort_order: 70, is_external: true, launcher_kind: 'open_notebook', visibility: 'admin' },
     { id: 11, key: 'openwebui', title: 'AI', description: '', href: '', badge: 'Active', is_enabled: true, section: 'AI', status: 'development', sort_order: 75, is_external: true, launcher_kind: 'open_webui', visibility: 'public', required_permission: 'dashboard.openwebui.launch' },
     { id: 8, key: 'ladder', title: 'Ladder', description: 'Coffee-bet ladder game (사다리타기).', href: '/games/ladder', badge: 'Active', is_enabled: true, section: 'ETC', status: 'development', sort_order: 80, is_external: false, launcher_kind: 'none', visibility: 'admin' },
@@ -34,7 +37,11 @@ vi.mock('next/headers', () => ({
 }));
 
 vi.mock('@/lib/server-auth', () => ({
-  resolveIsAdmin: () => Promise.resolve(isAdminMock()),
+  resolveDashboardAuth: () => Promise.resolve({
+    authenticated: authenticatedMock() || isAdminMock(),
+    isAdmin: isAdminMock(),
+    username: usernameMock(),
+  }),
 }));
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -51,6 +58,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
 beforeEach(() => {
   cookieThemeMock.mockReturnValue(undefined);
   isAdminMock.mockReturnValue(false);
+  authenticatedMock.mockReturnValue(false);
+  usernameMock.mockReturnValue(undefined);
   // Simulate the backend /service-modules/public per-caller filtering: admins get all
   // modules; non-admins get only public, non-permission-gated modules.
   fetchPublicServiceModulesMock.mockImplementation(() =>
@@ -76,6 +85,8 @@ afterEach(() => {
   vi.unstubAllEnvs();
   cookieThemeMock.mockReset();
   isAdminMock.mockReset();
+  authenticatedMock.mockReset();
+  usernameMock.mockReset();
   fetchPublicServiceModulesMock.mockReset();
   fetchClientSessionMock.mockReset();
   fetchMyRecentReadsMock.mockReset();
@@ -90,18 +101,46 @@ async function renderHome(searchParams: Record<string, string> = {}) {
   await act(async () => {});
 }
 
-test('removes the home hero copy while keeping the Newsletter link and theme selector', async () => {
+test('adds the anonymous cinematic flight deck while keeping the full Newsletter card and theme selector', async () => {
   await renderHome();
 
-  expect(screen.queryByText('AeroOne Internal Platform')).not.toBeInTheDocument();
-  expect(screen.queryByText('사내 문서형 서비스 시작점')).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'AeroOne의 문서와 업무 서비스를 한곳에서 확인하세요.' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'AeroOne 로그인' })).toHaveAttribute('href', '/login');
+  expect(screen.getByRole('link', { name: '민수기체 빠른 실행' })).toHaveAttribute('href', '/reports/civil-aircraft');
+  expect(screen.getByRole('link', { name: '뉴스레터 빠른 실행' })).toHaveAttribute('href', '/newsletters');
 
-  const newsletterLink = within(screen.getByRole('main')).getByRole('link', { name: /Newsletter/i });
-
+  const newsletterLink = within(screen.getByRole('region', { name: '전체 서비스' }))
+    .getByRole('link', { name: /Newsletter/i });
   expect(newsletterLink).toHaveAttribute('href', '/newsletters');
   expect(newsletterLink).toHaveTextContent('Active');
   expect(within(newsletterLink).queryByTestId('service-card-description')).not.toBeInTheDocument();
   expect(screen.getByTestId('newsletter-theme-selector')).toBeInTheDocument();
+});
+
+test('personalizes the flight deck for signed-in users without exposing the login CTA', async () => {
+  authenticatedMock.mockReturnValue(true);
+  usernameMock.mockReturnValue('민지');
+
+  await renderHome();
+
+  expect(screen.getByRole('heading', { name: '민지님, 업무를 이어가세요.' })).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'AeroOne 로그인' })).not.toBeInTheDocument();
+});
+
+test('shows admin context and only filtered modules in Featured priority order', async () => {
+  isAdminMock.mockReturnValue(true);
+  usernameMock.mockReturnValue('운영팀');
+
+  await renderHome();
+
+  expect(screen.getByRole('heading', { name: '운영팀님, 서비스 운영 현황을 확인하세요.' })).toBeInTheDocument();
+  const featured = screen.getByRole('region', { name: 'Featured' });
+  expect(within(featured).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+    '/reports/civil-aircraft',
+    '/ai',
+    '/aero-work',
+    '/newsletters',
+  ]);
 });
 
 test('non-admin dashboard hides required-permission NSA plus development and coming-soon cards', async () => {
@@ -206,8 +245,8 @@ test('operator dashboard groups cards into ordered Newsletter/Document/AI/Develo
   expect(screen.queryByRole('link', { name: /Announcement/i })).not.toBeInTheDocument();
   expect(announcement.closest('[aria-disabled="true"]')).not.toBeNull();
   expect(schedule.closest('[aria-disabled="true"]')).toHaveTextContent('Coming soon');
-  // Leantime 카드 제외로 활성 카드가 11 → 10 개로 줄었다.
-  expect(screen.getByText('10 active · 2 coming soon')).toBeInTheDocument();
+  // Leantime 카드 제외를 유지하면서 실제 Aero Work 카드를 포함해 활성 카드가 11개다.
+  expect(screen.getByText('11 active · 2 coming soon')).toBeInTheDocument();
 });
 
 test('operator dashboard shows the unified office-tools hub card in Development', async () => {
