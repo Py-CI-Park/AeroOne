@@ -18,6 +18,13 @@ export type ChangelogEntry = {
 // 최신 버전이 맨 위.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.19.1',
+    date: '2026-07-22',
+    items: [
+      '폐쇄망 오프라인 패키지에 stop_offline.bat 을 포함하도록 고침 — start_offline.bat 이 이전 실행의 잔여 프로세스가 유지보수 게이트를 쥔 채로 끝날 때(exit 98) 안내하는 복구 도구 stop_offline.bat 이 패키지 allow-list 에서 빠져 어떤 ZIP 에도 실린 적이 없었음. 이제 함께 배포되어 exit 98 상황을 stop_offline.bat 실행으로 바로 풀 수 있음(부팅·게이트 코드 자체는 불변). 재발 방지 테스트를 추가함.',
+    ],
+  },
+  {
     version: '1.19.0',
     date: '2026-07-21',
     items: [
