@@ -173,3 +173,121 @@ frontend/
 ## 13. 결정
 
 1.20.0의 현실적인 시각 개선안은 **기존 서버·RBAC 계약을 보존한 컴팩트 항공 히어로 + 포스터 우선 + 선택적 로컬 영상 + CSS 2.5D DOM 카드**다. Three.js와 Digital Twin은 실제 형상 탐색 요구사항과 모델 자산 파이프라인이 확정된 뒤 Civil Aircraft의 독립 기능으로 다룬다.
+
+## 14. 2차 연구안 대조 결과
+
+사용자가 추가로 제시한 `TravelX·Avora 날개/구름 히어로 + DOM 대시보드 + 제한적 2.5D + Civil Aircraft 전용 3D` 제안을 저장소와 공식 기술 문서에 다시 대조했다.
+
+### 14.1 확인된 사실
+
+- `/`의 서버 조회·RBAC·degraded fallback을 그대로 두고 표현 계층만 교체할 수 있다는 분석은 맞다.
+- `AppShell`에는 60px sticky header, 버전, 주요 내비게이션, 시계, 테마, 도움말, 계정 메뉴가 있다.
+- 현재 `ServiceCard`는 `min-h-[200px]`, 단색 표면, 얕은 hover shadow 중심이라 별도의 작은 Featured 카드가 필요하다는 분석은 합리적이다.
+- Motion은 React 18.2 이상과 Next.js App Router를 지원하므로 React 19에서 기술적으로 사용할 수 있다.
+- React Three Fiber 공식 문서는 React 19와 `@react-three/fiber@9`의 major pairing을 안내한다.
+- Next.js 공식 문서는 `ssr: false`가 Client Component 안에서만 유효하다고 명시한다. 향후 WebGL을 도입하면 Client 경계 안에서 동적 import해야 한다.
+- 영상·3D 버튼과 본문을 DOM에 유지하고 Canvas를 장식 배경으로만 사용하는 원칙은 접근성과 복구성 측면에서 타당하다.
+
+### 14.2 보정이 필요한 주장
+
+| 2차 연구안 | 보정 결론 |
+|---|---|
+| `npm install motion`을 가장 먼저 수행 | 기술 호환성은 확인됐지만 도입 승인은 아니다. 먼저 dependency 없는 정적/CSS 프로토타입을 만들고 JS 예산 실측 뒤 결정한다. |
+| 최초 방문 100svh, 재방문 60~70vh | 업무 카드가 첫 viewport 아래로 밀릴 수 있다. 1.20.0 기본은 컴팩트 히어로로 하고, 전체 화면은 향후 명시적 전시 모드 후보로 둔다. |
+| AI Command/Search | 범용 명령 실행은 현재 기능이 아니다. 1차는 모듈·문서 탐색 또는 명확한 이동 CTA만 허용한다. |
+| System Online·AI Ready·Document Status | 실시간 API와 실패 의미가 정의된 값만 표시한다. 장식용 가짜 상태는 금지한다. |
+| 구름 영상 + GLB 날개 | 홈 GLB는 1.20.0 범위에서 제외한다. 정적 투명 날개 레이어만으로 먼저 검증한다. |
+| Motion 후 GSAP 추가 | 두 런타임을 누적하기 전에 CSS/Motion 한 가지로 충족 가능한지 판정한다. scroll hijacking, pin, snap은 기본 업무 홈에서 사용하지 않는다. |
+| Draco·KTX2 로컬 decoder | Civil 3D 단계의 후보일 뿐 현재 패키지에 선반입하지 않는다. 실제 모델과 압축 비교 뒤 선택한다. |
+| 영상·GLB 권장 크기 표 | 표준이 아닌 내부 가설이다. 현재 ZIP 약 240MB와 설치 시간·LCP 실측으로 최종 예산을 정한다. |
+| CSS에서 reduced-motion 영상 `display:none` | 다운로드 방지 계약으로 부족하다. 미디어 질의와 Client 조건으로 `<source>` 자체를 마운트하지 않아야 한다. |
+| `frontend` 아래면 자동 패키징 | tracked allow-list, stage build, manifest, pre/post ZIP verifier를 모두 통과해야 한다. 단순 디렉터리 위치만으로 포함을 보장하지 않는다. |
+
+### 14.3 레퍼런스 사용 경계
+
+TravelX·Avora·Boom·Awwwards·Webflow는 시각 방향 또는 상호작용 사례로만 사용한다. AeroOne의 기능·접근성·성능 표준으로 간주하지 않는다. 이 검토 세션에는 2600×1463 원본 이미지 파일이 제공되지 않았으므로 구도 평가는 사용자가 전달한 2차 연구 서술을 근거로 하며, “직접 내려받아 확인했다”는 선행 연구의 관찰 기록을 이번 검토가 독립 재현한 것으로 표시하지 않는다.
+
+레퍼런스 화면이나 스톡·AI 생성 결과를 그대로 복제하지 않는다. 오리지널 자산을 만들고 항공기 날개 형상의 프레임 간 안정성, 상표·도장·기체 식별 요소, 재배포권을 별도로 검수한다.
+
+## 15. 확정된 제품 명세 후보
+
+### 15.1 화면 구조
+
+```text
+기존 AppShell(기능 보존, 홈에서만 제한적 immersive 표현 후보)
+└─ 컴팩트 Cinematic Hero
+   ├─ 정적 포스터 즉시 표시
+   ├─ 조건을 통과한 경우에만 로컬 구름 영상
+   ├─ 정적 generic civil-aircraft wing 레이어
+   ├─ 실제 서비스 설명과 명시적 CTA
+   └─ 권한 필터를 통과한 Featured 모듈 최대 4개
+└─ 기존 RecentReadsStrip
+└─ 기존 전체 섹션·ServiceCard·ExternalLauncherCard
+```
+
+Featured 우선순위는 Civil Aircraft, AeroAI, Aero Work, Newsletter를 후보로 하되 **서버 결과에 실제 존재하는 항목만** 사용한다. Featured로 올린 모듈도 아래 전체 그리드에서 찾을 수 있도록 하여 익숙한 탐색 경로를 보존한다.
+
+### 15.2 시각·모션 상한
+
+- Featured 카드 높이 후보: 96~128px
+- 카드 tilt: 최대 2~4도
+- 배경·날개 parallax: 최대 4~8px
+- 지속적으로 움직이는 텍스트 금지
+- 인트로 대기와 스크롤 강제 금지
+- 헤더 variant는 홈에만 적용하고 기본 `standard`를 불변 기본값으로 유지
+- light/dark 양쪽에서 영상 위 텍스트 대비를 실제 프레임으로 측정
+- 업무 영역 진입 뒤 영상은 일시 정지하거나 시각 영향이 없는 상태로 약화
+
+### 15.3 자산 도입 순서
+
+1. 텍스트 없는 오리지널 정적 포스터와 분리된 날개 레이어 제작
+2. 라이선스·생성 provenance·SHA-256 기록
+3. CSS만으로 구도와 DOM 카드 프로토타입
+4. production build와 `/` JS 예산 측정
+5. 포스터 LCP·명암·저사양 브라우저 검증
+6. 구름 영상 1개를 조건부로 추가하고 ZIP·LCP 증가량 비교
+7. 효과 대비 이득이 확인될 때만 Motion 도입 검토
+8. 홈 3D가 아닌 Civil Aircraft의 별도 요구사항으로 GLB 파이프라인 검토
+
+정적 이미지 생성 프롬프트는 설계 입력으로 사용할 수 있지만 산출물은 항공 구조 검수와 권리 검수를 통과해야 한다. AI 생성이라는 사실만으로 재배포권이나 형상 정확성이 보장되지는 않는다.
+
+## 16. 버전·릴리스 정합성 재점검
+
+2026-07-22의 `1.20.0-dev` 작업 트리에서 확인한 상태는 다음과 같다.
+
+| 진실 원천 | 확인값 | 판단 |
+|---|---|---|
+| `backend/app/core/config.py` | `1.20.0` | 개발 버전과 일치 |
+| `frontend/lib/changelog.ts` | `1.20.0`, 1.19.1 hotfix 승계 기록 | 개발 이력과 일치 |
+| GitHub Release | immutable `1.19.1`, `AeroOne-offline-1.19.1.zip` | 최신 게시본 |
+| `README.md` 배지 | `1.19.0` | 1.20.0 릴리스 직전 갱신 필요 |
+| `offline_package.bat` | builder `-Version 1.19.0` | 1.20.0 릴리스 직전 갱신 필요 |
+| `README.md` 운영 반입물 본문 | `1.16.3` 중심 | 현재 latest 1.19.1 기준으로 정리 필요 |
+
+따라서 2차 연구안의 “현재 main README와 wrapper가 1.19.1”이라는 표현을 `1.20.0-dev`에도 그대로 적용할 수 없다. 최신 게시 릴리스는 1.19.1이지만 현재 개발 브랜치의 README 배지와 wrapper는 1.19.0이고, 운영 반입물 본문은 더 오래된 1.16.3을 가리킨다.
+
+이 정합성 수정은 연구 문서 커밋에서 임의로 수행하지 않는다. AGENTS.md의 릴리스 절차에 따라 1.20.0 정식 릴리스 직전 버전 표기, 검증 수치, 실제 ZIP digest와 함께 한 번에 갱신한다.
+
+## 17. 2차 결정
+
+2차 연구의 핵심 조합은 채택한다.
+
+> TravelX·Avora 계열의 날개/구름 구도 + 실제 권한 기반 DOM 대시보드 + 제한적 CSS 2.5D + Civil Aircraft로 분리한 후속 3D
+
+다만 1.20.0 구현 기본값은 **컴팩트·포스터 우선·dependency 없음**으로 더 좁힌다. Motion은 CSS 프로토타입이 요구를 충족하지 못하고 160kB JS 예산과 Lighthouse 계약을 통과할 때만 추가한다. GSAP와 홈 Three.js는 1.20.0 범위에서 제외한다.
+
+## 18. 외부 참고 자료
+
+아래 자료는 2026-07-22에 기술 주장 확인 또는 시각 참고 경계 설정에 사용했다.
+
+- Avora Aviation 소개: <https://www.avora.aero/about>
+- Boom XB-1 interactive experience 소개: <https://boomsupersonic.com/flyby/meet-xb-1-in-this-fully-interactive-digital-experience>
+- Next.js lazy loading: <https://nextjs.org/docs/app/guides/lazy-loading>
+- Motion for React 설치·Next.js 안내: <https://motion.dev/docs/react-installation>
+- React Three Fiber 설치·React major pairing: <https://r3f.docs.pmnd.rs/getting-started/installation>
+- Three.js GLTFLoader: <https://threejs.org/docs/pages/GLTFLoader.html>
+- Three.js DRACOLoader: <https://threejs.org/docs/pages/DRACOLoader.html>
+- Three.js KTX2Loader: <https://threejs.org/docs/pages/KTX2Loader.html>
+- MDN `<video>`: <https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/video>
+- MDN autoplay: <https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay>
+- MDN `prefers-reduced-motion`: <https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/%40media/prefers-reduced-motion>

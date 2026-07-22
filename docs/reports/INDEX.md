@@ -245,12 +245,13 @@
 - 코드: `scripts/qa/release_budget_gate.mjs`, `backend/app/modules/reports/civil_aircraft_dashboard/`(v1.8), `frontend/components/admin/`(6그룹), `frontend/components/{ai,office-tools,dashboard,documents,newsletter}/`, `docs/runbook/release-performance-budget.md`, 커밋 `8d5dadb`~`1303ce1`·`6821e53` 외.
 - 회귀 방지: backend 전체 **1,283 passed / 0 failed**(unit 917 + integration 366, 경고 0), frontend Vitest **625 passed / 97 files**(act 경고 0), `tsc --noEmit`·`next build` 통과, 성능 예산 게이트 3/3 pass(`artifacts/qa/release-budget/1.17.0.json`).
 - 후속: 게시(main 병합·tag `1.17.0`·Release·ZIP)·폐쇄망 실 PC 재검증은 운영자 승인 액션. 1.16.4 hotfix 는 코드 완료·게시 대기.
+
 ### 단계 33 — 1.20.0 시네마틱 항공 대시보드 연구
 
 - 파일: [`v1-20-0-cinematic-dashboard-research.md`](v1-20-0-cinematic-dashboard-research.md)
 - 분류: research / `1.20.0` 후보 — 제품 코드 변경 없이 항공 영상·포스터·CSS 2.5D 랜딩의 적용 경계와 후속 3D 분리 원칙을 검토.
-- 결론: 현재 Server Component·RBAC·fallback 계약을 유지한 DOM 기반 Featured 모듈과 기존 업무 그리드를 사용하고, 홈의 Three.js·전체 WebGL·가상 기능 카드는 제외한다. 로컬 영상은 라이선스·ZIP 크기·접근성·성능 예산 검증 후 조건부로만 반입한다.
-- 검증 상태: 저장소 정적 대조만 수행. 로컬 실행, production build, 영상·3D 자산 실측은 미실행.
+- 결론: 2차 연구까지 대조해 TravelX·Avora 계열 날개/구름 구도, 실제 권한 기반 DOM Featured 모듈, 제한적 CSS 2.5D, Civil Aircraft로 분리한 후속 3D를 채택 후보로 확정했다. 1.20.0 기본은 컴팩트·포스터 우선·신규 dependency 없음이며 Motion은 실측 뒤 조건부, GSAP·홈 Three.js·가상 기능 카드는 제외한다.
+- 검증 상태: 저장소·GitHub Release·Next.js/Motion/R3F 공식 문서 정적 대조를 수행했다. 로컬 실행, production build, 원본 레퍼런스 이미지, 영상·3D 자산 실측은 미실행.
 
 ---
 
