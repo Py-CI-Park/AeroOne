@@ -104,7 +104,8 @@ async function renderHome(searchParams: Record<string, string> = {}) {
 test('adds the anonymous cinematic flight deck while keeping the full Newsletter card and theme selector', async () => {
   await renderHome();
 
-  expect(screen.getByRole('heading', { name: 'AeroOne의 문서와 업무 서비스를 한곳에서 확인하세요.' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'AeroOne 대시보드' })).toHaveClass('sr-only');
+  expect(screen.queryByText('AeroOne의 문서와 업무 서비스를 한곳에서 확인하세요.')).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'AeroOne 로그인' })).toHaveAttribute('href', '/login');
   expect(screen.getByRole('link', { name: '민수기체 빠른 실행' })).toHaveAttribute('href', '/reports/civil-aircraft');
   expect(screen.getByRole('link', { name: '뉴스레터 빠른 실행' })).toHaveAttribute('href', '/newsletters');
